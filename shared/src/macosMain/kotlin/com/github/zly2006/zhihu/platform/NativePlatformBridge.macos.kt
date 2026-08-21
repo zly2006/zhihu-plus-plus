@@ -96,3 +96,5 @@ fun showMacosUserMessage(
         "macOS user message queue is unavailable"
     }
 }
+
+internal actual val platformBottomBarItemLimit: Int? = null

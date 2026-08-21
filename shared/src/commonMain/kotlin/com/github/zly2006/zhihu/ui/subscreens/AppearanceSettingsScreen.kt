@@ -95,6 +95,7 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.MyCollections
 import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
+import com.github.zly2006.zhihu.platform.platformBottomBarItemLimit
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.ThemeManager
@@ -171,7 +172,16 @@ internal fun resolveValidStartDestinationKey(
     else -> Home.name
 }
 
-internal fun defaultBottomBarSelectionKeys(duo3HomeAccount: Boolean): Set<String> = if (duo3HomeAccount) {
+internal fun defaultBottomBarSelectionKeys(
+    duo3HomeAccount: Boolean,
+    maximumSelection: Int? = 5,
+): Set<String> = if (maximumSelection == null) {
+    if (duo3HomeAccount) {
+        linkedSetOf(Home.name, Follow.name, HotList.name, Daily.name, OnlineHistory.name, MyCollections.name)
+    } else {
+        linkedSetOf(Home.name, Follow.name, HotList.name, Daily.name, OnlineHistory.name, MyCollections.name, Account.name)
+    }
+} else if (duo3HomeAccount) {
     linkedSetOf(Home.name, Follow.name, Daily.name)
 } else {
     linkedSetOf(Home.name, Follow.name, Daily.name, OnlineHistory.name, Account.name)
@@ -181,11 +191,12 @@ internal fun normalizeBottomBarSelection(
     selectedKeys: Collection<String>,
     duo3HomeAccount: Boolean,
     enforceMinimumSelection: Boolean = false,
+    maximumSelection: Int? = 5,
 ): Set<String> {
     val allowedKeys = topLevelDestinationsInOrder.map { it.first }.toSet()
     val normalized = selectedKeys
         .filterTo(linkedSetOf()) { it in allowedKeys }
-        .ifEmpty { defaultBottomBarSelectionKeys(duo3HomeAccount).toMutableSet() }
+        .ifEmpty { defaultBottomBarSelectionKeys(duo3HomeAccount, maximumSelection).toMutableSet() }
 
     if (duo3HomeAccount) {
         if (Home.name in normalized) {
@@ -195,7 +206,7 @@ internal fun normalizeBottomBarSelection(
         }
     } else {
         normalized.add(Account.name)
-        while (normalized.size > 5) {
+        while (maximumSelection != null && normalized.size > maximumSelection) {
             val removableKey = listOf(
                 HotList.name,
                 MyCollections.name,
@@ -301,10 +312,11 @@ fun AppearanceSettingsScreen(
         val normalizedSelection = normalizeBottomBarSelection(
             settings.getStringSet(
                 BOTTOM_BAR_ITEMS_PREFERENCE_KEY,
-                defaultBottomBarSelectionKeys(duo3HomeAccount.value),
+                defaultBottomBarSelectionKeys(duo3HomeAccount.value, platformBottomBarItemLimit),
             ),
             duo3HomeAccount.value,
             enforceMinimumSelection = true,
+            maximumSelection = platformBottomBarItemLimit,
         )
         mutableStateOf(
             bottomBarItemOrderFromPreference(
@@ -313,6 +325,7 @@ fun AppearanceSettingsScreen(
             ),
         )
     }
+    val maximumBottomBarItems = platformBottomBarItemLimit
 
     DisposableEffect(Unit) {
         onDispose {
@@ -1056,6 +1069,7 @@ fun AppearanceSettingsScreen(
                     currentOrderKeys,
                     duo3HomeAccountEnabled,
                     enforceMinimumSelection = true,
+                    maximumSelection = platformBottomBarItemLimit,
                 )
                 val normalizedOrderKeys = normalizeBottomBarItemOrder(currentOrderKeys, normalizedSet)
                 val availableKeys = normalizedOrderKeys
@@ -1187,8 +1201,10 @@ fun AppearanceSettingsScreen(
                                                     userMessages.showShortMessage("至少保留3项")
                                                 }
 
-                                                !isChecked && selectedBottomBarItemKeys.value.size >= 5 -> {
-                                                    userMessages.showShortMessage("最多选择5项")
+                                                !isChecked &&
+                                                    maximumBottomBarItems != null &&
+                                                    selectedBottomBarItemKeys.value.size >= maximumBottomBarItems -> {
+                                                    userMessages.showShortMessage("最多选择${maximumBottomBarItems}项")
                                                 }
 
                                                 else -> persistBottomBarSelection(candidateOrderKeys)

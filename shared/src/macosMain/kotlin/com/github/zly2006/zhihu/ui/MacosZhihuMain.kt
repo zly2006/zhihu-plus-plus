@@ -57,6 +57,7 @@ import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.Search
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.navigation.Video
+import com.github.zly2006.zhihu.platform.platformBottomBarItemLimit
 import com.github.zly2006.zhihu.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
@@ -274,10 +275,11 @@ private fun rememberMacosZhihuMainPreferenceState(): ZhihuMainPreferenceState {
         val selectedKeys = normalizeBottomBarSelection(
             settings.getStringSet(
                 BOTTOM_BAR_ITEMS_PREFERENCE_KEY,
-                defaultBottomBarSelectionKeys(duo3HomeAccount),
+                defaultBottomBarSelectionKeys(duo3HomeAccount, platformBottomBarItemLimit),
             ),
             duo3HomeAccount,
             enforceMinimumSelection = true,
+            maximumSelection = platformBottomBarItemLimit,
         )
         val orderedSelectedKeys = bottomBarItemOrderFromPreference(
             settings.getStringOrNull(BOTTOM_BAR_ITEM_ORDER_PREFERENCE_KEY),

@@ -53,6 +53,8 @@ actual fun rememberExternalUrlOpener(): (String) -> Unit {
     return remember(context) { { url -> luoTianYiUrlLauncher(context, url.toUri()) } }
 }
 
+internal actual val platformBottomBarItemLimit: Int? = 5
+
 @Composable
 actual fun rememberSystemUrlOpener(): (String) -> Unit {
     val context = LocalContext.current

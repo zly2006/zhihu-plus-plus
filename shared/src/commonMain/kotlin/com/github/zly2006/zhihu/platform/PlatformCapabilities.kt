@@ -21,6 +21,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import kotlinx.io.files.Path
 
+internal expect val platformBottomBarItemLimit: Int?
+
 enum class UserMessageDuration {
     Short,
     Long,

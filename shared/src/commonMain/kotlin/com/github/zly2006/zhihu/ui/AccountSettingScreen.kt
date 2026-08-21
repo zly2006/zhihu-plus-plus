@@ -86,6 +86,7 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.navigation.Person
+import com.github.zly2006.zhihu.platform.platformBottomBarItemLimit
 import com.github.zly2006.zhihu.platform.rememberPlainTextClipboard
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberSystemUrlOpener
@@ -161,10 +162,11 @@ fun AccountSettingScreen(
         normalizeBottomBarSelection(
             settings.getStringSet(
                 BOTTOM_BAR_ITEMS_PREFERENCE_KEY,
-                defaultBottomBarSelectionKeys(useDuo3HomeAccount),
+                defaultBottomBarSelectionKeys(useDuo3HomeAccount, platformBottomBarItemLimit),
             ),
             useDuo3HomeAccount,
             enforceMinimumSelection = true,
+            maximumSelection = platformBottomBarItemLimit,
         )
     }
     var isDeveloper by remember { mutableStateOf(settings.getBoolean("developer", false)) }
