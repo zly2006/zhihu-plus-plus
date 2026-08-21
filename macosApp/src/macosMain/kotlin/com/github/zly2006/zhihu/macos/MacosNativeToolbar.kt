@@ -39,7 +39,7 @@ import platform.AppKit.NSToolbarItemGroupSelectionModeMomentary
 import platform.AppKit.NSToolbarItemGroupSelectionModeSelectOne
 import platform.AppKit.NSToolbarItemVisibilityPriorityHigh
 import platform.AppKit.NSWindow
-import platform.AppKit.NSWindowToolbarStyle.NSWindowToolbarStyleUnifiedCompact
+import platform.AppKit.NSWindowToolbarStyle.NSWindowToolbarStyleUnified
 import platform.Foundation.NSOperationQueue
 import platform.Foundation.NSSelectorFromString
 import platform.darwin.NSObject
@@ -93,7 +93,7 @@ internal fun MacosNativeToolbar(
         var active = true
         NSOperationQueue.mainQueue.addOperationWithBlock {
             if (active && window.toolbar !== controller.toolbar) {
-                window.toolbarStyle = NSWindowToolbarStyleUnifiedCompact
+                window.toolbarStyle = NSWindowToolbarStyleUnified
                 window.toolbar = controller.toolbar
             }
         }
