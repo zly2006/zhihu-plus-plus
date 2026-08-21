@@ -92,6 +92,9 @@ fun MacosZhihuMain(windowChromeState: MacosWindowChromeState? = null) {
     val openExternalUrl = rememberExternalUrlOpener()
     val userMessages = rememberUserMessageSink()
     val preferenceState = rememberMacosZhihuMainPreferenceState()
+    val macosToolbarDestinationKeys = remember {
+        listOf(Home.name, Follow.name, HotList.name, Daily.name, OnlineHistory.name, MyCollections.name, Account.name)
+    }
     var mainTabNavigationTarget by remember { mutableStateOf<TopLevelDestination?>(null) }
     var currentMainTabOpenFrom by remember { mutableStateOf<String?>(null) }
     var currentMainTabDestination by remember { mutableStateOf(preferenceState.startDestination) }
@@ -194,7 +197,7 @@ fun MacosZhihuMain(windowChromeState: MacosWindowChromeState? = null) {
     if (windowChromeState != null) {
         SideEffect {
             windowChromeState.update(
-                destinationKeys = preferenceState.selectedBottomBarItemKeys,
+                destinationKeys = macosToolbarDestinationKeys,
                 selectedDestinationName = currentMainTabDestination.name,
                 navigateToDestination = { destinationName ->
                     val destination = navDestinationFromName(destinationName)

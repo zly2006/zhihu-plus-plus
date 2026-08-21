@@ -189,8 +189,8 @@ internal class MacosNativeToolbarController(
                 target = this,
                 action = NSSelectorFromString("selectNavigation:"),
             ).apply {
-                label = "主导航"
-                paletteLabel = "主导航"
+                label = ""
+                paletteLabel = ""
                 visibilityPriority = NSToolbarItemVisibilityPriorityHigh
                 selectedIndex = destinations
                     .indexOfFirst {
@@ -215,8 +215,8 @@ internal class MacosNativeToolbarController(
                 target = this,
                 action = NSSelectorFromString("selectAction:"),
             ).apply {
-                label = "操作"
-                paletteLabel = "操作"
+                label = ""
+                paletteLabel = ""
                 visibilityPriority = NSToolbarItemVisibilityPriorityHigh
             }
     }

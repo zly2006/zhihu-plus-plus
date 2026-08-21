@@ -28,10 +28,18 @@ import kotlin.test.assertTrue
 class MacosNativeToolbarTest {
     @Test
     fun navigationItemsFollowConfiguredOrder() {
-        val items = macosToolbarNavigationItems(listOf("Daily", "Home", "Account"))
+        val items = macosToolbarNavigationItems(
+            listOf("Home", "Follow", "HotList", "Daily", "OnlineHistory", "MyCollections", "Account"),
+        )
 
-        assertEquals(listOf("Daily", "Home", "Account"), items.map(MacosToolbarNavigationItem::destinationName))
-        assertEquals(listOf("日报", "首页", "账号"), items.map(MacosToolbarNavigationItem::label))
+        assertEquals(
+            listOf("Home", "Follow", "HotList", "Daily", "OnlineHistory", "MyCollections", "Account"),
+            items.map(MacosToolbarNavigationItem::destinationName),
+        )
+        assertEquals(
+            listOf("首页", "关注", "热榜", "日报", "历史", "收藏", "账号"),
+            items.map(MacosToolbarNavigationItem::label),
+        )
     }
 
     @Test
