@@ -325,8 +325,6 @@ fun AppearanceSettingsScreen(
             ),
         )
     }
-    val maximumBottomBarItems = platformBottomBarItemLimit
-
     DisposableEffect(Unit) {
         onDispose {
             onExit()
@@ -1201,10 +1199,13 @@ fun AppearanceSettingsScreen(
                                                     userMessages.showShortMessage("至少保留3项")
                                                 }
 
-                                                !isChecked &&
-                                                    maximumBottomBarItems != null &&
-                                                    selectedBottomBarItemKeys.value.size >= maximumBottomBarItems -> {
-                                                    userMessages.showShortMessage("最多选择${maximumBottomBarItems}项")
+                                                !isChecked -> {
+                                                    platformBottomBarItemLimit
+                                                        ?.takeIf { selectedBottomBarItemKeys.value.size >= it }
+                                                        ?.let { maximum ->
+                                                            userMessages.showShortMessage("最多选择${maximum}项")
+                                                        }
+                                                        ?: persistBottomBarSelection(candidateOrderKeys)
                                                 }
 
                                                 else -> persistBottomBarSelection(candidateOrderKeys)

@@ -39,6 +39,7 @@ import platform.AppKit.NSToolbarItemGroupSelectionModeMomentary
 import platform.AppKit.NSToolbarItemGroupSelectionModeSelectOne
 import platform.AppKit.NSToolbarItemVisibilityPriorityHigh
 import platform.AppKit.NSWindow
+import platform.AppKit.NSWindowToolbarStyle.NSWindowToolbarStyleUnifiedCompact
 import platform.Foundation.NSOperationQueue
 import platform.Foundation.NSSelectorFromString
 import platform.darwin.NSObject
@@ -88,9 +89,11 @@ internal fun MacosNativeToolbar(
 
     DisposableEffect(window, controller) {
         val previousToolbar = window.toolbar
+        val previousToolbarStyle = window.toolbarStyle
         var active = true
         NSOperationQueue.mainQueue.addOperationWithBlock {
             if (active && window.toolbar !== controller.toolbar) {
+                window.toolbarStyle = NSWindowToolbarStyleUnifiedCompact
                 window.toolbar = controller.toolbar
             }
         }
@@ -100,6 +103,7 @@ internal fun MacosNativeToolbar(
             NSOperationQueue.mainQueue.addOperationWithBlock {
                 if (window.toolbar === controller.toolbar) {
                     window.toolbar = previousToolbar
+                    window.toolbarStyle = previousToolbarStyle
                 }
                 controller.toolbar.delegate = null
             }
