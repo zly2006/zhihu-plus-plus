@@ -148,7 +148,7 @@ fun FeedCard(
         Column(
             modifier = modifier
                 .fillMaxWidth()
-                .then(if (showPinImages) Modifier else Modifier.heightIn(max = maxHeight)),
+                .then(if (showPinImages || duo3CardLayout) Modifier else Modifier.heightIn(max = maxHeight)),
         ) {
             Column(
                 modifier = Modifier
@@ -175,7 +175,7 @@ fun FeedCard(
         Box(
             modifier = modifier
                 .fillMaxWidth()
-                .then(if (showPinImages) Modifier else Modifier.heightIn(max = maxHeight))
+                .then(if (showPinImages || duo3CardLayout) Modifier else Modifier.heightIn(max = maxHeight))
                 .padding(horizontal = horizontalPadding, vertical = 8.dp),
         ) {
             Card(
