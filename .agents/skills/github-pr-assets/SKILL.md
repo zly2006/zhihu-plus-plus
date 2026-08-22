@@ -28,6 +28,8 @@ Core rule: PR descriptions must contain durable, publicly accessible Markdown li
 6. Update the PR body with `gh pr edit <number> --body-file -`.
 7. Re-read the PR body and re-check `git status --short --branch`.
 
+PR 正文必须先写入临时 Markdown 文件，再通过 `--body-file` 传给 `gh`；不要把包含 `\\n` 的字符串直接作为 `--body` 参数，否则 GitHub 会把转义符原样显示，Markdown 不会解析。
+
 ## GitHub Upload Boundary
 
 Do not claim that GitHub's web drag-and-drop attachment upload can be reproduced with ordinary `gh api` unless a real endpoint has been verified in the current environment.
