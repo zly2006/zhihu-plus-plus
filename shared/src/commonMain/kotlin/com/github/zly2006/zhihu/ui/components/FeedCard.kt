@@ -148,7 +148,7 @@ fun FeedCard(
         Column(
             modifier = modifier
                 .fillMaxWidth()
-                .then(if (showPinImages) Modifier else Modifier.heightIn(max = maxHeight)),
+                .then(if (showPinImages || duo3CardLayout) Modifier else Modifier.heightIn(max = maxHeight)),
         ) {
             Column(
                 modifier = Modifier
@@ -175,7 +175,7 @@ fun FeedCard(
         Box(
             modifier = modifier
                 .fillMaxWidth()
-                .then(if (showPinImages) Modifier else Modifier.heightIn(max = maxHeight))
+                .then(if (showPinImages || duo3CardLayout) Modifier else Modifier.heightIn(max = maxHeight))
                 .padding(horizontal = horizontalPadding, vertical = 8.dp),
         ) {
             Card(
@@ -303,14 +303,18 @@ private fun FeedCardContent(
             FeedCardSourceLabel(sourceLabel)
         }
         if (!item.title.isEmpty()) {
+            val titleStyle = if (duo3CardLargeTitle) {
+                MaterialTheme.typography.titleLarge
+            } else {
+                MaterialTheme.typography.titleMedium
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = parseEmphasizedHtmlTextWithTheme(item.title),
-                    style = if (duo3CardLargeTitle) {
-                        MaterialTheme.typography.titleLarge
-                    } else {
-                        MaterialTheme.typography.titleMedium
-                    },
+                    style = titleStyle.copy(
+                        fontSize = titleStyle.fontSize * fontSizePercent / 100,
+                        lineHeight = titleStyle.lineHeight * fontSizePercent / 100,
+                    ),
                     maxLines = 2,
                     color = MaterialTheme.colorScheme.onSurface,
                     overflow = TextOverflow.Ellipsis,
@@ -419,7 +423,7 @@ private fun FeedCardContent(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = parseEmphasizedHtmlTextWithTheme(item.title),
-                    fontSize = 16.sp,
+                    fontSize = 16.sp * fontSizePercent / 100,
                     fontWeight = FontWeight.Bold,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
