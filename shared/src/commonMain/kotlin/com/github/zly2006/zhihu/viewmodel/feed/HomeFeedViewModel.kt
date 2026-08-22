@@ -206,7 +206,7 @@ class HomeFeedViewModel :
             if (!isCurrentFilterGeneration(generation)) return@launch
 
             if (foregroundResult.reverseBlock) {
-                val result = if (loadFullContent) {
+                val filterResult = if (loadFullContent) {
                     try {
                         environment.applyHomeFeedFilters(
                             newItems,
@@ -223,8 +223,8 @@ class HomeFeedViewModel :
                 }
                 if (!isCurrentFilterGeneration(generation)) return@launch
                 withContext(Dispatchers.Main) {
-                    addDisplayItems(result.filteredItems)
-                    latestLoadedDisplayItems.value = result.filteredItems
+                    addDisplayItems(filterResult.filteredItems)
+                    latestLoadedDisplayItems.value = filterResult.filteredItems
                     completedPageCount++
                 }
                 return@launch
@@ -237,7 +237,7 @@ class HomeFeedViewModel :
             }
 
             // 卡片展示后再执行完整正文过滤；详情失败时保留轻量过滤结果。
-            val result = if (loadFullContent) {
+            val filterResult = if (loadFullContent) {
                 try {
                     environment.applyHomeFeedFilters(
                         newItems,
@@ -256,8 +256,8 @@ class HomeFeedViewModel :
 
             // 移除被过滤的条目，并更新已保留条目的 raw 内容
             withContext(Dispatchers.Main) {
-                displayItems.replaceHomeFeedItemsWithFilteredResult(result)
-                latestLoadedDisplayItems.value = result.filteredItems
+                displayItems.replaceHomeFeedItemsWithFilteredResult(filterResult)
+                latestLoadedDisplayItems.value = filterResult.filteredItems
                 completedPageCount++
             }
         }

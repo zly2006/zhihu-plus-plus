@@ -107,7 +107,7 @@ class AndroidHomeFeedViewModel :
                 if (!isCurrentFilterGeneration(generation)) return
 
                 if (foregroundResult.reverseBlock) {
-                    val result = if (loadFullContent) {
+                    val filterResult = if (loadFullContent) {
                         try {
                             environment.applyHomeFeedFilters(
                                 itemsToDisplay,
@@ -124,8 +124,8 @@ class AndroidHomeFeedViewModel :
                     }
                     if (isCurrentFilterGeneration(generation)) {
                         withContext(Dispatchers.Main) {
-                            addDisplayItems(result.filteredItems)
-                            latestLoadedDisplayItems.value = result.filteredItems
+                            addDisplayItems(filterResult.filteredItems)
+                            latestLoadedDisplayItems.value = filterResult.filteredItems
                         }
                     }
                 } else {
@@ -138,7 +138,7 @@ class AndroidHomeFeedViewModel :
                     if (loadFullContent) {
                         // 让分页保持响应，详情请求在后台完成。
                         viewModelScope.launch {
-                            val result = try {
+                            val filterResult = try {
                                 environment.applyHomeFeedFilters(
                                     itemsToDisplay,
                                     loadFullContent = true,
@@ -151,8 +151,8 @@ class AndroidHomeFeedViewModel :
                             }
                             if (!isCurrentFilterGeneration(generation)) return@launch
                             withContext(Dispatchers.Main) {
-                                displayItems.replaceHomeFeedItemsWithFilteredResult(result)
-                                latestLoadedDisplayItems.value = result.filteredItems
+                                displayItems.replaceHomeFeedItemsWithFilteredResult(filterResult)
+                                latestLoadedDisplayItems.value = filterResult.filteredItems
                             }
                         }
                     } else {
