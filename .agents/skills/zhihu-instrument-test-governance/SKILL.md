@@ -15,6 +15,7 @@ Treat emulator time as a recurring maintenance cost. Keep it only where a real p
 4. Do not add a permanent instrument test merely to confirm a low-risk visual choice once. Build the APK and capture a real before/after screenshot instead.
 5. Do not run the complete instrument suite locally unless the user explicitly asks. Prefer compilation, the smallest relevant test, or GitHub CI.
 6. Flakiness, runtime, or inconvenience never justify deleting a proven regression test. Repair its synchronization, fixture, or execution boundary.
+7. A test must assert user-observable behavior or a proven regression, not copy an implementation constant list into assertions. Delete tests that only restate the current source shape without an independent contract; validate the behavior through real interaction, build, or focused regression evidence instead.
 
 Read [references/provenance-and-decisions.md](references/provenance-and-decisions.md) before changing tests.
 
