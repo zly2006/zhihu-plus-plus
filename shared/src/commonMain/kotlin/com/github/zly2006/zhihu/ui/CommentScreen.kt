@@ -153,8 +153,8 @@ import com.github.zly2006.zhihu.reading.ReadingCommentOrder
 import com.github.zly2006.zhihu.reading.loadReadingPreferences
 import com.github.zly2006.zhihu.reading.saveReadingPreferences
 import com.github.zly2006.zhihu.ui.components.replaceSelection
+import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
-import com.github.zly2006.zhihu.ui.subscreens.contentFontSize
 import com.github.zly2006.zhihu.util.twoDigitString
 import com.github.zly2006.zhihu.viewmodel.CommentItem
 import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
@@ -1354,7 +1354,7 @@ private fun CommentItem(
 
                 Column {
                     val settings = rememberSettingsStore()
-                    val fontSizePercent = remember { settings.contentFontSize() }
+                    val fontSizePercent = remember { settings.getInt(PREF_FONT_SIZE, 100) }
                     val lineHeightPercent = remember { settings.getInt(PREF_LINE_HEIGHT, 160) }
                     SelectionContainer(
                         modifier = Modifier.commentSelectionWorkaround(),

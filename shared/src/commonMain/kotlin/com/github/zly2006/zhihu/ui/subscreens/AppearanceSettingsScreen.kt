@@ -95,7 +95,6 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.MyCollections
 import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
-import com.github.zly2006.zhihu.platform.SettingsStore
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.ThemeManager
@@ -147,20 +146,6 @@ private const val BOTTOM_BAR_ITEM_ORDER_SEPARATOR = ","
 internal val contentFontSizeLevels = (50..120 step 5).toList() + (130..200 step 10).toList()
 private val bottomBarSettingItemHeight = 64.dp
 private val bottomBarSettingItemSpacing = 4.dp
-
-internal fun normalizedContentFontSize(value: Int): Int {
-    val boundedValue = value.coerceIn(contentFontSizeLevels.first(), contentFontSizeLevels.last())
-    return contentFontSizeLevels.minBy { abs(it - boundedValue) }
-}
-
-internal fun SettingsStore.contentFontSize(): Int {
-    val storedValue = getInt(PREF_FONT_SIZE, 100)
-    val normalizedValue = normalizedContentFontSize(storedValue)
-    if (storedValue != normalizedValue) {
-        putInt(PREF_FONT_SIZE, normalizedValue)
-    }
-    return normalizedValue
-}
 
 private val topLevelDestinationsInOrder: List<Pair<String, TopLevelDestination>> = listOf(
     Home.name to Home,
@@ -604,7 +589,18 @@ fun AppearanceSettingsScreen(
             SettingItemGroup(
                 title = "阅读",
             ) {
-                var fontSize by remember { mutableIntStateOf(settings.contentFontSize()) }
+                var fontSize by remember {
+                    val storedValue = settings.getInt(PREF_FONT_SIZE, 100)
+                    val boundedValue = storedValue.coerceIn(
+                        contentFontSizeLevels.first(),
+                        contentFontSizeLevels.last(),
+                    )
+                    val snappedValue = contentFontSizeLevels.minBy { abs(it - boundedValue) }
+                    if (storedValue != snappedValue) {
+                        settings.putInt(PREF_FONT_SIZE, snappedValue)
+                    }
+                    mutableIntStateOf(snappedValue)
+                }
                 SettingItem(
                     title = { Text("字号") },
                     description = { Text("调整内容文字大小 ($fontSize%)") },

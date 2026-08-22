@@ -76,8 +76,8 @@ import com.github.zly2006.zhihu.ui.components.SegmentActionSheetState
 import com.github.zly2006.zhihu.ui.components.SegmentHighlightInteractionHost
 import com.github.zly2006.zhihu.ui.subscreens.DUO3_TIQIAN_MATH_FONT_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.PREF_BLOCK_SPACING
+import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
-import com.github.zly2006.zhihu.ui.subscreens.contentFontSize
 import com.hrm.markdown.parser.ast.Document
 import com.hrm.markdown.renderer.Markdown
 import com.hrm.markdown.renderer.MarkdownImageData
@@ -319,7 +319,7 @@ private fun RenderMarkdownDocument(
     val navigator = LocalNavigator.current
     val openExternalUrl = rememberExternalUrlOpener()
     val settings = rememberSettingsStore()
-    val fontSize = settings.contentFontSize()
+    val fontSize = settings.getInt(PREF_FONT_SIZE, 100)
     val lineHeight = settings.getInt(PREF_LINE_HEIGHT, 160)
     val blockSpacing = settings.getInt(PREF_BLOCK_SPACING, 100)
     var segmentCommentTarget by remember { mutableStateOf<SegmentCommentHolder?>(null) }

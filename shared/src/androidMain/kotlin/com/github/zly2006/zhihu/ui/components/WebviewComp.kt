@@ -69,8 +69,8 @@ import com.github.zly2006.zhihu.navigation.Video
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.platform.androidSettingsStore
 import com.github.zly2006.zhihu.theme.ThemeManager
+import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
-import com.github.zly2006.zhihu.ui.subscreens.contentFontSize
 import com.github.zly2006.zhihu.util.blacklist
 import com.github.zly2006.zhihu.util.extractImageUrl
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
@@ -323,7 +323,7 @@ class CustomWebView : WebView {
         }
         Log.i("CustomWebView", "Loading content for URL: $url with document title: ${document.title()}")
         val settings = androidSettingsStore(context)
-        val fontSize = settings.contentFontSize()
+        val fontSize = settings.getInt(PREF_FONT_SIZE, 100)
         val lineHeight = settings.getInt(PREF_LINE_HEIGHT, 160)
         val customFontFile = java.io.File(context.filesDir, "custom_font")
         val customFontName = settings.getStringOrNull("webviewCustomFontName")

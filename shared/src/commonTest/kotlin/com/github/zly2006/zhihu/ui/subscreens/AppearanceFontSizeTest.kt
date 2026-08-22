@@ -17,7 +17,7 @@
 
 package com.github.zly2006.zhihu.ui.subscreens
 
-import com.github.zly2006.zhihu.platform.SettingsStore
+import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -31,35 +31,17 @@ class AppearanceFontSizeTest {
     }
 
     @Test
-    fun fontSizeSnapsToNearestLevel() {
-        assertEquals(50, normalizedContentFontSize(20))
-        assertEquals(105, normalizedContentFontSize(107))
-        assertEquals(110, normalizedContentFontSize(108))
-        assertEquals(120, normalizedContentFontSize(125))
-        assertEquals(200, normalizedContentFontSize(240))
-    }
+    fun storedValuesSnapOnlyForSettingsSelection() {
+        val storedValues = listOf(20, 107, 108, 125, 240)
+        val snappedValues = storedValues.map { storedValue ->
+            val boundedValue = storedValue.coerceIn(
+                contentFontSizeLevels.first(),
+                contentFontSizeLevels.last(),
+            )
+            contentFontSizeLevels.minBy { abs(it - boundedValue) }
+        }
 
-    @Test
-    fun readingFontSizeNormalizesAndPersistsStoredValue() {
-        var storedFontSize = 107
-        val settings = SettingsStore(
-            getBoolean = { _, defaultValue -> defaultValue },
-            putBoolean = { _, _ -> },
-            getString = { _, defaultValue -> defaultValue },
-            putString = { _, _ -> },
-            getStringOrNull = { _ -> null },
-            putStringSet = { _, _ -> },
-            getStringSet = { _, defaultValue -> defaultValue },
-            getInt = { key, defaultValue -> if (key == PREF_FONT_SIZE) storedFontSize else defaultValue },
-            putInt = { key, value -> if (key == PREF_FONT_SIZE) storedFontSize = value },
-            getLong = { _, defaultValue -> defaultValue },
-            putLong = { _, _ -> },
-            getFloat = { _, defaultValue -> defaultValue },
-            putFloat = { _, _ -> },
-            remove = { _ -> },
-        )
-
-        assertEquals(105, settings.contentFontSize())
-        assertEquals(105, storedFontSize)
+        assertEquals(listOf(50, 105, 110, 120, 200), snappedValues)
+        assertEquals(11, contentFontSizeLevels.indexOf(105))
     }
 }

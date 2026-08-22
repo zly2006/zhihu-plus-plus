@@ -81,8 +81,8 @@ import com.github.zly2006.zhihu.navigation.withReadingQueueSource
 import com.github.zly2006.zhihu.platform.UserMessageDuration
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
-import com.github.zly2006.zhihu.ui.subscreens.contentFontSize
 import com.github.zly2006.zhihu.util.parseEmphasizedHtmlTextWithTheme
 import com.github.zly2006.zhihu.viewmodel.QUALITY_FILTER_MODE_PREFERENCE_KEY
 
@@ -292,7 +292,7 @@ private fun FeedCardContent(
     showSourceLabel: Boolean,
 ) {
     val settings = rememberSettingsStore()
-    val fontSizePercent = remember { settings.contentFontSize() }
+    val fontSizePercent = remember { settings.getInt(PREF_FONT_SIZE, 100) }
     val lineHeightPercent = remember { settings.getInt(PREF_LINE_HEIGHT, 160) }
     val navigator = LocalNavigator.current
     val visiblePinImages = pinImages.takeIf { showFeedThumbnail && !item.isFiltered }.orEmpty()
