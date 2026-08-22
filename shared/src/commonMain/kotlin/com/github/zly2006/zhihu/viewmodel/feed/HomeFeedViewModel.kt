@@ -223,9 +223,11 @@ class HomeFeedViewModel :
                 }
                 if (!isCurrentFilterGeneration(generation)) return@launch
                 withContext(Dispatchers.Main) {
-                    addDisplayItems(filterResult.filteredItems)
-                    latestLoadedDisplayItems.value = filterResult.filteredItems
-                    completedPageCount++
+                    if (isCurrentFilterGeneration(generation)) {
+                        addDisplayItems(filterResult.filteredItems)
+                        latestLoadedDisplayItems.value = filterResult.filteredItems
+                        completedPageCount++
+                    }
                 }
                 return@launch
             }
@@ -256,9 +258,11 @@ class HomeFeedViewModel :
 
             // 移除被过滤的条目，并更新已保留条目的 raw 内容
             withContext(Dispatchers.Main) {
-                displayItems.replaceHomeFeedItemsWithFilteredResult(filterResult)
-                latestLoadedDisplayItems.value = filterResult.filteredItems
-                completedPageCount++
+                if (isCurrentFilterGeneration(generation)) {
+                    displayItems.replaceHomeFeedItemsWithFilteredResult(filterResult)
+                    latestLoadedDisplayItems.value = filterResult.filteredItems
+                    completedPageCount++
+                }
             }
         }
     }

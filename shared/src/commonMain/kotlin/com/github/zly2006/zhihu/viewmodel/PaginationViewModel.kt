@@ -100,7 +100,7 @@ abstract class PaginationViewModel<T : Any>(
      */
     open val include = "data[*].content,excerpt,headline,target.author.badge_v2"
 
-    open fun refresh(environment: PaginationEnvironment) {
+    internal fun resetPaginationState() {
         currentJob?.cancel()
         currentJob = null
         isLoading = false
@@ -108,6 +108,10 @@ abstract class PaginationViewModel<T : Any>(
         debugData.clear()
         allData.clear()
         lastPaging = null // 重置 lastPaging
+    }
+
+    open fun refresh(environment: PaginationEnvironment) {
+        resetPaginationState()
         loadMore(environment)
     }
 
@@ -150,10 +154,11 @@ abstract class PaginationViewModel<T : Any>(
 
             val jsonArray = json["data"] as? JsonArray
                 ?: throw RuntimeException("您可能已被风控，请重新登录。", Exception("cause: no $.data"))
-            processResponse(environment, decodePage(environment, jsonArray), jsonArray)
             if ("paging" in json) {
+                // 先保存分页游标，部分信息流会在 processResponse 中异步处理过滤。
                 lastPaging = decodeJson(json["paging"]!!)
             }
+            processResponse(environment, decodePage(environment, jsonArray), jsonArray)
         } catch (e: Exception) {
             if (e is kotlin.coroutines.cancellation.CancellationException) throw e
             environment.handleFetchFailure(this::class.simpleName, e)

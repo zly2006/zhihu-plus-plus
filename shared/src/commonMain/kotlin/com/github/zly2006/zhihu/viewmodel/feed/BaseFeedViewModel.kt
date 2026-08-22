@@ -59,13 +59,13 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
     }
 
     override fun refresh(environment: PaginationEnvironment) {
-        filterGeneration++
+        invalidateFilterProcessing()
         displayItems.clear()
         super.refresh(environment)
     }
 
-    suspend fun pullToRefresh(environment: PaginationEnvironment) {
-        filterGeneration++
+    open suspend fun pullToRefresh(environment: PaginationEnvironment) {
+        invalidateFilterProcessing()
         isPullToRefresh = true
         displayItems.clear()
         if (isLoading) return
@@ -89,6 +89,10 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
             enableQualityFilter = settings.qualityFilterMode != QualityFilterMode.OFF,
             reverseBlock = settings.reverseBlock,
         )
+    }
+
+    internal fun invalidateFilterProcessing() {
+        filterGeneration++
     }
 
     protected fun isCurrentFilterGeneration(generation: Int): Boolean = generation == filterGeneration

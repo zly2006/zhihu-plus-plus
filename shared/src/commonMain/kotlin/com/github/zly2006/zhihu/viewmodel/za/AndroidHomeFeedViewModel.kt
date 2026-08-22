@@ -72,6 +72,12 @@ class AndroidHomeFeedViewModel :
                 val jojo = response.body<JsonObject>()
                 val data = jojo["data"]?.jsonArray ?: throw IllegalStateException("No data found in response")
 
+                lastPaging = if ("paging" in jojo) {
+                    ZhihuJson.decodeJson(jojo["paging"]!!)
+                } else {
+                    null
+                }
+
                 // 收集所有待显示的项目
                 val itemsToDisplay = mutableListOf<FeedDisplayItem>()
 
@@ -124,8 +130,10 @@ class AndroidHomeFeedViewModel :
                     }
                     if (isCurrentFilterGeneration(generation)) {
                         withContext(Dispatchers.Main) {
-                            addDisplayItems(filterResult.filteredItems)
-                            latestLoadedDisplayItems.value = filterResult.filteredItems
+                            if (isCurrentFilterGeneration(generation)) {
+                                addDisplayItems(filterResult.filteredItems)
+                                latestLoadedDisplayItems.value = filterResult.filteredItems
+                            }
                         }
                     }
                 } else {
@@ -151,22 +159,20 @@ class AndroidHomeFeedViewModel :
                             }
                             if (!isCurrentFilterGeneration(generation)) return@launch
                             withContext(Dispatchers.Main) {
-                                displayItems.replaceHomeFeedItemsWithFilteredResult(filterResult)
-                                latestLoadedDisplayItems.value = filterResult.filteredItems
+                                if (isCurrentFilterGeneration(generation)) {
+                                    displayItems.replaceHomeFeedItemsWithFilteredResult(filterResult)
+                                    latestLoadedDisplayItems.value = filterResult.filteredItems
+                                }
                             }
                         }
                     } else {
                         withContext(Dispatchers.Main) {
-                            displayItems.replaceHomeFeedItemsWithFilteredResult(foregroundResult)
-                            latestLoadedDisplayItems.value = foregroundResult.filteredItems
+                            if (isCurrentFilterGeneration(generation)) {
+                                displayItems.replaceHomeFeedItemsWithFilteredResult(foregroundResult)
+                                latestLoadedDisplayItems.value = foregroundResult.filteredItems
+                            }
                         }
                     }
-                }
-
-                lastPaging = if ("paging" in jojo) {
-                    ZhihuJson.decodeJson(jojo["paging"]!!)
-                } else {
-                    null
                 }
             }
         } catch (e: Exception) {

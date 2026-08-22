@@ -176,13 +176,14 @@ class DesktopPaginationEnvironment(
         showFetchFailureMessage?.invoke("加载失败: ${error.message}")
     }
 
-    override fun feedDisplaySettings(): FeedDisplaySettings = FeedDisplaySettings(
-        qualityFilterMode = QualityFilterMode.OFF,
-        reverseBlock = settingsStore.toFeedFilterSettings().reverseBlock,
-        loadFullContentForRecommendationFiltering = settingsStore
-            .toFeedFilterSettings()
-            .loadFullContentForRecommendationFiltering,
-    )
+    override fun feedDisplaySettings(): FeedDisplaySettings {
+        val filterSettings = settingsStore.toFeedFilterSettings()
+        return FeedDisplaySettings(
+            qualityFilterMode = QualityFilterMode.OFF,
+            reverseBlock = filterSettings.reverseBlock,
+            loadFullContentForRecommendationFiltering = filterSettings.loadFullContentForRecommendationFiltering,
+        )
+    }
 
     override fun localHistory(): List<NavDestination> =
         historyStorage.history
