@@ -67,7 +67,11 @@ class FeedContentFilterPipelineTest {
                 filterable("by question author", authorId = "ok-user", questionAuthorId = "blocked-asker"),
                 filterable("blocked keyword title", authorId = "ok-user"),
                 filterable("nlp hit", authorId = "ok-user"),
-                filterable("topic", authorId = "ok-user", topicId = "blocked-topic"),
+                filterable(
+                    "topic",
+                    authorId = "ok-user",
+                    topicIds = listOf("blocked-topic"),
+                ),
             ),
         )
 
@@ -135,6 +139,7 @@ class FeedContentFilterPipelineTest {
         authorId: String,
         questionAuthorId: String? = null,
         topicId: String? = null,
+        topicIds: List<String>? = null,
     ): FilterableContent = FilterableContent(
         title = title,
         summary = null,
@@ -144,6 +149,7 @@ class FeedContentFilterPipelineTest {
         contentId = title,
         contentType = "article",
         raw = article(title, content, topicId),
+        topicIds = topicIds,
         questionAuthorName = questionAuthorId?.let { "asker" },
         questionAuthorId = questionAuthorId,
     )

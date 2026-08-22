@@ -26,6 +26,7 @@ class FeedFilterSettingsTest {
     fun readsFeedFilterSettingsFromSettingsStore() {
         val settings = mapBackedSettingsStore(
             "enableContentFilter" to false,
+            "loadFullContentForRecommendationFiltering" to true,
             "reverseBlock" to true,
             "filterFollowedUserContent" to true,
             "enableKeywordBlocking" to false,
@@ -41,6 +42,7 @@ class FeedFilterSettingsTest {
         ).toFeedFilterSettings()
 
         assertEquals(false, settings.enableContentFilter)
+        assertEquals(true, settings.loadFullContentForRecommendationFiltering)
         assertEquals(true, settings.reverseBlock)
         assertEquals(true, settings.filterFollowedUserContent)
         assertEquals(false, settings.enableKeywordBlocking)

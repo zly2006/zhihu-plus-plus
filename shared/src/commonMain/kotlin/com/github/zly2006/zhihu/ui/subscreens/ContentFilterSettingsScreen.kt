@@ -75,6 +75,7 @@ import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
 import com.github.zly2006.zhihu.util.Log
+import com.github.zly2006.zhihu.viewmodel.LOAD_FULL_CONTENT_FOR_RECOMMENDATION_FILTERING_PREFERENCE_KEY
 import com.github.zly2006.zhihu.viewmodel.QUALITY_FILTER_MODE_PREFERENCE_KEY
 import com.github.zly2006.zhihu.viewmodel.QualityFilterMode
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
@@ -299,6 +300,29 @@ fun ContentFilterSettingsScreen(
                         settings.putBoolean("enableContentFilter", it)
                     },
                     settingKey = "enableContentFilter",
+                    highlightedKey = highlightedSetting,
+                )
+
+                val loadFullContentForRecommendationFiltering = remember {
+                    mutableStateOf(
+                        settings.getBoolean(
+                            LOAD_FULL_CONTENT_FOR_RECOMMENDATION_FILTERING_PREFERENCE_KEY,
+                            false,
+                        ),
+                    )
+                }
+                SettingItemWithSwitch(
+                    modifier = Modifier.testTag("contentFilterSettings:loadFullContentForRecommendationFiltering"),
+                    title = { Text("加载完整正文进行推荐过滤") },
+                    description = {
+                        Text("开启后会在后台加载推荐内容正文，以执行更严格的过滤，可能增加流量和加载时间")
+                    },
+                    checked = loadFullContentForRecommendationFiltering.value,
+                    onCheckedChange = {
+                        loadFullContentForRecommendationFiltering.value = it
+                        settings.putBoolean(LOAD_FULL_CONTENT_FOR_RECOMMENDATION_FILTERING_PREFERENCE_KEY, it)
+                    },
+                    settingKey = LOAD_FULL_CONTENT_FOR_RECOMMENDATION_FILTERING_PREFERENCE_KEY,
                     highlightedKey = highlightedSetting,
                 )
 

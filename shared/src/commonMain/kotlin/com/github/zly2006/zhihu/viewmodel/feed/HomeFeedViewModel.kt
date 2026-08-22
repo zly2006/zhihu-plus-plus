@@ -29,6 +29,7 @@ import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.util.Log
 import com.github.zly2006.zhihu.viewmodel.ContentInteractionEnvironment
+import com.github.zly2006.zhihu.viewmodel.HomeFeedFilterResult
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.QualityFilterMode
 import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
@@ -174,6 +175,7 @@ class HomeFeedViewModel :
         allData.addAll(data)
         debugData.addAll(rawData)
 
+        val generation = filterGeneration
         viewModelScope.launch {
             val loadedItems = data
                 .flattenFeeds()
@@ -184,22 +186,83 @@ class HomeFeedViewModel :
                 loadedItems
             }
 
-            val filterResult = environment.applyHomeFeedFilters(newItems)
-            if (!filterResult.reverseBlock) {
+            val settings = environment.feedDisplaySettings()
+            val loadFullContent = settings.loadFullContentForRecommendationFiltering
+            // 前台过滤只能执行一次，因为它会把新展示的内容记录为已读。
+            val foregroundResult = try {
+                environment.applyHomeFeedFilters(
+                    newItems,
+                    loadFullContent = false,
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                HomeFeedFilterResult(
+                    foregroundItems = newItems,
+                    filteredItems = newItems,
+                    reverseBlock = settings.reverseBlock,
+                )
+            }
+            if (!isCurrentFilterGeneration(generation)) return@launch
+
+            if (foregroundResult.reverseBlock) {
+                val filterResult = if (loadFullContent) {
+                    try {
+                        environment.applyHomeFeedFilters(
+                            foregroundResult.foregroundItems,
+                            loadFullContent = true,
+                            applyForegroundFilter = false,
+                        )
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                        foregroundResult
+                    }
+                } else {
+                    foregroundResult
+                }
+                if (!isCurrentFilterGeneration(generation)) return@launch
                 withContext(Dispatchers.Main) {
-                    addDisplayItems(filterResult.foregroundItems)
+                    if (isCurrentFilterGeneration(generation)) {
+                        addDisplayItems(filterResult.filteredItems)
+                        latestLoadedDisplayItems.value = filterResult.filteredItems
+                        completedPageCount++
+                    }
+                }
+                return@launch
+            }
+
+            withContext(Dispatchers.Main) {
+                if (isCurrentFilterGeneration(generation)) {
+                    addDisplayItems(foregroundResult.foregroundItems)
                 }
             }
 
-            if (filterResult.reverseBlock) {
-                addDisplayItems(filterResult.filteredItems)
+            // 卡片展示后再执行完整正文过滤；详情失败时保留轻量过滤结果。
+            val filterResult = if (loadFullContent) {
+                try {
+                    environment.applyHomeFeedFilters(
+                        foregroundResult.foregroundItems,
+                        loadFullContent = true,
+                        applyForegroundFilter = false,
+                    )
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    foregroundResult
+                }
+            } else {
+                foregroundResult
             }
+            if (!isCurrentFilterGeneration(generation)) return@launch
 
             // 移除被过滤的条目，并更新已保留条目的 raw 内容
             withContext(Dispatchers.Main) {
-                displayItems.replaceHomeFeedItemsWithFilteredResult(filterResult)
-                latestLoadedDisplayItems.value = filterResult.filteredItems
-                completedPageCount++
+                if (isCurrentFilterGeneration(generation)) {
+                    displayItems.replaceHomeFeedItemsWithFilteredResult(filterResult)
+                    latestLoadedDisplayItems.value = filterResult.filteredItems
+                    completedPageCount++
+                }
             }
         }
     }

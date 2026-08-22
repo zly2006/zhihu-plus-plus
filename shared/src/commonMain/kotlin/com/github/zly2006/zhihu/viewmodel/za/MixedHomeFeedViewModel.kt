@@ -43,6 +43,22 @@ class MixedHomeFeedViewModel :
         web.latestLoadedDisplayItems = this.latestLoadedDisplayItems
     }
 
+    override fun refresh(environment: PaginationEnvironment) {
+        android.invalidateFilterProcessing()
+        android.resetPaginationState()
+        web.invalidateFilterProcessing()
+        web.resetPaginationState()
+        super.refresh(environment)
+    }
+
+    override suspend fun pullToRefresh(environment: PaginationEnvironment) {
+        android.invalidateFilterProcessing()
+        android.resetPaginationState()
+        web.invalidateFilterProcessing()
+        web.resetPaginationState()
+        super.pullToRefresh(environment)
+    }
+
     override suspend fun fetchFeeds(environment: PaginationEnvironment) {
         coroutineScope {
             listOf(

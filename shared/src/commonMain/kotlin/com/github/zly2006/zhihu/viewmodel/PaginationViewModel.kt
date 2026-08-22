@@ -100,7 +100,7 @@ abstract class PaginationViewModel<T : Any>(
      */
     open val include = "data[*].content,excerpt,headline,target.author.badge_v2"
 
-    open fun refresh(environment: PaginationEnvironment) {
+    internal fun resetPaginationState() {
         currentJob?.cancel()
         currentJob = null
         isLoading = false
@@ -108,6 +108,10 @@ abstract class PaginationViewModel<T : Any>(
         debugData.clear()
         allData.clear()
         lastPaging = null // 重置 lastPaging
+    }
+
+    open fun refresh(environment: PaginationEnvironment) {
+        resetPaginationState()
         loadMore(environment)
     }
 
@@ -150,10 +154,11 @@ abstract class PaginationViewModel<T : Any>(
 
             val jsonArray = json["data"] as? JsonArray
                 ?: throw RuntimeException("您可能已被风控，请重新登录。", Exception("cause: no $.data"))
-            processResponse(environment, decodePage(environment, jsonArray), jsonArray)
             if ("paging" in json) {
+                // 先保存分页游标，部分信息流会在 processResponse 中异步处理过滤。
                 lastPaging = decodeJson(json["paging"]!!)
             }
+            processResponse(environment, decodePage(environment, jsonArray), jsonArray)
         } catch (e: Exception) {
             if (e is kotlin.coroutines.cancellation.CancellationException) throw e
             environment.handleFetchFailure(this::class.simpleName, e)
@@ -410,7 +415,17 @@ interface MobileHomeFeedEnvironment : ZhihuApiEnvironment {
 interface FeedDisplayEnvironment {
     fun feedDisplaySettings(): FeedDisplaySettings = FeedDisplaySettings()
 
-    suspend fun applyHomeFeedFilters(items: List<FeedDisplayItem>): HomeFeedFilterResult =
+    /**
+     * 分一到两次执行推荐过滤。
+     *
+     * 第二次过滤必须关闭前台过滤，因为前台过滤会记录已展示内容；重复执行会让刚展示的页面
+     * 在正文详情过滤前就被已读规则移除。
+     */
+    suspend fun applyHomeFeedFilters(
+        items: List<FeedDisplayItem>,
+        loadFullContent: Boolean = feedDisplaySettings().loadFullContentForRecommendationFiltering,
+        applyForegroundFilter: Boolean = true,
+    ): HomeFeedFilterResult =
         HomeFeedFilterResult(
             foregroundItems = items,
             filteredItems = items,
@@ -564,6 +579,8 @@ interface PaginationEnvironment :
 data class FeedDisplaySettings(
     val qualityFilterMode: QualityFilterMode = QualityFilterMode.RULES,
     val reverseBlock: Boolean = false,
+    /** 在推荐卡片展示后，是否继续执行可选的详情正文过滤。 */
+    val loadFullContentForRecommendationFiltering: Boolean = false,
 )
 
 enum class QualityFilterMode {
@@ -573,6 +590,7 @@ enum class QualityFilterMode {
 }
 
 const val QUALITY_FILTER_MODE_PREFERENCE_KEY = "qualityFilterMode"
+const val LOAD_FULL_CONTENT_FOR_RECOMMENDATION_FILTERING_PREFERENCE_KEY = "loadFullContentForRecommendationFiltering"
 
 data class HomeFeedFilterResult(
     val foregroundItems: List<FeedDisplayItem>,

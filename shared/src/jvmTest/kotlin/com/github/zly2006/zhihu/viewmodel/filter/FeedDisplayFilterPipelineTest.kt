@@ -23,6 +23,7 @@ import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.FeedDisplayItem
 import com.github.zly2006.zhihu.data.Person
+import com.github.zly2006.zhihu.data.toDisplayItem
 import com.github.zly2006.zhihu.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.data.zhihuContentDetailInclude
 import com.github.zly2006.zhihu.navigation.Article
@@ -61,6 +62,63 @@ class FeedDisplayFilterPipelineTest {
                 .observeAll()
                 .first()
                 .map { it.blockedReason },
+        )
+        fixture.database.close()
+    }
+
+    @Test
+    fun usesFeedSnapshotWithoutFetchingDetailsWhenFullContentIsDisabled() = runTest {
+        val fixture = fixture()
+        fixture.database.blockedKeywordDao().insertKeyword(BlockedKeyword(keyword = "blocked"))
+        var fetchCount = 0
+        var failureCount = 0
+        val snapshotContent = "<p>blocked body</p>"
+        val snapshotItem = CommonFeed(
+            target = Feed.ArticleTarget(
+                id = 1,
+                url = "https://www.zhihu.com/p/snapshot",
+                author = person(),
+                title = "snapshot",
+                content = snapshotContent,
+            ),
+        ).toDisplayItem(enableQualityFilter = false)
+        assertEquals(snapshotContent, snapshotItem.content)
+
+        val result = fixture
+            .pipeline(
+                detailProvider = ContentDetailProvider {
+                    fetchCount++
+                    article("detail")
+                },
+                onDetailFetchFailed = { failureCount++ },
+            ).filter(listOf(snapshotItem), loadFullContent = false)
+
+        assertEquals(emptyList(), result)
+        assertEquals(0, fetchCount)
+        assertEquals(0, failureCount)
+        fixture.database.close()
+    }
+
+    @Test
+    fun keepsQuestionIdFromFeedSnapshotWhenFullContentIsDisabled() = runTest {
+        val fixture = fixture()
+        fixture.database.blockedKeywordDao().insertKeyword(BlockedKeyword(keyword = "blocked"))
+        val snapshotItem = answerItem(questionId = 20, questionTitle = "snapshot")
+            .copy(content = "<p>blocked body</p>")
+
+        val result = fixture
+            .pipeline(detailProvider = ContentDetailProvider { error("详情不应被请求") })
+            .filter(listOf(snapshotItem), loadFullContent = false)
+
+        assertEquals(emptyList(), result)
+        assertEquals(
+            20L,
+            fixture.database
+                .blockedFeedRecordDao()
+                .observeAll()
+                .first()
+                .single()
+                .questionId,
         )
         fixture.database.close()
     }
@@ -395,6 +453,7 @@ class FeedDisplayFilterPipelineTest {
     ) {
         fun pipeline(
             detailProvider: ContentDetailProvider,
+            onDetailFetchFailed: (FeedDisplayItem) -> Unit = {},
         ): FeedDisplayFilterPipeline = FeedDisplayFilterPipeline(
             settings = settings,
             contentDetailProvider = detailProvider,
@@ -411,6 +470,7 @@ class FeedDisplayFilterPipelineTest {
                 ),
             ),
             blockedFeedRecordDao = database.blockedFeedRecordDao(),
+            onDetailFetchFailed = onDetailFetchFailed,
         )
     }
 

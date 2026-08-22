@@ -288,6 +288,10 @@ open class SharedAndroidPaginationEnvironment(
             it.name == settingsStore.getString(QUALITY_FILTER_MODE_PREFERENCE_KEY, QualityFilterMode.RULES.name)
         } ?: QualityFilterMode.RULES,
         reverseBlock = settingsStore.getBoolean("reverseBlock", false),
+        loadFullContentForRecommendationFiltering = settingsStore.getBoolean(
+            LOAD_FULL_CONTENT_FOR_RECOMMENDATION_FILTERING_PREFERENCE_KEY,
+            false,
+        ),
     )
 
     override fun localHistory(): List<NavDestination> = HistoryStorage(context).history
@@ -383,15 +387,23 @@ open class SharedAndroidPaginationEnvironment(
         recordContentOpenEvent(destination, questionId)
     }
 
-    override suspend fun applyHomeFeedFilters(items: List<FeedDisplayItem>): HomeFeedFilterResult {
+    override suspend fun applyHomeFeedFilters(
+        items: List<FeedDisplayItem>,
+        loadFullContent: Boolean,
+        applyForegroundFilter: Boolean,
+    ): HomeFeedFilterResult {
         val settings = feedDisplaySettings()
         val filterSettings = context.contentFilterSettings()
         val filterDatabase = getContentFilterDatabase(context)
-        val foregroundItems = ForegroundReadFilterPipeline(
-            settings = filterSettings,
-            contentFilterManager = ContentFilterManager(filterDatabase.contentFilterDao()),
-            blockedFeedRecordDao = filterDatabase.blockedFeedRecordDao(),
-        ).filter(items)
+        val foregroundItems = if (applyForegroundFilter) {
+            ForegroundReadFilterPipeline(
+                settings = filterSettings,
+                contentFilterManager = ContentFilterManager(filterDatabase.contentFilterDao()),
+                blockedFeedRecordDao = filterDatabase.blockedFeedRecordDao(),
+            ).filter(items)
+        } else {
+            items
+        }
         val filteredItems = FeedDisplayFilterPipeline(
             settings = filterSettings,
             contentDetailProvider = this::getOrFetchContentDetail,
@@ -421,7 +433,10 @@ open class SharedAndroidPaginationEnvironment(
             onDetailsKeywordFiltered = { item, keyword ->
                 Log.e("ContentFilterExtensions", "Filtered item '${item.title}' due to keyword '$keyword' in details: ${item.content}")
             },
-        ).filter(foregroundItems)
+        ).filter(
+            foregroundItems,
+            loadFullContent = loadFullContent,
+        )
         return HomeFeedFilterResult(
             foregroundItems = foregroundItems,
             filteredItems = filteredItems,

@@ -128,6 +128,13 @@ private fun Feed.toTargetDisplayItem(
             authorName = target.author?.name,
             authorBadgeV2 = target.author?.badgeV2,
             feed = this,
+            content = when (target) {
+                is Feed.AnswerTarget -> target.content
+                is Feed.ArticleTarget -> target.content
+                is Feed.QuestionTarget -> target.detail
+                is Feed.PinTarget -> target.contentHtml
+                is Feed.VideoTarget -> target.description
+            },
         )
 
         is Feed.PinTarget -> {
@@ -152,6 +159,7 @@ private fun Feed.toTargetDisplayItem(
                 authorName = target.author.name,
                 authorBadgeV2 = target.author.badgeV2,
                 feed = this,
+                content = target.contentHtml,
             )
         }
 

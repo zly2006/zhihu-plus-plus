@@ -45,6 +45,9 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
     var displayItems = mutableStateListOf<FeedDisplayItem>()
     internal var latestLoadedDisplayItems = mutableStateOf<List<FeedDisplayItem>>(emptyList())
     internal var completedPageCount by mutableIntStateOf(0)
+
+    // 刷新时使后台详情过滤失效，避免旧页面重新插入过期卡片。
+    protected var filterGeneration = 0
     var isPullToRefresh by mutableStateOf(false)
         protected set
 
@@ -56,11 +59,13 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
     }
 
     override fun refresh(environment: PaginationEnvironment) {
+        invalidateFilterProcessing()
         displayItems.clear()
         super.refresh(environment)
     }
 
-    suspend fun pullToRefresh(environment: PaginationEnvironment) {
+    open suspend fun pullToRefresh(environment: PaginationEnvironment) {
+        invalidateFilterProcessing()
         isPullToRefresh = true
         displayItems.clear()
         if (isLoading) return
@@ -85,6 +90,12 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
             reverseBlock = settings.reverseBlock,
         )
     }
+
+    internal fun invalidateFilterProcessing() {
+        filterGeneration++
+    }
+
+    protected fun isCurrentFilterGeneration(generation: Int): Boolean = generation == filterGeneration
 
     fun addDisplayItems(newItems: List<FeedDisplayItem>) {
         newItems.forEach {

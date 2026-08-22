@@ -30,6 +30,7 @@ import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.viewmodel.ContentInteractionEnvironment
+import com.github.zly2006.zhihu.viewmodel.HomeFeedFilterResult
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedInteractionViewModel
@@ -64,11 +65,18 @@ class AndroidHomeFeedViewModel :
         get() = "https://api.zhihu.com/topstory/recommend"
 
     public override suspend fun fetchFeeds(environment: PaginationEnvironment) {
+        val generation = filterGeneration
         try {
             val response = environment.mobileHomeFeedHttpClient().get(lastPaging?.next ?: initialUrl)
             if (response.status.isSuccess()) {
                 val jojo = response.body<JsonObject>()
                 val data = jojo["data"]?.jsonArray ?: throw IllegalStateException("No data found in response")
+
+                lastPaging = if ("paging" in jojo) {
+                    ZhihuJson.decodeJson(jojo["paging"]!!)
+                } else {
+                    null
+                }
 
                 // 收集所有待显示的项目
                 val itemsToDisplay = mutableListOf<FeedDisplayItem>()
@@ -84,28 +92,87 @@ class AndroidHomeFeedViewModel :
                         }
                     }
 
-                // 前台先做本地已读过滤，再立即展示
-                val filterResult = environment.applyHomeFeedFilters(itemsToDisplay)
-                if (!filterResult.reverseBlock) {
-                    withContext(Dispatchers.Main) {
-                        addDisplayItems(filterResult.foregroundItems)
+                // 先执行不需要详情正文的过滤，避免推荐卡片被冷缓存详情请求阻塞。
+                val settings = environment.feedDisplaySettings()
+                val loadFullContent = settings.loadFullContentForRecommendationFiltering
+                // 前台过滤只能执行一次，因为它会把新展示的内容记录为已读。
+                val foregroundResult = try {
+                    environment.applyHomeFeedFilters(
+                        itemsToDisplay,
+                        loadFullContent = false,
+                    )
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    HomeFeedFilterResult(
+                        foregroundItems = itemsToDisplay,
+                        filteredItems = itemsToDisplay,
+                        reverseBlock = settings.reverseBlock,
+                    )
+                }
+                if (!isCurrentFilterGeneration(generation)) return
+
+                if (foregroundResult.reverseBlock) {
+                    val filterResult = if (loadFullContent) {
+                        try {
+                            environment.applyHomeFeedFilters(
+                                foregroundResult.foregroundItems,
+                                loadFullContent = true,
+                                applyForegroundFilter = false,
+                            )
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (_: Exception) {
+                            foregroundResult
+                        }
+                    } else {
+                        foregroundResult
                     }
-                }
-
-                if (filterResult.reverseBlock) {
-                    addDisplayItems(filterResult.filteredItems)
-                }
-
-                // 移除被过滤的条目，并更新已保留条目的 raw 内容
-                withContext(Dispatchers.Main) {
-                    displayItems.replaceHomeFeedItemsWithFilteredResult(filterResult)
-                    latestLoadedDisplayItems.value = filterResult.filteredItems
-                }
-
-                lastPaging = if ("paging" in jojo) {
-                    ZhihuJson.decodeJson(jojo["paging"]!!)
+                    if (isCurrentFilterGeneration(generation)) {
+                        withContext(Dispatchers.Main) {
+                            if (isCurrentFilterGeneration(generation)) {
+                                addDisplayItems(filterResult.filteredItems)
+                                latestLoadedDisplayItems.value = filterResult.filteredItems
+                            }
+                        }
+                    }
                 } else {
-                    null
+                    withContext(Dispatchers.Main) {
+                        if (isCurrentFilterGeneration(generation)) {
+                            addDisplayItems(foregroundResult.foregroundItems)
+                        }
+                    }
+
+                    if (loadFullContent) {
+                        // 让分页保持响应，详情请求在后台完成。
+                        viewModelScope.launch {
+                            val filterResult = try {
+                                environment.applyHomeFeedFilters(
+                                    foregroundResult.foregroundItems,
+                                    loadFullContent = true,
+                                    applyForegroundFilter = false,
+                                )
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (_: Exception) {
+                                foregroundResult
+                            }
+                            if (!isCurrentFilterGeneration(generation)) return@launch
+                            withContext(Dispatchers.Main) {
+                                if (isCurrentFilterGeneration(generation)) {
+                                    displayItems.replaceHomeFeedItemsWithFilteredResult(filterResult)
+                                    latestLoadedDisplayItems.value = filterResult.filteredItems
+                                }
+                            }
+                        }
+                    } else {
+                        withContext(Dispatchers.Main) {
+                            if (isCurrentFilterGeneration(generation)) {
+                                displayItems.replaceHomeFeedItemsWithFilteredResult(foregroundResult)
+                                latestLoadedDisplayItems.value = foregroundResult.filteredItems
+                            }
+                        }
+                    }
                 }
             }
         } catch (e: Exception) {
