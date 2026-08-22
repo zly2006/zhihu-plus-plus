@@ -179,6 +179,9 @@ class DesktopPaginationEnvironment(
     override fun feedDisplaySettings(): FeedDisplaySettings = FeedDisplaySettings(
         qualityFilterMode = QualityFilterMode.OFF,
         reverseBlock = settingsStore.toFeedFilterSettings().reverseBlock,
+        loadFullContentForRecommendationFiltering = settingsStore
+            .toFeedFilterSettings()
+            .loadFullContentForRecommendationFiltering,
     )
 
     override fun localHistory(): List<NavDestination> =
@@ -275,13 +278,21 @@ class DesktopPaginationEnvironment(
         recordContentOpenEvent(destination, questionId)
     }
 
-    override suspend fun applyHomeFeedFilters(items: List<FeedDisplayItem>): HomeFeedFilterResult {
+    override suspend fun applyHomeFeedFilters(
+        items: List<FeedDisplayItem>,
+        loadFullContent: Boolean,
+        applyForegroundFilter: Boolean,
+    ): HomeFeedFilterResult {
         val settings = settingsStore.toFeedFilterSettings()
-        val foregroundItems = ForegroundReadFilterPipeline(
-            settings = settings,
-            contentFilterManager = ContentFilterManager(contentFilterDb.contentFilterDao()),
-            blockedFeedRecordDao = contentFilterDb.blockedFeedRecordDao(),
-        ).filter(items)
+        val foregroundItems = if (applyForegroundFilter) {
+            ForegroundReadFilterPipeline(
+                settings = settings,
+                contentFilterManager = ContentFilterManager(contentFilterDb.contentFilterDao()),
+                blockedFeedRecordDao = contentFilterDb.blockedFeedRecordDao(),
+            ).filter(items)
+        } else {
+            items
+        }
         val filteredItems = FeedDisplayFilterPipeline(
             settings = settings,
             contentDetailProvider = ContentDetailProvider(::getOrFetchContentDetail),
@@ -300,7 +311,7 @@ class DesktopPaginationEnvironment(
             blockedFeedRecordDao = contentFilterDb.blockedFeedRecordDao(),
         ).filter(
             foregroundItems,
-            loadFullContent = settings.loadFullContentForRecommendationFiltering,
+            loadFullContent = loadFullContent,
         )
         return HomeFeedFilterResult(
             foregroundItems = foregroundItems,

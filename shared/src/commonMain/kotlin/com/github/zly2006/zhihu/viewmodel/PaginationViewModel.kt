@@ -410,7 +410,17 @@ interface MobileHomeFeedEnvironment : ZhihuApiEnvironment {
 interface FeedDisplayEnvironment {
     fun feedDisplaySettings(): FeedDisplaySettings = FeedDisplaySettings()
 
-    suspend fun applyHomeFeedFilters(items: List<FeedDisplayItem>): HomeFeedFilterResult =
+    /**
+     * 分一到两次执行推荐过滤。
+     *
+     * 第二次过滤必须关闭前台过滤，因为前台过滤会记录已展示内容；重复执行会让刚展示的页面
+     * 在正文详情过滤前就被已读规则移除。
+     */
+    suspend fun applyHomeFeedFilters(
+        items: List<FeedDisplayItem>,
+        loadFullContent: Boolean = feedDisplaySettings().loadFullContentForRecommendationFiltering,
+        applyForegroundFilter: Boolean = true,
+    ): HomeFeedFilterResult =
         HomeFeedFilterResult(
             foregroundItems = items,
             filteredItems = items,
@@ -564,6 +574,8 @@ interface PaginationEnvironment :
 data class FeedDisplaySettings(
     val qualityFilterMode: QualityFilterMode = QualityFilterMode.RULES,
     val reverseBlock: Boolean = false,
+    /** 在推荐卡片展示后，是否继续执行可选的详情正文过滤。 */
+    val loadFullContentForRecommendationFiltering: Boolean = false,
 )
 
 enum class QualityFilterMode {

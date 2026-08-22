@@ -159,6 +159,9 @@ internal class NativePaginationEnvironment(
     override fun feedDisplaySettings(): FeedDisplaySettings = FeedDisplaySettings(
         qualityFilterMode = QualityFilterMode.OFF,
         reverseBlock = settingsStore.toFeedFilterSettings().reverseBlock,
+        loadFullContentForRecommendationFiltering = settingsStore
+            .toFeedFilterSettings()
+            .loadFullContentForRecommendationFiltering,
     )
 
     override fun localHistory(): List<NavDestination> = historyStorage.history
@@ -240,13 +243,21 @@ internal class NativePaginationEnvironment(
     override suspend fun recordOpenEvent(destination: Article, questionId: Long?) =
         recordContentOpenEvent(destination, questionId)
 
-    override suspend fun applyHomeFeedFilters(items: List<FeedDisplayItem>): HomeFeedFilterResult {
+    override suspend fun applyHomeFeedFilters(
+        items: List<FeedDisplayItem>,
+        loadFullContent: Boolean,
+        applyForegroundFilter: Boolean,
+    ): HomeFeedFilterResult {
         val settings = settingsStore.toFeedFilterSettings()
-        val foregroundItems = ForegroundReadFilterPipeline(
-            settings = settings,
-            contentFilterManager = ContentFilterManager(contentFilterDatabase.contentFilterDao()),
-            blockedFeedRecordDao = contentFilterDatabase.blockedFeedRecordDao(),
-        ).filter(items)
+        val foregroundItems = if (applyForegroundFilter) {
+            ForegroundReadFilterPipeline(
+                settings = settings,
+                contentFilterManager = ContentFilterManager(contentFilterDatabase.contentFilterDao()),
+                blockedFeedRecordDao = contentFilterDatabase.blockedFeedRecordDao(),
+            ).filter(items)
+        } else {
+            items
+        }
         val filteredItems = FeedDisplayFilterPipeline(
             settings = settings,
             contentDetailProvider = ContentDetailProvider(::getOrFetchContentDetail),
@@ -265,7 +276,7 @@ internal class NativePaginationEnvironment(
             blockedFeedRecordDao = contentFilterDatabase.blockedFeedRecordDao(),
         ).filter(
             foregroundItems,
-            loadFullContent = settings.loadFullContentForRecommendationFiltering,
+            loadFullContent = loadFullContent,
         )
         return HomeFeedFilterResult(
             foregroundItems = foregroundItems,
