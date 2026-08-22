@@ -20,6 +20,7 @@ package com.github.zly2006.zhihu.viewmodel.filter
 import com.fleeksoft.ksoup.Ksoup
 import com.github.zly2006.zhihu.data.AdvertisementFeed
 import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.FeedDisplayItem
 import com.github.zly2006.zhihu.data.navDestination
 import com.github.zly2006.zhihu.data.questionAuthor
@@ -167,7 +168,7 @@ class FeedContentFilterPipeline(
 
         if (settings.enableTopicBlocking) {
             filteredContents = filteredContents.filter { content ->
-                val topicIds = extractTopicIds(content.raw)
+                val topicIds = content.topicIds ?: extractTopicIds(content.raw)
                 val blockedTopicIds = topicIds
                     ?.takeIf { it.isNotEmpty() }
                     ?.let { blockedTopicDao.getBlockedTopicIds(it) }
@@ -223,7 +224,10 @@ class FeedDisplayFilterPipeline(
     private val onDetailFetchFailed: (FeedDisplayItem) -> Unit = {},
     private val onDetailsKeywordFiltered: (FeedDisplayItem, String) -> Unit = { _, _ -> },
 ) {
-    suspend fun filter(items: List<FeedDisplayItem>): List<FeedDisplayItem> {
+    suspend fun filter(
+        items: List<FeedDisplayItem>,
+        loadFullContent: Boolean = true,
+    ): List<FeedDisplayItem> {
         val (followedUserItems, otherItems) = if (!settings.filterFollowedUserContent) {
             items.partition { item ->
                 item.feed
@@ -239,9 +243,9 @@ class FeedDisplayFilterPipeline(
 
         otherItems.forEach { item ->
             val identity = item.resolveContentIdentity()
-            val rawContent = resolveRawContent(item)
+            val rawContent = resolveRawContent(item, loadFullContent)
 
-            if (rawContent is DataHolder.DummyContent) {
+            if (loadFullContent && rawContent is DataHolder.DummyContent) {
                 onDetailFetchFailed(item)
             }
 
@@ -292,10 +296,17 @@ class FeedDisplayFilterPipeline(
         return (followedUserItems + filteredOtherItems).filterDetailsKeywords()
     }
 
-    private suspend fun resolveRawContent(item: FeedDisplayItem): DataHolder.Content = when (val dest = item.navDestination) {
-        is Article -> contentDetailProvider.get(dest) ?: DataHolder.DummyContent
-        is Pin -> contentDetailProvider.get(dest) ?: DataHolder.DummyContent
-        else -> DataHolder.DummyContent
+    private suspend fun resolveRawContent(
+        item: FeedDisplayItem,
+        loadFullContent: Boolean,
+    ): DataHolder.Content = if (!loadFullContent) {
+        DataHolder.DummyContent
+    } else {
+        when (val dest = item.navDestination) {
+            is Article -> contentDetailProvider.get(dest) ?: DataHolder.DummyContent
+            is Pin -> contentDetailProvider.get(dest) ?: DataHolder.DummyContent
+            else -> DataHolder.DummyContent
+        }
     }
 
     private fun List<FeedDisplayItem>.filterDetailsKeywords(): List<FeedDisplayItem> = filter { item ->
@@ -360,6 +371,7 @@ data class FilterableContent(
     val contentId: String,
     val contentType: String,
     val raw: DataHolder.Content,
+    val topicIds: List<String>? = null,
     val isFollowing: Boolean = false,
     val questionId: Long? = null,
     val url: String? = null,
@@ -396,12 +408,24 @@ fun FeedDisplayItem.toFilterableContent(
         else -> null
     } ?: content ?: summary,
     authorName = authorName,
-    authorId = rawContent.author?.id,
+    authorId = rawContent.author?.id ?: feed?.target?.author?.id,
     contentId = identity.id,
     contentType = identity.type,
     raw = rawContent,
-    isFollowing = rawContent.author?.isFollowing ?: false,
-    questionId = (rawContent as? DataHolder.Answer)?.question?.id,
+    topicIds = when (val target = feed?.target) {
+        is Feed.AnswerTarget ->
+            target.question.boundTopicIds
+                .map(Long::toString)
+                .takeIf { it.isNotEmpty() }
+        is Feed.QuestionTarget ->
+            target.boundTopicIds
+                .map(Long::toString)
+                .takeIf { it.isNotEmpty() }
+        else -> null
+    },
+    isFollowing = rawContent.author?.isFollowing ?: feed?.target?.author?.isFollowing ?: false,
+    questionId = (rawContent as? DataHolder.Answer)?.question?.id
+        ?: (feed?.target as? Feed.AnswerTarget)?.question?.id,
     questionAuthorName = feed?.target?.questionAuthor?.name ?: when (rawContent) {
         is DataHolder.Answer -> rawContent.question.author?.name
         is DataHolder.Question -> rawContent.author.name
@@ -466,7 +490,7 @@ fun getFeedAdBlockReason(
         }
     }
     is DataHolder.Pin -> getLinkBasedAdReason(raw.contentHtml, settings)
-    else -> null
+    else -> getLinkBasedAdReason(content.content.orEmpty(), settings)
 }
 
 private fun getLinkBasedAdReason(
