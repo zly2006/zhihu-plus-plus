@@ -573,6 +573,7 @@ enum class QualityFilterMode {
 }
 
 const val QUALITY_FILTER_MODE_PREFERENCE_KEY = "qualityFilterMode"
+const val LOAD_FULL_CONTENT_FOR_RECOMMENDATION_FILTERING_PREFERENCE_KEY = "loadFullContentForRecommendationFiltering"
 
 data class HomeFeedFilterResult(
     val foregroundItems: List<FeedDisplayItem>,

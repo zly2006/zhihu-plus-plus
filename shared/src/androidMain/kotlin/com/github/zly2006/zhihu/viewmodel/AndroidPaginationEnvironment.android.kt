@@ -421,7 +421,10 @@ open class SharedAndroidPaginationEnvironment(
             onDetailsKeywordFiltered = { item, keyword ->
                 Log.e("ContentFilterExtensions", "Filtered item '${item.title}' due to keyword '$keyword' in details: ${item.content}")
             },
-        ).filter(foregroundItems)
+        ).filter(
+            foregroundItems,
+            loadFullContent = filterSettings.loadFullContentForRecommendationFiltering,
+        )
         return HomeFeedFilterResult(
             foregroundItems = foregroundItems,
             filteredItems = filteredItems,

@@ -298,7 +298,10 @@ class DesktopPaginationEnvironment(
                 ),
             ),
             blockedFeedRecordDao = contentFilterDb.blockedFeedRecordDao(),
-        ).filter(foregroundItems)
+        ).filter(
+            foregroundItems,
+            loadFullContent = settings.loadFullContentForRecommendationFiltering,
+        )
         return HomeFeedFilterResult(
             foregroundItems = foregroundItems,
             filteredItems = filteredItems,

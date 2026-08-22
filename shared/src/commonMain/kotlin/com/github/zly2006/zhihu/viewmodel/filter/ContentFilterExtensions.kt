@@ -30,6 +30,7 @@ import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.platform.SettingsStore
+import com.github.zly2006.zhihu.viewmodel.LOAD_FULL_CONTENT_FOR_RECOMMENDATION_FILTERING_PREFERENCE_KEY
 import kotlinx.serialization.json.Json
 
 class ForegroundReadFilterPipeline(
@@ -505,6 +506,7 @@ private fun getLinkBasedAdReason(
 
 data class FeedFilterSettings(
     val enableContentFilter: Boolean = true,
+    val loadFullContentForRecommendationFiltering: Boolean = false,
     val reverseBlock: Boolean = false,
     val filterFollowedUserContent: Boolean = false,
     val enableKeywordBlocking: Boolean = true,
@@ -518,6 +520,10 @@ data class FeedFilterSettings(
 
 fun SettingsStore.toFeedFilterSettings(): FeedFilterSettings = FeedFilterSettings(
     enableContentFilter = getBoolean("enableContentFilter", true),
+    loadFullContentForRecommendationFiltering = getBoolean(
+        LOAD_FULL_CONTENT_FOR_RECOMMENDATION_FILTERING_PREFERENCE_KEY,
+        false,
+    ),
     reverseBlock = getBoolean("reverseBlock", false),
     filterFollowedUserContent = getBoolean("filterFollowedUserContent", false),
     enableKeywordBlocking = getBoolean("enableKeywordBlocking", true),
