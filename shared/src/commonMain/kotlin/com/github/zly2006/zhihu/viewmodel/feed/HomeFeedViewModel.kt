@@ -209,7 +209,7 @@ class HomeFeedViewModel :
                 val filterResult = if (loadFullContent) {
                     try {
                         environment.applyHomeFeedFilters(
-                            newItems,
+                            foregroundResult.foregroundItems,
                             loadFullContent = true,
                             applyForegroundFilter = false,
                         )
@@ -240,7 +240,7 @@ class HomeFeedViewModel :
             val filterResult = if (loadFullContent) {
                 try {
                     environment.applyHomeFeedFilters(
-                        newItems,
+                        foregroundResult.foregroundItems,
                         loadFullContent = true,
                         applyForegroundFilter = false,
                     )

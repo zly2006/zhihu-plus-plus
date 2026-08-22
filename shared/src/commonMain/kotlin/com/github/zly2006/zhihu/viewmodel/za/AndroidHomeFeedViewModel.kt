@@ -110,7 +110,7 @@ class AndroidHomeFeedViewModel :
                     val filterResult = if (loadFullContent) {
                         try {
                             environment.applyHomeFeedFilters(
-                                itemsToDisplay,
+                                foregroundResult.foregroundItems,
                                 loadFullContent = true,
                                 applyForegroundFilter = false,
                             )
@@ -140,7 +140,7 @@ class AndroidHomeFeedViewModel :
                         viewModelScope.launch {
                             val filterResult = try {
                                 environment.applyHomeFeedFilters(
-                                    itemsToDisplay,
+                                    foregroundResult.foregroundItems,
                                     loadFullContent = true,
                                     applyForegroundFilter = false,
                                 )
