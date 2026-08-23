@@ -149,6 +149,8 @@ private fun rememberZhihuMarkdownStyle(
     blockSpacingScale: Float,
     mathFontFamilyId: String?,
 ): MarkdownStyle =
+    // Author-color adaptation (surface backdrop + harmonize toward the theme primary) is the
+    // Markdown Material 3 default; the app supplies nothing beyond its own scroll inset.
     rememberMarkdownStyle(
         defaultStyle = MarkdownStyle()
             .let { base ->
@@ -163,6 +165,7 @@ private fun rememberZhihuMarkdownStyle(
                     math = base.math.copy(
                         font = mathFontFamilyId?.let(MarkdownMathFont::Packaged)
                             ?: MarkdownMathFont.LeteSansMath,
+                        displayScrollHostInset = 16.dp,
                     ),
                 )
             }.withBlockSpacingScale(blockSpacingScale),

@@ -45,6 +45,14 @@ dependencyResolutionManagement {
                 includeGroupAndSubgroups("com.google")
             }
         }
+        maven("https://central.sonatype.com/repository/maven-snapshots/") {
+            content {
+                includeGroup("org.tiqian")
+            }
+            mavenContent {
+                snapshotsOnly()
+            }
+        }
         mavenCentral()
         maven("https://www.jitpack.io")
     }
