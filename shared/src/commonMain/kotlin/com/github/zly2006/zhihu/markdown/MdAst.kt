@@ -113,11 +113,21 @@ private fun MarkdownNode.collectPreviewImageUrls(): List<String> = when (this) {
 private fun List<HtmlNode>.convertNodesToBlocks(noNativeBlock: Boolean): List<MarkdownNode> {
     val blocks = mutableListOf<MarkdownNode>()
     var currentParagraph: Paragraph? = null
+    // 公式 img 的判定在预扫描与主循环各触发一次；按 Element 缓存避免重复解析。
+    // null（普通图片）也要缓存，不能用 getOrPut。
+    val equationNodeCache = HashMap<Element, MarkdownNode?>()
+
+    fun Element.cachedEquationNode(): MarkdownNode? =
+        if (equationNodeCache.containsKey(this)) {
+            equationNodeCache[this]
+        } else {
+            extractEquationNode().also { equationNodeCache[this] = it }
+        }
     val hasNextInlineContent = BooleanArray(size + 1)
     for (index in lastIndex downTo 0) {
         val node = this[index]
         hasNextInlineContent[index] = when {
-            node is Element && node.isBlockBoundary() -> false
+            node is Element && node.isBlockBoundary { it.cachedEquationNode() } -> false
             node.hasInlineContent() -> true
             else -> hasNextInlineContent[index + 1]
         }
@@ -143,9 +153,14 @@ private fun List<HtmlNode>.convertNodesToBlocks(noNativeBlock: Boolean): List<Ma
             }
 
             is Element -> {
-                if (node.tagName().equals("img", ignoreCase = true) && node.attr("eeimg") != "2") {
-                    extractEquationTex(node)?.let { formula ->
-                        paragraph().appendChild(InlineMath(formula))
+                if (node.tagName().equals("img", ignoreCase = true)) {
+                    node.cachedEquationNode()?.let { equation ->
+                        if (equation is MathBlock) {
+                            blocks.add(equation)
+                            currentParagraph = null
+                        } else {
+                            paragraph().appendChild(equation)
+                        }
                         continue
                     }
                 }
@@ -187,7 +202,9 @@ private fun String.trimInlineBoundary(
     else -> trim()
 }
 
-private fun Element.isBlockBoundary(): Boolean = when (tagName().lowercase()) {
+private fun Element.isBlockBoundary(
+    equationNode: (Element) -> MarkdownNode? = { it.extractEquationNode() },
+): Boolean = when (tagName().lowercase()) {
     "br",
     "h1",
     "h2",
@@ -205,7 +222,7 @@ private fun Element.isBlockBoundary(): Boolean = when (tagName().lowercase()) {
     "table",
     "div",
     -> true
-    "img" -> attr("eeimg") == "2"
+    "img" -> equationNode(this) is MathBlock
     "a" -> attr("class").contains("video-box")
     else -> false
 }
@@ -230,12 +247,6 @@ private fun convertElementToBlock(
         } else if (element.childrenSize() == 1 && element.textWithOnlyWhitespace() && element.child(0).tagName() == "br") {
             // single <br> as paragraph, treat it as empty to avoid extra spacing
             emptyList()
-        } else if (element.childrenSize() == 1 && element.textWithOnlyWhitespace() && element.child(0).tagName() == "img" && element.child(0).attr("eeimg") == "1") {
-            // eeimg == "1" is inline math
-            val image = element.child(0)
-            extractEquationTex(image)
-                ?.let { formula -> listOf(MathBlock(formula)) }
-                ?: listOfNotNull(createBlockImage(image))
         } else {
             // 特殊处理<p>里面包含的MathBlock
             val list = mutableListOf<MarkdownNode>()
@@ -359,12 +370,6 @@ private fun createListBlock(
 }
 
 private fun createBlockImage(element: Element): MarkdownNode? {
-    if (element.attr("eeimg") == "2") {
-        extractEquationTex(element)?.let { formula ->
-            return MathBlock(formula)
-        }
-    }
-
     val src = extractImageUrl(element::attr) ?: return null
     val caption = element.attr("data-caption").ifBlank { element.attr("alt") }
     return Figure(
@@ -536,6 +541,118 @@ private fun extractEquationTex(imgElement: Element): String? = extractImageUrl(i
     ?.let { Url(it).parameters["tex"].orEmpty() }
     ?.takeIf { it.isNotBlank() }
 
+private fun Element.extractEquationNode(): MarkdownNode? = extractEquationTex(this)?.let { formula ->
+    if (attr("eeimg") == "2" || formula.zhihuEquationSemantics().isDisplay) {
+        MathBlock(formula)
+    } else {
+        InlineMath(formula)
+    }
+}
+
+internal data class ZhihuEquationSemantics(
+    val isDisplay: Boolean,
+    val hasEquationTag: Boolean,
+)
+
+/**
+ * Zhihu's MathJax promotes some `eeimg=1` equations to display math. A top-level row separator, a
+ * `\\tag` command, and a top-level align environment are display structures, while a row separator
+ * inside a matrix-like environment remains inline. The source is inspected only and is kept
+ * byte-for-byte on the resulting AST node.
+ */
+internal fun String.zhihuEquationSemantics(): ZhihuEquationSemantics {
+    var index = 0
+    var groupDepth = 0
+    var isDisplay = false
+    var hasEquationTag = false
+    val environments = mutableListOf<String>()
+
+    fun skipIgnorable(start: Int): Int {
+        var cursor = start
+        while (cursor < length) {
+            when {
+                this[cursor].isWhitespace() -> cursor++
+                this[cursor] == '%' -> {
+                    cursor++
+                    while (cursor < length && this[cursor] != '\n' && this[cursor] != '\r') cursor++
+                }
+                else -> return cursor
+            }
+        }
+        return cursor
+    }
+
+    fun readEnvironmentName(start: Int): Pair<String, Int>? {
+        var cursor = skipIgnorable(start)
+        if (cursor >= length || this[cursor] != '{') return null
+        val nameStart = ++cursor
+        while (cursor < length && this[cursor] != '}') {
+            if (this[cursor] == '{') return null
+            cursor++
+        }
+        if (cursor >= length || cursor == nameStart) return null
+        return substring(nameStart, cursor) to cursor + 1
+    }
+
+    while (index < length) {
+        when (this[index]) {
+            '%' -> index = skipIgnorable(index)
+            '{' -> {
+                groupDepth++
+                index++
+            }
+            '}' -> {
+                if (groupDepth > 0) groupDepth--
+                index++
+            }
+            '\\' -> {
+                if (index + 1 < length && this[index + 1] == '\\') {
+                    val afterSeparator = index + 2
+                    if (groupDepth == 0 && environments.isEmpty()) {
+                        isDisplay = true
+                    }
+                    index = afterSeparator
+                    continue
+                }
+
+                var commandEnd = index + 1
+                if (commandEnd < length && this[commandEnd].isLetter()) {
+                    while (commandEnd < length && this[commandEnd].isLetter()) commandEnd++
+                } else if (commandEnd < length) {
+                    commandEnd++
+                }
+                val command = substring(index + 1, commandEnd)
+                if (command == "tag") {
+                    isDisplay = true
+                    hasEquationTag = true
+                }
+                if (command == "begin" || command == "end") {
+                    readEnvironmentName(commandEnd)?.let { (environment, afterEnvironment) ->
+                        if (
+                            command == "begin" &&
+                            groupDepth == 0 &&
+                            environments.isEmpty() &&
+                            (environment == "align" || environment == "align*")
+                        ) {
+                            isDisplay = true
+                        }
+                        if (command == "begin") {
+                            environments.add(environment)
+                        } else if (environments.lastOrNull() == environment) {
+                            environments.removeAt(environments.lastIndex)
+                        }
+                        index = afterEnvironment
+                        continue
+                    }
+                }
+                index = commandEnd
+            }
+            else -> index++
+        }
+    }
+    return ZhihuEquationSemantics(isDisplay, hasEquationTag)
+}
+
 /**
  * 将一个 HTML 节点转换为 Markdown 内联节点列表
  *
@@ -636,13 +753,9 @@ private fun extractInlineNode(
         "br" -> listOf(HardLineBreak())
 
         "img" -> {
-            val formula = extractEquationTex(node)
-            if (formula != null) {
-                if (node.attr("eeimg") == "2") {
-                    listOf(MathBlock(formula))
-                } else {
-                    listOf(InlineMath(formula))
-                }
+            val equation = node.extractEquationNode()
+            if (equation != null) {
+                listOf(equation)
             } else {
                 extractImageUrl(node::attr)
                     ?.let { url ->
