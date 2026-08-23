@@ -113,11 +113,21 @@ private fun MarkdownNode.collectPreviewImageUrls(): List<String> = when (this) {
 private fun List<HtmlNode>.convertNodesToBlocks(noNativeBlock: Boolean): List<MarkdownNode> {
     val blocks = mutableListOf<MarkdownNode>()
     var currentParagraph: Paragraph? = null
+    // 公式 img 的判定在预扫描与主循环各触发一次；按 Element 缓存避免重复解析。
+    // null（普通图片）也要缓存，不能用 getOrPut。
+    val equationNodeCache = HashMap<Element, MarkdownNode?>()
+
+    fun Element.cachedEquationNode(): MarkdownNode? =
+        if (equationNodeCache.containsKey(this)) {
+            equationNodeCache[this]
+        } else {
+            extractEquationNode().also { equationNodeCache[this] = it }
+        }
     val hasNextInlineContent = BooleanArray(size + 1)
     for (index in lastIndex downTo 0) {
         val node = this[index]
         hasNextInlineContent[index] = when {
-            node is Element && node.isBlockBoundary() -> false
+            node is Element && node.isBlockBoundary { it.cachedEquationNode() } -> false
             node.hasInlineContent() -> true
             else -> hasNextInlineContent[index + 1]
         }
@@ -144,7 +154,7 @@ private fun List<HtmlNode>.convertNodesToBlocks(noNativeBlock: Boolean): List<Ma
 
             is Element -> {
                 if (node.tagName().equals("img", ignoreCase = true)) {
-                    node.extractEquationNode()?.let { equation ->
+                    node.cachedEquationNode()?.let { equation ->
                         if (equation is MathBlock) {
                             blocks.add(equation)
                             currentParagraph = null
@@ -192,7 +202,9 @@ private fun String.trimInlineBoundary(
     else -> trim()
 }
 
-private fun Element.isBlockBoundary(): Boolean = when (tagName().lowercase()) {
+private fun Element.isBlockBoundary(
+    equationNode: (Element) -> MarkdownNode? = { it.extractEquationNode() },
+): Boolean = when (tagName().lowercase()) {
     "br",
     "h1",
     "h2",
@@ -210,7 +222,7 @@ private fun Element.isBlockBoundary(): Boolean = when (tagName().lowercase()) {
     "table",
     "div",
     -> true
-    "img" -> extractEquationNode() is MathBlock
+    "img" -> equationNode(this) is MathBlock
     "a" -> attr("class").contains("video-box")
     else -> false
 }
