@@ -36,6 +36,9 @@ plugins {
 configurations.configureEach {
     resolutionStrategy {
         force("org.jetbrains.compose.material3:material3:1.10.0-alpha05")
+        // org.tiqian 走 Central snapshot 仓（维护者手动发布的 dev 通道，正式 alpha
+        // 发布后钉回固定版本）。短缓存让新发布的 snapshot 十分钟内可见。
+        cacheChangingModulesFor(10, "minutes")
     }
 }
 
@@ -156,8 +159,8 @@ kotlin {
         androidMain {
             kotlin.srcDir("src/tiqianMarkdownMain/kotlin")
             dependencies {
-                implementation("org.tiqian:markdown-compose:0.1.0-alpha05")
-                implementation("org.tiqian:math-font-stix:0.1.0-alpha05")
+                implementation("org.tiqian:markdown-compose:0.1.0-SNAPSHOT")
+                implementation("org.tiqian:math-font-stix:0.1.0-SNAPSHOT")
                 implementation("androidx.activity:activity-compose:1.13.0")
                 implementation("androidx.browser:browser:1.10.0")
                 implementation("androidx.core:core-ktx:1.19.0")
@@ -177,8 +180,8 @@ kotlin {
             kotlin.srcDir("src/tiqianMarkdownMain/kotlin")
         }
         jvmMain.dependencies {
-            implementation("org.tiqian:markdown-compose:0.1.0-alpha05")
-            implementation("org.tiqian:math-font-stix:0.1.0-alpha05")
+            implementation("org.tiqian:markdown-compose:0.1.0-SNAPSHOT")
+            implementation("org.tiqian:math-font-stix:0.1.0-SNAPSHOT")
             implementation("io.coil-kt.coil3:coil-network-ktor3:3.5.0")
             implementation("androidx.sqlite:sqlite-bundled:2.6.2")
             implementation(compose.desktop.currentOs)
