@@ -149,8 +149,8 @@ private fun rememberZhihuMarkdownStyle(
     blockSpacingScale: Float,
     mathFontFamilyId: String?,
 ): MarkdownStyle =
-    // Author-color adaptation (surface backdrop + harmonize toward the theme primary) is the
-    // Markdown Material 3 default; the app supplies nothing beyond its own scroll inset.
+    // App-side customization: body 字号/行高按阅读设置缩放、数学字体选择、块间距缩放，
+    // 以及 display 公式滚动宿主 inset。作者色适配沿用 Markdown Material 3 默认。
     rememberMarkdownStyle(
         defaultStyle = MarkdownStyle()
             .let { base ->
