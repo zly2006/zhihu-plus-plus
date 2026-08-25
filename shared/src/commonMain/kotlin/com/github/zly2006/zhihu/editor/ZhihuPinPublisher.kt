@@ -17,208 +17,56 @@
 
 package com.github.zly2006.zhihu.editor
 
-import androidx.compose.runtime.Composable
 import com.fleeksoft.ksoup.Ksoup
-import com.github.zly2006.zhihu.data.DataHolder
-import com.github.zly2006.zhihu.data.ZhihuJson
-import com.github.zly2006.zhihu.util.raiseForStatus
-import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
-import com.github.zly2006.zhihu.viewmodel.postSigned
-import io.ktor.client.call.body
-import io.ktor.client.request.header
-import io.ktor.client.request.setBody
-import io.ktor.http.ContentType
-import io.ktor.http.HttpHeaders
-import io.ktor.http.contentType
-import io.ktor.http.encodeURLParameter
 import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonElement
 
-/**
- * 将“发布知乎想法”封装为平台能力。
- *
- * 想法的标题、正文和图片 payload 与回答发布完全不同，不能与回答编辑流程共用一个发布器。
- */
-interface ZhihuPinPublisher {
-    suspend fun recommendTopics(
-        query: String,
-        title: String,
-        contentHtml: String,
-    ): List<PinTopicSuggestion>
-
-    /**
-     * 保存想法草稿。
-     *
-     * 对应端点：POST https://api.zhihu.com/content/drafts，action=pin。
-     */
-    suspend fun savePinDraft(
-        title: String,
-        html: String,
-        textLength: Int,
-        images: List<UploadedZhihuImage>,
-        topics: List<PinContentTopicItem> = emptyList(),
+internal fun buildPinContentPayload(
+    title: String,
+    html: String,
+    textLength: Int,
+    images: List<UploadedZhihuImage>,
+    topics: List<PinContentTopicItem>,
+): PinContentPayload =
+    PinContentPayload(
+        publish = PublishTrace(traceId = newPublishTraceId()),
+        title = title
+            .takeIf { it.isNotBlank() }
+            ?.let { PinContentTitle(title = it) },
+        hybrid = html
+            .takeIf { it.isNotBlank() }
+            ?.let {
+                PinContentHybrid(
+                    html = it,
+                    textLength = textLength,
+                )
+            },
+        media = images
+            .takeIf { it.isNotEmpty() }
+            ?.let { uploadedImages ->
+                PinContentMedia(
+                    medias = uploadedImages.map { image ->
+                        PinContentMediaItem(
+                            image = PinContentImage(
+                                height = image.rawHeight,
+                                width = image.rawWidth,
+                                url = image.url,
+                                originalUrl = image.originalUrl,
+                                watermark = image.watermarkMode
+                                    ?: image.watermark?.let { if (it) "watermark" else "original" },
+                                watermarkUrl = image.watermarkUrl,
+                            ),
+                        )
+                    },
+                )
+            },
+        topic = topics
+            .takeIf { it.isNotEmpty() }
+            ?.map { it.copy(topicName = "#${it.displayName}#") }
+            ?.let(::PinContentTopic),
     )
-
-    /**
-     * 发布一条新的想法。
-     *
-     * 返回值：发布成功后的 pinId。
-     *
-     * 对应端点：POST /api/v4/content/publish，action=pin。
-     */
-    suspend fun publishPin(
-        title: String,
-        html: String,
-        textLength: Int,
-        images: List<UploadedZhihuImage>,
-        topics: List<PinContentTopicItem> = emptyList(),
-    ): Long
-}
-
-@Composable
-expect fun rememberZhihuPinPublisher(): ZhihuPinPublisher
-
-internal class ZhihuApiPinPublisher(
-    private val environment: ZhihuApiEnvironment,
-) : ZhihuPinPublisher {
-    override suspend fun recommendTopics(
-        query: String,
-        title: String,
-        contentHtml: String,
-    ): List<PinTopicSuggestion> {
-        if (query.isBlank()) return emptyList()
-        val responseElement = environment
-            .postSigned(
-                "https://api.zhihu.com/content/publish/topics/recommend?" +
-                    "recommend_type=pin&key_word=${query.encodeURLParameter(spaceToPlus = true)}",
-            ) {
-                contentType(ContentType.Application.Json)
-                setBody(PinTopicSuggestionRequest(title = title, content = contentHtml))
-            }.raiseForStatus(dumpRequest = true)
-            .body<JsonElement>()
-        return ZhihuJson.decodeJson<PinTopicSuggestionResponse>(responseElement).data.list
-    }
-
-    override suspend fun savePinDraft(
-        title: String,
-        html: String,
-        textLength: Int,
-        images: List<UploadedZhihuImage>,
-        topics: List<PinContentTopicItem>,
-    ) {
-        val xsrf = environment.authenticatedCookies()["_xsrf"]
-            ?: throw IllegalStateException("缺少 _xsrf Cookie，无法保存想法草稿；请先确保已登录。")
-
-        environment
-            .postSigned("https://api.zhihu.com/content/drafts") {
-                contentType(ContentType.Application.Json)
-                header(HttpHeaders.Referrer, "https://www.zhihu.com/")
-                header("x-xsrftoken", xsrf)
-                setBody(
-                    SavePinDraftRequest(
-                        data = buildPinContentPayload(
-                            title = title,
-                            html = html,
-                            textLength = textLength,
-                            images = images,
-                            topics = topics,
-                        ),
-                    ),
-                )
-            }.raiseForStatus(dumpRequest = true)
-    }
-
-    override suspend fun publishPin(
-        title: String,
-        html: String,
-        textLength: Int,
-        images: List<UploadedZhihuImage>,
-        topics: List<PinContentTopicItem>,
-    ): Long {
-        val xsrf = environment.authenticatedCookies()["_xsrf"]
-            ?: throw IllegalStateException("缺少 _xsrf Cookie，无法发布想法；请先确保已登录。")
-
-        val responseElement = environment
-            .postSigned("https://www.zhihu.com/api/v4/content/publish") {
-                contentType(ContentType.Application.Json)
-                header(HttpHeaders.Referrer, "https://www.zhihu.com/")
-                header("x-xsrftoken", xsrf)
-                setBody(
-                    PublishPinRequest(
-                        data = buildPinContentPayload(
-                            title = title,
-                            html = html,
-                            textLength = textLength,
-                            images = images,
-                            topics = topics,
-                        ),
-                    ),
-                )
-            }.raiseForStatus(dumpRequest = true)
-            .body<JsonElement>()
-
-        val response = ZhihuJson.decodeJson(DataHolder.ContentPublishResponse.serializer(), responseElement)
-        if (response.message == "success") {
-            val resultText = response.data?.result
-                ?: throw IllegalStateException("发布成功但返回缺少 data.result: $responseElement")
-
-            return parsePublishContentId(resultText)
-                ?: throw IllegalStateException("发布成功但无法解析 publish.id")
-        }
-
-        throw IllegalStateException(
-            "发布失败: ${response.message ?: "unknown"}\n$responseElement",
-        )
-    }
-
-    private fun buildPinContentPayload(
-        title: String,
-        html: String,
-        textLength: Int,
-        images: List<UploadedZhihuImage>,
-        topics: List<PinContentTopicItem>,
-    ): PinContentPayload =
-        PinContentPayload(
-            publish = PublishTrace(traceId = newPublishTraceId()),
-            title = title
-                .takeIf { it.isNotBlank() }
-                ?.let { PinContentTitle(title = it) },
-            hybrid = html
-                .takeIf { it.isNotBlank() }
-                ?.let {
-                    PinContentHybrid(
-                        html = it,
-                        textLength = textLength,
-                    )
-                },
-            media = images
-                .takeIf { it.isNotEmpty() }
-                ?.let { uploadedImages ->
-                    PinContentMedia(
-                        medias = uploadedImages.map { image ->
-                            PinContentMediaItem(
-                                image = PinContentImage(
-                                    height = image.rawHeight,
-                                    width = image.rawWidth,
-                                    url = image.url,
-                                    originalUrl = image.originalUrl,
-                                    watermark = image.watermarkMode
-                                        ?: image.watermark?.let { if (it) "watermark" else "original" },
-                                    watermarkUrl = image.watermarkUrl,
-                                ),
-                            )
-                        },
-                    )
-                },
-            topic = topics
-                .takeIf { it.isNotEmpty() }
-                ?.map { it.copy(topicName = "#${it.displayName}#") }
-                ?.let(::PinContentTopic),
-        )
-}
 
 internal fun calculatePinHtmlTextLength(html: String): Int =
     Ksoup

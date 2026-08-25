@@ -26,7 +26,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import com.github.zly2006.zhihu.account.NativeAccountStore
+import com.github.zly2006.zhihu.account.ZhihuAccountStore
+import com.github.zly2006.zhihu.account.defaultNativeAccountStore
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import kotlinx.cinterop.addressOf
@@ -61,9 +62,9 @@ import platform.Foundation.dataWithBytes
 private const val VIEWER_SCREEN_FRACTION = 0.8
 
 @Composable
-actual fun rememberImageGalleryOpener(): (List<String>, Int) -> Unit {
+actual fun rememberImageGalleryOpener(): ImageGalleryOpener {
     val scope = rememberCoroutineScope()
-    val accountStore = remember { NativeAccountStore() }
+    val accountStore = defaultNativeAccountStore
     val userMessages = rememberUserMessageSink()
     val controller = remember(scope, accountStore, userMessages) {
         MacosMarkdownImageViewerController(scope, accountStore, userMessages)
@@ -74,9 +75,11 @@ actual fun rememberImageGalleryOpener(): (List<String>, Int) -> Unit {
     }
 
     return remember(controller) {
-        { urls, initialIndex ->
-            if (urls.isNotEmpty()) {
-                controller.toggle(urls[initialIndex.coerceIn(0, urls.lastIndex)])
+        object : ImageGalleryOpener {
+            override fun invoke(urls: List<String>, initialIndex: Int) {
+                if (urls.isNotEmpty()) {
+                    controller.toggle(urls[initialIndex.coerceIn(0, urls.lastIndex)])
+                }
             }
         }
     }
@@ -84,7 +87,7 @@ actual fun rememberImageGalleryOpener(): (List<String>, Int) -> Unit {
 
 internal class MacosMarkdownImageViewerController(
     private val scope: CoroutineScope,
-    private val accountStore: NativeAccountStore,
+    private val accountStore: ZhihuAccountStore,
     private val userMessages: UserMessageSink,
 ) {
     private var window: NSWindow? = null
@@ -113,7 +116,10 @@ internal class MacosMarkdownImageViewerController(
 
         loadJob = scope.launch {
             runCatching {
-                val imageBytes = accountStore.httpClient().get(imageUrl).body<ByteArray>()
+                val imageBytes = accountStore.client
+                    .httpClient()
+                    .get(imageUrl)
+                    .body<ByteArray>()
                 val imageData = imageBytes.usePinned { pinned ->
                     NSData.dataWithBytes(pinned.addressOf(0), imageBytes.size.toULong())
                 }

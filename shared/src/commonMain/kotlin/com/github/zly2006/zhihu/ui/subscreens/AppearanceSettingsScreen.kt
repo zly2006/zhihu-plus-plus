@@ -114,6 +114,7 @@ import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemOverall
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
 import com.github.zly2006.zhihu.ui.components.normalizedAnswerSwitchSensitivity
+import com.github.zly2006.zhihu.ui.isLegacyWebViewSupported
 import kotlinx.coroutines.delay
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -769,6 +770,7 @@ fun AppearanceSettingsScreen(
                     title = { Text("使用 WebView 显示文章") },
                     description = { Text("关闭后使用 Compose 渲染，支持代码高亮等高级功能。警告：这个渲染模式不再推荐，非专业人士请不要开启！") },
                     checked = articleUseWebview.value,
+                    enabled = isLegacyWebViewSupported,
                     onCheckedChange = {
                         articleUseWebview.value = it
                         settings.putBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, it)
@@ -778,7 +780,7 @@ fun AppearanceSettingsScreen(
                     bringIntoViewRequester = requesterFor(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY),
                 )
 
-                if (articleUseWebview.value) {
+                if (articleUseWebview.value && isLegacyWebViewSupported) {
                     var customFontName by remember {
                         mutableStateOf(settings.getStringOrNull("webviewCustomFontName"))
                     }
@@ -786,29 +788,31 @@ fun AppearanceSettingsScreen(
                         modifier = Modifier.testTag(APPEARANCE_SETTINGS_WEBVIEW_OPTIONS_TAG),
                         verticalArrangement = Arrangement.spacedBy(2.dp),
                     ) {
-                        SettingItem(
-                            modifier = Modifier.testTag(APPEARANCE_SETTINGS_WEBVIEW_FONT_TAG),
-                            title = {
-                                Text(
-                                    "WebView 自定义字体",
-                                    modifier = Modifier.testTag(APPEARANCE_SETTINGS_WEBVIEW_FONT_TAG),
-                                )
-                            },
-                            description = { Text(customFontName ?: "未设置") },
-                            bottomAction = {
-                                WebViewCustomFontSettings(
-                                    customFontName = customFontName,
-                                    onCustomFontNameChange = { name ->
-                                        if (name == null) {
-                                            settings.remove("webviewCustomFontName")
-                                        } else {
-                                            settings.putString("webviewCustomFontName", name)
-                                        }
-                                        customFontName = name
-                                    },
-                                )
-                            },
-                        )
+                        if (isWebViewCustomFontSupported) {
+                            SettingItem(
+                                modifier = Modifier.testTag(APPEARANCE_SETTINGS_WEBVIEW_FONT_TAG),
+                                title = {
+                                    Text(
+                                        "WebView 自定义字体",
+                                        modifier = Modifier.testTag(APPEARANCE_SETTINGS_WEBVIEW_FONT_TAG),
+                                    )
+                                },
+                                description = { Text(customFontName ?: "未设置") },
+                                bottomAction = {
+                                    WebViewCustomFontSettings(
+                                        customFontName = customFontName,
+                                        onCustomFontNameChange = { name ->
+                                            if (name == null) {
+                                                settings.remove("webviewCustomFontName")
+                                            } else {
+                                                settings.putString("webviewCustomFontName", name)
+                                            }
+                                            customFontName = name
+                                        },
+                                    )
+                                },
+                            )
+                        }
 
                         val useHardwareAcceleration = remember { mutableStateOf(settings.getBoolean("webviewHardwareAcceleration", true)) }
                         SettingItemWithSwitch(

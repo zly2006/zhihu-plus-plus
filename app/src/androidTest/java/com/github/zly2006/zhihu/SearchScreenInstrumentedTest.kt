@@ -134,7 +134,6 @@ class SearchScreenInstrumentedTest {
                     restrictedMemberHashId = "member-hash-id",
                     restrictedMemberName = "离线用户",
                 ),
-                testHotSearchQueries = listOf("全站热搜"),
             )
         }
 
@@ -180,7 +179,6 @@ class SearchScreenInstrumentedTest {
         composeRule.setScreenContent {
             SearchScreen(
                 search = Search(query = "已有关键词"),
-                testHotSearchQueries = emptyList(),
             )
         }
 

@@ -27,7 +27,8 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.platform.Font
-import com.github.zly2006.zhihu.account.NativeAccountStore
+import com.github.zly2006.zhihu.account.ZhihuAccountStore
+import com.github.zly2006.zhihu.account.defaultNativeAccountStore
 import com.github.zly2006.zhihu.data.toCookieHeaderString
 import com.github.zly2006.zhihu.platform.nativeAppPrivateDirectoryPath
 import com.hrm.latex.renderer.font.MathFont
@@ -52,7 +53,7 @@ private val LM_MATH_URLS = listOf(
 
 @Composable
 actual fun rememberMarkdownMathFont(): MathFont? {
-    val store = remember { NativeAccountStore() }
+    val store = defaultNativeAccountStore
     var mathFont by remember { mutableStateOf<MathFont?>(null) }
 
     LaunchedEffect(store) {
@@ -64,8 +65,8 @@ actual fun rememberMarkdownMathFont(): MathFont? {
 
 @Composable
 actual fun rememberMarkdownImageRequestHeaders(): MarkdownImageRequestHeaders {
-    val store = remember { NativeAccountStore() }
-    val session = remember(store) { store.load() }
+    val store = defaultNativeAccountStore
+    val session = remember(store) { store.session }
     return MarkdownImageRequestHeaders(
         cookieHeader = session.cookies.toCookieHeaderString(),
         userAgent = session.userAgent,
@@ -73,7 +74,7 @@ actual fun rememberMarkdownImageRequestHeaders(): MarkdownImageRequestHeaders {
 }
 
 @OptIn(ExperimentalForeignApi::class)
-private suspend fun loadNativeMathFont(store: NativeAccountStore): MathFont {
+private suspend fun loadNativeMathFont(store: ZhihuAccountStore): MathFont {
     val fontFilePath = "${nativeAppPrivateDirectoryPath()}/latex-fonts/v$FONT_VERSION/latinmodern-math.otf"
     val fontBytes = NSFileManager.defaultManager
         .contentsAtPath(fontFilePath)
@@ -90,11 +91,14 @@ private suspend fun loadNativeMathFont(store: NativeAccountStore): MathFont {
 }
 
 @OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
-private suspend fun downloadNativeMathFont(store: NativeAccountStore, fontFilePath: String): ByteArray {
+private suspend fun downloadNativeMathFont(store: ZhihuAccountStore, fontFilePath: String): ByteArray {
     var lastError: Exception? = null
     for (url in LM_MATH_URLS) {
         try {
-            val bytes = store.httpClient().get(url).body<ByteArray>()
+            val bytes = store.client
+                .httpClient()
+                .get(url)
+                .body<ByteArray>()
             if (!isOpenTypeFont(bytes)) continue
             val parentDirectory = fontFilePath.substringBeforeLast('/')
             val fileManager = NSFileManager.defaultManager

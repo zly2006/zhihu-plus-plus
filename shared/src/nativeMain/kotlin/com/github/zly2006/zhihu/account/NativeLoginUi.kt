@@ -34,9 +34,9 @@ actual val supportedLoginMethods: List<LoginMethod> = listOf(
 actual val isLoginRiskControlSupported: Boolean = false
 
 @Composable
-actual fun rememberPhoneLoginHttpClient(cookies: MutableMap<String, String>): HttpClient {
-    val store = remember { NativeAccountStore() }
-    val httpClient = remember(store) { store.createHttpClient(cookies) }
+actual fun rememberLoginHttpClient(cookies: MutableMap<String, String>): HttpClient {
+    val store = defaultNativeAccountStore
+    val httpClient = remember(store) { store.client.temporaryHttpClient(cookies) }
     DisposableEffect(httpClient) {
         onDispose(httpClient::close)
     }
@@ -69,29 +69,18 @@ actual fun decodePhoneLoginCaptchaImage(content: String) = runCatching {
 }.getOrNull()
 
 @Composable
-actual fun rememberPhoneLoginTokenVerifier(): PhoneLoginTokenVerifier {
-    val store = remember { NativeAccountStore() }
-    return remember(store) {
-        PhoneLoginTokenVerifier { token ->
-            if (store.verifyMobileAndSave(token)) store.load().username else null
-        }
-    }
-}
-
-@Composable
 actual fun QrLoginPane(onLoginSuccess: (String) -> Unit) {
-    val store = remember { NativeAccountStore() }
+    val store = defaultNativeAccountStore
     SharedQrLoginPane(
-        createClient = store::createHttpClient,
         onLoginSuccess = { cookies ->
-            if (store.verifyAndSave(cookies.toMutableMap())) {
-                onLoginSuccess(store.load().username)
+            if (store.login(cookies.toMutableMap())) {
+                onLoginSuccess(store.session.username)
                 true
             } else {
                 false
             }
         },
-        initialCookies = store.load().cookies,
+        initialCookies = store.session.cookies,
     )
 }
 

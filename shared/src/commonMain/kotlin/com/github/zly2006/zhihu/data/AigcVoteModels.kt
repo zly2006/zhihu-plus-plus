@@ -17,74 +17,12 @@
 
 package com.github.zly2006.zhihu.data
 
-import io.ktor.client.HttpClient
-import io.ktor.client.call.body
-import io.ktor.client.request.get
-import io.ktor.client.request.parameter
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
-import io.ktor.http.ContentType
-import io.ktor.http.contentType
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 private const val MIN_CREDIT_DURATION_MS = 15_000L
 private const val MIN_CREDIT_SCROLL_RATIO = 0.25
 const val AIGC_MARKING_ENABLED_PREFERENCE_KEY = "enableAigcMarking"
-
-class AigcVoteClient(
-    private val httpClient: HttpClient,
-    baseUrl: String,
-    private val clientId: String,
-) {
-    private val normalizedBaseUrl = baseUrl.trimEnd('/')
-
-    suspend fun syncReadEvent(event: AigcVoteReadEvent): AigcVoteReadEventsResponse =
-        httpClient
-            .post("$normalizedBaseUrl/v1/read-events:batch") {
-                contentType(ContentType.Application.Json)
-                setBody(
-                    AigcVoteReadEventsRequest(
-                        clientId = clientId,
-                        events = listOf(event.toRequestEvent()),
-                    ),
-                )
-            }.body()
-
-    suspend fun submitFlag(submission: AigcVoteFlagSubmission): AigcVoteFlagResponse =
-        httpClient
-            .post("$normalizedBaseUrl/v1/contents/${submission.contentType}/${submission.contentId}/aigc-flag") {
-                contentType(ContentType.Application.Json)
-                setBody(
-                    AigcVoteFlagRequest(
-                        clientId = clientId,
-                        voter = submission.voter,
-                        title = submission.title,
-                        authorHash = submission.authorHash,
-                        contentHtml = submission.contentHtml,
-                        contentUpdatedAt = submission.contentUpdatedAt,
-                        evidence = submission.evidence.toFlagEvidence(),
-                    ),
-                )
-            }.body()
-
-    suspend fun getFlagStatus(
-        contentType: String,
-        contentId: String,
-        voter: AigcVoteVoter? = null,
-    ): AigcVoteFlagStatusResponse =
-        httpClient
-            .get("$normalizedBaseUrl/v1/contents/$contentType/$contentId/aigc-flag") {
-                parameter("client_id", clientId)
-                if (voter != null) {
-                    parameter("voter_id", voter.id)
-                    parameter("voter_name", voter.name)
-                    if (!voter.urlToken.isNullOrBlank()) {
-                        parameter("voter_url_token", voter.urlToken)
-                    }
-                }
-            }.body()
-}
 
 data class AigcVoteReadEvidence(
     val foregroundDurationMs: Long,
@@ -147,7 +85,7 @@ data class AigcVoteVoter(
 )
 
 @Serializable
-private data class AigcVoteReadEventsRequest(
+internal data class AigcVoteReadEventsRequest(
     @SerialName("client_id")
     val clientId: String,
     val events: List<AigcVoteReadEventRequest>,
@@ -175,7 +113,7 @@ data class AigcVoteReadEventRequest(
 )
 
 @Serializable
-private data class AigcVoteFlagRequest(
+internal data class AigcVoteFlagRequest(
     @SerialName("client_id")
     val clientId: String,
     val voter: AigcVoteVoter,

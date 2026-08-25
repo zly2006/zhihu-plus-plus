@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.viewmodel.filter
 
+import com.github.zly2006.zhihu.platform.MapSettingsStore
 import com.github.zly2006.zhihu.platform.SettingsStore
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -57,23 +58,6 @@ class FeedFilterSettingsTest {
 
     private fun mapBackedSettingsStore(vararg values: Pair<String, Any>): SettingsStore {
         val map = values.toMap()
-        return SettingsStore(
-            getBoolean = { key, default -> map[key] as? Boolean ?: default },
-            putBoolean = { _, _ -> },
-            getString = { key, default -> map[key] as? String ?: default },
-            putString = { _, _ -> },
-            getStringOrNull = { key -> map[key] as? String },
-            putStringSet = { _, _ -> },
-            getStringSet = { key, default ->
-                (map[key] as? Iterable<*>)?.filterIsInstance<String>()?.toSet() ?: default
-            },
-            getInt = { key, default -> map[key] as? Int ?: default },
-            putInt = { _, _ -> },
-            getLong = { key, default -> map[key] as? Long ?: default },
-            putLong = { _, _ -> },
-            getFloat = { key, default -> map[key] as? Float ?: default },
-            putFloat = { _, _ -> },
-            remove = { _ -> },
-        )
+        return MapSettingsStore(map.toMutableMap())
     }
 }

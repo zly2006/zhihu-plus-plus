@@ -26,6 +26,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -35,7 +36,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.github.zly2006.zhihu.data.fetchHighestQualityZhihuVideoUrl
-import com.github.zly2006.zhihu.desktop.DesktopAccountStore
+import com.github.zly2006.zhihu.desktop.defaultDesktopAccountStore
 import com.github.zly2006.zhihu.desktop.openDesktopExternalUrl
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Article
@@ -85,8 +86,9 @@ import kotlinx.coroutines.withContext
 @Composable
 fun DesktopZhihuMain() {
     val navController = rememberNavController()
-    val accountStore = remember { DesktopAccountStore() }
-    val httpClient = accountStore.httpClient()
+    val accountStore = defaultDesktopAccountStore
+    val accountSession by accountStore.sessionState.collectAsState()
+    val httpClient = remember(accountStore, accountSession) { accountStore.client.httpClient() }
     val coroutineScope = rememberCoroutineScope()
     val userMessages = rememberUserMessageSink()
     var mainTabNavigationTarget by remember { mutableStateOf<TopLevelDestination?>(null) }
@@ -145,7 +147,7 @@ fun DesktopZhihuMain() {
                     else -> return
                 }
                 coroutineScope.launch {
-                    val cookies = accountStore.load().cookies
+                    val cookies = accountStore.session.cookies
                     val videoUrl = withContext(Dispatchers.IO) {
                         runCatching {
                             fetchHighestQualityZhihuVideoUrl(

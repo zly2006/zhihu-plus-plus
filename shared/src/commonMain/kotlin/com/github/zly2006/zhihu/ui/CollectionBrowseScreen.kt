@@ -80,7 +80,6 @@ import kotlin.random.Random
  *
  * 默认选中策略见 [pickDefaultCollectionId]（优先默认收藏夹，否则第一个）。
  *
- * @param testCollections 测试注入的收藏夹列表；非 null 时跳过收藏夹列表的网络拉取，便于仪器测试。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,16 +88,15 @@ fun CollectionBrowseScreen(
     showBackButton: Boolean = true,
     scrollToTopTrigger: Int = 0,
     isActive: Boolean = true,
-    testCollections: List<Collection>? = null,
 ) {
     val navigator = LocalNavigator.current
     val environment = rememberPaginationEnvironment(allowGuestAccess = false)
     val contentEnvironment = environment as CollectionContentEnvironment
-    val useTestCollections = testCollections != null || urlToken == null
+    val useLocalCollections = urlToken == null
     val collectionsViewModel: CollectionsViewModel = viewModel(key = urlToken) {
         CollectionsViewModel(urlToken.orEmpty())
     }
-    val collections = testCollections ?: collectionsViewModel.allData
+    val collections = collectionsViewModel.allData
     val userMessages = rememberUserMessageSink()
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
@@ -114,7 +112,7 @@ fun CollectionBrowseScreen(
         if (
             shouldRefreshCollectionDataOnActivation(
                 isActive = isActive,
-                useTestCollections = useTestCollections,
+                useLocalCollections = useLocalCollections,
                 refreshOnNextActivation = refreshCollectionsOnNextActivation,
             )
         ) {
@@ -125,7 +123,7 @@ fun CollectionBrowseScreen(
     LaunchedEffect(collections.map { it.id }, collectionsViewModel.isLoading) {
         if (collections.isNotEmpty() && collections.none { it.id == selectedCollectionId }) {
             selectedCollectionId = pickDefaultCollectionId(collections)
-        } else if (collections.isEmpty() && (useTestCollections || collectionsViewModel.isEnd)) {
+        } else if (collections.isEmpty() && (useLocalCollections || collectionsViewModel.isEnd)) {
             selectedCollectionId = null
         }
     }
@@ -158,7 +156,7 @@ fun CollectionBrowseScreen(
         items
     }
     LaunchedEffect(contentViewModel, isActive, randomMode, randomSeed, selectedCollectionItemCount) {
-        if (isActive && !useTestCollections && contentViewModel != null) {
+        if (isActive && !useLocalCollections && contentViewModel != null) {
             if (randomMode) {
                 contentViewModel.refreshRandom(
                     environment = contentEnvironment,
@@ -178,7 +176,7 @@ fun CollectionBrowseScreen(
             )
         ) {
             TopLevelReselectAction.Refresh -> {
-                if (!useTestCollections) {
+                if (!useLocalCollections) {
                     collectionsViewModel.refresh(environment)
                     if (randomMode) {
                         randomSeed = Random.nextInt()
@@ -297,7 +295,7 @@ fun CollectionBrowseScreen(
         },
     ) { innerPadding ->
         when {
-            collections.isEmpty() && (useTestCollections || collectionsViewModel.isEnd) -> {
+            collections.isEmpty() && (useLocalCollections || collectionsViewModel.isEnd) -> {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -321,7 +319,7 @@ fun CollectionBrowseScreen(
                 PullToRefreshBox(
                     isRefreshing = collectionsViewModel.isLoading || contentViewModel.isLoading,
                     onRefresh = {
-                        if (!useTestCollections) {
+                        if (!useLocalCollections) {
                             collectionsViewModel.refresh(environment)
                             if (randomMode) {
                                 randomSeed = Random.nextInt()
@@ -438,9 +436,9 @@ internal fun pickDefaultCollectionId(collections: List<Collection>): String? =
 
 internal fun shouldRefreshCollectionDataOnActivation(
     isActive: Boolean,
-    useTestCollections: Boolean,
+    useLocalCollections: Boolean,
     refreshOnNextActivation: Boolean = true,
-): Boolean = isActive && !useTestCollections && refreshOnNextActivation
+): Boolean = isActive && !useLocalCollections && refreshOnNextActivation
 
 internal fun orderCollectionItems(
     items: List<FeedDisplayItem>,

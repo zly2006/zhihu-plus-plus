@@ -61,15 +61,13 @@ import com.github.zly2006.zhihu.test.mockRootComments
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.seedViewModel
 import com.github.zly2006.zhihu.test.setScreenContent
-import com.github.zly2006.zhihu.ui.ArticleHost
 import com.github.zly2006.zhihu.ui.COMMENT_EMOJI_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.COMMENT_EMOJI_ITEM_TAG_PREFIX
 import com.github.zly2006.zhihu.ui.COMMENT_EMOJI_PICKER_TAG
 import com.github.zly2006.zhihu.ui.COMMENT_INPUT_TAG
 import com.github.zly2006.zhihu.ui.COMMENT_SCREEN_LIST_TAG
-import com.github.zly2006.zhihu.ui.CommentEmoji
 import com.github.zly2006.zhihu.ui.CommentScreen
-import com.github.zly2006.zhihu.ui.CommentScreenTestOverrides
+import com.github.zly2006.zhihu.ui.PendingArticleNavigationOwner
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.viewmodel.CommentItem
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
@@ -137,7 +135,7 @@ class CommentScreenInstrumentedTest {
             urlPrefix = "https://www.zhihu.com/api/v4/comment_v5/comment/liked-root-comment/child_comment",
             commentId = "other-child-comment",
         )
-        val pendingCommentHost = object : ContextWrapper(composeRule.activity), ArticleHost by composeRule.activity {
+        val pendingCommentHost = object : ContextWrapper(composeRule.activity), PendingArticleNavigationOwner {
             private var pendingCommentId: String? = "liked-child-comment"
 
             override fun consumePendingCommentId(destination: NavDestination): String? {
@@ -182,18 +180,8 @@ class CommentScreenInstrumentedTest {
      */
     @Test
     fun emojiPickerInsertsPlaceholderAtCursor() {
-        val viewModel = seedRootCommentViewModel(seedRootComments(count = 1))
-        setCommentScreen(
-            testOverrides = CommentScreenTestOverrides(
-                viewModel = viewModel,
-                commentEmojis = listOf(
-                    CommentEmoji(
-                        placeholder = "[惊喜]",
-                        inlineKey = "emoji_test",
-                    ),
-                ),
-            ),
-        )
+        seedRootCommentViewModel(seedRootComments(count = 1))
+        setCommentScreen()
 
         composeRule.onNodeWithTag(COMMENT_INPUT_TAG).performTextInput("已有草稿")
         composeRule
@@ -234,6 +222,9 @@ class CommentScreenInstrumentedTest {
             article = firstFragment,
             seededComments = seedRootComments(count = 1),
         )
+        composeRule.seedViewModel<SeededRootCommentViewModel>(
+            key = "segment:${firstFragment.contentType}:${firstFragment.contentId}:${firstFragment.segmentId}",
+        ) { viewModel }
 
         composeRule.setScreenContent {
             val commentInput = remember { mutableStateOf("") }
@@ -242,7 +233,6 @@ class CommentScreenInstrumentedTest {
                 onChildCommentClick = {},
                 commentInput = commentInput.value,
                 onCommentInputChange = { commentInput.value = it },
-                testOverrides = CommentScreenTestOverrides(viewModel = viewModel),
             )
         }
         composeRule.onNodeWithTag("comment_row_root-1").assertIsDisplayed()
@@ -359,11 +349,10 @@ class CommentScreenInstrumentedTest {
          */
         val childEntryCommentIds = mutableListOf<String>()
         val seededComments = seedRootComments(count = 4)
-        val viewModel = seedRootCommentViewModel(seededComments)
+        seedRootCommentViewModel(seededComments)
 
         setCommentScreen(
             onChildCommentClick = { childEntryCommentIds += it.item.id },
-            testOverrides = CommentScreenTestOverrides(viewModel = viewModel),
         )
 
         composeRule
@@ -463,9 +452,7 @@ class CommentScreenInstrumentedTest {
             )
         }
 
-        setCommentScreen(
-            testOverrides = CommentScreenTestOverrides(viewModel = viewModel),
-        )
+        setCommentScreen()
 
         composeRule.onNodeWithTag("comment_row_allowed-root").assertIsDisplayed()
         composeRule.onNodeWithText("可见根评论作者").assertIsDisplayed()
@@ -480,7 +467,6 @@ class CommentScreenInstrumentedTest {
         content: NavDestination = ROOT_ARTICLE,
         activeCommentItem: CommentItem? = null,
         onChildCommentClick: (CommentItem) -> Unit = {},
-        testOverrides: CommentScreenTestOverrides? = null,
     ): RecordingNavigator = composeRule.setScreenContent {
         val commentInput = remember { mutableStateOf("") }
         CommentScreen(
@@ -489,7 +475,6 @@ class CommentScreenInstrumentedTest {
             onChildCommentClick = onChildCommentClick,
             commentInput = commentInput.value,
             onCommentInputChange = { commentInput.value = it },
-            testOverrides = testOverrides,
         )
     }
 

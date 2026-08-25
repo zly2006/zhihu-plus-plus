@@ -372,7 +372,6 @@ private fun <T> decodeZhihuLoginJsonTyped(serializer: KSerializer<T>, json: Json
 
 @Composable
 fun SharedQrLoginPane(
-    createClient: (MutableMap<String, String>) -> HttpClient,
     onLoginSuccess: suspend (Map<String, String>) -> Boolean,
     modifier: Modifier = Modifier,
     generateQrBitmap: (String) -> ImageBitmap = ::generateQrLoginBitmap,
@@ -387,10 +386,10 @@ fun SharedQrLoginPane(
     var riskControlUrl by remember { mutableStateOf<String?>(null) }
     var riskControlMessage by remember { mutableStateOf<String?>(null) }
     var isWorking by remember { mutableStateOf(true) }
+    val cookies = remember(refreshKey) { sessionCookies.toMutableMap() }
+    val client = rememberLoginHttpClient(cookies)
 
     LaunchedEffect(refreshKey) {
-        val cookies = sessionCookies.toMutableMap()
-        val client = createClient(cookies)
         qrBitmap = null
         statusText = "正在获取二维码"
         riskControlUrl = null
@@ -445,8 +444,6 @@ fun SharedQrLoginPane(
         } catch (e: Exception) {
             statusText = e.message ?: "二维码获取失败，请重试"
             isWorking = false
-        } finally {
-            client.close()
         }
     }
 

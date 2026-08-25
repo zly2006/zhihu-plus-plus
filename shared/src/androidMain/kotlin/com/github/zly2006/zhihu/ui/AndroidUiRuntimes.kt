@@ -39,10 +39,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.platform.UserMessageSink
+import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.article.prepareContentDocument
 import com.github.zly2006.zhihu.ui.components.WebviewComp
@@ -66,27 +66,7 @@ import java.io.File
 private const val WEBVIEW_ACTIVITY_CLASS = "com.github.zly2006.zhihu.WebviewActivity"
 
 @Composable
-actual fun rememberAccountSettingsAccountState(): androidx.compose.runtime.State<AccountSettingsAccountState> {
-    val accountDataState = AccountData.asState()
-    return remember(accountDataState.value) {
-        androidx.compose.runtime.derivedStateOf {
-            accountDataState.value.toAccountSettingsAccountState()
-        }
-    }
-}
-
-@Composable
 actual fun rememberAppVersionInfo(): String = LocalContext.current.zhihuVersionInfo()
-
-fun AccountData.Data.toAccountSettingsAccountState(): AccountSettingsAccountState = AccountSettingsAccountState(
-    login = login,
-    hasRequiredCookie = cookies["d_c0"].isNullOrBlank().not(),
-    username = username,
-    avatarUrl = self?.avatarUrl,
-    id = self?.id ?: "",
-    urlToken = self?.urlToken,
-    identityManagementSupported = true,
-)
 
 private fun Context.zhihuVersionInfo(): String {
     val versionName = runCatching {
@@ -104,35 +84,37 @@ private fun Context.zhihuVersionInfo(): String {
 
 @Composable
 actual fun rememberArticleTtsState(): TtsState {
-    val articleHost = LocalContext.current.articleHost()
+    val articleHost = LocalContext.current.findActivityCapability<ArticleTtsHost>()
     return articleHost?.articleTtsState ?: TtsState.Uninitialized
 }
 
 @Composable
-actual fun rememberArticleSpeechToggler(): (title: String, content: String) -> Unit {
+actual fun rememberArticleSpeechToggler(): ArticleSpeechToggler {
     val activityContext = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val userMessages = rememberUserMessageSink()
-    val articleHost = activityContext.articleHost()
+    val articleHost = activityContext.findActivityCapability<ArticleTtsHost>()
     val ttsState = articleHost?.articleTtsState ?: TtsState.Uninitialized
     return remember(coroutineScope, userMessages, articleHost, ttsState) {
-        { title, content ->
-            if (ttsState.isSpeaking) {
-                articleHost?.stopArticleSpeaking()
-            } else if (ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)) {
-                coroutineScope.launch {
-                    try {
-                        withContext(Dispatchers.IO) {
-                            val textToRead = articleSpeechText(title, content)
-                            withContext(Dispatchers.Main) {
-                                if (textToRead.isNotBlank()) {
-                                    articleHost?.speakArticleText(textToRead, title)
+        object : ArticleSpeechToggler {
+            override fun invoke(title: String, content: String) {
+                if (ttsState.isSpeaking) {
+                    articleHost?.stopArticleSpeaking()
+                } else if (ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)) {
+                    coroutineScope.launch {
+                        try {
+                            withContext(Dispatchers.IO) {
+                                val textToRead = articleSpeechText(title, content)
+                                withContext(Dispatchers.Main) {
+                                    if (textToRead.isNotBlank()) {
+                                        articleHost?.speakArticleText(textToRead, title)
+                                    }
                                 }
                             }
-                        }
-                    } catch (e: Exception) {
-                        withContext(Dispatchers.Main) {
-                            userMessages.showMessage("朗读失败：${e.message}")
+                        } catch (e: Exception) {
+                            withContext(Dispatchers.Main) {
+                                userMessages.showMessage("朗读失败：${e.message}")
+                            }
                         }
                     }
                 }
@@ -142,22 +124,34 @@ actual fun rememberArticleSpeechToggler(): (title: String, content: String) -> U
 }
 
 @Composable
-actual fun rememberArticleBrowserOpener(): (Article) -> Unit {
+actual fun rememberArticleBrowserOpener(): ArticleBrowserOpener {
     val context = LocalContext.current.applicationContext
     val coroutineScope = rememberCoroutineScope()
     val userMessages = rememberUserMessageSink()
     return remember(context, coroutineScope, userMessages) {
-        { article ->
-            coroutineScope.launch {
-                OpenInBrowser.openUrlInBrowser(context, article)
-                userMessages.showMessage("已发送到浏览器")
+        object : ArticleBrowserOpener {
+            override fun invoke(article: Article) {
+                coroutineScope.launch {
+                    OpenInBrowser.openUrlInBrowser(context, article)
+                    userMessages.showMessage("已发送到浏览器")
+                }
             }
         }
     }
 }
 
+actual val isArticleNavControllerSupported: Boolean = true
+
 @Composable
-actual fun rememberArticleHost(): ArticleHost? = LocalContext.current.articleHost()
+actual fun rememberArticleNavController() =
+    LocalContext.current.findActivityCapability<ArticleNavControllerOwner>()?.articleNavController
+        ?: error("$platformName 暂不支持文章导航控制器")
+
+@Composable
+actual fun consumePendingCommentId(content: com.github.zly2006.zhihu.navigation.NavDestination): String? {
+    val owner = LocalContext.current.findActivityCapability<PendingArticleNavigationOwner>()
+    return remember(owner, content) { owner?.consumePendingCommentId(content) }
+}
 
 @Composable
 actual fun ArticleWebViewContent(
@@ -210,7 +204,7 @@ actual fun rememberHomeIsDebuggable(): Boolean {
 actual fun rememberBlocklistRuleImporter(
     userMessages: UserMessageSink,
     onImported: (String) -> Unit,
-): () -> Unit {
+): BlocklistRuleImporter {
     val context = LocalContext.current
     val database = remember(context) { getContentFilterDatabase(context) }
     val coroutineScope = rememberCoroutineScope()
@@ -244,43 +238,47 @@ actual fun rememberBlocklistRuleImporter(
         }
     }
     return remember(importLauncher) {
-        { importLauncher.launch(arrayOf("application/json", "text/plain", "*/*")) }
+        object : BlocklistRuleImporter {
+            override fun invoke() = importLauncher.launch(arrayOf("application/json", "text/plain", "*/*"))
+        }
     }
 }
 
 @Composable
-actual fun rememberBlocklistRuleExporter(): suspend () -> String {
+actual fun rememberBlocklistRuleExporter(): BlocklistRuleExporter {
     val context = LocalContext.current
     val database = remember(context) { getContentFilterDatabase(context) }
     return remember(context, database) {
-        suspend {
-            val file = withContext(Dispatchers.IO) {
-                val dir = context.getExternalFilesDir(null) ?: context.filesDir
-                val file = File(dir, "zhihupp_blocklist.json")
-                file.writeText(
-                    encodeBlocklistBackup(
-                        keywordDao = database.blockedKeywordDao(),
-                        userDao = database.blockedUserDao(),
-                        questionAuthorDao = database.blockedQuestionAuthorDao(),
-                        topicDao = database.blockedTopicDao(),
-                    ),
-                )
-                file
+        object : BlocklistRuleExporter {
+            override suspend fun invoke(): String {
+                val file = withContext(Dispatchers.IO) {
+                    val dir = context.getExternalFilesDir(null) ?: context.filesDir
+                    val file = File(dir, "zhihupp_blocklist.json")
+                    file.writeText(
+                        encodeBlocklistBackup(
+                            keywordDao = database.blockedKeywordDao(),
+                            userDao = database.blockedUserDao(),
+                            questionAuthorDao = database.blockedQuestionAuthorDao(),
+                            topicDao = database.blockedTopicDao(),
+                        ),
+                    )
+                    file
+                }
+                val intent = Intent().apply {
+                    action = Intent.ACTION_VIEW
+                    setDataAndType(
+                        FileProvider.getUriForFile(
+                            context,
+                            "${context.packageName}.provider",
+                            file,
+                        ),
+                        "application/json",
+                    )
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(Intent.createChooser(intent, "查看屏蔽规则"))
+                return "已导出到 ${file.absolutePath}"
             }
-            val intent = Intent().apply {
-                action = Intent.ACTION_VIEW
-                setDataAndType(
-                    FileProvider.getUriForFile(
-                        context,
-                        "${context.packageName}.provider",
-                        file,
-                    ),
-                    "application/json",
-                )
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-            context.startActivity(Intent.createChooser(intent, "查看屏蔽规则"))
-            "已导出到 ${file.absolutePath}"
         }
     }
 }
@@ -297,7 +295,7 @@ actual fun ZhihuHtmlWebViewContent(html: String) {
     }
 }
 
-actual fun supportsZhihuHtmlWebView(): Boolean = true
+actual val isLegacyWebViewSupported: Boolean = true
 
 @Composable
 actual fun rememberCommentEmojiInlineContent(emojiKeys: Set<String>): Map<String, InlineTextContent> =
@@ -333,8 +331,13 @@ actual fun rememberNotificationEnvironment(
     }
 }
 
-fun Context.articleHost(): ArticleHost? =
-    (this as? ArticleHost) ?: (this as? ContextWrapper)?.baseContext?.takeIf { it !== this }?.articleHost()
+inline fun <reified T> Context.findActivityCapability(): T? {
+    var current = this
+    while (true) {
+        if (current is T) return current
+        current = (current as? ContextWrapper)?.baseContext?.takeIf { it !== current } ?: return null
+    }
+}
 
 @Composable
 actual fun QuestionDetailWebViewContent(
@@ -348,8 +351,6 @@ actual fun QuestionDetailWebViewContent(
         )
     }
 }
-
-actual fun supportsQuestionDetailWebView(): Boolean = true
 
 actual fun Modifier.questionSelectionWorkaround(): Modifier = fuckHonorService()
 

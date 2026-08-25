@@ -21,7 +21,7 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import androidx.core.content.FileProvider
-import com.github.zly2006.zhihu.data.AccountData
+import com.github.zly2006.zhihu.account.androidZhihuAccountStore
 import com.github.zly2006.zhihu.platform.androidSettingsStore
 import com.github.zly2006.zhihu.platform.isAndroidLiteVariantPackageName
 import com.github.zly2006.zhihu.updater.GithubAsset
@@ -124,7 +124,7 @@ object UpdateManager {
     }
 
     suspend fun getLatestVersion(context: Context): GithubRelease {
-        val client = AccountData.httpClient(context)
+        val client = androidZhihuAccountStore(context).client.httpClient()
         return fetchLatestZhihuRelease(client, getGitHubToken(context))
     }
 
@@ -181,7 +181,7 @@ object UpdateManager {
             updateState.value = UpdateState.Checking
             androidSettingsStore(context).putLong(PREF_LAST_UPDATE_CHECK, System.currentTimeMillis())
 
-            val client = AccountData.httpClient(context)
+            val client = androidZhihuAccountStore(context).client.httpClient()
             val currentVersion = SchematicVersion.fromString(context.versionName())
             val checkNightly = androidSettingsStore(context).getBoolean("checkNightlyUpdates", false)
 

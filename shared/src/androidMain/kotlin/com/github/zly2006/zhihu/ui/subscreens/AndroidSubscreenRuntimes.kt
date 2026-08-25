@@ -48,17 +48,20 @@ import com.mikepenz.aboutlibraries.Libs
 import com.mikepenz.aboutlibraries.util.withContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import java.io.File
 
+actual val isIdentityManagementSupported: Boolean = true
+
 @Composable
-actual fun rememberDeveloperRuntimeInfo(): DeveloperRuntimeInfo {
+actual fun rememberDeveloperInfo(): DeveloperInfoSnapshot {
     val context = LocalContext.current
-    return produceState(initialValue = DeveloperRuntimeInfo(), context) {
+    return produceState(initialValue = DeveloperInfoSnapshot(), context) {
         while (true) {
-            val runtimeInfo = (context as? DeveloperRuntimeInfoProvider)?.developerRuntimeInfo
-                ?: DeveloperRuntimeInfo()
+            val runtimeInfo = (context as? DeveloperInfoProvider)?.developerInfo
+                ?: DeveloperInfoSnapshot()
             value = runtimeInfo.copy(
                 networkStatus = context.networkStatusText(),
                 powerSaveModeText =
@@ -91,6 +94,8 @@ private fun Context.networkStatusText(): String {
         }
     }
 }
+
+actual val isWebViewCustomFontSupported: Boolean = true
 
 @Composable
 actual fun WebViewCustomFontSettings(
@@ -146,45 +151,74 @@ actual fun WebViewCustomFontSettings(
 }
 
 @Composable
-actual fun rememberSystemUpdateRuntime(): SystemUpdateRuntime {
-    val context = LocalContext.current
+actual fun rememberSystemUpdateState(): StateFlow<SystemUpdateState> {
     val scope = rememberCoroutineScope()
-    return remember(context, scope) {
-        SystemUpdateRuntime(
-            state = UpdateManager.updateState.map { it.toSystemUpdateState() }.stateIn(
-                scope,
-                SharingStarted.Eagerly,
-                UpdateManager.updateState.value.toSystemUpdateState(),
-            ),
-            autoCheckEnabled = { UpdateManager.isAutoCheckEnabled(context) },
-            setAutoCheckEnabled = { enabled ->
-                UpdateManager.setAutoCheckEnabled(context, enabled)
-                if (!enabled) {
-                    UpdateManager.updateState.value = UpdateState.NoUpdate
-                }
-            },
-            checkForUpdate = { UpdateManager.checkForUpdate(context) },
-            skipVersion = { version ->
+    return remember(scope) {
+        UpdateManager.updateState.map { it.toSystemUpdateState() }.stateIn(
+            scope,
+            SharingStarted.Eagerly,
+            UpdateManager.updateState.value.toSystemUpdateState(),
+        )
+    }
+}
+
+@Composable
+actual fun rememberSystemUpdateChecker(): SystemUpdateChecker {
+    val context = LocalContext.current
+    return remember(context) {
+        object : SystemUpdateChecker {
+            override suspend fun check() = UpdateManager.checkForUpdate(context)
+        }
+    }
+}
+
+@Composable
+actual fun rememberSystemUpdateVersionSkipper(): SystemUpdateVersionSkipper {
+    val context = LocalContext.current
+    return remember(context) {
+        object : SystemUpdateVersionSkipper {
+            override fun skip(version: String) {
                 UpdateManager.skipVersion(context, version)
                 UpdateManager.updateState.value = UpdateState.Latest
-            },
-            resetToNoUpdate = {
-                UpdateManager.updateState.value = UpdateState.NoUpdate
-            },
-            downloadUpdate = { url -> UpdateManager.downloadUpdate(context, url) },
-            installDownloadedUpdate = {
+            }
+        }
+    }
+}
+
+@Composable
+actual fun rememberSystemUpdateDownloader(): SystemUpdateDownloader {
+    val context = LocalContext.current
+    return remember(context) {
+        object : SystemUpdateDownloader {
+            override suspend fun download(url: String) = UpdateManager.downloadUpdate(context, url)
+        }
+    }
+}
+
+@Composable
+actual fun rememberDownloadedSystemUpdateInstaller(): DownloadedSystemUpdateInstaller {
+    val context = LocalContext.current
+    return remember(context) {
+        object : DownloadedSystemUpdateInstaller {
+            override suspend fun install() {
                 val state = UpdateManager.updateState.value
                 if (state is UpdateState.Downloaded) {
                     UpdateManager.installUpdate(context, state.file)
                 }
-            },
-            setError = { message ->
-                UpdateManager.updateState.value = UpdateState.Error(message)
-            },
-            supportsApkInstall = true,
-        )
+            }
+        }
     }
 }
+
+actual fun resetSystemUpdateState() {
+    UpdateManager.updateState.value = UpdateState.NoUpdate
+}
+
+actual fun setSystemUpdateError(message: String) {
+    UpdateManager.updateState.value = UpdateState.Error(message)
+}
+
+actual val isApkUpdateInstallSupported: Boolean = true
 
 private fun UpdateState.toSystemUpdateState(): SystemUpdateState = when (this) {
     UpdateState.NoUpdate -> SystemUpdateState.NoUpdate

@@ -19,14 +19,15 @@ package com.github.zly2006.zhihu.viewmodel
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import com.github.zly2006.zhihu.account.ZhihuAccountStore
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.FeedDisplayItem
 import com.github.zly2006.zhihu.data.navDestination
 import com.github.zly2006.zhihu.data.target
-import com.github.zly2006.zhihu.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.desktop.DesktopHistoryStorage
 import com.github.zly2006.zhihu.desktop.copyDesktopPlainText
+import com.github.zly2006.zhihu.desktop.defaultDesktopAccountStore
 import com.github.zly2006.zhihu.desktop.desktopZhihuDataFile
 import com.github.zly2006.zhihu.desktop.desktopZhihuDownloadsDir
 import com.github.zly2006.zhihu.filter.ContentOpenEventSupport
@@ -34,12 +35,10 @@ import com.github.zly2006.zhihu.filter.ContentOpenFrom
 import com.github.zly2006.zhihu.filter.TrackedContentIdentity
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.NavDestination
-import com.github.zly2006.zhihu.navigation.requestLoginNavigation
 import com.github.zly2006.zhihu.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.notification.desktopNotificationSettingsStore
 import com.github.zly2006.zhihu.platform.desktopSettingsStore
 import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
-import com.github.zly2006.zhihu.ui.homeFeedStartupCacheFileNames
 import com.github.zly2006.zhihu.util.Log
 import com.github.zly2006.zhihu.util.buildArticleExportFileName
 import com.github.zly2006.zhihu.util.buildCollectionExportZipFileName
@@ -114,7 +113,7 @@ private fun consumeDesktopPendingContentOpenFrom(destination: NavDestination): S
 }
 
 class DesktopPaginationEnvironment(
-    private val store: DesktopAccountStore = DesktopAccountStore(),
+    private val store: ZhihuAccountStore = defaultDesktopAccountStore,
     override val notificationSettingsStore: NotificationSettingsStore = desktopNotificationSettingsStore(),
     private val showFetchFailureMessage: ((String) -> Unit)? = null,
 ) : PaginationEnvironment,
@@ -125,48 +124,15 @@ class DesktopPaginationEnvironment(
     private val contentFilterDb = desktopContentFilterDb
     private val localRecommendationEngine by lazy { createLocalRecommendationEngine() }
 
-    override fun httpClient(): HttpClient = store.httpClient()
+    override fun httpClient(): HttpClient = store.client.httpClient()
 
-    override fun xsrfToken(): String = store.load().cookies["_xsrf"] ?: ""
+    override fun xsrfToken(): String = store.session.cookies["_xsrf"] ?: ""
 
-    override fun authenticatedCookies(): Map<String, String> = store.load().cookies
+    override fun authenticatedCookies(): Map<String, String> = store.session.cookies
 
     override suspend fun <T> withAuthenticatedClient(
         block: suspend (client: HttpClient, cookies: Map<String, String>) -> T,
-    ): T = store.withAuthenticatedClient(block)
-
-    override suspend fun refreshAccountProfile() {
-        store.refreshAndSaveProfile()
-    }
-
-    override fun requestLogin(): Boolean {
-        requestLoginNavigation()
-        return true
-    }
-
-    override fun clearAccountSession() {
-        store.clear()
-    }
-
-    override fun currentAccountId(): String = store
-        .load()
-        .profile
-        ?.id
-        .orEmpty()
-
-    override suspend fun verifyLogin(cookies: Map<String, String>): Boolean =
-        store.verifyAndSave(cookies.toMutableMap())
-
-    override fun saveCookies(cookies: Map<String, String>) {
-        store.save(store.load().copy(login = true, cookies = cookies.toMutableMap()))
-    }
-
-    override fun logout() {
-        homeFeedStartupCacheFileNames().forEach { fileName ->
-            desktopZhihuDataFile(fileName).delete()
-        }
-        clearAccountSession()
-    }
+    ): T = store.client.withAuthenticatedClient(block)
 
     override suspend fun handleFetchFailure(
         tag: String?,
@@ -322,7 +288,7 @@ class DesktopPaginationEnvironment(
 
     override suspend fun clearAllHistory() {
         historyStorage.clearAndSave()
-        if (store.load().cookies["d_c0"] == null) return
+        if (store.session.cookies["d_c0"] == null) return
         postSigned("https://api.zhihu.com/read_history/batch_del") {
             contentType(KtorContentType.Application.Json)
             setBody(

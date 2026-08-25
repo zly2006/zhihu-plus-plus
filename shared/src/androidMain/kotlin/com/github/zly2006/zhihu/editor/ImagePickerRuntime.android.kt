@@ -25,8 +25,10 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
+actual val isImagePickerSupported: Boolean = true
+
 @Composable
-actual fun rememberImagePickerLauncher(onPicked: (PickedImage) -> Unit): (() -> Unit)? {
+actual fun rememberImagePickerLauncher(onPicked: (PickedImage) -> Unit): ImagePickerLauncher {
     val context = LocalContext.current
     val contentResolver = context.contentResolver
 
@@ -43,7 +45,9 @@ actual fun rememberImagePickerLauncher(onPicked: (PickedImage) -> Unit): (() -> 
             ),
         )
     }
-    return { launcher.launch("image/*") }
+    return object : ImagePickerLauncher {
+        override fun launch() = launcher.launch("image/*")
+    }
 }
 
 private fun queryDisplayName(cursor: Cursor?): String? {

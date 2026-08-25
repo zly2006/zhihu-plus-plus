@@ -92,6 +92,7 @@ import com.github.zly2006.zhihu.reading.ReadingPlaybackStatus
 import com.github.zly2006.zhihu.reading.ReadingQueueSourceRegistry
 import com.github.zly2006.zhihu.reading.ReadingStartRequest
 import com.github.zly2006.zhihu.reading.hasReadableFields
+import com.github.zly2006.zhihu.reading.isReadingPlayerSupported
 import com.github.zly2006.zhihu.reading.loadReadingPlaybackSpeed
 import com.github.zly2006.zhihu.reading.loadReadingPreferences
 import com.github.zly2006.zhihu.reading.rememberReadingPlayerController
@@ -321,7 +322,7 @@ fun PinScreen(
                                 )
                             }
                         },
-                        enabled = readingPlayer.isSupported && readingItem?.hasReadableFields(readingPreferences) == true,
+                        enabled = isReadingPlayerSupported && readingItem?.hasReadableFields(readingPreferences) == true,
                         modifier = Modifier.testTag(PIN_SCREEN_READING_BUTTON_TAG),
                     ) {
                         when {

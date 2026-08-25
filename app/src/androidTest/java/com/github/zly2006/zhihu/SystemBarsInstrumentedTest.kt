@@ -37,8 +37,6 @@ import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.theme.AndroidThemeSettings
 import com.github.zly2006.zhihu.theme.ThemeMode
 import com.github.zly2006.zhihu.theme.ZhihuTheme
-import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
-import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -66,14 +64,12 @@ class SystemBarsInstrumentedTest {
      * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/571
      */
     @Test
-    fun identityChangeRestartKeepsDarkThemeStatusBarEdgeToEdge() {
+    fun activityRecreationKeepsDarkThemeStatusBarEdgeToEdge() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val originalActivity = composeRule.activity
-        val environment = AtomicReference<PaginationEnvironment>()
         instrumentation.runOnMainSync {
             originalActivity.setContent {
                 ZhihuTheme {
-                    environment.set(rememberPaginationEnvironment(allowGuestAccess = false))
                     SolidThemeSurface()
                 }
             }
@@ -106,7 +102,7 @@ class SystemBarsInstrumentedTest {
         originalActivity.application.registerActivityLifecycleCallbacks(callbacks)
         try {
             instrumentation.runOnMainSync {
-                environment.get().restartApplication()
+                originalActivity.recreate()
             }
             assertTrue(
                 "Identity restart did not launch a fresh MainActivity",

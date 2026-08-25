@@ -79,28 +79,29 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.github.zly2006.zhihu.account.rememberZhihuAccountStore
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Collections
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.navigation.Person
+import com.github.zly2006.zhihu.navigation.requestLoginNavigation
 import com.github.zly2006.zhihu.platform.platformBottomBarItemLimit
 import com.github.zly2006.zhihu.platform.rememberPlainTextClipboard
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberSystemUrlOpener
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.reading.rememberReadingPlayerController
+import com.github.zly2006.zhihu.reading.isReadingPlayerSupported
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.SystemUpdateState
 import com.github.zly2006.zhihu.ui.subscreens.defaultBottomBarSelectionKeys
 import com.github.zly2006.zhihu.ui.subscreens.normalizeBottomBarSelection
-import com.github.zly2006.zhihu.ui.subscreens.rememberSystemUpdateRuntime
+import com.github.zly2006.zhihu.ui.subscreens.rememberSystemUpdateState
 import com.github.zly2006.zhihu.ui.subscreens.shouldShowAccountHistoryShortcut
 import com.github.zly2006.zhihu.util.Log
-import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.CancellationException
 import org.jetbrains.compose.resources.painterResource
 import zhihu.shared.generated.resources.Res
@@ -142,19 +143,18 @@ fun AccountSettingScreen(
     showUnreadBadge: Boolean = true,
     onDismissRequest: () -> Unit = {},
     refreshAccountProfileOnEnter: Boolean = true,
-    testAccountData: AccountSettingsAccountState? = null,
 ) {
     val navigator = LocalNavigator.current
-    val environment = rememberPaginationEnvironment(allowGuestAccess = false)
+    val accountStore = rememberZhihuAccountStore()
     val accountState = rememberAccountSettingsAccountState()
-    val requestLogin = rememberAccountLoginRequester()
+    val requestLogin = ::requestLoginNavigation
     val settings = rememberSettingsStore()
     val copyPlainText = rememberPlainTextClipboard()
     val openSystemUrl = rememberSystemUrlOpener()
     val userMessages = rememberUserMessageSink()
-    val updateRuntime = rememberSystemUpdateRuntime()
+    val systemUpdateState = rememberSystemUpdateState()
     val versionInfo = rememberAppVersionInfo()
-    val readingPlayerSupported = rememberReadingPlayerController().isSupported
+    val readingPlayerSupported = isReadingPlayerSupported
 
     val useDuo3HomeAccount = remember { settings.getBoolean("duo3_home_account", false) }
     val selectedBottomBarItemKeys = remember {
@@ -175,7 +175,7 @@ fun AccountSettingScreen(
         settings.putBoolean("developer", isDeveloper)
     }
     val liveData by accountState
-    val data = testAccountData ?: liveData
+    val data = liveData
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -192,7 +192,7 @@ fun AccountSettingScreen(
             LaunchedEffect(data.login, refreshAccountProfileOnEnter) {
                 if (refreshAccountProfileOnEnter && data.login) {
                     try {
-                        environment.refreshAccountProfile()
+                        accountStore.client.refreshAndSaveProfile()
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
@@ -270,9 +270,7 @@ fun AccountSettingScreen(
                         icon = { Icon(Icons.AutoMirrored.Filled.Login, null) },
                         modifier = Modifier.testTag(ACCOUNT_SETTINGS_LOGIN_ITEM_TAG),
                         onClick = {
-                            if (!environment.requestLogin()) {
-                                userMessages.showShortMessage("当前平台暂不支持登录")
-                            }
+                            requestLogin()
                         },
                     )
                 }
@@ -524,7 +522,7 @@ fun AccountSettingScreen(
                 }
             }
 
-            val updateState by updateRuntime.state.collectAsState()
+            val updateState by systemUpdateState.collectAsState()
             LaunchedEffect(updateState) {
                 if (updateState is SystemUpdateState.UpdateAvailable) {
                     val state = updateState as SystemUpdateState.UpdateAvailable
@@ -618,7 +616,7 @@ fun AccountSettingScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        environment.logout()
+                        accountStore.clear()
                         showLogoutDialog = false
                     },
                 ) {

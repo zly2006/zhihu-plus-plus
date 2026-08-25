@@ -73,7 +73,7 @@ data class ZhihuAccountProfile(
 fun <T : HttpClientEngineConfig> HttpClientConfig<T>.installZhihuCommonClientConfig(
     cookies: MutableMap<String, String>,
     userAgent: String,
-    onCookieChanged: (() -> Unit)? = null,
+    onCookieChanged: () -> Unit = {},
     enableHttpCache: Boolean = false,
 ) {
     if (enableHttpCache) {

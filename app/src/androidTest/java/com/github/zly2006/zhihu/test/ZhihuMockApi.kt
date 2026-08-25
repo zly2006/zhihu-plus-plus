@@ -17,8 +17,9 @@
 
 package com.github.zly2006.zhihu.test
 
-import android.content.Context
-import com.github.zly2006.zhihu.data.AccountData
+import androidx.test.platform.app.InstrumentationRegistry
+import com.github.zly2006.zhihu.account.createAndroidZhihuAccountStoreForTesting
+import com.github.zly2006.zhihu.account.replaceAndroidZhihuAccountStoreForTesting
 import com.github.zly2006.zhihu.notification.ZHIHU_PLUS_PLUS_HOME_NOTIFICATIONS_URL
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockRequestHandleScope
@@ -51,18 +52,17 @@ object ZhihuMockApi {
     fun install(enabled: Boolean = true) {
         this.enabled = enabled
         if (!enabled) {
-            AccountData.overrideHttpClientFactoryForTesting(null)
+            replaceAndroidZhihuAccountStoreForTesting(null)
             routes.clear()
             requests.clear()
             return
         }
-        AccountData.overrideHttpClientFactoryForTesting { context: Context, cookies ->
-            AccountData.createConfiguredHttpClient(
-                context = context,
-                cookies = cookies,
-                engine = mockEngine(),
-            )
-        }
+        replaceAndroidZhihuAccountStoreForTesting(
+            createAndroidZhihuAccountStoreForTesting(
+                context = InstrumentationRegistry.getInstrumentation().targetContext,
+                createEngine = ::mockEngine,
+            ),
+        )
     }
 
     fun isEnabled(): Boolean = enabled

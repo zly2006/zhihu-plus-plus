@@ -58,9 +58,9 @@ actual val supportedLoginMethods: List<LoginMethod> = listOf(
 actual val isLoginRiskControlSupported: Boolean = true
 
 @Composable
-actual fun rememberPhoneLoginHttpClient(cookies: MutableMap<String, String>): HttpClient {
+actual fun rememberLoginHttpClient(cookies: MutableMap<String, String>): HttpClient {
     val context = LocalContext.current
-    val httpClient = remember(context) { AccountData.httpClient(context, cookies) }
+    val httpClient = remember(context) { androidZhihuAccountStore(context).client.temporaryHttpClient(cookies) }
     DisposableEffect(httpClient) {
         onDispose(httpClient::close)
     }
@@ -78,29 +78,14 @@ actual fun decodePhoneLoginCaptchaImage(content: String) = runCatching {
 }.getOrNull()
 
 @Composable
-actual fun rememberPhoneLoginTokenVerifier(): PhoneLoginTokenVerifier {
-    val context = LocalContext.current
-    return remember(context) {
-        PhoneLoginTokenVerifier { token ->
-            if (AccountData.verifyMobileLogin(context, token)) {
-                telemetry(context, "login")
-                AccountData.loadData(context).username
-            } else {
-                null
-            }
-        }
-    }
-}
-
-@Composable
 actual fun QrLoginPane(onLoginSuccess: (String) -> Unit) {
     val context = LocalContext.current
+    val accountStore = rememberZhihuAccountStore()
     SharedQrLoginPane(
-        createClient = { cookies -> AccountData.httpClient(context, cookies) },
         onLoginSuccess = { cookies ->
-            if (AccountData.verifyLogin(context, cookies)) {
+            if (accountStore.login(cookies.toMutableMap())) {
                 telemetry(context, "login")
-                onLoginSuccess(AccountData.loadData(context).username)
+                onLoginSuccess(accountStore.session.username)
                 true
             } else {
                 false
@@ -113,6 +98,7 @@ actual fun QrLoginPane(onLoginSuccess: (String) -> Unit) {
 @Composable
 actual fun WebLoginPane(onLoginSuccess: (String) -> Unit) {
     val context = LocalContext.current
+    val accountStore = rememberZhihuAccountStore()
     val scope = rememberCoroutineScope()
     var isVerifying by remember { mutableStateOf(false) }
 
@@ -124,9 +110,9 @@ actual fun WebLoginPane(onLoginSuccess: (String) -> Unit) {
                     isVerifying = true
                     scope.launch {
                         try {
-                            if (AccountData.verifyLogin(context, cookies)) {
+                            if (accountStore.login(cookies.toMutableMap())) {
                                 telemetry(context, "login")
-                                onLoginSuccess(AccountData.loadData(context).username)
+                                onLoginSuccess(accountStore.session.username)
                             }
                         } finally {
                             isVerifying = false

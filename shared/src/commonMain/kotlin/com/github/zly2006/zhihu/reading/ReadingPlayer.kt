@@ -268,7 +268,6 @@ data class ReadingStartRequest(
 
 interface ReadingPlayerController {
     val state: State<ReadingPlayerState>
-    val isSupported: Boolean
 
     fun start(request: ReadingStartRequest)
 
@@ -287,7 +286,6 @@ interface ReadingPlayerController {
 
 internal object UnsupportedReadingPlayerController : ReadingPlayerController {
     override val state: State<ReadingPlayerState> = mutableStateOf(ReadingPlayerState())
-    override val isSupported: Boolean = false
 
     override fun start(request: ReadingStartRequest) = Unit
 
@@ -305,7 +303,13 @@ internal object UnsupportedReadingPlayerController : ReadingPlayerController {
 }
 
 @Composable
-expect fun rememberReadingPlayerController(): ReadingPlayerController
+fun rememberReadingPlayerController(): ReadingPlayerController =
+    if (isReadingPlayerSupported) rememberSupportedReadingPlayerController() else UnsupportedReadingPlayerController
+
+expect val isReadingPlayerSupported: Boolean
+
+@Composable
+internal expect fun rememberSupportedReadingPlayerController(): ReadingPlayerController
 
 private val readingPreferencesJson = Json {
     ignoreUnknownKeys = true

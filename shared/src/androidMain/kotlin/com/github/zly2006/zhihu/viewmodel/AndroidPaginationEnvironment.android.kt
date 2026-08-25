@@ -23,7 +23,6 @@ import android.app.AlertDialog
 import android.content.ClipData
 import android.content.ContentValues
 import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Environment
@@ -36,9 +35,9 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
+import com.github.zly2006.zhihu.account.androidZhihuAccountStore
 import com.github.zly2006.zhihu.data.AIGC_MARKING_ENABLED_PREFERENCE_KEY
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.AigcVoteClient
 import com.github.zly2006.zhihu.data.AigcVoteVoter
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
@@ -54,8 +53,9 @@ import com.github.zly2006.zhihu.navigation.requestLoginNavigation
 import com.github.zly2006.zhihu.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.platform.androidSettingsStore
 import com.github.zly2006.zhihu.platform.androidUserMessageSink
-import com.github.zly2006.zhihu.ui.articleHost
-import com.github.zly2006.zhihu.ui.homeFeedStartupCacheFileNames
+import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchStateOwner
+import com.github.zly2006.zhihu.ui.PendingArticleNavigationOwner
+import com.github.zly2006.zhihu.ui.findActivityCapability
 import com.github.zly2006.zhihu.util.HttpStatusException
 import com.github.zly2006.zhihu.util.ResolvedCollectionHtmlExportItem
 import com.github.zly2006.zhihu.util.buildArticleExportFileName
@@ -130,58 +130,6 @@ open class SharedAndroidPaginationEnvironment(
             }
         }
     }
-    private val aigcVoteClient by lazy {
-        AigcVoteClient(
-            httpClient = aigcVoteHttpClient,
-            baseUrl = aigcVoteServerUrl(),
-            clientId = aigcVoteClientId(),
-        )
-    }
-
-    override suspend fun refreshAccountProfile() {
-        AccountData.refreshProfile(context)
-    }
-
-    override fun requestLogin(): Boolean {
-        requestLoginNavigation()
-        return true
-    }
-
-    override fun clearAccountSession() {
-        AccountData.delete(context)
-    }
-
-    override fun currentAccountId(): String = AccountData.data.self
-        ?.id
-        .orEmpty()
-
-    override fun identityClient() = AccountData.identityClient(context.applicationContext)
-
-    override fun restartApplication() {
-        val activity = context as? Activity ?: return
-        val launchIntent = activity.packageManager
-            .getLaunchIntentForPackage(activity.packageName)
-            ?: error("无法获取应用启动入口")
-        launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-        activity.startActivity(launchIntent)
-    }
-
-    override suspend fun verifyLogin(cookies: Map<String, String>): Boolean =
-        AccountData.verifyLogin(context, cookies)
-
-    override fun saveCookies(cookies: Map<String, String>) {
-        AccountData.saveData(
-            context,
-            AccountData.data.copy(cookies = cookies.toMutableMap(), login = true),
-        )
-    }
-
-    override fun logout() {
-        homeFeedStartupCacheFileNames().forEach { fileName ->
-            File(context.filesDir, fileName).delete()
-        }
-        clearAccountSession()
-    }
 
     override fun httpClient(): HttpClient {
         val loginForRecommendation = settingsStore.getBoolean("loginForRecommendation", true)
@@ -196,7 +144,7 @@ open class SharedAndroidPaginationEnvironment(
                 }
             }
         }
-        return AccountData.httpClient(context)
+        return androidZhihuAccountStore(context).client.httpClient()
     }
 
     override fun mobileHomeFeedHttpClient(): HttpClient {
@@ -220,12 +168,14 @@ open class SharedAndroidPaginationEnvironment(
         }
     }
 
-    override fun aigcVoteClient(): AigcVoteClient? =
-        if (settingsStore.getBoolean(AIGC_MARKING_ENABLED_PREFERENCE_KEY, false)) {
-            aigcVoteClient
-        } else {
-            null
-        }
+    override fun isAigcVoteEnabled(): Boolean =
+        settingsStore.getBoolean(AIGC_MARKING_ENABLED_PREFERENCE_KEY, false)
+
+    override fun aigcVoteHttpClient(): HttpClient = aigcVoteHttpClient
+
+    override fun aigcVoteBaseUrl(): String = aigcVoteServerUrl()
+
+    override fun aigcVoteClientId(): String = aigcVoteClientIdValue()
 
     override fun aigcVoteVoter(): AigcVoteVoter? =
         AccountData.data.self?.let { self ->
@@ -251,7 +201,7 @@ open class SharedAndroidPaginationEnvironment(
             .getString(AIGC_VOTE_SERVER_URL_KEY, DEFAULT_ANDROID_AIGC_VOTE_SERVER_URL)
             .ifBlank { DEFAULT_ANDROID_AIGC_VOTE_SERVER_URL }
 
-    private fun aigcVoteClientId(): String {
+    private fun aigcVoteClientIdValue(): String {
         settingsStore.getStringOrNull(AIGC_VOTE_CLIENT_ID_KEY)?.takeIf { it.isNotBlank() }?.let {
             return it
         }
@@ -367,7 +317,7 @@ open class SharedAndroidPaginationEnvironment(
         openFrom: String,
     ) {
         val resolvedOpenFrom = openFrom.ifBlank {
-            context.articleHost()?.consumePendingContentOpenFrom(destination) ?: ""
+            context.findActivityCapability<PendingArticleNavigationOwner>()?.consumePendingContentOpenFrom(destination) ?: ""
         }
         ContentOpenEventSupport.recordOpenEvent(
             database = getContentFilterDatabase(context),
@@ -475,7 +425,8 @@ open class SharedAndroidPaginationEnvironment(
         }
     }
 
-    override fun articleAnswerSwitchState() = context.articleHost()?.articleAnswerSwitchState
+    override fun articleAnswerSwitchState() =
+        context.findActivityCapability<ArticleAnswerSwitchStateOwner>()?.articleAnswerSwitchState
 
     override suspend fun exportCollectionItemsToHtmlZip(
         collectionTitle: String,
@@ -572,7 +523,8 @@ open class SharedAndroidPaginationEnvironment(
                             .setTitle("登录已过期")
                             .setMessage("请重新登录以继续使用完整功能。")
                             .setPositiveButton("重新登录") { _, _ ->
-                                requestRelogin()
+                                androidZhihuAccountStore(context).clear()
+                                requestLoginNavigation()
                             }.setNegativeButton("取消", null)
                             .show()
                     }

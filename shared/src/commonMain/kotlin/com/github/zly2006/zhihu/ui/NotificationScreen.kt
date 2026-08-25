@@ -475,7 +475,7 @@ fun NotificationItemView(
                                 dfsSimple(
                                     node = document.body(),
                                     onNavigate = navigator.onNavigate,
-                                    openExternalUrl = openExternalUrl,
+                                    openExternalUrl = openExternalUrl::invoke,
                                     componentUsed = emojisUsed,
                                 )
                             }

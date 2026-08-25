@@ -124,6 +124,7 @@ import com.github.zly2006.zhihu.navigation.WriteAnswer
 import com.github.zly2006.zhihu.navigation.WritePin
 import com.github.zly2006.zhihu.navigation.loginNavigationRequestFlow
 import com.github.zly2006.zhihu.platform.PlatformBackHandler
+import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.reading.rememberReadingPlayerController
 import com.github.zly2006.zhihu.reading.saveReadingPlaybackSpeed
@@ -194,9 +195,11 @@ fun ZhihuMain(
     showHomeTopActions: Boolean = true,
     onCurrentMainTabDestinationChange: (TopLevelDestination) -> Unit = {},
     sentenceSimilarityContent: @Composable () -> Unit = {
-        Text("Sentence similarity test is not available on this platform.")
+        error("$platformName 暂不支持句子相似度测试")
     },
-    blocklistSettingsNlpContent: BlocklistSettingsNlpContent? = null,
+    blocklistSettingsNlpContent: @Composable (onNavigateBack: () -> Unit) -> Unit = {
+        error("$platformName 暂不支持 NLP 智能屏蔽设置")
+    },
     articleEnterTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition?)? = null,
     articleExitTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition?)? = null,
 ) {

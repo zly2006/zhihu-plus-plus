@@ -110,6 +110,7 @@ import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Search
 import com.github.zly2006.zhihu.navigation.WritePin
+import com.github.zly2006.zhihu.navigation.requestLoginNavigation
 import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_ACTION_OPEN_ANSWER
 import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_ACTION_OPEN_ARTICLE
 import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_ACTION_OPEN_PIN
@@ -143,7 +144,7 @@ import com.github.zly2006.zhihu.ui.components.feedKeywordExtractionAvailable
 import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_FAB_OPACITY
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FAB_OPACITY
 import com.github.zly2006.zhihu.ui.subscreens.SystemUpdateState
-import com.github.zly2006.zhihu.ui.subscreens.rememberSystemUpdateRuntime
+import com.github.zly2006.zhihu.ui.subscreens.rememberSystemUpdateState
 import com.github.zly2006.zhihu.ui.topLevelReselectAction
 import com.github.zly2006.zhihu.util.Log
 import com.github.zly2006.zhihu.viewmodel.QUALITY_FILTER_MODE_PREFERENCE_KEY
@@ -246,13 +247,13 @@ fun HomeScreen(
             title = { Text("Cookie 不完整") },
             text = { Text("当前登录信息缺少必要的 Cookie d_c0，请重新登录。") },
             confirmButton = {
-                TextButton(onClick = { paginationEnvironment.requestLogin() }) {
+                TextButton(onClick = ::requestLoginNavigation) {
                     Text("重新登录")
                 }
             },
         )
     }
-    val updateState by rememberSystemUpdateRuntime().state.collectAsState()
+    val updateState by rememberSystemUpdateState().collectAsState()
     val updateAnnouncement = updateState as? SystemUpdateState.UpdateAvailable
     val versionName = rememberAppVersionInfo().substringBefore(' ').takeIf { it.firstOrNull()?.isDigit() == true }
     val onlineNotificationRepository = remember(settings) {
@@ -336,9 +337,7 @@ fun HomeScreen(
         if (!account.login &&
             settings.getBoolean("loginForRecommendation", true)
         ) {
-            if (!paginationEnvironment.requestLogin()) {
-                userMessages.showShortMessage("当前平台暂不支持登录")
-            }
+            requestLoginNavigation()
         } else if (viewModel.displayItems.isEmpty()) {
             val cachedItems = if (autoRefreshOnStartup) {
                 emptyList()
@@ -660,7 +659,7 @@ fun HomeScreen(
                                                 accept.value
                                                     ?.jsonPrimitive
                                                     ?.contentOrNull
-                                                    ?.let(openExternalUrl)
+                                                    ?.let(openExternalUrl::invoke)
                                             }
                                             HOME_NOTIFICATION_ACTION_OPEN_UPDATE_SETTINGS -> {
                                                 navigator.onNavigate(Account.SystemAndUpdateSettings())

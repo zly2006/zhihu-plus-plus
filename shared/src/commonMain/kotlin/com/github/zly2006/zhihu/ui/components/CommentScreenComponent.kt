@@ -52,7 +52,7 @@ import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.theme.Typography
 import com.github.zly2006.zhihu.ui.CommentScreen
 import com.github.zly2006.zhihu.ui.commentThreadKey
-import com.github.zly2006.zhihu.ui.rememberArticleHost
+import com.github.zly2006.zhihu.ui.consumePendingCommentId
 import com.github.zly2006.zhihu.viewmodel.CommentItem
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
@@ -69,9 +69,9 @@ fun CommentScreenComponent(
     isZhPlusAuthorContent: Boolean = false,
 ) {
     val settings = rememberSettingsStore()
-    val articleHost = rememberArticleHost()
+    val initialPendingCommentId = consumePendingCommentId(content)
     var pendingCommentId by remember(content) {
-        mutableStateOf(articleHost?.consumePendingCommentId(content))
+        mutableStateOf(initialPendingCommentId)
     }
     val commentsVisible = showComments || pendingCommentId != null
     var authorCommentPolicyAcknowledged by remember {

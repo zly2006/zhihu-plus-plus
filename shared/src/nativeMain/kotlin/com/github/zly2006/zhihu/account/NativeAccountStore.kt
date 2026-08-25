@@ -17,65 +17,18 @@
 
 package com.github.zly2006.zhihu.account
 
-import com.github.zly2006.zhihu.data.installZhihuCommonClientConfig
 import com.github.zly2006.zhihu.platform.nativeAccountFilePath
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.darwin.Darwin
 import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSString
 import platform.Foundation.NSUTF8StringEncoding
 import platform.Foundation.create
 import platform.Foundation.dataUsingEncoding
 
-internal class NativeAccountStore {
-    private val accountClient = defaultNativeAccountClient
-    val accountState: StateFlow<ZhihuAccountSession> = defaultNativeAccountState.asStateFlow()
-
-    fun load(): ZhihuAccountSession = accountClient.load()
-
-    fun save(session: ZhihuAccountSession) = accountClient.save(session)
-
-    fun clear() = accountClient.clear()
-
-    fun httpClient(): HttpClient = accountClient.httpClient()
-
-    fun createHttpClient(cookies: MutableMap<String, String>): HttpClient =
-        accountClient.temporaryHttpClient(cookies)
-
-    suspend fun <T> withAuthenticatedClient(
-        block: suspend (client: HttpClient, cookies: Map<String, String>) -> T,
-    ): T = accountClient.withAuthenticatedClient(block)
-
-    suspend fun verifyAndSave(cookies: MutableMap<String, String>): Boolean =
-        accountClient.verifyAndSave(cookies)
-
-    suspend fun verifyMobileAndSave(token: ZhihuMobileLoginToken): Boolean =
-        accountClient.verifyMobileAndSave(token)
-
-    suspend fun refreshAndSaveProfile(): ZhihuAccountSession? =
-        accountClient.refreshAndSaveProfile()
-}
-
-private val defaultNativeAccountState = MutableStateFlow(ZhihuAccountSession())
-
-private val defaultNativeAccountClient by lazy {
-    ZhihuAccountClient(
+internal val defaultNativeAccountStore by lazy {
+    ZhihuAccountStore(
         repository = ZhihuAccountRepository(NativeFileAccountSessionStore()),
-        createClient = { cookies, session, onCookieChanged, _ ->
-            HttpClient(Darwin) {
-                installZhihuCommonClientConfig(
-                    cookies = cookies,
-                    userAgent = session.userAgent,
-                    onCookieChanged = onCookieChanged,
-                )
-            }
-        },
-        onSessionChanged = { defaultNativeAccountState.value = it },
     )
 }
 

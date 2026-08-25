@@ -84,11 +84,15 @@ import com.github.zly2006.zhihu.theme.AndroidThemeSettings
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.AndroidZhihuMain
 import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
-import com.github.zly2006.zhihu.ui.ArticleHost
+import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchStateOwner
+import com.github.zly2006.zhihu.ui.ArticleNavControllerOwner
+import com.github.zly2006.zhihu.ui.ArticleTtsHost
+import com.github.zly2006.zhihu.ui.ClipboardDestinationOwner
+import com.github.zly2006.zhihu.ui.PendingArticleNavigationOwner
 import com.github.zly2006.zhihu.ui.TtsState
 import com.github.zly2006.zhihu.ui.components.getHighestQualityVideoUrl
-import com.github.zly2006.zhihu.ui.subscreens.DeveloperRuntimeInfo
-import com.github.zly2006.zhihu.ui.subscreens.DeveloperRuntimeInfoProvider
+import com.github.zly2006.zhihu.ui.subscreens.DeveloperInfoProvider
+import com.github.zly2006.zhihu.ui.subscreens.DeveloperInfoSnapshot
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.util.ContinuousUsageReminderManager
 import com.github.zly2006.zhihu.util.EmojiManager
@@ -115,8 +119,12 @@ import java.util.concurrent.TimeUnit
 
 class MainActivity :
     ComponentActivity(),
-    ArticleHost,
-    DeveloperRuntimeInfoProvider {
+    ArticleNavControllerOwner,
+    ArticleAnswerSwitchStateOwner,
+    ArticleTtsHost,
+    ClipboardDestinationOwner,
+    PendingArticleNavigationOwner,
+    DeveloperInfoProvider {
     class SharedData : ViewModel() {
         var clipboardDestination: NavDestination? = null
     }
@@ -134,9 +142,11 @@ class MainActivity :
             sharedData.clipboardDestination = value
         }
     lateinit var history: HistoryStorage
-    val httpClient by lazy {
-        AccountData.httpClient(this)
-    }
+    val httpClient
+        get() = com.github.zly2006.zhihu.account
+            .androidZhihuAccountStore(this)
+            .client
+            .httpClient()
 
     private val _ttsState = mutableStateOf(TtsState.Ready)
     var ttsState: TtsState
@@ -341,8 +351,8 @@ class MainActivity :
         super.onStop()
     }
 
-    override val developerRuntimeInfo: DeveloperRuntimeInfo
-        get() = DeveloperRuntimeInfo(
+    override val developerInfo: DeveloperInfoSnapshot
+        get() = DeveloperInfoSnapshot(
             continuousUsageDurationMs = continuousUsageReminderManager.currentElapsedForegroundMs(),
             ttsState = ttsState,
             currentTtsEngineLabel = AndroidReadingPlayerBridge.state.value.engineLabel
@@ -540,10 +550,6 @@ class MainActivity :
         }.getOrNull() ?: runCatching {
             currentEntry?.toRoute<Notification>()
         }.getOrNull()
-    }
-
-    override fun postHistoryDestination(destination: NavDestination) {
-        history.add(destination)
     }
 
     override fun speakArticleText(

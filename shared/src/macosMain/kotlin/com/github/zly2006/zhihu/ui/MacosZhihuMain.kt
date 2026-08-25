@@ -26,6 +26,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -35,7 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
-import com.github.zly2006.zhihu.account.NativeAccountStore
+import com.github.zly2006.zhihu.account.defaultNativeAccountStore
 import com.github.zly2006.zhihu.data.fetchHighestQualityZhihuVideoUrl
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Article
@@ -86,8 +87,9 @@ import kotlinx.coroutines.withContext
 @Composable
 fun MacosZhihuMain(windowChrome: MacosWindowChromeHost? = null) {
     val navController = rememberNavController()
-    val accountStore = remember { NativeAccountStore() }
-    val httpClient = accountStore.httpClient()
+    val accountStore = defaultNativeAccountStore
+    val accountSession by accountStore.sessionState.collectAsState()
+    val httpClient = remember(accountStore, accountSession) { accountStore.client.httpClient() }
     val coroutineScope = rememberCoroutineScope()
     val openExternalUrl = rememberExternalUrlOpener()
     val userMessages = rememberUserMessageSink()
@@ -149,7 +151,7 @@ fun MacosZhihuMain(windowChrome: MacosWindowChromeHost? = null) {
                     else -> return
                 }
                 coroutineScope.launch {
-                    val cookies = accountStore.load().cookies
+                    val cookies = accountStore.session.cookies
                     val videoUrl = withContext(Dispatchers.Default) {
                         runCatching {
                             fetchHighestQualityZhihuVideoUrl(

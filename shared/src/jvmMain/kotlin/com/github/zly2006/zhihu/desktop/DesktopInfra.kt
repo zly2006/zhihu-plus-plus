@@ -17,25 +17,13 @@
 
 package com.github.zly2006.zhihu.desktop
 
-import com.github.zly2006.zhihu.account.ZhihuAccountClient
 import com.github.zly2006.zhihu.account.ZhihuAccountRepository
-import com.github.zly2006.zhihu.account.ZhihuAccountSession
 import com.github.zly2006.zhihu.account.ZhihuAccountSessionStore
-import com.github.zly2006.zhihu.account.ZhihuMobileLoginToken
-import com.github.zly2006.zhihu.data.executeZhihuAuthenticatedRequest
-import com.github.zly2006.zhihu.data.installZhihuCommonClientConfig
+import com.github.zly2006.zhihu.account.ZhihuAccountStore
 import com.github.zly2006.zhihu.navigation.NavDestination
-import com.github.zly2006.zhihu.util.signZhihuFetchRequest
-import io.ktor.client.HttpClient
 import io.ktor.client.call.body
-import io.ktor.client.engine.cio.CIO
-import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.get
-import io.ktor.client.statement.HttpResponse
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import java.awt.Desktop
@@ -51,83 +39,10 @@ import kotlin.io.path.exists
 import kotlin.io.path.readText
 import kotlin.io.path.writeText
 
-typealias DesktopAccountData = ZhihuAccountSession
-
-private val defaultDesktopAccountState = MutableStateFlow(ZhihuAccountSession())
-
-private val defaultDesktopAccountClient by lazy {
-    createDesktopAccountClient(desktopZhihuLegacyAccountFile()) {
-        defaultDesktopAccountState.value = it
-    }
-}
-
-private fun createDesktopAccountClient(
-    accountFile: Path,
-    onSessionChanged: (ZhihuAccountSession) -> Unit,
-): ZhihuAccountClient =
-    ZhihuAccountClient(
-        repository = ZhihuAccountRepository(PathAccountSessionStore(accountFile)),
-        createClient = { cookies, session, onCookieChanged, _ ->
-            createDesktopHttpClient(cookies, session.userAgent, onCookieChanged)
-        },
-        onSessionChanged = onSessionChanged,
+val defaultDesktopAccountStore by lazy {
+    ZhihuAccountStore(
+        repository = ZhihuAccountRepository(PathAccountSessionStore(desktopZhihuLegacyAccountFile())),
     )
-
-private fun createDesktopHttpClient(
-    cookies: MutableMap<String, String>,
-    userAgent: String,
-    onCookieChanged: () -> Unit = {},
-): HttpClient = HttpClient(CIO) {
-    installZhihuCommonClientConfig(
-        cookies = cookies,
-        userAgent = userAgent,
-        onCookieChanged = onCookieChanged,
-    )
-}
-
-class DesktopAccountStore(
-    accountFile: Path = desktopZhihuLegacyAccountFile(),
-) {
-    private val usesDefaultAccountFile = accountFile == desktopZhihuLegacyAccountFile()
-    private val mutableAccountState =
-        if (usesDefaultAccountFile) defaultDesktopAccountState else MutableStateFlow(ZhihuAccountSession())
-    private val accountClient =
-        if (usesDefaultAccountFile) {
-            defaultDesktopAccountClient
-        } else {
-            createDesktopAccountClient(accountFile) {
-                mutableAccountState.value = it
-            }
-        }
-    val accountState: StateFlow<DesktopAccountData> = mutableAccountState.asStateFlow()
-
-    init {
-        accountClient.load()
-    }
-
-    fun load(): DesktopAccountData = accountClient.load()
-
-    fun save(data: DesktopAccountData) = accountClient.save(data)
-
-    fun clear() = accountClient.clear()
-
-    fun httpClient(): HttpClient = accountClient.httpClient()
-
-    fun createHttpClient(cookies: MutableMap<String, String>): HttpClient =
-        accountClient.temporaryHttpClient(cookies)
-
-    suspend fun <T> withAuthenticatedClient(
-        block: suspend (client: HttpClient, cookies: Map<String, String>) -> T,
-    ): T = accountClient.withAuthenticatedClient(block)
-
-    suspend fun verifyAndSave(cookies: MutableMap<String, String>): Boolean =
-        accountClient.verifyAndSave(cookies)
-
-    suspend fun verifyMobileAndSave(token: ZhihuMobileLoginToken): Boolean =
-        accountClient.verifyMobileAndSave(token)
-
-    suspend fun refreshAndSaveProfile(): ZhihuAccountSession? =
-        accountClient.refreshAndSaveProfile()
 }
 
 private class PathAccountSessionStore(
@@ -149,29 +64,11 @@ private class PathAccountSessionStore(
     }
 }
 
-/**
- * 签名后发起认证请求并返回响应的便捷方法。
- */
-suspend fun <T> DesktopAccountStore.signedWithResponse(
-    url: String,
-    block: suspend HttpRequestBuilder.() -> Unit = {},
-    transform: suspend (HttpResponse) -> T,
-): T {
-    val response = executeZhihuAuthenticatedRequest(
-        client = httpClient(),
-        url = url,
-    ) {
-        signZhihuFetchRequest(load().cookies)
-        block()
-    }
-    return transform(response)
-}
-
-suspend fun DesktopAccountStore.saveImageToDownloads(
+suspend fun ZhihuAccountStore.saveImageToDownloads(
     url: String,
     filePrefix: String,
 ): File = withContext(Dispatchers.IO) {
-    val imageBytes = httpClient().get(url).body<ByteArray>()
+    val imageBytes = client.httpClient().get(url).body<ByteArray>()
     val downloadsDir = desktopZhihuDownloadsDir()
     val file = File(downloadsDir, desktopImageFileName(filePrefix, url))
     file.writeBytes(imageBytes)

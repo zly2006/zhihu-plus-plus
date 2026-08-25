@@ -27,7 +27,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toComposeImageBitmap
-import com.github.zly2006.zhihu.desktop.DesktopAccountStore
+import com.github.zly2006.zhihu.desktop.defaultDesktopAccountStore
 import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.ui.components.DesktopRiskControlWebView
 import com.github.zly2006.zhihu.ui.components.DesktopWebviewComp
@@ -46,9 +46,9 @@ actual val supportedLoginMethods: List<LoginMethod> = listOf(
 actual val isLoginRiskControlSupported: Boolean = true
 
 @Composable
-actual fun rememberPhoneLoginHttpClient(cookies: MutableMap<String, String>): HttpClient {
-    val store = remember { DesktopAccountStore() }
-    val httpClient = remember(store) { store.createHttpClient(cookies) }
+actual fun rememberLoginHttpClient(cookies: MutableMap<String, String>): HttpClient {
+    val store = defaultDesktopAccountStore
+    val httpClient = remember(store) { store.client.temporaryHttpClient(cookies) }
     DisposableEffect(httpClient) {
         onDispose(httpClient::close)
     }
@@ -84,35 +84,24 @@ actual fun decodePhoneLoginCaptchaImage(content: String) = runCatching {
 }.getOrNull()
 
 @Composable
-actual fun rememberPhoneLoginTokenVerifier(): PhoneLoginTokenVerifier {
-    val store = remember { DesktopAccountStore() }
-    return remember(store) {
-        PhoneLoginTokenVerifier { token ->
-            if (store.verifyMobileAndSave(token)) store.load().username else null
-        }
-    }
-}
-
-@Composable
 actual fun QrLoginPane(onLoginSuccess: (String) -> Unit) {
-    val store = remember { DesktopAccountStore() }
+    val store = defaultDesktopAccountStore
     SharedQrLoginPane(
-        createClient = store::createHttpClient,
         onLoginSuccess = { cookies ->
-            if (store.verifyAndSave(cookies.toMutableMap())) {
-                onLoginSuccess(store.load().username)
+            if (store.login(cookies.toMutableMap())) {
+                onLoginSuccess(store.session.username)
                 true
             } else {
                 false
             }
         },
-        initialCookies = store.load().cookies,
+        initialCookies = store.session.cookies,
     )
 }
 
 @Composable
 actual fun WebLoginPane(onLoginSuccess: (String) -> Unit) {
-    val store = remember { DesktopAccountStore() }
+    val store = defaultDesktopAccountStore
     val scope = rememberCoroutineScope()
     var currentUrl by remember { mutableStateOf<String?>(null) }
     var isVerifying by remember { mutableStateOf(false) }
@@ -120,15 +109,15 @@ actual fun WebLoginPane(onLoginSuccess: (String) -> Unit) {
     DesktopWebviewComp(
         url = ZHIHU_SIGNIN_URL,
         modifier = Modifier.fillMaxSize(),
-        initialCookies = store.load().cookies,
+        initialCookies = store.session.cookies,
         onPageFinished = { currentUrl = it },
         onCookiesChanged = { cookies ->
             if (currentUrl == ZHIHU_HOME_URL && !isVerifying) {
                 isVerifying = true
                 scope.launch {
                     try {
-                        if (store.verifyAndSave(cookies.toMutableMap())) {
-                            onLoginSuccess(store.load().username)
+                        if (store.login(cookies.toMutableMap())) {
+                            onLoginSuccess(store.session.username)
                         }
                     } finally {
                         isVerifying = false

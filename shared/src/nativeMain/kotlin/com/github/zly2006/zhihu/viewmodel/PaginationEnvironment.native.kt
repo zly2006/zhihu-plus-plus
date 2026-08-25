@@ -19,8 +19,9 @@ package com.github.zly2006.zhihu.viewmodel
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import com.github.zly2006.zhihu.account.NativeAccountStore
 import com.github.zly2006.zhihu.account.NativeHistoryStorage
+import com.github.zly2006.zhihu.account.ZhihuAccountStore
+import com.github.zly2006.zhihu.account.defaultNativeAccountStore
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.FeedDisplayItem
 import com.github.zly2006.zhihu.data.target
@@ -29,11 +30,11 @@ import com.github.zly2006.zhihu.filter.ContentOpenFrom
 import com.github.zly2006.zhihu.filter.TrackedContentIdentity
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.NavDestination
-import com.github.zly2006.zhihu.navigation.requestLoginNavigation
 import com.github.zly2006.zhihu.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.notification.nativeNotificationSettingsStore
 import com.github.zly2006.zhihu.platform.copyNativePlainText
 import com.github.zly2006.zhihu.platform.nativeSettingsStore
+import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
 import com.github.zly2006.zhihu.util.Log
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeywordService
@@ -95,7 +96,7 @@ actual fun rememberPaginationEnvironment(allowGuestAccess: Boolean): PaginationE
     remember(allowGuestAccess) { NativePaginationEnvironment() }
 
 internal class NativePaginationEnvironment(
-    private val accountStore: NativeAccountStore = NativeAccountStore(),
+    private val accountStore: ZhihuAccountStore = defaultNativeAccountStore,
     override val notificationSettingsStore: NotificationSettingsStore = nativeNotificationSettingsStore(),
     private val showFetchFailureMessage: ((String) -> Unit)? = null,
 ) : PaginationEnvironment,
@@ -115,46 +116,15 @@ internal class NativePaginationEnvironment(
         }
     }
 
-    override fun httpClient(): HttpClient = accountStore.httpClient()
+    override fun httpClient(): HttpClient = accountStore.client.httpClient()
 
-    override fun authenticatedCookies(): Map<String, String> = accountStore.load().cookies
+    override fun authenticatedCookies(): Map<String, String> = accountStore.session.cookies
 
     override suspend fun <T> withAuthenticatedClient(
         block: suspend (client: HttpClient, cookies: Map<String, String>) -> T,
-    ): T = accountStore.withAuthenticatedClient(block)
+    ): T = accountStore.client.withAuthenticatedClient(block)
 
-    override fun xsrfToken(): String = accountStore.load().cookies["_xsrf"].orEmpty()
-
-    override suspend fun refreshAccountProfile() {
-        accountStore.refreshAndSaveProfile()
-    }
-
-    override fun requestLogin(): Boolean {
-        requestLoginNavigation()
-        return true
-    }
-
-    override fun clearAccountSession() = accountStore.clear()
-
-    override fun currentAccountId(): String = accountStore
-        .load()
-        .profile
-        ?.id
-        .orEmpty()
-
-    override suspend fun verifyLogin(cookies: Map<String, String>): Boolean =
-        accountStore.verifyAndSave(cookies.toMutableMap())
-
-    override fun saveCookies(cookies: Map<String, String>) {
-        accountStore.save(
-            accountStore.load().copy(
-                login = true,
-                cookies = cookies.toMutableMap(),
-            ),
-        )
-    }
-
-    override fun logout() = clearAccountSession()
+    override fun xsrfToken(): String = accountStore.session.cookies["_xsrf"].orEmpty()
 
     override fun feedDisplaySettings(): FeedDisplaySettings = FeedDisplaySettings(
         qualityFilterMode = QualityFilterMode.OFF,
@@ -287,7 +257,7 @@ internal class NativePaginationEnvironment(
 
     override suspend fun clearAllHistory() {
         historyStorage.clearAndSave()
-        if (accountStore.load().cookies["d_c0"] == null) return
+        if (accountStore.session.cookies["d_c0"] == null) return
         postSigned("https://api.zhihu.com/read_history/batch_del") {
             contentType(KtorContentType.Application.Json)
             setBody(
@@ -306,7 +276,7 @@ internal class NativePaginationEnvironment(
         items: List<CollectionItem>,
         includeImages: Boolean,
         onProgress: suspend (CollectionHtmlExportProgress) -> Unit,
-    ): CollectionHtmlExportResult = error("当前平台暂不支持收藏夹 HTML 压缩包导出")
+    ): CollectionHtmlExportResult = error("$platformName 暂不支持收藏夹 HTML 压缩包导出")
 
     override suspend fun handleCollectionExportFailure(error: Exception) {
         Log.e("CollectionContentViewModel", "Failed to export collection HTML zip", error)

@@ -25,11 +25,11 @@ data class PickedImage(
     val fileName: String?,
 )
 
-/**
- * 返回值为“触发选择图片”的函数。
- *
- * - Android：会弹出系统选择器，选取图片后回调 onPicked。
- * - 其他平台：返回 null（UI 可以隐藏“插入图片”入口）。
- */
+interface ImagePickerLauncher {
+    fun launch()
+}
+
+expect val isImagePickerSupported: Boolean
+
 @Composable
-expect fun rememberImagePickerLauncher(onPicked: (PickedImage) -> Unit): (() -> Unit)?
+expect fun rememberImagePickerLauncher(onPicked: (PickedImage) -> Unit): ImagePickerLauncher

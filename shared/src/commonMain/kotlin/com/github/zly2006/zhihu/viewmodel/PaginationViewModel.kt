@@ -24,8 +24,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.github.zly2006.zhihu.account.ZhihuIdentityClient
-import com.github.zly2006.zhihu.data.AigcVoteClient
 import com.github.zly2006.zhihu.data.AigcVoteVoter
 import com.github.zly2006.zhihu.data.ContentDetailCache
 import com.github.zly2006.zhihu.data.DataHolder
@@ -41,6 +39,7 @@ import com.github.zly2006.zhihu.data.getOrFetchContentDetail
 import com.github.zly2006.zhihu.navigation.AnswerNavigator
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
 import com.github.zly2006.zhihu.ui.ArticleAnswerTransitionDirection
 import com.github.zly2006.zhihu.util.Log
@@ -291,31 +290,6 @@ interface ZhihuApiEnvironment {
     }
 }
 
-interface AccountEnvironment {
-    suspend fun refreshAccountProfile() = Unit
-
-    fun requestLogin(): Boolean = false
-
-    fun clearAccountSession() = Unit
-
-    fun currentAccountId(): String = ""
-
-    fun identityClient(): ZhihuIdentityClient? = null
-
-    fun restartApplication() = Unit
-
-    suspend fun verifyLogin(cookies: Map<String, String>): Boolean = false
-
-    fun saveCookies(cookies: Map<String, String>) = Unit
-
-    fun logout() = clearAccountSession()
-
-    fun requestRelogin(): Boolean {
-        clearAccountSession()
-        return requestLogin()
-    }
-}
-
 suspend fun ZhihuApiEnvironment.fetchContentDetail(destination: NavDestination): DataHolder.Content? =
     runCatching {
         fetchZhihuContentDetail(destination) { url, include ->
@@ -444,7 +418,13 @@ interface ContentOpenEnvironment {
 }
 
 interface AigcVoteEnvironment {
-    fun aigcVoteClient(): AigcVoteClient? = null
+    fun isAigcVoteEnabled(): Boolean = false
+
+    fun aigcVoteHttpClient(): HttpClient = error("AIGC 内容标记客户端不可用")
+
+    fun aigcVoteBaseUrl(): String = ""
+
+    fun aigcVoteClientId(): String = ""
 
     fun aigcVoteVoter(): AigcVoteVoter? = null
 }
@@ -523,7 +503,8 @@ interface ArticleExportEnvironment {
         bitmap: Any,
     ) = Unit
 
-    fun articleImageExportRenderer(loadAssetText: (String) -> String): ArticleImageExportRenderer? = null
+    fun articleImageExportRenderer(loadAssetText: (String) -> String): ArticleImageExportRenderer =
+        error("$platformName 暂不支持文章图片导出")
 }
 
 interface ArticleExportContentEnvironment :
@@ -551,7 +532,6 @@ interface ArticleLoadEnvironment :
 
 interface PaginationEnvironment :
     ZhihuApiEnvironment,
-    AccountEnvironment,
     MobileHomeFeedEnvironment,
     FeedDisplayEnvironment,
     ContentInteractionEnvironment,

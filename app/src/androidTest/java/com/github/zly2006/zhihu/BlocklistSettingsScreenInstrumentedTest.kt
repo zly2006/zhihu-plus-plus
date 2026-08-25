@@ -17,10 +17,8 @@
 
 package com.github.zly2006.zhihu
 
-import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
@@ -33,14 +31,11 @@ import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
 import com.github.zly2006.zhihu.ui.BlocklistSettingsScreen
-import com.github.zly2006.zhihu.ui.BlocklistSettingsTestConfig
 import com.github.zly2006.zhihu.ui.BlocklistSettingsTestTags
-import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeyword
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedQuestionAuthor
-import com.github.zly2006.zhihu.viewmodel.filter.BlockedTopic
-import com.github.zly2006.zhihu.viewmodel.filter.BlockedUser
+import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -54,6 +49,12 @@ class BlocklistSettingsScreenInstrumentedTest {
     @Before
     fun setUp() {
         composeRule.resetAppPreferences()
+        runBlocking {
+            getContentFilterDatabase(composeRule.activity).blockedQuestionAuthorDao().apply {
+                clearAllUsers()
+                seededQuestionAuthors().forEach { insertUser(it) }
+            }
+        }
     }
 
     /**
@@ -68,21 +69,12 @@ class BlocklistSettingsScreenInstrumentedTest {
          *    visibility under swipe cycles, and keep the add FAB visible for this tab.
          * 2. Clicking a row must navigate to that asker's Person destination with the seeded id,
          *    urlToken, and display name.
-         * 3. Individual delete and clear-all actions must call their injected callbacks instead of
-         *    mutating the persistent blocklist.
+         * 3. Individual delete, clear-all, and add actions must mutate the real persistent
+         *    blocklist used by the production screen.
          * 4. The add dialog should support both cancel and confirm paths deterministically.
          */
-        val addedUsers = mutableListOf<Pair<String, String>>()
-        val deletedUserIds = mutableListOf<String>()
-        var clearCount = 0
-        val navigator = setScreen(
-            testConfig = BlocklistSettingsTestConfig(
-                blockedQuestionAuthors = seededQuestionAuthors(),
-                onAddQuestionAuthor = { userId, userName -> addedUsers += userId to userName },
-                onDeleteQuestionAuthor = { user -> deletedUserIds += user.userId },
-                onClearQuestionAuthors = { clearCount++ },
-            ),
-        )
+        val dao = getContentFilterDatabase(composeRule.activity).blockedQuestionAuthorDao()
+        val navigator = setScreen()
 
         composeRule.onNodeWithTag("blocklistSettings:tab:3").performClick()
         composeRule.onNodeWithTag(BlocklistSettingsTestTags.FAB).assertIsDisplayed()
@@ -103,48 +95,28 @@ class BlocklistSettingsScreenInstrumentedTest {
         )
 
         composeRule.onNodeWithTag("blocklistSettings:questionAuthors:delete:offline-asker-1").performClick()
+        composeRule.waitUntil(5_000) { runBlocking { dao.getUserCount() == 1 } }
         composeRule.onNodeWithTag(BlocklistSettingsTestTags.QUESTION_AUTHOR_CLEAR_BUTTON).performClick()
-        assertEquals(listOf("offline-asker-1"), deletedUserIds)
-        assertEquals(1, clearCount)
+        composeRule.waitUntil(5_000) { runBlocking { dao.getUserCount() == 0 } }
 
         composeRule.onNodeWithTag(BlocklistSettingsTestTags.FAB).performClick()
         composeRule.onNodeWithTag(BlocklistSettingsTestTags.USER_DIALOG_DISMISS).performClick()
-        assertTrue(addedUsers.isEmpty())
+        assertEquals(0, runBlocking { dao.getUserCount() })
 
         composeRule.onNodeWithTag(BlocklistSettingsTestTags.FAB).performClick()
         composeRule.onNodeWithTag(BlocklistSettingsTestTags.USER_DIALOG_ID_INPUT).performTextInput("new-asker-id")
         composeRule.onNodeWithTag(BlocklistSettingsTestTags.USER_DIALOG_NAME_INPUT).performTextInput("新提问者")
         composeRule.onNodeWithTag(BlocklistSettingsTestTags.USER_DIALOG_CONFIRM).performClick()
-        assertEquals(listOf("new-asker-id" to "新提问者"), addedUsers)
-    }
-
-    private fun setScreen(testConfig: BlocklistSettingsTestConfig): RecordingNavigator = composeRule.setScreenContent {
-        BlocklistSettingsScreen(
-            testConfig = testConfig,
+        composeRule.waitUntil(5_000) { runBlocking { dao.getUserCount() == 1 } }
+        assertEquals(
+            listOf("new-asker-id" to "新提问者"),
+            runBlocking { dao.getAllUsers().map { it.userId to it.userName } },
         )
     }
 
-    private fun assertTagAbsent(tag: String) {
-        composeRule.onAllNodesWithTag(tag, useUnmergedTree = true).assertCountEquals(0)
+    private fun setScreen(): RecordingNavigator = composeRule.setScreenContent {
+        BlocklistSettingsScreen()
     }
-
-    private fun seededKeywords(): List<BlockedKeyword> = listOf(
-        BlockedKeyword(id = 1, keyword = "标题党"),
-        BlockedKeyword(id = 2, keyword = "剧透", caseSensitive = true),
-    )
-
-    private fun seededUsers(): List<BlockedUser> = listOf(
-        BlockedUser(
-            userId = "offline-user-1",
-            userName = "离线用户一",
-            urlToken = "offline-user-token-1",
-        ),
-        BlockedUser(
-            userId = "offline-user-2",
-            userName = "离线用户二",
-            urlToken = "offline-user-token-2",
-        ),
-    )
 
     private fun seededQuestionAuthors(): List<BlockedQuestionAuthor> = listOf(
         BlockedQuestionAuthor(
@@ -157,10 +129,5 @@ class BlocklistSettingsScreenInstrumentedTest {
             userName = "离线提问者二",
             urlToken = "offline-asker-token-2",
         ),
-    )
-
-    private fun seededTopics(): List<BlockedTopic> = listOf(
-        BlockedTopic(topicId = "topic-1", topicName = "离线主题一"),
-        BlockedTopic(topicId = "topic-2", topicName = "离线主题二"),
     )
 }

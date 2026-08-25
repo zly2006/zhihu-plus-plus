@@ -17,7 +17,7 @@
 
 package com.github.zly2006.zhihu.reading
 
-import com.github.zly2006.zhihu.platform.SettingsStore
+import com.github.zly2006.zhihu.platform.MapSettingsStore
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -554,20 +554,5 @@ class ReadingPlayerTest {
         assertFalse(normalized.shouldLoadComments)
     }
 
-    private fun settingsStore(values: MutableMap<String, Any>) = SettingsStore(
-        getBoolean = { key, default -> values[key] as? Boolean ?: default },
-        putBoolean = { key, value -> values[key] = value },
-        getString = { key, default -> values[key] as? String ?: default },
-        putString = { key, value -> values[key] = value },
-        getStringOrNull = { key -> values[key] as? String },
-        putStringSet = { key, value -> values[key] = value },
-        getStringSet = { key, default -> values[key] as? Set<String> ?: default },
-        getInt = { key, default -> values[key] as? Int ?: default },
-        putInt = { key, value -> values[key] = value },
-        getLong = { key, default -> values[key] as? Long ?: default },
-        putLong = { key, value -> values[key] = value },
-        getFloat = { key, default -> values[key] as? Float ?: default },
-        putFloat = { key, value -> values[key] = value },
-        remove = values::remove,
-    )
+    private fun settingsStore(values: MutableMap<String, Any>) = MapSettingsStore(values)
 }

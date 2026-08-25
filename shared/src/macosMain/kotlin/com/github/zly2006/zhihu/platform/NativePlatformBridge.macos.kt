@@ -35,10 +35,16 @@ internal actual val nativeIsDesktop: Boolean = true
 
 actual val platformName: String = "macOS"
 
+actual val isAigcVoteSupported: Boolean = false
+
 @Composable
 @OptIn(ExperimentalForeignApi::class)
-actual fun rememberExternalUrlOpener(): (String) -> Unit = remember {
-    { url -> NSURL.URLWithString(url)?.let(NSWorkspace.sharedWorkspace::openURL) }
+actual fun rememberExternalUrlOpener(): ExternalUrlOpener = remember {
+    object : ExternalUrlOpener {
+        override fun invoke(url: String) {
+            NSURL.URLWithString(url)?.let(NSWorkspace.sharedWorkspace::openURL)
+        }
+    }
 }
 
 @OptIn(ExperimentalForeignApi::class)

@@ -27,9 +27,11 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.data.Collection
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.resetAppPreferences
+import com.github.zly2006.zhihu.test.seedViewModel
 import com.github.zly2006.zhihu.test.setScreenContent
 import com.github.zly2006.zhihu.ui.CollectionBrowseScreen
 import com.github.zly2006.zhihu.ui.CollectionScreen
+import com.github.zly2006.zhihu.viewmodel.CollectionsViewModel
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -110,10 +112,10 @@ class CollectionScreenInstrumentedTest {
             id = "direct-deletable",
             title = "直达待删除收藏夹",
         )
+        seedCollectionsViewModel(listOf(defaultCollection, deletableCollection))
         composeRule.setScreenContent {
             CollectionBrowseScreen(
-                urlToken = "offline-test-user",
-                testCollections = listOf(defaultCollection, deletableCollection),
+                urlToken = null,
             )
         }
 
@@ -137,11 +139,19 @@ class CollectionScreenInstrumentedTest {
             .assertIsDisplayed()
     }
 
-    private fun setCollectionScreen(testCollections: List<Collection>) = composeRule.setScreenContent {
-        CollectionScreen(
-            urlToken = "offline-test-user",
-            testCollections = testCollections,
-        )
+    private fun setCollectionScreen(collections: List<Collection>) {
+        seedCollectionsViewModel(collections)
+        composeRule.setScreenContent {
+            CollectionScreen(
+                urlToken = null,
+            )
+        }
+    }
+
+    private fun seedCollectionsViewModel(collections: List<Collection>) {
+        composeRule.seedViewModel<CollectionsViewModel> {
+            CollectionsViewModel("").apply { allData.addAll(collections) }
+        }
     }
 
     private fun seedCollections(count: Int): List<Collection> = List(count) { index ->

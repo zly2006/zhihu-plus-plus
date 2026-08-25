@@ -60,12 +60,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.time.Clock
 
-fun interface PhoneLoginTokenVerifier {
-    suspend fun verify(token: ZhihuMobileLoginToken): String?
-}
-
 @Composable
-expect fun rememberPhoneLoginHttpClient(cookies: MutableMap<String, String>): HttpClient
+expect fun rememberLoginHttpClient(cookies: MutableMap<String, String>): HttpClient
 
 @Composable
 expect fun rememberPhoneLoginDeviceInfo(): ZhihuPhoneLoginDeviceInfo
@@ -73,14 +69,11 @@ expect fun rememberPhoneLoginDeviceInfo(): ZhihuPhoneLoginDeviceInfo
 expect fun decodePhoneLoginCaptchaImage(content: String): ImageBitmap?
 
 @Composable
-expect fun rememberPhoneLoginTokenVerifier(): PhoneLoginTokenVerifier
-
-@Composable
 fun PhoneLoginPane(onLoginSuccess: (String) -> Unit) {
     val cookies = remember { mutableMapOf<String, String>() }
-    val httpClient = rememberPhoneLoginHttpClient(cookies)
+    val httpClient = rememberLoginHttpClient(cookies)
     val deviceInfo = rememberPhoneLoginDeviceInfo()
-    val tokenVerifier = rememberPhoneLoginTokenVerifier()
+    val accountStore = rememberZhihuAccountStore()
     val loginClient = remember(httpClient, deviceInfo) {
         ZhihuPhoneLoginClient(
             httpClient = httpClient,
@@ -345,9 +338,8 @@ fun PhoneLoginPane(onLoginSuccess: (String) -> Unit) {
                     errorMessage = null
                     try {
                         val token = loginClient.signIn(phoneNumber, digits)
-                        val username = tokenVerifier.verify(token)
-                        if (username != null) {
-                            onLoginSuccess(username)
+                        if (accountStore.login(token)) {
+                            onLoginSuccess(accountStore.session.username)
                         } else {
                             errorMessage = "登录凭证验证失败，请重试"
                         }

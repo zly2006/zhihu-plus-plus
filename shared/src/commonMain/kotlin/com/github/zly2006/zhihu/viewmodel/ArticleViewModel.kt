@@ -26,9 +26,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.github.zly2006.zhihu.data.AigcVoteFlagRequest
+import com.github.zly2006.zhihu.data.AigcVoteFlagResponse
+import com.github.zly2006.zhihu.data.AigcVoteFlagStatusResponse
 import com.github.zly2006.zhihu.data.AigcVoteFlagSubmission
 import com.github.zly2006.zhihu.data.AigcVoteNamedVoter
 import com.github.zly2006.zhihu.data.AigcVoteReadEvent
+import com.github.zly2006.zhihu.data.AigcVoteReadEventsRequest
+import com.github.zly2006.zhihu.data.AigcVoteReadEventsResponse
 import com.github.zly2006.zhihu.data.AigcVoteReadEvidence
 import com.github.zly2006.zhihu.data.Collection
 import com.github.zly2006.zhihu.data.CollectionResponse
@@ -46,6 +51,7 @@ import com.github.zly2006.zhihu.navigation.CollectionAnswerNavigator
 import com.github.zly2006.zhihu.navigation.PaginationInfoNavigator
 import com.github.zly2006.zhihu.navigation.QuestionAnswerNavigator
 import com.github.zly2006.zhihu.platform.UserMessageSink
+import com.github.zly2006.zhihu.platform.isAigcVoteSupported
 import com.github.zly2006.zhihu.util.ArticleExportComment
 import com.github.zly2006.zhihu.util.Log
 import com.github.zly2006.zhihu.util.ZhidaSummarySsePayload
@@ -66,6 +72,8 @@ import io.ktor.client.call.body
 import io.ktor.client.request.accept
 import io.ktor.client.request.get
 import io.ktor.client.request.header
+import io.ktor.client.request.parameter
+import io.ktor.client.request.post
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsChannel
@@ -96,7 +104,9 @@ import kotlin.time.Clock
 class ArticleViewModel(
     private val article: Article,
     val httpClient: HttpClient?,
-    private val userMessages: UserMessageSink = UserMessageSink(showShortMessage = {}),
+    private val userMessages: UserMessageSink = object : UserMessageSink {
+        override fun showShortMessage(message: String) = Unit
+    },
     registerOnPause: (((() -> Unit) -> Unit))? = null,
 ) : ViewModel() {
     var permissionRequestCount by mutableIntStateOf(0)
@@ -646,21 +656,28 @@ class ArticleViewModel(
     fun isAigcFlagEvidenceReady(): Boolean = currentAigcReadEvidence().isEligibleForCredit()
 
     fun loadAigcFlagStatus(environment: AigcVoteEnvironment) {
-        val client = environment.aigcVoteClient()
-        aigcVoteAvailable = client != null
+        aigcVoteAvailable = isAigcVoteSupported && environment.isAigcVoteEnabled()
         val voter = environment.aigcVoteVoter()
         aigcVoterName = voter?.name.orEmpty()
-        if (client == null) return
+        if (!aigcVoteAvailable) return
+        val client = environment.aigcVoteHttpClient()
 
         viewModelScope.launch {
             aigcVoteLoading = true
             aigcVoteError = null
             try {
-                val response = client.getFlagStatus(
-                    contentType = aigcContentType(),
-                    contentId = article.id.toString(),
-                    voter = voter,
-                )
+                val response = client
+                    .get(
+                        "${environment.aigcVoteBaseUrl().trimEnd('/')}/v1/contents/" +
+                            "${aigcContentType()}/${article.id}/aigc-flag",
+                    ) {
+                        parameter("client_id", environment.aigcVoteClientId())
+                        voter?.let {
+                            parameter("voter_id", it.id)
+                            parameter("voter_name", it.name)
+                            it.urlToken?.takeIf(String::isNotBlank)?.let { token -> parameter("voter_url_token", token) }
+                        }
+                    }.body<AigcVoteFlagStatusResponse>()
                 aigcFlagged = response.myFlagged
                 aigcVoteCredit = response.credit
                 aigcVoteProgress = response.progress
@@ -681,9 +698,9 @@ class ArticleViewModel(
     }
 
     fun syncAigcReadEventIfEligible(environment: AigcVoteEnvironment) {
-        val client = environment.aigcVoteClient()
-        aigcVoteAvailable = client != null
-        if (client == null || aigcReadSyncStarted || content.isBlank()) return
+        aigcVoteAvailable = isAigcVoteSupported && environment.isAigcVoteEnabled()
+        if (!aigcVoteAvailable || aigcReadSyncStarted || content.isBlank()) return
+        val client = environment.aigcVoteHttpClient()
 
         val evidence = currentAigcReadEvidence()
         val contentUpdatedAt = currentContentUpdatedAt()
@@ -692,17 +709,20 @@ class ArticleViewModel(
 
         viewModelScope.launch {
             try {
-                val response = client.syncReadEvent(
-                    AigcVoteReadEvent(
-                        contentType = aigcContentType(),
-                        contentId = article.id.toString(),
-                        title = title,
-                        authorHash = currentAuthorHash(),
-                        contentHtml = content,
-                        contentUpdatedAt = contentUpdatedAt,
-                        evidence = evidence,
-                    ),
+                val event = AigcVoteReadEvent(
+                    contentType = aigcContentType(),
+                    contentId = article.id.toString(),
+                    title = title,
+                    authorHash = currentAuthorHash(),
+                    contentHtml = content,
+                    contentUpdatedAt = contentUpdatedAt,
+                    evidence = evidence,
                 )
+                val response = client
+                    .post("${environment.aigcVoteBaseUrl().trimEnd('/')}/v1/read-events:batch") {
+                        contentType(ContentType.Application.Json)
+                        setBody(AigcVoteReadEventsRequest(environment.aigcVoteClientId(), listOf(event.toRequestEvent())))
+                    }.body<AigcVoteReadEventsResponse>()
                 aigcVoteCredit = response.credit
                 aigcVoteProgress = response.progress
                 aigcVoteCap = response.cap
@@ -718,13 +738,13 @@ class ArticleViewModel(
     }
 
     fun submitAigcFlag(environment: AigcVoteEnvironment) {
-        val client = environment.aigcVoteClient()
-        aigcVoteAvailable = client != null
-        if (client == null) {
+        aigcVoteAvailable = isAigcVoteSupported && environment.isAigcVoteEnabled()
+        if (!aigcVoteAvailable) {
             aigcVoteError = "未配置 AIGC 投票服务"
             userMessages.showShortMessage(aigcVoteError!!)
             return
         }
+        val client = environment.aigcVoteHttpClient()
         if (content.isBlank()) {
             aigcVoteError = "正文尚未加载完成"
             userMessages.showShortMessage(aigcVoteError!!)
@@ -752,18 +772,34 @@ class ArticleViewModel(
             aigcVoteLoading = true
             aigcVoteError = null
             try {
-                val response = client.submitFlag(
-                    AigcVoteFlagSubmission(
-                        contentType = aigcContentType(),
-                        contentId = article.id.toString(),
-                        voter = voter,
-                        title = title,
-                        authorHash = currentAuthorHash(),
-                        contentHtml = content,
-                        contentUpdatedAt = currentContentUpdatedAt(),
-                        evidence = currentAigcReadEvidence(),
-                    ),
+                val submission = AigcVoteFlagSubmission(
+                    contentType = aigcContentType(),
+                    contentId = article.id.toString(),
+                    voter = voter,
+                    title = title,
+                    authorHash = currentAuthorHash(),
+                    contentHtml = content,
+                    contentUpdatedAt = currentContentUpdatedAt(),
+                    evidence = currentAigcReadEvidence(),
                 )
+                val response = client
+                    .post(
+                        "${environment.aigcVoteBaseUrl().trimEnd('/')}/v1/contents/" +
+                            "${submission.contentType}/${submission.contentId}/aigc-flag",
+                    ) {
+                        contentType(ContentType.Application.Json)
+                        setBody(
+                            AigcVoteFlagRequest(
+                                clientId = environment.aigcVoteClientId(),
+                                voter = submission.voter,
+                                title = submission.title,
+                                authorHash = submission.authorHash,
+                                contentHtml = submission.contentHtml,
+                                contentUpdatedAt = submission.contentUpdatedAt,
+                                evidence = submission.evidence.toFlagEvidence(),
+                            ),
+                        )
+                    }.body<AigcVoteFlagResponse>()
                 aigcFlagged = response.myFlagged
                 aigcVoteCredit = response.credit
                 aigcCreditBypassAvailable = response.creditBypassAvailable
@@ -976,7 +1012,7 @@ class ArticleViewModel(
                 Log.e("ArticleViewModel", "Failed to load export asset: $fileName", e)
                 ""
             }
-        }!!
+        }
         try {
             preparedWebView = renderer.prepareExportWebView(
                 htmlContent = createHtmlContent(

@@ -19,10 +19,12 @@ package com.github.zly2006.zhihu.ui.subscreens
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import com.github.zly2006.zhihu.account.NativeAccountStore
+import com.github.zly2006.zhihu.account.ZhihuAccountStore
+import com.github.zly2006.zhihu.account.defaultNativeAccountStore
 import com.github.zly2006.zhihu.platform.nativeAppVersionName
 import com.github.zly2006.zhihu.platform.nativeBundledResourcePath
 import com.github.zly2006.zhihu.platform.nativeIsDesktop
+import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.NativeArticleSpeechController
@@ -38,42 +40,55 @@ import kotlinx.cinterop.readBytes
 import kotlinx.cinterop.reinterpret
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import platform.Foundation.NSFileManager
 
-private const val PREF_AUTO_CHECK_UPDATES = "autoCheckUpdates"
+actual val isIdentityManagementSupported: Boolean = false
+
 private const val PREF_SKIPPED_VERSION = "skippedVersion"
 
 private val nativeSystemUpdateState = MutableStateFlow<SystemUpdateState>(SystemUpdateState.NoUpdate)
 
 @Composable
-actual fun rememberSystemUpdateRuntime(): SystemUpdateRuntime {
+actual fun rememberSystemUpdateState(): StateFlow<SystemUpdateState> = nativeSystemUpdateState
+
+@Composable
+actual fun rememberSystemUpdateChecker(): SystemUpdateChecker {
     val settings = rememberSettingsStore()
-    val accountStore = remember { NativeAccountStore() }
-    val openExternalUrl = rememberExternalUrlOpener()
-    return remember(settings, accountStore, openExternalUrl) {
-        SystemUpdateRuntime(
-            state = nativeSystemUpdateState,
-            autoCheckEnabled = { settings.getBoolean(PREF_AUTO_CHECK_UPDATES, true) },
-            setAutoCheckEnabled = { enabled ->
-                settings.putBoolean(PREF_AUTO_CHECK_UPDATES, enabled)
-                if (!enabled) {
-                    nativeSystemUpdateState.value = SystemUpdateState.NoUpdate
-                }
-            },
-            checkForUpdate = {
+    val accountStore = defaultNativeAccountStore
+    return remember(settings, accountStore) {
+        object : SystemUpdateChecker {
+            override suspend fun check() {
                 checkNativeUpdate(
                     accountStore = accountStore,
                     githubToken = settings.getStringOrNull("githubToken")?.takeIf { it.isNotBlank() },
                     checkNightly = settings.getBoolean("checkNightlyUpdates", false),
                     skippedVersion = settings.getStringOrNull(PREF_SKIPPED_VERSION),
                 )
-            },
-            skipVersion = { version ->
+            }
+        }
+    }
+}
+
+@Composable
+actual fun rememberSystemUpdateVersionSkipper(): SystemUpdateVersionSkipper {
+    val settings = rememberSettingsStore()
+    return remember(settings) {
+        object : SystemUpdateVersionSkipper {
+            override fun skip(version: String) {
                 settings.putString(PREF_SKIPPED_VERSION, version)
                 nativeSystemUpdateState.value = SystemUpdateState.Latest
-            },
-            resetToNoUpdate = { nativeSystemUpdateState.value = SystemUpdateState.NoUpdate },
-            downloadUpdate = { url ->
+            }
+        }
+    }
+}
+
+@Composable
+actual fun rememberSystemUpdateDownloader(): SystemUpdateDownloader {
+    val openExternalUrl = rememberExternalUrlOpener()
+    return remember(openExternalUrl) {
+        object : SystemUpdateDownloader {
+            override suspend fun download(url: String) {
                 try {
                     require(url.isNotBlank()) { "下载链接为空" }
                     openExternalUrl(url)
@@ -82,18 +97,32 @@ actual fun rememberSystemUpdateRuntime(): SystemUpdateRuntime {
                 } catch (error: Exception) {
                     nativeSystemUpdateState.value = SystemUpdateState.Error(error.message ?: "无法打开浏览器")
                 }
-            },
-            installDownloadedUpdate = {
-                nativeSystemUpdateState.value = SystemUpdateState.Error("桌面端不支持 APK 更新安装")
-            },
-            setError = { message -> nativeSystemUpdateState.value = SystemUpdateState.Error(message) },
-            supportsApkInstall = false,
-        )
+            }
+        }
     }
 }
 
+@Composable
+actual fun rememberDownloadedSystemUpdateInstaller(): DownloadedSystemUpdateInstaller = remember {
+    object : DownloadedSystemUpdateInstaller {
+        override suspend fun install() {
+            nativeSystemUpdateState.value = SystemUpdateState.Error("$platformName 暂不支持 APK 更新安装")
+        }
+    }
+}
+
+actual fun resetSystemUpdateState() {
+    nativeSystemUpdateState.value = SystemUpdateState.NoUpdate
+}
+
+actual fun setSystemUpdateError(message: String) {
+    nativeSystemUpdateState.value = SystemUpdateState.Error(message)
+}
+
+actual val isApkUpdateInstallSupported: Boolean = false
+
 private suspend fun checkNativeUpdate(
-    accountStore: NativeAccountStore,
+    accountStore: ZhihuAccountStore,
     githubToken: String?,
     checkNightly: Boolean,
     skippedVersion: String?,
@@ -101,14 +130,14 @@ private suspend fun checkNativeUpdate(
     try {
         nativeSystemUpdateState.value = SystemUpdateState.Checking
         val currentVersion = SchematicVersion.fromString(nativeAppVersionName)
-        var latestResponse = fetchLatestZhihuRelease(accountStore.httpClient(), githubToken)
+        var latestResponse = fetchLatestZhihuRelease(accountStore.client.httpClient(), githubToken)
         var latestVersion = latestResponse.tagName.takeIf { it.isNotBlank() }?.let(SchematicVersion::fromString)
         var isNightly = false
         var releaseNotes = latestResponse.body?.let(::extractGithubReleaseNotes)
 
         if (checkNightly) {
             try {
-                val nightlyResponse = fetchNightlyZhihuRelease(accountStore.httpClient(), githubToken)
+                val nightlyResponse = fetchNightlyZhihuRelease(accountStore.client.httpClient(), githubToken)
                 if (nightlyResponse.tagName == "nightly") {
                     latestResponse = nightlyResponse
                     latestVersion = SchematicVersion(
@@ -155,8 +184,8 @@ private suspend fun checkNativeUpdate(
 }
 
 @Composable
-actual fun rememberDeveloperRuntimeInfo(): DeveloperRuntimeInfo =
-    DeveloperRuntimeInfo(
+actual fun rememberDeveloperInfo(): DeveloperInfoSnapshot =
+    DeveloperInfoSnapshot(
         networkStatus = if (nativeIsDesktop) {
             "网络状态：桌面端使用系统网络"
         } else {
@@ -187,8 +216,12 @@ private fun loadNativeAboutLibrariesJson(): String? {
 @Composable
 actual fun rememberShowFullVariantLicenses(): Boolean = false
 
+actual val isWebViewCustomFontSupported: Boolean = false
+
 @Composable
 actual fun WebViewCustomFontSettings(
     customFontName: String?,
     onCustomFontNameChange: (String?) -> Unit,
-) = Unit
+) {
+    error("$platformName 暂不支持 WebView 自定义字体设置")
+}

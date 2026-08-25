@@ -66,7 +66,6 @@ import kotlinx.coroutines.launch
 @Composable
 fun CollectionScreen(
     urlToken: String?,
-    testCollections: List<Collection>? = null,
     showBackButton: Boolean = true,
     isActive: Boolean = true,
 ) {
@@ -78,13 +77,13 @@ fun CollectionScreen(
     val userMessages = rememberUserMessageSink()
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
-    val useTestCollections = testCollections != null || urlToken == null
-    val collections = testCollections ?: viewModel.allData
+    val useLocalCollections = urlToken == null
+    val collections = viewModel.allData
     var showCreateCollectionDialog by remember { mutableStateOf(false) }
     var collectionPendingDeletion by remember { mutableStateOf<Collection?>(null) }
 
     LaunchedEffect(isActive) {
-        if (shouldRefreshCollectionDataOnActivation(isActive, useTestCollections)) {
+        if (shouldRefreshCollectionDataOnActivation(isActive, useLocalCollections)) {
             viewModel.refresh(environment)
         }
     }
@@ -128,11 +127,11 @@ fun CollectionScreen(
         PaginatedList(
             items = collections,
             onLoadMore = {
-                if (!useTestCollections) {
+                if (!useLocalCollections) {
                     viewModel.loadMore(environment)
                 }
             },
-            isEnd = { useTestCollections || viewModel.isEnd },
+            isEnd = { useLocalCollections || viewModel.isEnd },
             listState = listState,
             modifier = Modifier
                 .fillMaxSize()

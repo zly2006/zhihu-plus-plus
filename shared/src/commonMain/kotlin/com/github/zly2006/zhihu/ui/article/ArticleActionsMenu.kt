@@ -61,6 +61,7 @@ import com.github.zly2006.zhihu.reading.ReadingQueueItem
 import com.github.zly2006.zhihu.reading.ReadingQueueSourceRegistry
 import com.github.zly2006.zhihu.reading.ReadingStartRequest
 import com.github.zly2006.zhihu.reading.hasReadableFields
+import com.github.zly2006.zhihu.reading.isReadingPlayerSupported
 import com.github.zly2006.zhihu.reading.loadReadingPlaybackSpeed
 import com.github.zly2006.zhihu.reading.loadReadingPreferences
 import com.github.zly2006.zhihu.reading.rememberReadingPlayerController
@@ -212,7 +213,7 @@ fun ArticleActionsMenu(
     fun Content() {
         MenuActionButton(
             icon = {
-                if (readingPlayer.isSupported && hasReadingSession) {
+                if (isReadingPlayerSupported && hasReadingSession) {
                     Icon(
                         Icons.AutoMirrored.Filled.VolumeOff,
                         contentDescription = null,
@@ -226,7 +227,7 @@ fun ArticleActionsMenu(
                         )
 
                         else -> Icon(
-                            if (!readingPlayer.isSupported && ttsState.isSpeaking) {
+                            if (!isReadingPlayerSupported && ttsState.isSpeaking) {
                                 Icons.AutoMirrored.Filled.VolumeOff
                             } else {
                                 Icons.AutoMirrored.Filled.VolumeUp
@@ -237,21 +238,21 @@ fun ArticleActionsMenu(
                     }
                 }
             },
-            text = if (readingPlayer.isSupported) {
+            text = if (isReadingPlayerSupported) {
                 if (hasReadingSession) "停止朗读" else "开始连续朗读"
             } else if (ttsState.isSpeaking) {
                 "停止朗读"
             } else {
                 "开始朗读"
             },
-            enabled = if (readingPlayer.isSupported) {
+            enabled = if (isReadingPlayerSupported) {
                 hasReadingSession || readingItem.hasReadableFields(readingPreferences)
             } else {
                 ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)
             },
             onClick = {
                 onDismissRequest()
-                if (readingPlayer.isSupported) {
+                if (isReadingPlayerSupported) {
                     if (hasReadingSession) {
                         readingPlayer.stop()
                     } else {
