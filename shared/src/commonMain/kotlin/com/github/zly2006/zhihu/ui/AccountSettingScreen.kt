@@ -50,7 +50,6 @@ import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SwitchAccount
@@ -129,7 +128,7 @@ const val ACCOUNT_SETTINGS_IDENTITY_MANAGEMENT_TAG = "accountSettings.identityMa
 /**
  * 账号与设置入口页。
  *
- * 已登录时顶部展示头像、昵称、扫码登录和退出登录，Duo3 账号入口迁移开启后会额外展示收藏夹、关注订阅、通知和历史等快捷块；
+ * 已登录时顶部展示头像、昵称、重新登录和退出登录，Duo3 账号入口迁移开启后会额外展示收藏夹、关注订阅、通知和历史等快捷块；
  * 未登录时只展示登录入口。下方设置区是外观、推荐过滤、系统更新、开发者选项和开源许可的统一入口，其中开发者选项通过连续点击版本号开启。
  *
  * 这个页面既可以作为底部栏 tab 展示，也可以作为主页头像弹出的账号面板内容使用，所以 [innerPadding]、[onDismissRequest] 和
@@ -148,7 +147,7 @@ fun AccountSettingScreen(
     val navigator = LocalNavigator.current
     val environment = rememberPaginationEnvironment(allowGuestAccess = false)
     val accountState = rememberAccountSettingsAccountState()
-    val requestQrLoginScan = rememberAccountQrLoginRequester()
+    val requestLogin = rememberAccountLoginRequester()
     val settings = rememberSettingsStore()
     val copyPlainText = rememberPlainTextClipboard()
     val openSystemUrl = rememberSystemUrlOpener()
@@ -236,13 +235,13 @@ fun AccountSettingScreen(
                     Spacer(Modifier.weight(1f))
                     FilledTonalIconButton(
                         onClick = {
-                            requestQrLoginScan()
+                            requestLogin()
                         },
                         modifier = Modifier.size(40.dp),
                     ) {
                         Icon(
-                            imageVector = Icons.Default.QrCodeScanner,
-                            contentDescription = "扫码登录",
+                            imageVector = Icons.AutoMirrored.Filled.Login,
+                            contentDescription = "重新登录",
                             modifier = Modifier.size(24.dp),
                         )
                     }

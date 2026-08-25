@@ -15,25 +15,15 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.github.zly2006.zhihu.desktop
+package com.github.zly2006.zhihu.navigation
 
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.window.Window
-import androidx.compose.ui.window.application
-import com.github.zly2006.zhihu.theme.ZhihuTheme
-import com.github.zly2006.zhihu.ui.DesktopZhihuMain
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.receiveAsFlow
 
-fun main() {
-    System.setProperty("java.awt.im.style", "below-the-spot")
-    application {
-        Window(
-            onCloseRequest = ::exitApplication,
-            title = "Zhihu++",
-            icon = painterResource("desktop-icon.png"),
-        ) {
-            ZhihuTheme {
-                DesktopZhihuMain()
-            }
-        }
-    }
+private val loginNavigationRequests = Channel<Unit>(Channel.UNLIMITED)
+
+internal val loginNavigationRequestFlow = loginNavigationRequests.receiveAsFlow()
+
+fun requestLoginNavigation() {
+    check(loginNavigationRequests.trySend(Unit).isSuccess) { "Login navigation is unavailable" }
 }

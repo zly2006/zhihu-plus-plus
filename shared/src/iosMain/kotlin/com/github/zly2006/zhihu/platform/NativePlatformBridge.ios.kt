@@ -31,17 +31,29 @@ import platform.UIKit.UIPasteboard
 
 internal actual val nativeIsDesktop: Boolean = false
 
+actual val platformName: String = "iOS"
+
 @Composable
 @OptIn(ExperimentalForeignApi::class)
 actual fun rememberExternalUrlOpener(): (String) -> Unit = remember {
     { url -> NSURL.URLWithString(url)?.let(UIApplication.sharedApplication::openURL) }
 }
 
+@Composable
+actual fun rememberImageGalleryOpener(): (List<String>, Int) -> Unit {
+    val openExternalUrl = rememberExternalUrlOpener()
+    return remember(openExternalUrl) {
+        { urls, initialIndex ->
+            if (urls.isNotEmpty()) {
+                urls[initialIndex.coerceIn(0, urls.lastIndex)].let(openExternalUrl)
+            }
+        }
+    }
+}
+
 internal actual fun copyNativePlainText(text: String) {
     UIPasteboard.generalPasteboard.string = text
 }
-
-internal actual fun requestNativeQrLogin() = Unit
 
 @OptIn(ExperimentalForeignApi::class)
 internal actual fun nativeAccountFilePath(): String = "${nativeAppPrivateDirectoryPath()}/account.json"

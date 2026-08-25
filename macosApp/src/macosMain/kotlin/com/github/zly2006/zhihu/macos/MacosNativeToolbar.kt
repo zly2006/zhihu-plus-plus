@@ -26,17 +26,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
-import com.github.zly2006.zhihu.ui.MacosWindowChromeState
 import kotlinx.cinterop.ObjCAction
 import platform.AppKit.NSImage
-import platform.AppKit.NSSegmentedControl
 import platform.AppKit.NSToolbar
 import platform.AppKit.NSToolbarDelegateProtocol
 import platform.AppKit.NSToolbarFlexibleSpaceItemIdentifier
 import platform.AppKit.NSToolbarItem
-import platform.AppKit.NSToolbarItemGroup
-import platform.AppKit.NSToolbarItemGroupSelectionModeMomentary
-import platform.AppKit.NSToolbarItemGroupSelectionModeSelectOne
 import platform.AppKit.NSToolbarItemVisibilityPriorityHigh
 import platform.AppKit.NSWindow
 import platform.AppKit.NSWindowToolbarStyle.NSWindowToolbarStyleUnified
@@ -45,46 +40,27 @@ import platform.Foundation.NSSelectorFromString
 import platform.darwin.NSObject
 
 private const val TOOLBAR_IDENTIFIER = "com.github.zly2006.zhihu.macos.toolbar"
-private const val NAVIGATION_ITEM_IDENTIFIER = "com.github.zly2006.zhihu.macos.toolbar.navigation"
-private const val ACTIONS_ITEM_IDENTIFIER = "com.github.zly2006.zhihu.macos.toolbar.actions"
 
-internal data class MacosToolbarNavigationItem(
-    val destinationName: String,
+internal data class MacosNativeToolbarAction(
+    val identifier: String,
     val label: String,
+    val systemSymbolName: String,
+    val action: () -> Unit,
 )
-
-internal fun macosToolbarNavigationItems(destinationKeys: List<String>): List<MacosToolbarNavigationItem> {
-    val labels = mapOf(
-        "Home" to "首页",
-        "Follow" to "关注",
-        "HotList" to "热榜",
-        "Daily" to "日报",
-        "OnlineHistory" to "历史",
-        "MyCollections" to "收藏",
-        "Account" to "账号",
-    )
-    return destinationKeys.mapNotNull { key ->
-        labels[key]?.let { label -> MacosToolbarNavigationItem(key, label) }
-    }
-}
 
 @Composable
 internal fun MacosNativeToolbar(
     window: NSWindow,
-    chromeState: MacosWindowChromeState,
+    leadingActions: List<MacosNativeToolbarAction>,
+    trailingActions: List<MacosNativeToolbarAction>,
 ) {
-    val destinations = macosToolbarNavigationItems(chromeState.destinationKeys)
-    if (destinations.isEmpty()) return
-
-    val controller = remember(window, destinations) {
-        MacosNativeToolbarController(destinations)
+    val actionIdentifiers = (leadingActions + trailingActions).map(MacosNativeToolbarAction::identifier)
+    val controller = remember(window, actionIdentifiers) {
+        MacosNativeToolbarController(leadingActions, trailingActions)
     }
 
     SideEffect {
-        controller.onNavigate = chromeState::navigate
-        controller.onSearch = chromeState::search
-        controller.onNotifications = chromeState::notifications
-        controller.updateSelectedDestination(chromeState.selectedDestinationName)
+        controller.updateActions(leadingActions, trailingActions)
     }
 
     DisposableEffect(window, controller) {
@@ -112,15 +88,12 @@ internal fun MacosNativeToolbar(
 }
 
 internal class MacosNativeToolbarController(
-    private val destinations: List<MacosToolbarNavigationItem>,
+    leadingActions: List<MacosNativeToolbarAction>,
+    trailingActions: List<MacosNativeToolbarAction>,
 ) : NSObject(),
     NSToolbarDelegateProtocol {
-    var onNavigate: (String) -> Unit = {}
-    var onSearch: () -> Unit = {}
-    var onNotifications: () -> Unit = {}
-
-    private var selectedDestinationName: String? = null
-    private var navigationGroup: NSToolbarItemGroup? = null
+    private var leadingActions = leadingActions
+    private var trailingActions = trailingActions
 
     val toolbar = NSToolbar(TOOLBAR_IDENTIFIER).apply {
         delegate = this@MacosNativeToolbarController
@@ -129,11 +102,13 @@ internal class MacosNativeToolbarController(
         showsBaselineSeparator = false
     }
 
-    override fun toolbarDefaultItemIdentifiers(toolbar: NSToolbar): List<*> = listOf(
-        NAVIGATION_ITEM_IDENTIFIER,
-        NSToolbarFlexibleSpaceItemIdentifier,
-        ACTIONS_ITEM_IDENTIFIER,
-    )
+    override fun toolbarDefaultItemIdentifiers(toolbar: NSToolbar): List<*> = buildList {
+        addAll(leadingActions.map(MacosNativeToolbarAction::identifier))
+        if (leadingActions.isNotEmpty() && trailingActions.isNotEmpty()) {
+            add(NSToolbarFlexibleSpaceItemIdentifier)
+        }
+        addAll(trailingActions.map(MacosNativeToolbarAction::identifier))
+    }
 
     override fun toolbarAllowedItemIdentifiers(toolbar: NSToolbar): List<*> = toolbarDefaultItemIdentifiers(toolbar)
 
@@ -141,87 +116,31 @@ internal class MacosNativeToolbarController(
         toolbar: NSToolbar,
         itemForItemIdentifier: String?,
         willBeInsertedIntoToolbar: Boolean,
-    ): NSToolbarItem? = when (itemForItemIdentifier) {
-        NAVIGATION_ITEM_IDENTIFIER -> navigationItemGroup()
-        ACTIONS_ITEM_IDENTIFIER -> actionItemGroup()
-        else -> null
-    }
-
-    internal fun updateSelectedDestination(destinationName: String) {
-        selectedDestinationName = destinationName
-        navigationGroup?.selectedIndex = destinations
-            .indexOfFirst {
-                it.destinationName == destinationName
-            }.toLong()
-    }
-
-    internal fun performNavigation(index: Int) {
-        destinations.getOrNull(index)?.destinationName?.let(onNavigate)
-    }
-
-    internal fun performAction(index: Int) {
-        when (index) {
-            0 -> onSearch()
-            1 -> onNotifications()
-        }
-    }
-
-    @ObjCAction
-    fun selectNavigation(sender: NSObject) {
-        selectedIndex(sender)?.let(::performNavigation)
-    }
+    ): NSToolbarItem? = (leadingActions + trailingActions)
+        .firstOrNull { it.identifier == itemForItemIdentifier }
+        ?.let(::buttonItem)
 
     @ObjCAction
     fun selectAction(sender: NSObject) {
-        selectedIndex(sender)?.let(::performAction)
+        val identifier = (sender as? NSToolbarItem)?.itemIdentifier ?: return
+        (leadingActions + trailingActions).firstOrNull { it.identifier == identifier }?.action?.invoke()
     }
 
-    private fun selectedIndex(sender: NSObject): Int? = when (sender) {
-        is NSToolbarItemGroup -> sender.selectedIndex.toInt()
-        is NSSegmentedControl -> sender.selectedSegment.toInt()
-        else -> null
+    fun updateActions(
+        leadingActions: List<MacosNativeToolbarAction>,
+        trailingActions: List<MacosNativeToolbarAction>,
+    ) {
+        this.leadingActions = leadingActions
+        this.trailingActions = trailingActions
     }
 
-    private fun navigationItemGroup(): NSToolbarItemGroup {
-        val labels = destinations.map(MacosToolbarNavigationItem::label)
-        return NSToolbarItemGroup
-            .groupWithItemIdentifier(
-                itemIdentifier = NAVIGATION_ITEM_IDENTIFIER,
-                titles = labels,
-                selectionMode = NSToolbarItemGroupSelectionModeSelectOne,
-                labels = labels,
-                target = this,
-                action = NSSelectorFromString("selectNavigation:"),
-            ).apply {
-                label = ""
-                paletteLabel = ""
-                visibilityPriority = NSToolbarItemVisibilityPriorityHigh
-                selectedIndex = destinations
-                    .indexOfFirst {
-                        it.destinationName == selectedDestinationName
-                    }.toLong()
-                navigationGroup = this
-            }
-    }
-
-    private fun actionItemGroup(): NSToolbarItemGroup {
-        val labels = listOf("搜索", "通知")
-        val images = listOf(
-            requireNotNull(NSImage.imageWithSystemSymbolName("magnifyingglass", labels[0])),
-            requireNotNull(NSImage.imageWithSystemSymbolName("bell", labels[1])),
-        )
-        return NSToolbarItemGroup
-            .groupWithItemIdentifier(
-                itemIdentifier = ACTIONS_ITEM_IDENTIFIER,
-                images = images,
-                selectionMode = NSToolbarItemGroupSelectionModeMomentary,
-                labels = labels,
-                target = this,
-                action = NSSelectorFromString("selectAction:"),
-            ).apply {
-                label = ""
-                paletteLabel = ""
-                visibilityPriority = NSToolbarItemVisibilityPriorityHigh
-            }
+    private fun buttonItem(action: MacosNativeToolbarAction): NSToolbarItem = NSToolbarItem(action.identifier).apply {
+        label = action.label
+        paletteLabel = action.label
+        toolTip = action.label
+        image = NSImage.imageWithSystemSymbolName(action.systemSymbolName, action.label)
+        target = this@MacosNativeToolbarController
+        this.action = NSSelectorFromString("selectAction:")
+        visibilityPriority = NSToolbarItemVisibilityPriorityHigh
     }
 }

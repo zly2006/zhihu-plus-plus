@@ -48,18 +48,6 @@ actual fun rememberZhihuWebUrlOpener(): (String) -> Unit = rememberExternalUrlOp
 actual fun rememberImagePreviewOpener(): (String) -> Unit = rememberExternalUrlOpener()
 
 @Composable
-actual fun rememberImageGalleryOpener(): (List<String>, Int) -> Unit {
-    val openExternalUrl = rememberExternalUrlOpener()
-    return remember(openExternalUrl) {
-        { urls, initialIndex ->
-            if (urls.isNotEmpty()) {
-                urls[initialIndex.coerceIn(0, urls.lastIndex)].let(openExternalUrl)
-            }
-        }
-    }
-}
-
-@Composable
 actual fun rememberImageSaver(): (String) -> Unit {
     val scope = rememberCoroutineScope()
     val userMessages = rememberUserMessageSink()

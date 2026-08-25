@@ -23,10 +23,6 @@ import com.github.zly2006.zhihu.data.macosAppDataDirectoryPath
 import com.github.zly2006.zhihu.data.macosBackgroundUiDebugDataDirectoryPath
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 import platform.AppKit.NSModalResponseOK
 import platform.AppKit.NSOpenPanel
 import platform.AppKit.NSPasteboard
@@ -37,9 +33,7 @@ import platform.Foundation.NSURL
 
 internal actual val nativeIsDesktop: Boolean = true
 
-private val macosQrLoginRequests = MutableStateFlow(0)
-
-internal val macosQrLoginRequestVersion: StateFlow<Int> = macosQrLoginRequests.asStateFlow()
+actual val platformName: String = "macOS"
 
 @Composable
 @OptIn(ExperimentalForeignApi::class)
@@ -53,10 +47,6 @@ internal actual fun copyNativePlainText(text: String) {
         clearContents()
         setString(text, forType = NSPasteboardTypeString)
     }
-}
-
-internal actual fun requestNativeQrLogin() {
-    macosQrLoginRequests.update { it + 1 }
 }
 
 internal actual fun nativeAccountFilePath(): String =

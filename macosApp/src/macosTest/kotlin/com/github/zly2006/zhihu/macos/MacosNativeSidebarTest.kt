@@ -15,25 +15,29 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.github.zly2006.zhihu.desktop
+@file:OptIn(
+    kotlinx.cinterop.BetaInteropApi::class,
+    kotlinx.cinterop.ExperimentalForeignApi::class,
+)
 
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.window.Window
-import androidx.compose.ui.window.application
-import com.github.zly2006.zhihu.theme.ZhihuTheme
-import com.github.zly2006.zhihu.ui.DesktopZhihuMain
+package com.github.zly2006.zhihu.macos
 
-fun main() {
-    System.setProperty("java.awt.im.style", "below-the-spot")
-    application {
-        Window(
-            onCloseRequest = ::exitApplication,
-            title = "Zhihu++",
-            icon = painterResource("desktop-icon.png"),
-        ) {
-            ZhihuTheme {
-                DesktopZhihuMain()
-            }
-        }
+import kotlinx.cinterop.autoreleasepool
+import platform.AppKit.NSWindow
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class MacosNativeSidebarTest {
+    @Test
+    fun dataSourceCanQueryControllerDuringConstruction() = autoreleasepool {
+        val controller = MacosNativeSidebarController(NSWindow())
+
+        assertEquals(
+            0L,
+            controller.outlineView(
+                outlineView = controller.outlineView,
+                numberOfChildrenOfItem = null,
+            ),
+        )
     }
 }

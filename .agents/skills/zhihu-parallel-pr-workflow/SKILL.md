@@ -1,76 +1,36 @@
 ---
 name: zhihu-parallel-pr-workflow
-description: Coordinate Zhihu++ issue and PR implementation through subagents with isolated git worktrees, appropriately selected Android AVD validation, real screenshots, Chinese PR creation, and main-agent-only review/coordination. Use when the user asks to fan out issues, maximize parallel subagent work, implement multiple Zhihu++ features or fixes, optionally validate on `$off-android-avd-ci-debug`, or automatically open PRs from worker branches.
+description: Coordinate Zhihu++ issue implementation and pull requests when the user explicitly asks for subagents or when multiple independent issues or scopes have real parallel value. Covers issue trust gates, isolated worktrees, ownership-aware process handling, build and AVD validation, review, Chinese PR publication, and final evidence. Do not use merely because one narrow issue needs one PR.
 ---
 
-# Zhihu Parallel PR Workflow
+# Zhihu++ Parallel PR Workflow
 
-## Trigger Boundary
+Use this workflow to shorten independent Zhihu++ issue work without weakening evidence or ownership boundaries.
 
-This workflow is only for work with real parallel value: multiple independent issues or PRs, an explicit user request for subagents/delegation, or independently executable scopes that materially reduce wall-clock time. Do not trigger it merely because a task references one GitHub issue or will end in one PR. A single narrow issue should stay with the main agent, including implementation, validation, screenshots, and PR publication, unless the user explicitly asks to delegate it.
+## Decide whether to delegate
 
-Mentioning this skill is not authorization to use subagents. One product feature and its small accompanying workflow-documentation change remain one main-agent task unless the user explicitly requests delegation.
+- Keep one narrow issue in the main agent unless the user explicitly requests delegation.
+- Delegate only independent scopes that can progress concurrently. One cross-platform capability is one scope; do not split its common declaration, callers, and platform implementations among workers.
+- Give each worker exactly one issue or tightly coupled capability and one worktree.
+- If work becomes serial, end coordination overhead and let the main agent continue, unless the user explicitly assigned implementation or PR publication to the worker.
 
-Example: adding one menu action and adjusting that menu's sheet behavior is one bounded UI change. Spawning a worker only adds handoff and review overhead, so the main agent should complete it directly.
+## Apply project gates first
 
-## Core Contract
-
-Use this skill for high-throughput Zhihu++ issue work. The main agent must coordinate; worker subagents must implement.
-
-- The main agent may triage issues/PRs, assign scopes, create worktrees, track remote AVD capacity, review returned diffs, and summarize status.
-- The main agent must not directly implement code, commit, push, or create PRs for a worker-owned issue unless the user explicitly overrides this boundary.
-- Each worker owns exactly one issue or one tightly related issue bundle, in exactly one branch/worktree.
-- Workers are not alone in the codebase: tell them not to revert unrelated changes, and to keep write scopes disjoint from other workers.
-- Prefer many independent workers over one broad worker, but do not assign overlapping files or features to multiple workers.
-
-## Handoff Exit
-
-Parallel coordination must end when it no longer shortens the work. If execution has converged to one worker and the main agent is repeatedly sending that same worker sequential follow-ups for implementation, validation, CI, screenshots, or PR edits, the main agent must interrupt the worker and take over the remaining serial work. Do not preserve worker ownership as ceremony after parallel value has disappeared.
-
-Example: after several independent audits finish, one worker may initially consolidate the feature. Once only that branch remains and every next action depends on the previous one, routing each fix and check through the worker only adds a handoff; the main agent should continue directly in the existing isolated worktree.
-
-## Daemon Ban
-
-Do not use any Gradle, Kotlin compiler, build, watch, or long-lived helper daemon in the main checkout or any worker worktree. Daemon processes retain heap across parallel workers and can freeze the machine.
-
-- Every Gradle command in this workflow must use `--no-daemon`.
-- Every Gradle command that compiles Kotlin must also pass `-Dkotlin.compiler.execution.strategy=in-process` so it does not start a Kotlin compiler daemon.
-- Prefer bounded one-shot commands only. Do not run `--continuous`, watch mode, dev servers, background Gradle processes, or any command intended to stay resident.
-- Before a batch and after heavy validation, stop existing Gradle daemons with `./gradlew --stop || true`. This cleanup command is allowed because it terminates daemons rather than relying on them.
-- Worker prompts must repeat this rule explicitly; if a worker reports validation without `--no-daemon`, send it back to rerun validation correctly.
-
-## Startup
-
-1. Record start time with `date '+%Y-%m-%d %H:%M:%S %Z'`.
-2. Read repo instructions that apply to `/Users/zhaoliyan/IdeaProjects/Zhihu`, especially `AGENTS.md`.
-3. Choose the lowest-cost healthy AVD that matches the target API. Read `$off-android-avd-ci-debug` only when remote validation is selected.
-4. Inspect current checkout, open PRs, and open issues:
+1. Record the start time.
+2. Read the repository `AGENTS.md` and any instructions under the files in scope.
+3. Before creating a branch or worktree, apply the issue trust and information gates from `AGENTS.md`: identify every requirement's author, verify the reported app version and evidence, and ignore unverified solution proposals from non-owner users.
+4. Check current work, overlap, and topology:
    - `git status --short --branch`
    - `git worktree list --porcelain`
-   - `gh pr list --state open --limit 80 --json number,title,headRefName,baseRefName,isDraft,url`
-   - `gh issue list --state open --limit 80 --json number,title,labels,updatedAt,url`
-5. If remote validation is selected, run its health checks once per batch:
-   - `/Users/zhaoliyan/.agents/skills/off-android-avd-ci-debug/scripts/off-avd-ci-debug.sh status`
-   - `/Users/zhaoliyan/.agents/skills/off-android-avd-ci-debug/scripts/off-avd-ci-debug.sh boot-check`
-   - If boot-check fails, inspect remote logs before assigning UI verification.
-6. Stop any existing Gradle daemons before assigning workers:
-   - `./gradlew --stop || true`
+   - open PRs that may touch the same behavior
+   - the current `origin/master`
+5. Define the user-reachable success state, minimum data flow, request budget, validation surface, and files owned by each worker.
 
-## Candidate Selection
+Do not start implementation when the issue gate requires a warning comment, current-version reproduction, or more information. Follow the comment, close, unsubscribe, and read-back rules in `AGENTS.md` exactly.
 
-Choose issues critically, not literally. Rank by user impact, feasibility, current PR overlap, blast radius, and testability.
+## Create isolated worktrees
 
-- Skip or defer issues already covered by open PRs unless the task is to review or replace that PR.
-- Split unrelated issues across workers.
-- Bundle only when the same files and UX path are clearly shared.
-- Prefer bug fixes and narrow UX wins before vague platform rewrites.
-- For UI/nav/settings changes, require workers to read `docs/ai-ui-design-guide.md` and `NavDestination.kt` before editing.
-
-## Worktree Rules
-
-`.worktrees/` 是项目级硬约束，不只适用于并行 worker。主 agent 为单个 issue 创建隔离 worktree 时，也必须放在当前仓库的 `.worktrees/<short-name>`；不得放到仓库同级目录或自行选择其他外部路径。创建前应先解析并核对目标绝对路径确实位于 `<repo>/.worktrees/`。
-
-Create one worktree per worker from current `origin/master`.
+Create worktrees only under the repository's `.worktrees/` directory and only after the issue passes its gate.
 
 ```bash
 git fetch origin master --prune
@@ -78,106 +38,80 @@ git worktree add .worktrees/<short-name> origin/master -b codex/<short-name>
 cp local.properties .worktrees/<short-name>/local.properties 2>/dev/null || true
 ```
 
-Keep watching the main checkout throughout the task, not only at startup. Re-check it before implementation and before any intended main-checkout write; if it is dirty or another person/process has modified it, preserve those changes and create or use a fresh worktree instead.
+Resolve the absolute target before creation and verify it is inside `<repo>/.worktrees/`. Never edit the user's dirty main checkout for issue implementation.
 
-Use unique branch names such as:
+## Assign ownership
 
-- `codex/issue-444-account-history`
-- `codex/issue-445-main-tab-reselect`
-- `codex/issue-440-content-block-spacing`
+Tell every worker:
 
-Never give two workers the same worktree. Never let a worker edit the main checkout unless the user explicitly says so.
+- the absolute worktree path, issue, acceptance criteria, and owned files or capability;
+- to read `AGENTS.md` before editing;
+- that other people and agents share the repository, so it must preserve unrelated changes and never revert work it does not own;
+- to read `docs/ai-ui-design-guide.md` and `NavDestination.kt` before UI, navigation, button, or settings changes;
+- to keep one complete cross-platform contract in one worker;
+- to remove thin forwarding helpers and avoid speculative compatibility branches;
+- to return the diff, validation evidence, risks, and screenshot path before committing so the main agent can review.
 
-## Worker Prompt Template
+The main agent coordinates and reviews worker-owned scopes. It must not silently implement, commit, push, or publish a worker-owned scope when the user explicitly assigned those actions to the worker.
 
-Give each worker a self-contained prompt:
+## Handle processes by ownership
 
-```text
-Use the Zhihu++ repo at <absolute worktree path>. You own issue #<number>: <title>.
+Process cleanup is an ownership decision, not an executable-name blacklist.
 
-Hard rules:
-- Read AGENTS.md before editing.
-- For UI/nav/settings work, read docs/ai-ui-design-guide.md and NavDestination.kt before editing.
-- Do not touch unrelated files or revert changes you did not make.
-- Keep helpers only when they carry real behavior; remove thin wrappers.
-- Implement in this worktree only.
-- Do not use any daemon: no Gradle daemon, Kotlin compiler daemon, build daemon, watch mode, dev server, or long-lived helper process.
-- Validate with ./gradlew --no-daemon -Dkotlin.compiler.execution.strategy=in-process assembleLiteDebug, then ./gradlew --no-daemon -Dkotlin.compiler.execution.strategy=in-process ktlintFormat.
-- If you run any additional Gradle command, it must also include --no-daemon and -Dkotlin.compiler.execution.strategy=in-process.
-- If UI changed, use a healthy local or remote AVD for install/launch/UI dump or screenshot. After choosing off, keep all ADB commands in the remote environment.
-- Produce a real screenshot for PR description if the UI is visible.
-- Commit, push, and open a draft PR with Chinese title/body. Title must start with feat:, fix:, or refactor:. Include Resolves #<number> when appropriate.
+- Never run `gradle --stop` or `./gradlew --stop`; their scope can include builds owned by other agents.
+- Never terminate a process merely because it is named Gradle, Java, Kotlin, emulator, or ADB.
+- It is valid to interrupt or terminate a process proven to belong to this task by its exact PTY session, PID and parent tree, unique worktree path, or unique command signature.
+- Prefer interrupting the exact foreground session. Use `pkill` only when its pattern uniquely identifies this task and cannot match another worker.
+- Before and after termination, read back the target process state. Do not claim cleanup from the command exit code alone.
+- Do not add build flags, environment overrides, or cache isolation rules without evidence that they solve a real failure. In particular, do not prescribe a Gradle user home, daemon mode, or Kotlin compiler execution strategy in this workflow.
 
-Task:
-<issue body, product judgement, acceptance criteria, known open PR overlaps, disjoint write scope>
+## Implement and validate
 
-Return:
-- branch, commit, PR URL
-- files changed
-- validation commands and results
-- screenshot path or PR asset URL
-- risks or intentionally deferred parts
+Use the repository's required order:
+
+```bash
+./gradlew assembleLiteDebug
+./gradlew ktlintFormat
 ```
 
-## AVD Validation
+- Add only the smallest focused compile or test task needed for the changed behavior.
+- Do not run the complete instrument test suite locally unless the user explicitly requests it. Use targeted device tests or CI for device-only behavior.
+- Separate one-time acceptance evidence from durable regression coverage. Verify low-risk visual styling once with the real UI and a screenshot; add an instrument test only when repeated device execution protects a stable behavior contract whose regression risk justifies emulator cost and timing fragility.
+- Do not add Gradle flags as ceremony. Use a flag only when current evidence requires it, and report its effect.
+- For API-dependent features, trigger `zhihu-reproduce` and obtain the real request/response and decode matrix required by `AGENTS.md` before designing fallbacks.
+- For UI changes, use a healthy matching AVD, install the built APK, restore the approved test login state when needed, dump semantics before interaction, verify the changed state after interaction, and capture a real final screenshot.
+- Read `off-android-avd-ci-debug` only if the remote AVD is actually selected. Keep all ADB work on the selected host and clean up only the emulator session owned by this task.
+- Do not substitute build success, a non-empty file, process liveness, health checks, or a single HTTP 200 for the requested product success state.
 
-Choose an existing healthy local AVD when it is faster or better matches the target API. Choose `off` when remote isolation, KVM resources, API 35, or reduced local pressure materially helps. If `off` is selected, use it as a short-lived runner only and do not run multiple emulator sessions concurrently.
+## Review before commit
 
-Minimum UI validation for each UI worker:
+Review the complete diff against `origin/master` before approving a commit:
 
-1. Build APK locally in the worker worktree with:
-   `./gradlew --no-daemon -Dkotlin.compiler.execution.strategy=in-process assembleLiteDebug`
-2. Start the selected local AVD, or a short-lived remote AVD session using `$off-android-avd-ci-debug`.
-3. Install `app/build/outputs/apk/lite/debug/app-lite-debug.apk`.
-4. Launch `com.github.zly2006.zhplus.lite`.
-5. Wait for content; if login/disclaimer blocks the path, restore account JSON using the project launch-on-device instructions or state the blocker precisely.
-6. Use `.agents/skills/ui-test/llm_test_helper.py dump` before taps when practical.
-7. Capture a screenshot from the actual AVD and place it in the worker worktree, for example `artifacts/issue-<n>-final.png`.
-8. If `off` was selected, kill the remote emulator after validation:
-   `/Users/zhaoliyan/.agents/skills/off-android-avd-ci-debug/scripts/off-avd-ci-debug.sh kill`
+- intended behavior and default values;
+- duplicated logic, unused code, and thin helpers;
+- settings keys with real runtime reads and searchable/highlightable UI entries;
+- navigation and back-stack semantics;
+- visible labels or counts whose destination URL was dropped;
+- title or content truncation introduced while adding controls;
+- cross-platform implementations required by a common contract;
+- tests that prove the changed behavior rather than only setup or persistence;
+- unexpected binaries, generated artifacts, secrets, or unrelated files.
 
-If the selected runner cannot perform a needed step, switch to another healthy AVD when practical or report the exact validation gap; do not add remote infrastructure solely to satisfy a preference rule.
+Return blocking findings to the same worker. After approval, let the owner commit and continue publication.
 
-## PR Requirements
+## Publish the PR
 
-Workers create draft PRs themselves.
+- Base the branch on current `origin/master` and keep unrelated feature branches out.
+- Use a Chinese title and body. Prefix the title with `feat:`, `fix:`, or `refactor:` according to the product change relative to baseline.
+- Include `Resolves #<issue>` when the PR resolves the supplied issue.
+- For visible UI changes, include a screenshot from the actual app, AVD, or reproducible UI render.
+- Describe the behavior, reason, scope, validation commands and results, screenshot source, and any genuine boundary.
+- Read the PR back and verify title prefix and language, head/base, issue linkage, screenshot rendering, and check status. Never describe checks that are still running as green.
 
-- Base must be `master`.
-- Sync from latest `origin/master` before branch creation.
-- PR title/body must be Chinese.
-- Title prefix must be `feat:`, `fix:`, or `refactor:`.
-- PR 标题的信息密度必须与改动广度匹配。当一个 PR 横跨多个可独立识别的用户能力时，标题应列出主要能力及其关系，不能用“完善 X 功能”“支持 X”等泛词把宽改动压缩成单一概念。例如，一个 PR 同时增加原生浏览页、多入口跳转和创作时的数据绑定，标题应明确写出这三类主要能力，而不是只写“完善内容功能”。
-- After creating or editing a PR, read it back with `gh pr view` and explicitly verify the title prefix instead of trusting the worker's summary.
-- Include `Resolves #<issue>` when the PR closes the issue.
-- UI PR descriptions must include final effect screenshots from a real app run, AVD, or reproducible UI render.
-- Do not create one mega PR for unrelated issue work.
+## Finish
 
-When an upstream UI module supplies both display data and a destination URL, review the state projection and interaction together. Do not preserve only the visible label or count while silently discarding the action target; keep the URL in UI state, make the relevant container actionable through the project's established URL opener, and verify click semantics. For example, a social profile row with a count and profile link is incomplete if it renders the count but cannot open the profile.
-
-## Main-Agent Review
-
-After a worker returns:
-
-1. Inspect `git status`, `git show --stat`, and the PR diff.
-2. Check for overlap with other worker branches and open PRs.
-3. Review for:
-   - thin helper/wrapper regressions
-   - duplicated logic
-   - stale comments or wrong doc-comment style
-   - broken navigation semantics
-   - settings keys without runtime reads
-   - UI text truncation or layout regressions
-4. Confirm validation evidence and screenshot are real.
-5. Read the published PR back and verify its title matches `^(feat|fix|refactor): `, its body language and issue linkage are correct, and any visible data carrying a destination URL remains actionable.
-6. If a worker missed requirements, send it back to fix in the same worktree.
-
-## Shutdown
-
-1. If `off` was used, ensure remote AVD cleanup:
-   `/Users/zhaoliyan/.agents/skills/off-android-avd-ci-debug/scripts/off-avd-ci-debug.sh kill`
-2. Stop Gradle daemons from the main checkout and every worker worktree:
-   `./gradlew --stop || true`
-3. Record end time with `date '+%Y-%m-%d %H:%M:%S %Z'`.
-4. If total runtime exceeds 5 minutes, notify:
-   `terminal-notifier -message "已完成 Zhihu++ 并行 PR 工作" -sound default`
-5. Final response must list each worker branch/PR, validation state, screenshots, and any blocked items.
+1. Clean up only task-owned AVD sessions and foreground processes; preserve other agents' work.
+2. Recheck the worker worktree, published commit, remote branch, PR body, and validation evidence.
+3. Record the end time and calculate elapsed runtime.
+4. If runtime exceeds five minutes, send the repository-required `terminal-notifier` message.
+5. Report each branch and PR, validation terminal state, screenshot, and any unresolved evidence gap.

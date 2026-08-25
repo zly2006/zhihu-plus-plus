@@ -52,7 +52,7 @@ import androidx.compose.ui.test.swipeUp
 import androidx.navigationevent.DirectNavigationEventInput
 import androidx.navigationevent.NavigationEventDispatcher
 import androidx.navigationevent.NavigationEventDispatcherOwner
-import com.github.zly2006.zhihu.account.MacosQrLoginScreen
+import com.github.zly2006.zhihu.account.LoginScreen
 import com.github.zly2006.zhihu.data.BACKGROUND_UI_DEBUG_DATA_HOME_ENV
 import com.github.zly2006.zhihu.data.macosBackgroundUiDebugDataDirectoryPath
 import com.github.zly2006.zhihu.platform.MacosUserMessageHost
@@ -144,7 +144,14 @@ fun main(args: Array<String>) {
                         backController.connect(navigationEventDispatcherOwner)
                     }
                     if (rootName == "login") {
-                        MacosQrLoginScreen()
+                        ZhihuTheme {
+                            MacosUserMessageHost {
+                                LoginScreen(
+                                    onLoginComplete = {},
+                                    onOpenTelemetrySettings = {},
+                                )
+                            }
+                        }
                     } else {
                         ZhihuTheme {
                             MacosUserMessageHost {

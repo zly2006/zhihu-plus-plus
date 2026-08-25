@@ -20,18 +20,20 @@ package com.github.zly2006.zhihu.ui
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.text.InlineTextContent
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.unit.em
 import com.github.zly2006.zhihu.account.NativeAccountStore
-import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.platform.UserMessageSink
@@ -41,10 +43,7 @@ import com.github.zly2006.zhihu.platform.nativeBundledResourcePath
 import com.github.zly2006.zhihu.platform.nativeChooseBlocklistImportFilePath
 import com.github.zly2006.zhihu.platform.nativeIsDesktop
 import com.github.zly2006.zhihu.platform.rememberExternalUrlOpener
-import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.platform.requestNativeQrLogin
-import com.github.zly2006.zhihu.ui.subscreens.DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY
 import com.github.zly2006.zhihu.viewmodel.NativePaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.NotificationEnvironment
 import com.github.zly2006.zhihu.viewmodel.filter.encodeBlocklistBackup
@@ -131,16 +130,7 @@ actual fun ArticleWebViewContent(
     onImageLoadFailed: () -> Unit,
     onDoubleTap: () -> Unit,
 ) {
-    RenderMarkdown(
-        html = html,
-        modifier = Modifier,
-        selectable = true,
-        enableScroll = false,
-        header = {},
-        footer = {},
-        useTiqianRenderer = !nativeIsDesktop &&
-            rememberSettingsStore().getBoolean(DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY, false),
-    )
+    Text("WebView渲染已废弃，此平台不被支持")
 }
 
 actual fun Modifier.articleMarkdownSelectionWorkaround(): Modifier = this
@@ -229,9 +219,6 @@ actual fun rememberAccountSettingsAccountState(): androidx.compose.runtime.State
 }
 
 @Composable
-actual fun rememberAccountQrLoginRequester(): () -> Unit = remember { ::requestNativeQrLogin }
-
-@Composable
 actual fun rememberAppVersionInfo(): String = nativeAppVersionName
 
 @Composable
@@ -242,11 +229,13 @@ actual fun supportsZhihuHtmlWebView(): Boolean = false
 @Composable
 actual fun rememberBlocklistRuleImporter(
     userMessages: UserMessageSink,
-): (((String) -> Unit) -> Unit) {
+    onImported: (String) -> Unit,
+): () -> Unit {
     val database = remember { getContentFilterDatabase() }
     val coroutineScope = rememberCoroutineScope()
+    val currentOnImported by rememberUpdatedState(onImported)
     return remember(database, coroutineScope, userMessages) {
-        { onImported ->
+        {
             val selectedFilePath = nativeChooseBlocklistImportFilePath()
             if (selectedFilePath != null) {
                 coroutineScope.launch {
@@ -260,7 +249,7 @@ actual fun rememberBlocklistRuleImporter(
                             topicDao = database.blockedTopicDao(),
                             text = text,
                         )
-                        onImported(summary)
+                        currentOnImported(summary)
                     } catch (error: CancellationException) {
                         throw error
                     } catch (error: Exception) {

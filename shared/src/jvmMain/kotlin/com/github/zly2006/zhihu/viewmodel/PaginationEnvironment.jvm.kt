@@ -26,7 +26,6 @@ import com.github.zly2006.zhihu.data.navDestination
 import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.desktop.DesktopHistoryStorage
-import com.github.zly2006.zhihu.desktop.DesktopLoginRequests
 import com.github.zly2006.zhihu.desktop.copyDesktopPlainText
 import com.github.zly2006.zhihu.desktop.desktopZhihuDataFile
 import com.github.zly2006.zhihu.desktop.desktopZhihuDownloadsDir
@@ -35,6 +34,7 @@ import com.github.zly2006.zhihu.filter.ContentOpenFrom
 import com.github.zly2006.zhihu.filter.TrackedContentIdentity
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.navigation.requestLoginNavigation
 import com.github.zly2006.zhihu.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.notification.desktopNotificationSettingsStore
 import com.github.zly2006.zhihu.platform.desktopSettingsStore
@@ -140,7 +140,7 @@ class DesktopPaginationEnvironment(
     }
 
     override fun requestLogin(): Boolean {
-        DesktopLoginRequests.requestLogin()
+        requestLoginNavigation()
         return true
     }
 

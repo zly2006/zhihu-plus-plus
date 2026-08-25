@@ -19,10 +19,10 @@
 
 package com.github.zly2006.zhihu.macos
 
-import androidx.compose.runtime.remember
 import androidx.compose.ui.window.Window
-import com.github.zly2006.zhihu.account.MacosQrLoginScreen
-import com.github.zly2006.zhihu.ui.MacosWindowChromeState
+import com.github.zly2006.zhihu.platform.MacosUserMessageHost
+import com.github.zly2006.zhihu.theme.ZhihuTheme
+import com.github.zly2006.zhihu.ui.MacosZhihuMain
 import kotlinx.cinterop.autoreleasepool
 import platform.AppKit.NSApplication
 import platform.AppKit.NSApplicationActivationPolicy
@@ -50,9 +50,17 @@ fun main() {
         Window(
             title = "Zhihu++",
         ) {
-            val windowChromeState = remember { MacosWindowChromeState() }
-            MacosNativeToolbar(window, windowChromeState)
-            MacosQrLoginScreen(windowChromeState)
+            ZhihuTheme {
+                MacosUserMessageHost {
+                    MacosZhihuMain { chrome, content ->
+                        MacosNativeWindowChrome(
+                            window = window,
+                            chrome = chrome,
+                            content = content,
+                        )
+                    }
+                }
+            }
         }
         application.activateIgnoringOtherApps(true)
         application.run()

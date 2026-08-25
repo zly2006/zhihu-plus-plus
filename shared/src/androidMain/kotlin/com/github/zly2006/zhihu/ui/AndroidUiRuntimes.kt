@@ -31,14 +31,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
-import androidx.core.net.toUri
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.github.zly2006.zhihu.data.AccountData
@@ -65,9 +63,7 @@ import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
 import java.io.File
 
-private const val QR_CODE_SCAN_ACTIVITY_CLASS = "com.github.zly2006.zhihu.QRCodeScanActivity"
 private const val WEBVIEW_ACTIVITY_CLASS = "com.github.zly2006.zhihu.WebviewActivity"
-private const val QR_SCAN_RESULT_EXTRA = "scan_result"
 
 @Composable
 actual fun rememberAccountSettingsAccountState(): androidx.compose.runtime.State<AccountSettingsAccountState> {
@@ -76,27 +72,6 @@ actual fun rememberAccountSettingsAccountState(): androidx.compose.runtime.State
         androidx.compose.runtime.derivedStateOf {
             accountDataState.value.toAccountSettingsAccountState()
         }
-    }
-}
-
-@Composable
-actual fun rememberAccountQrLoginRequester(): () -> Unit {
-    val context = LocalContext.current
-    val scanActivityLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult(),
-    ) scan@{ result ->
-        if (result.resultCode == android.app.Activity.RESULT_OK) {
-            val scanResult = result.data?.getStringExtra(QR_SCAN_RESULT_EXTRA) ?: return@scan
-            context.startActivity(
-                Intent().apply {
-                    setClassName(context.packageName, WEBVIEW_ACTIVITY_CLASS)
-                    data = scanResult.toUri()
-                },
-            )
-        }
-    }
-    return remember(context, scanActivityLauncher) {
-        { scanActivityLauncher.launch(Intent().setClassName(context.packageName, QR_CODE_SCAN_ACTIVITY_CLASS)) }
     }
 }
 
@@ -234,11 +209,12 @@ actual fun rememberHomeIsDebuggable(): Boolean {
 @Composable
 actual fun rememberBlocklistRuleImporter(
     userMessages: UserMessageSink,
-): (((String) -> Unit) -> Unit) {
+    onImported: (String) -> Unit,
+): () -> Unit {
     val context = LocalContext.current
     val database = remember(context) { getContentFilterDatabase(context) }
     val coroutineScope = rememberCoroutineScope()
-    var importCallback by remember { mutableStateOf<((String) -> Unit)?>(null) }
+    val currentOnImported by rememberUpdatedState(onImported)
     val importLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
     ) { uri ->
@@ -259,7 +235,7 @@ actual fun rememberBlocklistRuleImporter(
                             text = text,
                         )
                     }
-                    importCallback?.invoke(summary)
+                    currentOnImported(summary)
                 } catch (e: Exception) {
                     Log.e("BlocklistSettings", "Failed to import blocklist", e)
                     userMessages.showShortMessage("导入失败: ${e.message}")
@@ -267,11 +243,8 @@ actual fun rememberBlocklistRuleImporter(
             }
         }
     }
-    return remember(context, database, userMessages, importLauncher) {
-        { onImported ->
-            importCallback = onImported
-            importLauncher.launch(arrayOf("application/json", "text/plain", "*/*"))
-        }
+    return remember(importLauncher) {
+        { importLauncher.launch(arrayOf("application/json", "text/plain", "*/*")) }
     }
 }
 

@@ -44,6 +44,9 @@ interface TopLevelDestination {
 @Serializable
 data object MainTabs : NavDestination
 
+@Serializable
+data object Login : NavDestination
+
 /**
  * 主 pager 的历史顶层 tab 目标。
  *

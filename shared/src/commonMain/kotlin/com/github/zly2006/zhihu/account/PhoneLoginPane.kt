@@ -15,15 +15,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.github.zly2006.zhihu
+package com.github.zly2006.zhihu.account
 
-import android.content.Context
-import android.content.pm.PackageManager
-import android.graphics.BitmapFactory
-import android.os.Build
-import android.os.Environment
-import android.os.StatFs
-import android.util.Base64
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -46,7 +39,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -56,40 +48,46 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.core.app.NotificationManagerCompat
-import com.github.zly2006.zhihu.account.ZhihuPhoneDigitsResult
-import com.github.zly2006.zhihu.account.ZhihuPhoneLoginClient
-import com.github.zly2006.zhihu.account.ZhihuPhoneLoginDeviceInfo
-import com.github.zly2006.zhihu.data.AccountData
+import io.ktor.client.HttpClient
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.util.TimeZone
 import kotlin.time.Clock
 
+fun interface PhoneLoginTokenVerifier {
+    suspend fun verify(token: ZhihuMobileLoginToken): String?
+}
+
 @Composable
-internal fun PhoneLoginPane(activity: LoginActivity) {
-    val context = LocalContext.current
+expect fun rememberPhoneLoginHttpClient(cookies: MutableMap<String, String>): HttpClient
+
+@Composable
+expect fun rememberPhoneLoginDeviceInfo(): ZhihuPhoneLoginDeviceInfo
+
+expect fun decodePhoneLoginCaptchaImage(content: String): ImageBitmap?
+
+@Composable
+expect fun rememberPhoneLoginTokenVerifier(): PhoneLoginTokenVerifier
+
+@Composable
+fun PhoneLoginPane(onLoginSuccess: (String) -> Unit) {
     val cookies = remember { mutableMapOf<String, String>() }
-    val httpClient = remember { AccountData.httpClient(context, cookies) }
-    val deviceInfo = remember(context) { context.phoneLoginDeviceInfo() }
-    val loginClient = remember {
+    val httpClient = rememberPhoneLoginHttpClient(cookies)
+    val deviceInfo = rememberPhoneLoginDeviceInfo()
+    val tokenVerifier = rememberPhoneLoginTokenVerifier()
+    val loginClient = remember(httpClient, deviceInfo) {
         ZhihuPhoneLoginClient(
             httpClient = httpClient,
             cookies = cookies,
             deviceInfo = deviceInfo,
-            nowEpochSeconds = { Clock.System.now().toEpochMilliseconds() / 1000 },
+            nowEpochSeconds = { Clock.System.now().toEpochMilliseconds() / 1_000 },
         )
-    }
-    DisposableEffect(httpClient) {
-        onDispose(httpClient::close)
     }
 
     val scope = rememberCoroutineScope()
@@ -204,12 +202,7 @@ internal fun PhoneLoginPane(activity: LoginActivity) {
 
         if (captchaRequired) {
             val captchaBitmap = remember(captchaImageBase64) {
-                runCatching {
-                    val image = captchaImageBase64.orEmpty()
-                    val encoded = image.substringAfter("base64,", image)
-                    val bytes = Base64.decode(encoded, Base64.DEFAULT)
-                    BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
-                }.getOrNull()
+                captchaImageBase64?.let(::decodePhoneLoginCaptchaImage)
             }
             captchaBitmap?.let { image ->
                 Image(
@@ -352,7 +345,10 @@ internal fun PhoneLoginPane(activity: LoginActivity) {
                     errorMessage = null
                     try {
                         val token = loginClient.signIn(phoneNumber, digits)
-                        if (!activity.finalizeMobileLogin(token)) {
+                        val username = tokenVerifier.verify(token)
+                        if (username != null) {
+                            onLoginSuccess(username)
+                        } else {
                             errorMessage = "登录凭证验证失败，请重试"
                         }
                     } catch (error: CancellationException) {
@@ -393,28 +389,4 @@ internal fun PhoneLoginPane(activity: LoginActivity) {
             )
         }
     }
-}
-
-private fun Context.phoneLoginDeviceInfo(): ZhihuPhoneLoginDeviceInfo {
-    val runtime = Runtime.getRuntime()
-    val storage = StatFs(Environment.getDataDirectory().path)
-    val installTime = runCatching {
-        packageManager.getPackageInfo(packageName, 0).firstInstallTime
-    }.getOrDefault(0L)
-    return ZhihuPhoneLoginDeviceInfo(
-        timezoneOffsetSeconds = TimeZone.getDefault().rawOffset / 1_000L,
-        appInstallTimeMillis = installTime,
-        notificationEnabled = NotificationManagerCompat.from(this).areNotificationsEnabled(),
-        bluetoothAvailable = packageManager.hasSystemFeature(PackageManager.FEATURE_BLUETOOTH),
-        phoneBrand = Build.BRAND,
-        phoneModel = Build.MODEL,
-        androidRelease = Build.VERSION.RELEASE,
-        cpuType = Build.SUPPORTED_ABIS.firstOrNull().orEmpty(),
-        cpuCount = runtime.availableProcessors(),
-        cpuUsage = "0.0",
-        totalMemoryMegabytes = (runtime.totalMemory() / 1_048_576L).toInt(),
-        freeMemoryMegabytes = (runtime.freeMemory() / 1_048_576L).toInt(),
-        totalStorageMegabytes = (storage.totalBytes / 1_048_576L).coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
-        freeStorageMegabytes = (storage.availableBytes / 1_048_576L).coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
-    )
 }

@@ -26,13 +26,12 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
@@ -85,7 +84,7 @@ import kotlinx.coroutines.withContext
  * 窗口宿主只调用这个入口；所有页面、布局和导航图仍由共享 [ZhihuMain] 提供。
  */
 @Composable
-fun MacosZhihuMain(windowChromeState: MacosWindowChromeState? = null) {
+fun MacosZhihuMain(windowChrome: MacosWindowChromeHost? = null) {
     val navController = rememberNavController()
     val accountStore = remember { NativeAccountStore() }
     val httpClient = accountStore.httpClient()
@@ -93,9 +92,6 @@ fun MacosZhihuMain(windowChromeState: MacosWindowChromeState? = null) {
     val openExternalUrl = rememberExternalUrlOpener()
     val userMessages = rememberUserMessageSink()
     val preferenceState = rememberMacosZhihuMainPreferenceState()
-    val macosToolbarDestinationKeys = remember {
-        listOf(Home.name, Follow.name, HotList.name, Daily.name, OnlineHistory.name, MyCollections.name, Account.name)
-    }
     var mainTabNavigationTarget by remember { mutableStateOf<TopLevelDestination?>(null) }
     var currentMainTabOpenFrom by remember { mutableStateOf<String?>(null) }
     var currentMainTabDestination by remember { mutableStateOf(preferenceState.startDestination) }
@@ -195,73 +191,120 @@ fun MacosZhihuMain(windowChromeState: MacosWindowChromeState? = null) {
         }
     }
 
-    if (windowChromeState != null) {
-        SideEffect {
-            windowChromeState.update(
-                destinationKeys = macosToolbarDestinationKeys,
-                selectedDestinationName = currentMainTabDestination.name,
-                navigateToDestination = { destinationName ->
-                    val destination = navDestinationFromName(destinationName)
-                    mainTabNavigationTarget = destination
-                    navigateToMainTabs()
-                },
-                openSearch = { navigate(Search()) },
-                openNotifications = { navigate(Notification) },
-            )
-        }
-        DisposableEffect(windowChromeState) {
-            onDispose(windowChromeState::clear)
-        }
+    val content: @Composable (Modifier) -> Unit = { modifier ->
+        ZhihuMain(
+            modifier = modifier,
+            navController = navController,
+            mainTabNavigationTarget = mainTabNavigationTarget,
+            navigate = ::navigate,
+            setCurrentMainTabOpenFrom = { currentMainTabOpenFrom = it },
+            consumeMainTabNavigationTarget = { destination ->
+                if (mainTabNavigationTarget == destination) {
+                    mainTabNavigationTarget = null
+                }
+            },
+            preferenceState = preferenceState,
+            isDarkTheme = ThemeManager.isDarkTheme(),
+            showMainNavigationBar = windowChrome == null,
+            showHomeTopActions = windowChrome == null,
+            onCurrentMainTabDestinationChange = { currentMainTabDestination = it },
+            articleEnterTransition = {
+                when (nativeArticleAnswerSwitchState.answerTransitionDirection) {
+                    ArticleAnswerTransitionDirection.VERTICAL_NEXT ->
+                        slideInVertically(tween(300)) { it } + fadeIn(tween(300))
+                    ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS ->
+                        slideInVertically(tween(300)) { -it } + fadeIn(tween(300))
+                    ArticleAnswerTransitionDirection.HORIZONTAL_NEXT ->
+                        slideInHorizontally(tween(300)) { it } + fadeIn(tween(300))
+                    ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS ->
+                        slideInHorizontally(tween(300)) { -it } + fadeIn(tween(300))
+                    else -> slideInHorizontally(tween(300)) { it }
+                }
+            },
+            articleExitTransition = {
+                when (nativeArticleAnswerSwitchState.answerTransitionDirection) {
+                    ArticleAnswerTransitionDirection.VERTICAL_NEXT ->
+                        slideOutVertically(tween(300)) { -it } + fadeOut(tween(300))
+                    ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS ->
+                        slideOutVertically(tween(300)) { it } + fadeOut(tween(300))
+                    ArticleAnswerTransitionDirection.HORIZONTAL_NEXT ->
+                        slideOutHorizontally(tween(300)) { -it } + fadeOut(tween(300))
+                    ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS ->
+                        slideOutHorizontally(tween(300)) { it } + fadeOut(tween(300))
+                    else -> ExitTransition.None
+                }
+            },
+            articleContent = { article: Article, navEntry ->
+                val articleViewModel: ArticleViewModel = viewModel(navEntry) {
+                    ArticleViewModel(article, httpClient, userMessages)
+                }
+                ArticleScreen(article, articleViewModel)
+            },
+        )
     }
 
-    ZhihuMain(
-        navController = navController,
-        mainTabNavigationTarget = mainTabNavigationTarget,
-        navigate = ::navigate,
-        setCurrentMainTabOpenFrom = { currentMainTabOpenFrom = it },
-        consumeMainTabNavigationTarget = { destination ->
-            if (mainTabNavigationTarget == destination) {
-                mainTabNavigationTarget = null
+    if (windowChrome == null) {
+        content(Modifier)
+    } else {
+        val navigationItems = preferenceState.selectedBottomBarItemKeys.mapNotNull { destinationName ->
+            val destination = navDestinationFromName(destinationName)
+            val action = {
+                mainTabNavigationTarget = destination
+                navigateToMainTabs()
             }
-        },
-        preferenceState = preferenceState,
-        isDarkTheme = ThemeManager.isDarkTheme(),
-        showMainNavigationBar = windowChromeState == null,
-        showHomeTopActions = windowChromeState == null,
-        onCurrentMainTabDestinationChange = { currentMainTabDestination = it },
-        articleEnterTransition = {
-            when (nativeArticleAnswerSwitchState.answerTransitionDirection) {
-                ArticleAnswerTransitionDirection.VERTICAL_NEXT ->
-                    slideInVertically(tween(300)) { it } + fadeIn(tween(300))
-                ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS ->
-                    slideInVertically(tween(300)) { -it } + fadeIn(tween(300))
-                ArticleAnswerTransitionDirection.HORIZONTAL_NEXT ->
-                    slideInHorizontally(tween(300)) { it } + fadeIn(tween(300))
-                ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS ->
-                    slideInHorizontally(tween(300)) { -it } + fadeIn(tween(300))
-                else -> slideInHorizontally(tween(300)) { it }
+            when (destination) {
+                Home -> MacosWindowNavigationItem(Home.name, "首页", "house", "内容", Home == currentMainTabDestination, action)
+                Follow -> MacosWindowNavigationItem(Follow.name, "关注", "person.2", "内容", Follow == currentMainTabDestination, action)
+                HotList -> MacosWindowNavigationItem(HotList.name, "热榜", "flame", "内容", HotList == currentMainTabDestination, action)
+                Daily -> MacosWindowNavigationItem(Daily.name, "日报", "newspaper", "内容", Daily == currentMainTabDestination, action)
+                OnlineHistory -> MacosWindowNavigationItem(
+                    OnlineHistory.name,
+                    "历史",
+                    "clock.arrow.circlepath",
+                    "资料",
+                    OnlineHistory == currentMainTabDestination,
+                    action,
+                )
+                MyCollections -> MacosWindowNavigationItem(
+                    MyCollections.name,
+                    "收藏",
+                    "bookmark",
+                    "资料",
+                    MyCollections == currentMainTabDestination,
+                    action,
+                )
+                Account -> MacosWindowNavigationItem(
+                    Account.name,
+                    "账号",
+                    "person.crop.circle",
+                    "账号",
+                    Account == currentMainTabDestination,
+                    action,
+                )
+                else -> null
             }
-        },
-        articleExitTransition = {
-            when (nativeArticleAnswerSwitchState.answerTransitionDirection) {
-                ArticleAnswerTransitionDirection.VERTICAL_NEXT ->
-                    slideOutVertically(tween(300)) { -it } + fadeOut(tween(300))
-                ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS ->
-                    slideOutVertically(tween(300)) { it } + fadeOut(tween(300))
-                ArticleAnswerTransitionDirection.HORIZONTAL_NEXT ->
-                    slideOutHorizontally(tween(300)) { -it } + fadeOut(tween(300))
-                ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS ->
-                    slideOutHorizontally(tween(300)) { it } + fadeOut(tween(300))
-                else -> ExitTransition.None
-            }
-        },
-        articleContent = { article: Article, navEntry ->
-            val articleViewModel: ArticleViewModel = viewModel(navEntry) {
-                ArticleViewModel(article, httpClient, userMessages)
-            }
-            ArticleScreen(article, articleViewModel)
-        },
-    )
+        }
+        windowChrome(
+            MacosWindowChrome(
+                navigationItems = navigationItems,
+                trailingToolbarItems = listOf(
+                    MacosWindowToolbarItem(
+                        identifier = "search",
+                        label = "搜索",
+                        systemSymbolName = "magnifyingglass",
+                        action = { navigate(Search()) },
+                    ),
+                    MacosWindowToolbarItem(
+                        identifier = "notifications",
+                        label = "通知",
+                        systemSymbolName = "bell",
+                        action = { navigate(Notification) },
+                    ),
+                ),
+            ),
+            content,
+        )
+    }
 }
 
 @Composable

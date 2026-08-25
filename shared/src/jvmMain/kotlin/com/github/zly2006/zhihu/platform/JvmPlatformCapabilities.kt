@@ -193,3 +193,5 @@ actual fun PlatformPredictiveBackHandler(
 actual fun rememberIsLiteVariant(): Boolean = false
 
 internal actual val platformBottomBarItemLimit: Int? = null
+
+actual val platformName: String = "JVM"

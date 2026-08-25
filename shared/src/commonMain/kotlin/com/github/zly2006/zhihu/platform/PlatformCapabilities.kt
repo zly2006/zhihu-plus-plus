@@ -23,6 +23,8 @@ import kotlinx.io.files.Path
 
 internal expect val platformBottomBarItemLimit: Int?
 
+expect val platformName: String
+
 enum class UserMessageDuration {
     Short,
     Long,

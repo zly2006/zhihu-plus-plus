@@ -54,6 +54,9 @@ internal class NativeAccountStore {
     suspend fun verifyAndSave(cookies: MutableMap<String, String>): Boolean =
         accountClient.verifyAndSave(cookies)
 
+    suspend fun verifyMobileAndSave(token: ZhihuMobileLoginToken): Boolean =
+        accountClient.verifyMobileAndSave(token)
+
     suspend fun refreshAndSaveProfile(): ZhihuAccountSession? =
         accountClient.refreshAndSaveProfile()
 }

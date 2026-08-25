@@ -29,11 +29,11 @@ import com.github.zly2006.zhihu.filter.ContentOpenFrom
 import com.github.zly2006.zhihu.filter.TrackedContentIdentity
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.navigation.requestLoginNavigation
 import com.github.zly2006.zhihu.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.notification.nativeNotificationSettingsStore
 import com.github.zly2006.zhihu.platform.copyNativePlainText
 import com.github.zly2006.zhihu.platform.nativeSettingsStore
-import com.github.zly2006.zhihu.platform.requestNativeQrLogin
 import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
 import com.github.zly2006.zhihu.util.Log
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeywordService
@@ -130,7 +130,7 @@ internal class NativePaginationEnvironment(
     }
 
     override fun requestLogin(): Boolean {
-        requestNativeQrLogin()
+        requestLoginNavigation()
         return true
     }
 

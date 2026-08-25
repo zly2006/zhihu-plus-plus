@@ -92,6 +92,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.toRoute
+import com.github.zly2006.zhihu.account.LoginScreen
 import com.github.zly2006.zhihu.filter.ContentOpenFrom
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Article
@@ -105,6 +106,7 @@ import com.github.zly2006.zhihu.navigation.History
 import com.github.zly2006.zhihu.navigation.Home
 import com.github.zly2006.zhihu.navigation.HotList
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.navigation.Login
 import com.github.zly2006.zhihu.navigation.MainTabs
 import com.github.zly2006.zhihu.navigation.MyCollections
 import com.github.zly2006.zhihu.navigation.NavDestination
@@ -120,6 +122,7 @@ import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.navigation.Topic
 import com.github.zly2006.zhihu.navigation.WriteAnswer
 import com.github.zly2006.zhihu.navigation.WritePin
+import com.github.zly2006.zhihu.navigation.loginNavigationRequestFlow
 import com.github.zly2006.zhihu.platform.PlatformBackHandler
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.reading.rememberReadingPlayerController
@@ -349,6 +352,14 @@ fun ZhihuMain(
         }
     }
 
+    LaunchedEffect(navController) {
+        loginNavigationRequestFlow.collect {
+            navController.navigate(Login) {
+                launchSingleTop = true
+            }
+        }
+    }
+
     LaunchedEffect(mainPagerState.currentPage, mainTabPages) {
         mainTabPages.getOrNull(mainPagerState.currentPage)?.bottomDestination?.let { destination ->
             currentMainTabDestination = destination
@@ -541,6 +552,14 @@ fun ZhihuMain(
                             innerPadding = innerPadding,
                             collectionDirectBrowseEnabled = collectionDirectBrowseEnabled,
                             showHomeTopActions = showHomeTopActions,
+                        )
+                    }
+                    composable<Login> {
+                        LoginScreen(
+                            onLoginComplete = { navController.popBackStack() },
+                            onOpenTelemetrySettings = {
+                                navController.navigate(Account.SystemAndUpdateSettings("allowTelemetry"))
+                            },
                         )
                     }
                     composable<Question> { navEntry ->

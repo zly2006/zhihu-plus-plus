@@ -20,52 +20,60 @@
 package com.github.zly2006.zhihu.macos
 
 import kotlinx.cinterop.autoreleasepool
-import platform.AppKit.NSToolbarItemGroup
+import platform.AppKit.NSToolbarItem
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class MacosNativeToolbarTest {
     @Test
-    fun navigationItemsFollowConfiguredOrder() {
-        val items = macosToolbarNavigationItems(
-            listOf("Home", "Follow", "HotList", "Daily", "OnlineHistory", "MyCollections", "Account"),
+    fun toolbarUsesIndependentNativeActions() = autoreleasepool {
+        val selectedActions = mutableListOf<String>()
+        val controller = MacosNativeToolbarController(
+            leadingActions = listOf(
+                MacosNativeToolbarAction("sidebar", "侧栏", "sidebar.left") {
+                    selectedActions += "sidebar"
+                },
+            ),
+            trailingActions = listOf(
+                MacosNativeToolbarAction("search", "搜索", "magnifyingglass") {
+                    selectedActions += "search"
+                },
+                MacosNativeToolbarAction("notifications", "通知", "bell") {
+                    selectedActions += "notifications"
+                },
+            ),
         )
-
-        assertEquals(
-            listOf("Home", "Follow", "HotList", "Daily", "OnlineHistory", "MyCollections", "Account"),
-            items.map(MacosToolbarNavigationItem::destinationName),
-        )
-        assertEquals(
-            listOf("首页", "关注", "热榜", "日报", "历史", "收藏", "账号"),
-            items.map(MacosToolbarNavigationItem::label),
-        )
-    }
-
-    @Test
-    fun nativeActionsDispatchToSharedNavigation() = autoreleasepool {
-        val destinations = macosToolbarNavigationItems(listOf("Home", "Daily"))
-        val controller = MacosNativeToolbarController(destinations)
-        var navigation = ""
-        var action = ""
-        controller.onNavigate = { navigation = it }
-        controller.onSearch = { action = "search" }
-        controller.onNotifications = { action = "notifications" }
 
         val identifiers = controller.toolbarDefaultItemIdentifiers(controller.toolbar)
-        assertEquals(3, identifiers.size)
+        assertEquals(4, identifiers.size)
         assertTrue(
-            controller.toolbar(controller.toolbar, identifiers[0] as String, false) is NSToolbarItemGroup,
+            controller.toolbar(controller.toolbar, identifiers[0] as String, false) is NSToolbarItem,
         )
         assertTrue(
-            controller.toolbar(controller.toolbar, identifiers[2] as String, false) is NSToolbarItemGroup,
+            controller.toolbar(controller.toolbar, identifiers[2] as String, false) is NSToolbarItem,
+        )
+        assertTrue(
+            controller.toolbar(controller.toolbar, identifiers[3] as String, false) is NSToolbarItem,
         )
 
-        controller.performNavigation(1)
-        assertEquals("Daily", navigation)
-        controller.performAction(0)
-        assertEquals("search", action)
-        controller.performAction(1)
-        assertEquals("notifications", action)
+        val sidebarItem = controller.toolbar(controller.toolbar, identifiers[0] as String, false)
+        val searchItem = controller.toolbar(controller.toolbar, identifiers[2] as String, false)
+        val notificationsItem = controller.toolbar(controller.toolbar, identifiers[3] as String, false)
+        controller.selectAction(sidebarItem!!)
+        controller.selectAction(searchItem!!)
+        controller.selectAction(notificationsItem!!)
+        assertEquals(listOf("sidebar", "search", "notifications"), selectedActions)
+
+        controller.updateActions(
+            leadingActions = emptyList(),
+            trailingActions = listOf(
+                MacosNativeToolbarAction("search", "搜索", "magnifyingglass") {
+                    selectedActions += "updated search"
+                },
+            ),
+        )
+        controller.selectAction(searchItem)
+        assertEquals("updated search", selectedActions.last())
     }
 }

@@ -50,6 +50,7 @@ import com.github.zly2006.zhihu.data.navDestination
 import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.navigation.requestLoginNavigation
 import com.github.zly2006.zhihu.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.platform.androidSettingsStore
 import com.github.zly2006.zhihu.platform.androidUserMessageSink
@@ -111,7 +112,7 @@ private val ZHIHU_PP_ANDROID_HEADERS = createClientPlugin("ZhihuPPAndroidHeaders
 }
 
 private const val AIGC_VOTE_CLIENT_ID_KEY = "aigcVoteClientId"
-private const val AIGC_VOTE_SERVER_URL_KEY = "aigcVoteServerUrl"
+internal const val AIGC_VOTE_SERVER_URL_KEY = "aigcVoteServerUrl"
 private const val DEFAULT_ANDROID_AIGC_VOTE_SERVER_URL = "https://aigc-vote.ai.fintechedu.cn"
 
 open class SharedAndroidPaginationEnvironment(
@@ -142,7 +143,7 @@ open class SharedAndroidPaginationEnvironment(
     }
 
     override fun requestLogin(): Boolean {
-        context.startLoginActivity()
+        requestLoginNavigation()
         return true
     }
 
@@ -744,12 +745,4 @@ private fun Context.canSafelyShowDialog(): Boolean {
     if (activity.isFinishing || activity.isDestroyed) return false
     val lifecycleOwner = activity as? LifecycleOwner ?: return true
     return lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
-}
-
-private fun Context.startLoginActivity() {
-    val intent = Intent().setClassName(packageName, "com.github.zly2006.zhihu.LoginActivity")
-    if (this !is Activity) {
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-    }
-    startActivity(intent)
 }

@@ -55,6 +55,8 @@ actual fun rememberExternalUrlOpener(): (String) -> Unit {
 
 internal actual val platformBottomBarItemLimit: Int? = 5
 
+actual val platformName: String = "Android"
+
 @Composable
 actual fun rememberSystemUrlOpener(): (String) -> Unit {
     val context = LocalContext.current

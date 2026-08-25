@@ -20,6 +20,7 @@ package com.github.zly2006.zhihu.ui
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.text.InlineTextContent
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -27,6 +28,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toComposeImageBitmap
@@ -34,15 +36,11 @@ import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.unit.em
 import com.github.zly2006.zhihu.desktop.DesktopAccountStore
-import com.github.zly2006.zhihu.desktop.DesktopLoginRequests
 import com.github.zly2006.zhihu.desktop.openDesktopExternalUrl
-import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.platform.UserMessageSink
-import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.ui.subscreens.DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.desktopVersionName
 import com.github.zly2006.zhihu.util.Log
 import com.github.zly2006.zhihu.viewmodel.DesktopPaginationEnvironment
@@ -228,15 +226,17 @@ actual fun rememberHomeIsDebuggable(): Boolean = true
 @Composable
 actual fun rememberBlocklistRuleImporter(
     userMessages: UserMessageSink,
-): (((String) -> Unit) -> Unit) {
+    onImported: (String) -> Unit,
+): () -> Unit {
     val database = remember {
         val databaseFile = desktopContentFilterDatabaseFile()
         databaseFile.parentFile?.mkdirs()
         getContentFilterDatabase(databaseFile)
     }
     val coroutineScope = rememberCoroutineScope()
-    return remember(database, userMessages) {
-        { onImported ->
+    val currentOnImported by rememberUpdatedState(onImported)
+    return remember(database, userMessages, coroutineScope) {
+        {
             val selectedFile = chooseBlocklistImportFile()
             if (selectedFile != null) {
                 coroutineScope.launch {
@@ -248,7 +248,7 @@ actual fun rememberBlocklistRuleImporter(
                             topicDao = database.blockedTopicDao(),
                             text = selectedFile.readText(),
                         )
-                        onImported(summary)
+                        currentOnImported(summary)
                     } catch (e: Exception) {
                         Log.e("BlocklistSettings", "Failed to import blocklist", e)
                         userMessages.showShortMessage("导入失败: ${e.message}")
@@ -305,11 +305,6 @@ actual fun rememberAccountSettingsAccountState(): androidx.compose.runtime.State
 }
 
 @Composable
-actual fun rememberAccountQrLoginRequester(): () -> Unit = remember {
-    { DesktopLoginRequests.requestLogin() }
-}
-
-@Composable
 actual fun rememberAppVersionInfo(): String = desktopVersionName()
 
 private fun com.github.zly2006.zhihu.account.ZhihuAccountSession.toAccountSettingsAccountState(): AccountSettingsAccountState =
@@ -336,16 +331,7 @@ actual fun ArticleWebViewContent(
     onImageLoadFailed: () -> Unit,
     onDoubleTap: () -> Unit,
 ) {
-    RenderMarkdown(
-        html = html,
-        modifier = Modifier,
-        selectable = true,
-        enableScroll = false,
-        header = {},
-        footer = {},
-        useTiqianRenderer = rememberSettingsStore()
-            .getBoolean(DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY, false),
-    )
+    Text("WebView渲染已废弃，此平台不被支持")
 }
 
 actual fun Modifier.articleMarkdownSelectionWorkaround(): Modifier = this

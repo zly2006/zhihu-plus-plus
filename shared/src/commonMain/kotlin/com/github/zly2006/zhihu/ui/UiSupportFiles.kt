@@ -43,6 +43,7 @@ import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
+import com.github.zly2006.zhihu.navigation.requestLoginNavigation
 import com.github.zly2006.zhihu.platform.SettingsStore
 import com.github.zly2006.zhihu.platform.UserMessageSink
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
@@ -487,7 +488,9 @@ data class AccountSettingsAccountState(
 expect fun rememberAccountSettingsAccountState(): State<AccountSettingsAccountState>
 
 @Composable
-expect fun rememberAccountQrLoginRequester(): () -> Unit
+fun rememberAccountLoginRequester(): () -> Unit = remember {
+    ::requestLoginNavigation
+}
 
 @Composable
 expect fun rememberAppVersionInfo(): String
@@ -533,7 +536,8 @@ expect fun Modifier.commentSelectionWorkaround(): Modifier
 @Composable
 expect fun rememberBlocklistRuleImporter(
     userMessages: UserMessageSink,
-): (((String) -> Unit) -> Unit)
+    onImported: (String) -> Unit,
+): () -> Unit
 
 @Composable
 expect fun rememberBlocklistRuleExporter(): suspend () -> String
