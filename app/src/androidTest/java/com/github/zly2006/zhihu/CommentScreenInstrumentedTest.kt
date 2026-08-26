@@ -207,13 +207,13 @@ class CommentScreenInstrumentedTest {
             paragraphId = "CANw6uZN",
         )
         val currentFragment = mutableStateOf<NavDestination>(firstFragment)
-        val viewModel = SeededRootCommentViewModel(
-            article = firstFragment,
-            seededComments = seedRootComments(count = 1),
+        val urlPrefix =
+            "https://www.zhihu.com/api/v4/comment_v5/answers/${firstFragment.contentId}/segment/root_comment" +
+                "?segment_id=${firstFragment.segmentId}"
+        mockRootComments(
+            urlPrefix = urlPrefix,
+            commentId = "root-1",
         )
-        composeRule.seedViewModel<SeededRootCommentViewModel>(
-            key = "segment:${firstFragment.contentType}:${firstFragment.contentId}:${firstFragment.segmentId}",
-        ) { viewModel }
 
         composeRule.setScreenContent {
             val commentInput = remember { mutableStateOf("") }
@@ -229,6 +229,7 @@ class CommentScreenInstrumentedTest {
         composeRule.runOnIdle { currentFragment.value = secondFragment }
 
         composeRule.onNodeWithTag("comment_row_root-1").assertIsDisplayed()
+        assertEquals(1, ZhihuMockApi.requestCount(HttpMethod.Get, urlPrefix))
     }
 
     /**

@@ -17,10 +17,7 @@
 
 package com.github.zly2006.zhihu
 
-import android.app.Activity
-import android.app.Application
 import android.graphics.Bitmap
-import android.os.Bundle
 import android.os.SystemClock
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -43,9 +40,6 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.FileOutputStream
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicReference
 import androidx.compose.ui.graphics.Color as ComposeColor
 
 @RunWith(AndroidJUnit4::class)
@@ -77,42 +71,8 @@ class SystemBarsInstrumentedTest {
         composeRule.waitForIdle()
         waitUntilStatusBarColor(originalActivity, "before identity restart")
 
-        val relaunchedActivity = AtomicReference<MainActivity>()
-        val resumedLatch = CountDownLatch(1)
-        val callbacks = object : Application.ActivityLifecycleCallbacks {
-            override fun onActivityResumed(activity: Activity) {
-                if (activity is MainActivity && activity !== originalActivity) {
-                    relaunchedActivity.set(activity)
-                    resumedLatch.countDown()
-                }
-            }
-
-            override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) = Unit
-
-            override fun onActivityStarted(activity: Activity) = Unit
-
-            override fun onActivityPaused(activity: Activity) = Unit
-
-            override fun onActivityStopped(activity: Activity) = Unit
-
-            override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
-
-            override fun onActivityDestroyed(activity: Activity) = Unit
-        }
-        originalActivity.application.registerActivityLifecycleCallbacks(callbacks)
-        try {
-            instrumentation.runOnMainSync {
-                originalActivity.recreate()
-            }
-            assertTrue(
-                "Identity restart did not launch a fresh MainActivity",
-                resumedLatch.await(10, TimeUnit.SECONDS),
-            )
-        } finally {
-            originalActivity.application.unregisterActivityLifecycleCallbacks(callbacks)
-        }
-
-        val activity = checkNotNull(relaunchedActivity.get())
+        composeRule.activityRule.scenario.recreate()
+        val activity = composeRule.activity
         instrumentation.runOnMainSync {
             activity.setContent {
                 ZhihuTheme {
