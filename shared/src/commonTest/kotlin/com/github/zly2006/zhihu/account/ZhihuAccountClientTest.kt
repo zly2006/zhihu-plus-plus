@@ -166,7 +166,15 @@ class ZhihuAccountClientTest {
 
     @Test
     fun logoutDestroysTheBoundClientAndPublishesOneGuestSession() = runTest {
-        withAccountEngine(emptyMockEngine()) {
+        withAccountEngine(
+            MockEngine {
+                respond(
+                    content = """{"id":"bob","name":"Bob","url_token":"bob","user_type":"people"}""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, "application/json"),
+                )
+            },
+        ) {
             val repository = ZhihuAccountRepository(ClientInMemoryAccountSessionStore()).apply {
                 save(
                     ZhihuAccountSession(
@@ -185,6 +193,136 @@ class ZhihuAccountClientTest {
             assertSame(accountData.session, accountData.client.load())
             assertNotSame(signedInClient, accountData.client)
             accountData.close()
+        }
+    }
+
+    @Test
+    fun switchingSavedAccountsReplacesClientAndPreservesBothSessions() = runTest {
+        val alice = ZhihuAccountSession(login = true, username = "alice")
+        val bob = ZhihuAccountSession(login = true, username = "bob")
+        val repository = ZhihuAccountRepository(ClientInMemoryAccountSessionStore()).apply {
+            saveAccounts(
+                ZhihuAccounts(
+                    activeAccountId = "alice",
+                    accounts = listOf(ZhihuSavedAccount("alice", alice), ZhihuSavedAccount("bob", bob)),
+                ),
+            )
+        }
+        withAccountEngine(
+            MockEngine {
+                respond(
+                    content = """{"id":"bob","name":"Bob","url_token":"bob","user_type":"people"}""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, "application/json"),
+                )
+            },
+        ) {
+            val accountStore = ZhihuAccountStore(repository)
+            val aliceClient = accountStore.client
+
+            accountStore.switchAccount("bob")
+
+            assertEquals("bob", accountStore.session.profile?.id)
+            assertEquals(alice, accountStore.accounts.first().session)
+            assertEquals(
+                "bob",
+                accountStore.accounts
+                    .last()
+                    .session.profile
+                    ?.id,
+            )
+            assertNotSame(aliceClient, accountStore.client)
+            assertSame(accountStore.session, accountStore.client.load())
+            accountStore.close()
+        }
+    }
+
+    @Test
+    fun expiredSavedAccountDoesNotReplaceTheCurrentSessionOrClient() = runTest {
+        val alice = ZhihuAccountSession(login = true, username = "alice")
+        val bob = ZhihuAccountSession(login = true, username = "bob")
+        val repository = ZhihuAccountRepository(ClientInMemoryAccountSessionStore()).apply {
+            saveAccounts(
+                ZhihuAccounts(
+                    activeAccountId = "alice",
+                    accounts = listOf(ZhihuSavedAccount("alice", alice), ZhihuSavedAccount("bob", bob)),
+                ),
+            )
+        }
+        withAccountEngine(
+            MockEngine {
+                respond(
+                    content = "unauthorized",
+                    status = HttpStatusCode.Unauthorized,
+                    headers = headersOf(HttpHeaders.ContentType, "text/plain"),
+                )
+            },
+        ) {
+            val accountStore = ZhihuAccountStore(repository)
+            val client = accountStore.client
+
+            assertEquals(false, accountStore.switchAccount("bob"))
+            assertEquals(alice, accountStore.session)
+            assertSame(client, accountStore.client)
+            accountStore.close()
+        }
+    }
+
+    @Test
+    fun logoutCurrentSavedAccountSelectsTheNextOne() = runTest {
+        val alice = ZhihuAccountSession(login = true, username = "alice")
+        val bob = ZhihuAccountSession(login = true, username = "bob")
+        val repository = ZhihuAccountRepository(ClientInMemoryAccountSessionStore()).apply {
+            saveAccounts(
+                ZhihuAccounts(
+                    activeAccountId = "alice",
+                    accounts = listOf(ZhihuSavedAccount("alice", alice), ZhihuSavedAccount("bob", bob)),
+                ),
+            )
+        }
+        withAccountEngine(emptyMockEngine()) {
+            val accountStore = ZhihuAccountStore(repository)
+
+            accountStore.clear()
+
+            assertEquals(bob, accountStore.session)
+            assertEquals(listOf("bob"), accountStore.accounts.map { it.id })
+            accountStore.close()
+        }
+    }
+
+    @Test
+    fun loginAddsAndSelectsAnIndependentAccountWithoutOverwritingCurrent() = runTest {
+        val alice = ZhihuAccountSession(
+            login = true,
+            username = "alice",
+            profile = ZhihuAccountProfileSnapshot(id = "alice", name = "Alice"),
+        )
+        val repository = ZhihuAccountRepository(ClientInMemoryAccountSessionStore()).apply { save(alice) }
+        withAccountEngine(
+            MockEngine {
+                respond(
+                    content = """{"id":"bob","name":"Bob","url_token":"bob","user_type":"people"}""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, "application/json"),
+                )
+            },
+        ) {
+            val accountStore = ZhihuAccountStore(repository)
+
+            val loggedIn = accountStore.login(mutableMapOf("z_c0" to "bob-token"))
+
+            assertEquals(true, loggedIn)
+            assertEquals("bob", accountStore.session.profile?.id)
+            assertEquals(listOf("alice", "bob"), accountStore.accounts.map { it.id })
+            assertEquals(
+                "alice",
+                accountStore.accounts
+                    .first()
+                    .session.profile
+                    ?.id,
+            )
+            accountStore.close()
         }
     }
 

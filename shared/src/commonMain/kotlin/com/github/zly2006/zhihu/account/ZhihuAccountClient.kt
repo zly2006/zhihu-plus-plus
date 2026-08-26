@@ -19,15 +19,13 @@ import kotlinx.coroutines.flow.asStateFlow
 class ZhihuAccountClient internal constructor(
     private val accountState: ZhihuAccountState,
 ) : AutoCloseable {
-    private val cookies = accountState.session.value.cookies
+    private val cookies = accountState.value.session.cookies
         .toMutableMap()
-    private val client = createAccountHttpClient(cookies, accountState.session.value.userAgent) {
+    private val client = createAccountHttpClient(cookies, accountState.value.session.userAgent) {
         accountState.save(load().copy(cookies = cookies.toMutableMap()))
     }
 
-    val sessionState: StateFlow<ZhihuAccountSession> = accountState.session.asStateFlow()
-
-    fun load(): ZhihuAccountSession = accountState.session.value
+    fun load(): ZhihuAccountSession = accountState.value.session
 
     fun save(session: ZhihuAccountSession) {
         require(load().hasSameIdentityAs(session)) {
@@ -75,9 +73,11 @@ class ZhihuAccountStore internal constructor(
     private val accountState = ZhihuAccountState(repository)
     private var mutableClient = ZhihuAccountClient(accountState)
 
-    val sessionState: StateFlow<ZhihuAccountSession> = accountState.session.asStateFlow()
+    val accountsState: StateFlow<ZhihuAccounts> = accountState.state.asStateFlow()
     val session: ZhihuAccountSession
-        get() = accountState.session.value
+        get() = accountState.value.session
+    val accounts: List<ZhihuSavedAccount>
+        get() = accountState.value.accounts
     val client: ZhihuAccountClient
         get() = mutableClient
 
@@ -90,18 +90,41 @@ class ZhihuAccountStore internal constructor(
     }
 
     fun replaceSession(session: ZhihuAccountSession) {
-        accountState.save(session)
+        accountState.saveCurrent(session)
         replaceClient()
     }
 
     fun clear() {
-        accountState.clear()
+        accountState.removeCurrent()
         replaceClient()
+    }
+
+    suspend fun switchAccount(id: String): Boolean {
+        if (id == accountState.value.activeAccountId) return true
+        val savedSession = accountState.value.accounts
+            .firstOrNull { it.id == id }
+            ?.session ?: return false
+        val verified = verifyCandidateSession(savedSession.cookies.toMutableMap(), savedSession.userAgent)
+            ?.copy(
+                mobileAccessToken = savedSession.mobileAccessToken,
+                mobileRefreshToken = savedSession.mobileRefreshToken,
+                mobileTokenType = savedSession.mobileTokenType,
+                mobileTokenExpiresAt = savedSession.mobileTokenExpiresAt,
+            ) ?: return false
+        accountState.select(id, verified)
+        replaceClient()
+        return true
+    }
+
+    fun removeAccount(id: String) {
+        val activeAccountId = accountState.value.activeAccountId
+        accountState.remove(id)
+        if (id == activeAccountId) replaceClient()
     }
 
     suspend fun login(cookies: MutableMap<String, String>): Boolean {
         val session = verifyCandidateSession(cookies) ?: return false
-        replaceSession(session)
+        selectVerifiedSession(session)
         return true
     }
 
@@ -112,14 +135,22 @@ class ZhihuAccountStore internal constructor(
             mobileTokenType = token.tokenType,
             mobileTokenExpiresAt = token.expiresAt,
         ) ?: return false
-        replaceSession(session)
+        selectVerifiedSession(session)
         return true
     }
 
-    private suspend fun verifyCandidateSession(cookies: MutableMap<String, String>): ZhihuAccountSession? {
-        val client = createAccountHttpClient(cookies, session.userAgent)
+    private fun selectVerifiedSession(session: ZhihuAccountSession) {
+        accountState.selectOrAdd(session)
+        replaceClient()
+    }
+
+    private suspend fun verifyCandidateSession(
+        cookies: MutableMap<String, String>,
+        userAgent: String = session.userAgent,
+    ): ZhihuAccountSession? {
+        val client = createAccountHttpClient(cookies, userAgent)
         return try {
-            fetchVerifiedZhihuSession(client, cookies, session.userAgent)
+            fetchVerifiedZhihuSession(client, cookies, userAgent)
         } finally {
             client.close()
         }
@@ -136,16 +167,72 @@ class ZhihuAccountStore internal constructor(
 internal class ZhihuAccountState(
     private val repository: ZhihuAccountRepository,
 ) {
-    val session = MutableStateFlow(repository.load())
+    val state = MutableStateFlow(repository.loadAccounts())
+    val value: ZhihuAccounts
+        get() = state.value
 
     fun save(session: ZhihuAccountSession) {
-        this.session.value = session
-        repository.save(session)
+        saveCurrent(session)
     }
 
-    fun clear() {
-        session.value = ZhihuAccountSession()
-        repository.clear()
+    fun saveCurrent(session: ZhihuAccountSession) {
+        val current = value
+        val activeId = current.activeAccountId
+        val updated = if (activeId == null) {
+            if (!session.login) {
+                ZhihuAccounts()
+            } else {
+                val id = session.accountSlotId()
+                ZhihuAccounts(id, listOf(ZhihuSavedAccount(id, session)))
+            }
+        } else {
+            current.copy(
+                accounts = current.accounts.map { account ->
+                    if (account.id == activeId) account.copy(session = session) else account
+                },
+            )
+        }
+        persist(updated)
+    }
+
+    fun selectOrAdd(session: ZhihuAccountSession) {
+        val existing = value.accounts.firstOrNull { it.session.hasSameIdentityAs(session) }
+        if (existing != null) {
+            persist(
+                value.copy(
+                    activeAccountId = existing.id,
+                    accounts = value.accounts.map { if (it.id == existing.id) it.copy(session = session) else it },
+                ),
+            )
+        } else {
+            val id = session.accountSlotId()
+            persist(ZhihuAccounts(id, value.accounts + ZhihuSavedAccount(id, session)))
+        }
+    }
+
+    fun select(id: String, session: ZhihuAccountSession) {
+        require(value.accounts.any { it.id == id }) { "找不到要切换的登录账号" }
+        persist(
+            value.copy(
+                activeAccountId = id,
+                accounts = value.accounts.map { if (it.id == id) it.copy(session = session) else it },
+            ),
+        )
+    }
+
+    fun remove(id: String) {
+        val remaining = value.accounts.filterNot { it.id == id }
+        val activeId = if (value.activeAccountId == id) remaining.firstOrNull()?.id else value.activeAccountId
+        persist(ZhihuAccounts(activeId, remaining))
+    }
+
+    fun removeCurrent() {
+        value.activeAccountId?.let(::remove) ?: repository.clear()
+    }
+
+    private fun persist(accounts: ZhihuAccounts) {
+        if (accounts.accounts.isEmpty()) repository.clear() else repository.saveAccounts(accounts)
+        state.value = accounts
     }
 }
 
@@ -164,12 +251,8 @@ internal fun createAccountHttpClient(
 private fun ZhihuAccountSession.hasSameIdentityAs(other: ZhihuAccountSession): Boolean {
     if (login != other.login) return false
     if (!login) return true
-    val identity = profile?.id?.takeIf(String::isNotBlank)
-        ?: profile?.urlToken?.takeIf(String::isNotBlank)
-        ?: username.takeIf(String::isNotBlank)
-    val otherIdentity = other.profile?.id?.takeIf(String::isNotBlank)
-        ?: other.profile?.urlToken?.takeIf(String::isNotBlank)
-        ?: other.username.takeIf(String::isNotBlank)
+    val identity = accountIdentityKey()
+    val otherIdentity = other.accountIdentityKey()
     return identity != null && identity == otherIdentity
 }
 

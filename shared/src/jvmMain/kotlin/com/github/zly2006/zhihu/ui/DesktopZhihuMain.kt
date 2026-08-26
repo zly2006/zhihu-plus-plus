@@ -87,7 +87,8 @@ import kotlinx.coroutines.withContext
 fun DesktopZhihuMain() {
     val navController = rememberNavController()
     val accountStore = defaultDesktopAccountStore
-    val accountSession by accountStore.sessionState.collectAsState()
+    val accounts by accountStore.accountsState.collectAsState()
+    val accountSession = accounts.session
     val httpClient = remember(accountStore, accountSession) { accountStore.client.httpClient() }
     val coroutineScope = rememberCoroutineScope()
     val userMessages = rememberUserMessageSink()

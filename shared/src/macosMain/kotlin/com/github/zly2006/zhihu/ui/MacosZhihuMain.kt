@@ -88,7 +88,8 @@ import kotlinx.coroutines.withContext
 fun MacosZhihuMain(windowChrome: MacosWindowChromeHost? = null) {
     val navController = rememberNavController()
     val accountStore = defaultNativeAccountStore
-    val accountSession by accountStore.sessionState.collectAsState()
+    val accounts by accountStore.accountsState.collectAsState()
+    val accountSession = accounts.session
     val httpClient = remember(accountStore, accountSession) { accountStore.client.httpClient() }
     val coroutineScope = rememberCoroutineScope()
     val openExternalUrl = rememberExternalUrlOpener()

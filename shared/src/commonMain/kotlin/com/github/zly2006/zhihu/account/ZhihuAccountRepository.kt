@@ -21,6 +21,7 @@ import com.github.zly2006.zhihu.data.ZhihuJson
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 
 const val DEFAULT_ZHIHU_USER_AGENT =
     "Mozilla/5.0 (X11; U; Linux x86_64; en-US) AppleWebKit/540.0 (KHTML, like Gecko) Ubuntu/10.10 Chrome/9.1.0.0 Safari/540.0"
@@ -48,6 +49,23 @@ data class ZhihuAccountSession(
     val mobileTokenExpiresAt: Long? = null,
 )
 
+@Serializable
+data class ZhihuSavedAccount(
+    val id: String,
+    val session: ZhihuAccountSession,
+)
+
+@Serializable
+data class ZhihuAccounts(
+    val activeAccountId: String? = null,
+    val accounts: List<ZhihuSavedAccount> = emptyList(),
+) {
+    val session: ZhihuAccountSession
+        get() = accounts.firstOrNull { it.id == activeAccountId }?.session ?: guestZhihuAccountSession
+}
+
+private val guestZhihuAccountSession = ZhihuAccountSession()
+
 interface ZhihuAccountSessionStore {
     fun readText(): String?
 
@@ -60,19 +78,44 @@ class ZhihuAccountRepository(
     private val store: ZhihuAccountSessionStore,
     private val json: Json = ZhihuJson.json,
 ) {
-    fun load(): ZhihuAccountSession = runCatching {
-        store
-            .readText()
-            ?.takeIf { it.isNotBlank() }
-            ?.let { json.decodeFromString<ZhihuAccountSession>(it) }
-            ?: ZhihuAccountSession()
-    }.getOrDefault(ZhihuAccountSession())
+    fun loadAccounts(): ZhihuAccounts = runCatching {
+        val text = store.readText()?.takeIf { it.isNotBlank() } ?: return@runCatching ZhihuAccounts()
+        val element = json.parseToJsonElement(text)
+        if (element is JsonObject && "accounts" in element) {
+            json.decodeFromString<ZhihuAccounts>(text)
+        } else {
+            val session = json.decodeFromString<ZhihuAccountSession>(text)
+            if (session.login) {
+                val id = session.accountSlotId()
+                ZhihuAccounts(id, listOf(ZhihuSavedAccount(id, session)))
+            } else {
+                ZhihuAccounts()
+            }
+        }
+    }.getOrDefault(ZhihuAccounts())
+
+    fun load(): ZhihuAccountSession = loadAccounts().session
 
     fun save(session: ZhihuAccountSession) {
-        store.writeText(json.encodeToString(session))
+        if (session.login) {
+            val id = session.accountSlotId()
+            saveAccounts(ZhihuAccounts(id, listOf(ZhihuSavedAccount(id, session))))
+        } else {
+            clear()
+        }
+    }
+
+    fun saveAccounts(accounts: ZhihuAccounts) {
+        store.writeText(json.encodeToString(accounts))
     }
 
     fun clear() {
         store.delete()
     }
 }
+
+internal fun ZhihuAccountSession.accountIdentityKey(): String? = profile?.id?.takeIf(String::isNotBlank)
+    ?: profile?.urlToken?.takeIf(String::isNotBlank)
+    ?: username.takeIf(String::isNotBlank)
+
+internal fun ZhihuAccountSession.accountSlotId(): String = accountIdentityKey() ?: "account"

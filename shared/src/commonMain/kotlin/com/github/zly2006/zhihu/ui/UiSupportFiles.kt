@@ -361,20 +361,21 @@ data class AccountSettingsAccountState(
 @Composable
 fun rememberAccountSettingsAccountState(): State<AccountSettingsAccountState> {
     val accountStore = rememberZhihuAccountStore()
-    val session = accountStore.sessionState.collectAsState()
-    return remember(session) {
+    val accounts = accountStore.accountsState.collectAsState()
+    return remember(accounts) {
         derivedStateOf {
+            val session = accounts.value.session
             AccountSettingsAccountState(
-                login = session.value.login,
-                hasRequiredCookie = session.value.cookies["d_c0"]
+                login = session.login,
+                hasRequiredCookie = session.cookies["d_c0"]
                     .isNullOrBlank()
                     .not(),
-                username = session.value.username,
-                avatarUrl = session.value.profile?.avatarUrl,
-                id = session.value.profile
+                username = session.username,
+                avatarUrl = session.profile?.avatarUrl,
+                id = session.profile
                     ?.id
                     .orEmpty(),
-                urlToken = session.value.profile?.urlToken,
+                urlToken = session.profile?.urlToken,
                 identityManagementSupported = isIdentityManagementSupported,
             )
         }
