@@ -21,6 +21,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -77,7 +78,7 @@ class BlocklistSettingsScreenInstrumentedTest {
         val dao = getContentFilterDatabase(composeRule.activity).blockedQuestionAuthorDao()
         val navigator = setScreen()
 
-        composeRule.onNodeWithTag("blocklistSettings:tab:3").performClick()
+        composeRule.onNodeWithText("屏蔽提问者").performClick()
         composeRule.onNodeWithTag(BlocklistSettingsTestTags.FAB).assertIsDisplayed()
         composeRule.waitUntil(5_000) {
             composeRule.onAllNodesWithTag(BlocklistSettingsTestTags.QUESTION_AUTHOR_LIST).fetchSemanticsNodes().isNotEmpty()

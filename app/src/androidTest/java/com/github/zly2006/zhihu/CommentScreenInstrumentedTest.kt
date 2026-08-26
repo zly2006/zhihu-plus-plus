@@ -388,7 +388,9 @@ class CommentScreenInstrumentedTest {
         composeRule.onNodeWithTag("comment_reply_button_root-1").performClick()
         composeRule.onNodeWithTag("comment_like_button_root-1").performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) {
-            seededComments.first().likeCount == 6 && seededComments.first().liked
+            runCatching {
+                composeRule.onNodeWithTag("comment_like_count_root-1").assertTextEquals("6")
+            }.isSuccess
         }
 
         assertEquals(listOf("root-1"), childEntryCommentIds)
