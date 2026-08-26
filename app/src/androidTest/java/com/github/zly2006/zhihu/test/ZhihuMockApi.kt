@@ -57,8 +57,10 @@ object ZhihuMockApi {
             requests.clear()
             return
         }
-        replaceAndroidZhihuAccountStoreForTesting(null)
-        accountHttpClientEngineForTesting = mockEngine()
+        if (accountHttpClientEngineForTesting == null) {
+            replaceAndroidZhihuAccountStoreForTesting(null)
+            accountHttpClientEngineForTesting = mockEngine()
+        }
     }
 
     fun isEnabled(): Boolean = enabled
