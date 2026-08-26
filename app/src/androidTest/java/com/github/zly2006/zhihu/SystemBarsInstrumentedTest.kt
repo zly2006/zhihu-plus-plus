@@ -72,9 +72,10 @@ class SystemBarsInstrumentedTest {
         waitUntilStatusBarColor(originalActivity, "before identity restart")
 
         composeRule.activityRule.scenario.recreate()
-        val activity = composeRule.activity
-        instrumentation.runOnMainSync {
-            activity.setContent {
+        lateinit var activity: MainActivity
+        composeRule.activityRule.scenario.onActivity { recreatedActivity ->
+            activity = recreatedActivity
+            recreatedActivity.setContent {
                 ZhihuTheme {
                     SolidThemeSurface()
                 }
