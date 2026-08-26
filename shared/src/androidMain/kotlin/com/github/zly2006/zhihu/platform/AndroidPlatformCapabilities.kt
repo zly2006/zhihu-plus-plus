@@ -61,6 +61,10 @@ internal actual val platformBottomBarItemLimit: Int? = 5
 
 actual val platformName: String = "Android"
 
+actual val isJvm: Boolean = false
+
+actual val isNative: Boolean = false
+
 actual val isAigcVoteSupported: Boolean = true
 
 actual val isBlocklistNlpSupported: Boolean = true

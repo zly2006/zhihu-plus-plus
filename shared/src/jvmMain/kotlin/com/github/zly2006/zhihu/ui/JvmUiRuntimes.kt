@@ -32,7 +32,6 @@ import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.unit.em
-import com.github.zly2006.zhihu.desktop.defaultDesktopAccountStore
 import com.github.zly2006.zhihu.desktop.openDesktopExternalUrl
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.notification.NotificationSettingsStore
@@ -304,12 +303,6 @@ private fun chooseBlocklistImportFile(): File? {
 @Composable
 actual fun rememberAppVersionInfo(): String = desktopVersionName()
 
-actual val isArticleNavControllerSupported: Boolean = false
-
-@Composable
-actual fun rememberArticleNavController(): androidx.navigation.NavHostController =
-    error("$platformName 暂不支持文章导航控制器")
-
 @Composable
 actual fun consumePendingCommentId(content: com.github.zly2006.zhihu.navigation.NavDestination): String? = null
 
@@ -324,7 +317,7 @@ actual fun ArticleWebViewContent(
     onRememberedScrollYSyncChange: (Boolean) -> Unit,
     onImageLoadFailed: () -> Unit,
     onDoubleTap: () -> Unit,
-): Unit = error("JVM 暂不支持文章 WebView 渲染")
+): Unit = error("$platformName 暂不支持文章 WebView 渲染")
 
 actual fun Modifier.articleMarkdownSelectionWorkaround(): Modifier = this
 
@@ -332,23 +325,17 @@ actual fun Modifier.articleMarkdownSelectionWorkaround(): Modifier = this
  * 桌面端不支持 WebView
  */
 @Composable
-actual fun ZhihuHtmlWebViewContent(html: String): Unit = error("JVM 暂不支持 HTML WebView 渲染")
+actual fun ZhihuHtmlWebViewContent(html: String): Unit = error("$platformName 暂不支持 HTML WebView 渲染")
 
 actual val isLegacyWebViewSupported: Boolean = false
 
 @Composable
 actual fun rememberNotificationEnvironment(
     settingsStore: NotificationSettingsStore,
-): com.github.zly2006.zhihu.viewmodel.NotificationEnvironment {
-    val userMessages = rememberUserMessageSink()
-    val store = defaultDesktopAccountStore
-    return remember(store, settingsStore, userMessages) {
-        DesktopPaginationEnvironment(
-            store = store,
-            notificationSettingsStore = settingsStore,
-            showFetchFailureMessage = userMessages::showMessage,
-        )
-    }
+): com.github.zly2006.zhihu.viewmodel.NotificationEnvironment = remember(settingsStore) {
+    DesktopPaginationEnvironment(
+        notificationSettingsStore = settingsStore,
+    )
 }
 
 @Composable
@@ -356,7 +343,7 @@ actual fun QuestionDetailWebViewContent(
     questionId: Long,
     html: String,
 ) {
-    error("JVM 暂不支持问题详情 WebView 渲染")
+    error("$platformName 暂不支持问题详情 WebView 渲染")
 }
 
 actual fun Modifier.questionSelectionWorkaround(): Modifier = this

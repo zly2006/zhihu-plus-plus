@@ -45,6 +45,7 @@ import com.github.zly2006.zhihu.data.FeedDisplayItem
 import com.github.zly2006.zhihu.data.HistoryStorage
 import com.github.zly2006.zhihu.data.ZhihuCookieStorage
 import com.github.zly2006.zhihu.data.ZhihuJson.json
+import com.github.zly2006.zhihu.data.asApiEnvironment
 import com.github.zly2006.zhihu.data.navDestination
 import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.filter.ContentOpenEventSupport
@@ -53,9 +54,7 @@ import com.github.zly2006.zhihu.navigation.requestLoginNavigation
 import com.github.zly2006.zhihu.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.platform.androidSettingsStore
 import com.github.zly2006.zhihu.platform.androidUserMessageSink
-import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchStateOwner
-import com.github.zly2006.zhihu.ui.PendingArticleNavigationOwner
-import com.github.zly2006.zhihu.ui.findActivityCapability
+import com.github.zly2006.zhihu.ui.AndroidArticleNavigationHandoff
 import com.github.zly2006.zhihu.util.HttpStatusException
 import com.github.zly2006.zhihu.util.ResolvedCollectionHtmlExportItem
 import com.github.zly2006.zhihu.util.buildArticleExportFileName
@@ -77,6 +76,8 @@ import com.github.zly2006.zhihu.viewmodel.filter.androidKeywordSemanticMatcher
 import com.github.zly2006.zhihu.viewmodel.filter.contentFilterSettings
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
+import com.github.zly2006.zhihu.viewmodel.local.buildLocalRecommendationEngine
+import com.github.zly2006.zhihu.viewmodel.local.getLocalContentDatabase
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.UserAgent
 import io.ktor.client.plugins.api.createClientPlugin
@@ -120,7 +121,10 @@ open class SharedAndroidPaginationEnvironment(
     private val allowGuestAccess: Boolean,
 ) : AndroidContextPaginationEnvironment,
     CollectionContentEnvironment {
-    private val localRecommendationEngine by lazy { LocalRecommendationEngine(context) }
+    private val localRecommendationEngine by lazy {
+        val dao = getLocalContentDatabase(context).contentDao()
+        buildLocalRecommendationEngine(dao, context.asApiEnvironment())
+    }
     private val settingsStore by lazy { androidSettingsStore(context) }
     private val userMessageSink by lazy { androidUserMessageSink(context) }
     private val aigcVoteHttpClient by lazy {
@@ -317,7 +321,7 @@ open class SharedAndroidPaginationEnvironment(
         openFrom: String,
     ) {
         val resolvedOpenFrom = openFrom.ifBlank {
-            context.findActivityCapability<PendingArticleNavigationOwner>()?.consumePendingContentOpenFrom(destination) ?: ""
+            AndroidArticleNavigationHandoff.consumeContentOpenFrom(destination)
         }
         ContentOpenEventSupport.recordOpenEvent(
             database = getContentFilterDatabase(context),
@@ -357,21 +361,8 @@ open class SharedAndroidPaginationEnvironment(
                     recordDao = filterDatabase.blockedContentRecordDao(),
                     semanticMatcher = androidKeywordSemanticMatcher,
                 ),
-                onNlpBlocked = { blockedThisRound ->
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                        context.mainExecutor.execute {
-                            userMessageSink.showShortMessage("NLP 已屏蔽 ${blockedThisRound.first().title.take(10)}... 等 ${blockedThisRound.size} 条内容")
-                        }
-                    }
-                },
             ),
             blockedFeedRecordDao = filterDatabase.blockedFeedRecordDao(),
-            onDetailFetchFailed = { item ->
-                Log.w("ContentFilterExtensions", "Failed to fetch content details for item '${item.title}'. Using dummy content for filtering.")
-            },
-            onDetailsKeywordFiltered = { item, keyword ->
-                Log.e("ContentFilterExtensions", "Filtered item '${item.title}' due to keyword '$keyword' in details: ${item.content}")
-            },
         ).filter(foregroundItems)
         return HomeFeedFilterResult(
             foregroundItems = foregroundItems,
@@ -424,9 +415,6 @@ open class SharedAndroidPaginationEnvironment(
                 .show()
         }
     }
-
-    override fun articleAnswerSwitchState() =
-        context.findActivityCapability<ArticleAnswerSwitchStateOwner>()?.articleAnswerSwitchState
 
     override suspend fun exportCollectionItemsToHtmlZip(
         collectionTitle: String,
@@ -636,8 +624,8 @@ open class SharedAndroidPaginationEnvironment(
         return file.absolutePath
     }
 
-    override fun articleImageExportRenderer(loadAssetText: (String) -> String): ArticleImageExportRenderer =
-        AndroidArticleExportRenderer(context, loadAssetText)
+    override fun articleImageExportRenderer(): ArticleImageExportRenderer =
+        AndroidArticleExportRenderer(context)
 
     override fun hasImageExportPermission(): Boolean =
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ||

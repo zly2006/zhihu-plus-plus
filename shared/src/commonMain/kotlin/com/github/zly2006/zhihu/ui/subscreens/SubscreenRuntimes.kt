@@ -99,9 +99,5 @@ data class DeveloperInfoSnapshot(
     val availableTtsEngineLabels: List<String> = emptyList(),
 )
 
-interface DeveloperInfoProvider {
-    val developerInfo: DeveloperInfoSnapshot
-}
-
 @Composable
 expect fun rememberDeveloperInfo(): DeveloperInfoSnapshot

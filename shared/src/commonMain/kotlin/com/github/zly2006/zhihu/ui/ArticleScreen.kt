@@ -152,6 +152,7 @@ import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.addReadHistory
 import com.github.zly2006.zhihu.viewmodel.formatArticleDateTime
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.sharedArticleAnswerSwitchState
 import com.materialkolor.ktx.harmonize
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -187,7 +188,7 @@ fun ArticleScreen(
     val readingPlayerOverlayPadding = LocalReadingPlayerOverlayPadding.current
     val readingPlayerOverlayOffsetState = LocalReadingPlayerOverlayOffsetState.current
     val environment = rememberPaginationEnvironment(allowGuestAccess = false)
-    val articleNavController = if (isArticleNavControllerSupported) rememberArticleNavController() else null
+    val articleNavController = LocalArticleNavController.current
     val backStackEntry by articleNavController?.currentBackStackEntryAsState()
         ?: remember { mutableStateOf(null) }
 
@@ -265,11 +266,7 @@ fun ArticleScreen(
                 .coerceAtLeast(0f)
         },
     )
-    val sharedData = if (article.type == ArticleType.Answer) {
-        environment.articleAnswerSwitchState()
-    } else {
-        null
-    }
+    val sharedData = sharedArticleAnswerSwitchState.takeIf { article.type == ArticleType.Answer }
     var isImmersiveMode by remember(sharedData) {
         mutableStateOf(sharedData?.isImmersiveMode ?: false)
     }
@@ -282,21 +279,23 @@ fun ArticleScreen(
         readingQueueSourceId = article.readingQueueSourceId,
     )
     val hapticFeedback = LocalHapticFeedback.current
-    val readingPlayerOverlayOwner = remember(article.type, article.id) { Any() }
+    val readingPlayerOverlayRouteId = articleNavController?.currentBackStackEntry?.id
+        ?: article.readingQueueSourceId
+        ?: "${article.type}:${article.id}"
     val usesVerticalAnswerSwitch = article.type == ArticleType.Answer && answerSwitchMode == "vertical"
-    DisposableEffect(readingPlayerOverlayOffsetState, readingPlayerOverlayOwner, usesVerticalAnswerSwitch) {
+    DisposableEffect(readingPlayerOverlayOffsetState, readingPlayerOverlayRouteId, usesVerticalAnswerSwitch) {
         if (usesVerticalAnswerSwitch) {
-            readingPlayerOverlayOffsetState?.activate(readingPlayerOverlayOwner)
+            readingPlayerOverlayOffsetState?.beginRoute(readingPlayerOverlayRouteId)
         }
         onDispose {
             if (usesVerticalAnswerSwitch) {
-                readingPlayerOverlayOffsetState?.deactivate(readingPlayerOverlayOwner)
+                readingPlayerOverlayOffsetState?.endRoute(readingPlayerOverlayRouteId)
             }
         }
     }
-    val updateReadingPlayerOverlayOffset = remember(readingPlayerOverlayOffsetState, readingPlayerOverlayOwner) {
+    val updateReadingPlayerOverlayOffset = remember(readingPlayerOverlayOffsetState, readingPlayerOverlayRouteId) {
         { offsetPx: Float ->
-            readingPlayerOverlayOffsetState?.update(readingPlayerOverlayOwner, offsetPx)
+            readingPlayerOverlayOffsetState?.update(readingPlayerOverlayRouteId, offsetPx)
             Unit
         }
     }

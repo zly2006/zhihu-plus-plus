@@ -73,8 +73,8 @@ import com.github.zly2006.zhihu.ui.subscreens.normalizeBottomBarSelection
 import com.github.zly2006.zhihu.ui.subscreens.resolveValidStartDestinationKey
 import com.github.zly2006.zhihu.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
-import com.github.zly2006.zhihu.viewmodel.nativeArticleAnswerSwitchState
 import com.github.zly2006.zhihu.viewmodel.prepareNativePendingContentOpen
+import com.github.zly2006.zhihu.viewmodel.sharedArticleAnswerSwitchState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -211,7 +211,7 @@ fun MacosZhihuMain(windowChrome: MacosWindowChromeHost? = null) {
             showHomeTopActions = windowChrome == null,
             onCurrentMainTabDestinationChange = { currentMainTabDestination = it },
             articleEnterTransition = {
-                when (nativeArticleAnswerSwitchState.answerTransitionDirection) {
+                when (sharedArticleAnswerSwitchState.answerTransitionDirection) {
                     ArticleAnswerTransitionDirection.VERTICAL_NEXT ->
                         slideInVertically(tween(300)) { it } + fadeIn(tween(300))
                     ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS ->
@@ -224,7 +224,7 @@ fun MacosZhihuMain(windowChrome: MacosWindowChromeHost? = null) {
                 }
             },
             articleExitTransition = {
-                when (nativeArticleAnswerSwitchState.answerTransitionDirection) {
+                when (sharedArticleAnswerSwitchState.answerTransitionDirection) {
                     ArticleAnswerTransitionDirection.VERTICAL_NEXT ->
                         slideOutVertically(tween(300)) { -it } + fadeOut(tween(300))
                     ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS ->

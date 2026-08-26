@@ -152,6 +152,10 @@ actual fun rememberAppPrivateDirectory(): Path = remember { Path(nativeAppPrivat
 @Composable
 actual fun rememberIsLiteVariant(): Boolean = false
 
+actual val isJvm: Boolean = false
+
+actual val isNative: Boolean = true
+
 actual val isBlocklistNlpSupported: Boolean = false
 
 actual val isSentenceSimilaritySupported: Boolean = false

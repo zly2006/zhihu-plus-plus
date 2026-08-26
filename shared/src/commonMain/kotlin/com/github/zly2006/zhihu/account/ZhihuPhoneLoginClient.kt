@@ -21,7 +21,6 @@ import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.data.toCookieHeaderString
 import com.github.zly2006.zhihu.util.ZhihuMessageBodyEncryptor
 import com.github.zly2006.zhihu.util.hmacSha1Hex
-import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.accept
 import io.ktor.client.request.get
@@ -39,6 +38,7 @@ import io.ktor.http.isSuccess
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlin.time.Clock
 
 private const val PHONE_LOGIN_API_BASE_URL = "https://api.zhihu.com"
 private const val DEVICE_GUEST_INIT_PATH = "/api/account/prod/init/udid_guest"
@@ -98,12 +98,10 @@ sealed interface ZhihuPhoneDigitsResult {
  * Captcha 是服务端条件分支：正常情况下服务端会直接允许发送短信，但风控要求验证时必须先完成 `/captcha`，
  * 不能把当前抓包中没有出现验证码误解成可以永久绕过验证码。
  */
-class ZhihuPhoneLoginClient(
-    private val httpClient: HttpClient,
-    private val cookies: MutableMap<String, String>,
-    private val deviceInfo: ZhihuPhoneLoginDeviceInfo,
-    private val nowEpochSeconds: () -> Long,
-) {
+class ZhihuPhoneLoginClient : AutoCloseable {
+    private val cookies = phoneLoginCookiesForTesting ?: mutableMapOf()
+    private val httpClient = createAccountHttpClient(cookies, ZHIHU_ANDROID_PHONE_LOGIN_USER_AGENT)
+    private val deviceInfo = phoneLoginDeviceInfoForTesting ?: phoneLoginDeviceInfo
     private var authorization = "oauth $MOBILE_CLIENT_ID"
     private var deviceId: String? = null
     private var webDeviceCookie = cookies.remove("d_c0")?.takeIf(String::isNotBlank)
@@ -193,7 +191,7 @@ class ZhihuPhoneLoginClient(
         require(digits.isNotBlank()) { "短信验证码不能为空" }
         ensureGuestToken()
 
-        val timestamp = nowEpochSeconds()
+        val timestamp = currentEpochSeconds()
         val signature = hmacSha1Hex(
             MOBILE_CLIENT_SECRET,
             "$DIGITS_GRANT_TYPE$MOBILE_CLIENT_ID$MOBILE_SOURCE$timestamp",
@@ -255,7 +253,7 @@ class ZhihuPhoneLoginClient(
             webDeviceCookie = checkNotNull(fetchedDeviceCookie) { "服务器未返回必要的 Cookie d_c0" }
         }
 
-        val timestamp = nowEpochSeconds().toString()
+        val timestamp = currentEpochSeconds().toString()
         val form = Parameters
             .build {
                 append("app_build", "40408")
@@ -356,7 +354,19 @@ class ZhihuPhoneLoginClient(
             }.formUrlEncode()
         setBody(ZhihuMessageBodyEncryptor.encrypt(form))
     }
+
+    private fun currentEpochSeconds(): Long =
+        phoneLoginNowEpochSecondsForTesting?.invoke()
+            ?: Clock.System.now().toEpochMilliseconds() / 1_000
+
+    override fun close() = httpClient.close()
 }
+
+internal expect val phoneLoginDeviceInfo: ZhihuPhoneLoginDeviceInfo
+
+var phoneLoginCookiesForTesting: MutableMap<String, String>? = null
+var phoneLoginDeviceInfoForTesting: ZhihuPhoneLoginDeviceInfo? = null
+var phoneLoginNowEpochSecondsForTesting: (() -> Long)? = null
 
 private fun normalizePhoneNumber(phoneNumber: String): String {
     val compact = phoneNumber

@@ -19,7 +19,6 @@ package com.github.zly2006.zhihu.ui
 
 import android.app.Activity
 import android.content.Context
-import android.content.ContextWrapper
 import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
@@ -39,11 +38,25 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import com.github.zly2006.zhihu.filter.ContentOpenEventSupport
+import com.github.zly2006.zhihu.filter.ContentOpenFrom
+import com.github.zly2006.zhihu.filter.TrackedContentIdentity
 import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.CommentHolder
+import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.platform.UserMessageSink
-import com.github.zly2006.zhihu.platform.platformName
+import com.github.zly2006.zhihu.platform.androidSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.reading.AndroidReadingPlayerBridge
+import com.github.zly2006.zhihu.reading.ContentReadingService
+import com.github.zly2006.zhihu.reading.ReadingContentType
+import com.github.zly2006.zhihu.reading.ReadingPlaybackStatus
+import com.github.zly2006.zhihu.reading.ReadingPreferences
+import com.github.zly2006.zhihu.reading.ReadingQueueItem
+import com.github.zly2006.zhihu.reading.ReadingStartRequest
+import com.github.zly2006.zhihu.reading.ReadingTemplateField
+import com.github.zly2006.zhihu.reading.loadReadingPlaybackSpeed
 import com.github.zly2006.zhihu.ui.article.prepareContentDocument
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
@@ -84,22 +97,28 @@ private fun Context.zhihuVersionInfo(): String {
 
 @Composable
 actual fun rememberArticleTtsState(): TtsState {
-    val articleHost = LocalContext.current.findActivityCapability<ArticleTtsHost>()
-    return articleHost?.articleTtsState ?: TtsState.Uninitialized
+    val state by AndroidReadingPlayerBridge.state.collectAsState()
+    return when (state.status) {
+        ReadingPlaybackStatus.Idle -> TtsState.Ready
+        ReadingPlaybackStatus.Initializing -> TtsState.Initializing
+        ReadingPlaybackStatus.Loading -> TtsState.LoadingText
+        ReadingPlaybackStatus.Playing -> TtsState.Speaking
+        ReadingPlaybackStatus.Paused -> TtsState.Paused
+        ReadingPlaybackStatus.Error -> TtsState.Error
+    }
 }
 
 @Composable
 actual fun rememberArticleSpeechToggler(): ArticleSpeechToggler {
-    val activityContext = LocalContext.current
+    val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val userMessages = rememberUserMessageSink()
-    val articleHost = activityContext.findActivityCapability<ArticleTtsHost>()
-    val ttsState = articleHost?.articleTtsState ?: TtsState.Uninitialized
-    return remember(coroutineScope, userMessages, articleHost, ttsState) {
+    val ttsState = rememberArticleTtsState()
+    return remember(context, coroutineScope, userMessages, ttsState) {
         object : ArticleSpeechToggler {
             override fun invoke(title: String, content: String) {
                 if (ttsState.isSpeaking) {
-                    articleHost?.stopArticleSpeaking()
+                    context.startService(ContentReadingService.commandIntent(context, ContentReadingService.ACTION_STOP))
                 } else if (ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)) {
                     coroutineScope.launch {
                         try {
@@ -107,7 +126,26 @@ actual fun rememberArticleSpeechToggler(): ArticleSpeechToggler {
                                 val textToRead = articleSpeechText(title, content)
                                 withContext(Dispatchers.Main) {
                                     if (textToRead.isNotBlank()) {
-                                        articleHost?.speakArticleText(textToRead, title)
+                                        AndroidReadingPlayerBridge.start(
+                                            context,
+                                            ReadingStartRequest(
+                                                queue = listOf(
+                                                    ReadingQueueItem(
+                                                        contentType = ReadingContentType.Article,
+                                                        id = title.hashCode().toLong() and 0xffffffffL,
+                                                        title = title,
+                                                        bodyHtml = textToRead,
+                                                    ),
+                                                ),
+                                                preferences = ReadingPreferences(
+                                                    fieldOrder = listOf(ReadingTemplateField.Body),
+                                                    enabledFields = setOf(ReadingTemplateField.Body),
+                                                    queueLimit = 1,
+                                                    transitionText = "",
+                                                ),
+                                                playbackSpeed = loadReadingPlaybackSpeed(androidSettingsStore(context)),
+                                            ),
+                                        )
                                     }
                                 }
                             }
@@ -140,18 +178,8 @@ actual fun rememberArticleBrowserOpener(): ArticleBrowserOpener {
     }
 }
 
-actual val isArticleNavControllerSupported: Boolean = true
-
 @Composable
-actual fun rememberArticleNavController() =
-    LocalContext.current.findActivityCapability<ArticleNavControllerOwner>()?.articleNavController
-        ?: error("$platformName 暂不支持文章导航控制器")
-
-@Composable
-actual fun consumePendingCommentId(content: com.github.zly2006.zhihu.navigation.NavDestination): String? {
-    val owner = LocalContext.current.findActivityCapability<PendingArticleNavigationOwner>()
-    return remember(owner, content) { owner?.consumePendingCommentId(content) }
-}
+actual fun consumePendingCommentId(content: com.github.zly2006.zhihu.navigation.NavDestination): String? = remember(content) { AndroidArticleNavigationHandoff.consumeCommentId(content) }
 
 @Composable
 actual fun ArticleWebViewContent(
@@ -331,11 +359,44 @@ actual fun rememberNotificationEnvironment(
     }
 }
 
-inline fun <reified T> Context.findActivityCapability(): T? {
-    var current = this
-    while (true) {
-        if (current is T) return current
-        current = (current as? ContextWrapper)?.baseContext?.takeIf { it !== current } ?: return null
+object AndroidArticleNavigationHandoff {
+    private var pendingContentIdentity: TrackedContentIdentity? = null
+    private var pendingContentOpenFrom: String? = null
+    private var pendingComment: CommentHolder? = null
+    var clipboardDestination: NavDestination? = null
+        private set
+
+    fun markClipboardDestination(destination: NavDestination) {
+        clipboardDestination = destination
+    }
+
+    fun prepareComment(holder: CommentHolder) {
+        pendingComment = holder
+    }
+
+    fun clearCommentUnless(destination: NavDestination) {
+        if (pendingComment?.article != destination) pendingComment = null
+    }
+
+    fun consumeCommentId(destination: NavDestination): String? {
+        val holder = pendingComment?.takeIf { it.article == destination } ?: return null
+        pendingComment = null
+        return holder.commentId
+    }
+
+    fun prepareContentOpen(
+        destination: NavDestination,
+        openFrom: String,
+    ) {
+        pendingContentIdentity = ContentOpenEventSupport.toTrackedContentIdentity(destination)
+        pendingContentOpenFrom = openFrom.takeIf { pendingContentIdentity != null }
+    }
+
+    fun consumeContentOpenFrom(destination: NavDestination): String {
+        val identity = ContentOpenEventSupport.toTrackedContentIdentity(destination) ?: return ContentOpenFrom.UNKNOWN
+        if (identity != pendingContentIdentity) return ContentOpenFrom.UNKNOWN
+        pendingContentIdentity = null
+        return pendingContentOpenFrom.also { pendingContentOpenFrom = null } ?: ContentOpenFrom.UNKNOWN
     }
 }
 

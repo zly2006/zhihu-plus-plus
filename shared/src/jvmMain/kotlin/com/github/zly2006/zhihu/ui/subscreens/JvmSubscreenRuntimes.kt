@@ -93,7 +93,7 @@ actual fun rememberSystemUpdateDownloader(): SystemUpdateDownloader = remember {
 actual fun rememberDownloadedSystemUpdateInstaller(): DownloadedSystemUpdateInstaller = remember {
     object : DownloadedSystemUpdateInstaller {
         override suspend fun install() {
-            desktopSystemUpdateState.value = SystemUpdateState.Error("JVM 暂不支持 APK 更新安装")
+            desktopSystemUpdateState.value = SystemUpdateState.Error("$platformName 暂不支持 APK 更新安装")
         }
     }
 }

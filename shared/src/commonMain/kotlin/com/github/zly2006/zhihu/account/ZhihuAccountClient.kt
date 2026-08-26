@@ -17,27 +17,17 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 class ZhihuAccountClient internal constructor(
-    private val repository: ZhihuAccountRepository,
-    initialSession: ZhihuAccountSession,
-    private val mutableSession: MutableStateFlow<ZhihuAccountSession>,
-    private val engineProvider: AccountHttpClientEngineProvider?,
+    private val accountState: ZhihuAccountState,
 ) : AutoCloseable {
-    constructor(
-        repository: ZhihuAccountRepository,
-        initialSession: ZhihuAccountSession,
-        mutableSession: MutableStateFlow<ZhihuAccountSession>,
-    ) : this(repository, initialSession, mutableSession, null)
-
-    private val cookies = initialSession.cookies.toMutableMap()
-    private val client = createAccountHttpClient(cookies, initialSession.userAgent, engineProvider) {
-        val refreshed = mutableSession.value.copy(cookies = cookies.toMutableMap())
-        mutableSession.value = refreshed
-        repository.save(refreshed)
+    private val cookies = accountState.session.value.cookies
+        .toMutableMap()
+    private val client = createAccountHttpClient(cookies, accountState.session.value.userAgent) {
+        accountState.save(load().copy(cookies = cookies.toMutableMap()))
     }
 
-    val sessionState: StateFlow<ZhihuAccountSession> = mutableSession.asStateFlow()
+    val sessionState: StateFlow<ZhihuAccountSession> = accountState.session.asStateFlow()
 
-    fun load(): ZhihuAccountSession = mutableSession.value
+    fun load(): ZhihuAccountSession = accountState.session.value
 
     fun save(session: ZhihuAccountSession) {
         require(load().hasSameIdentityAs(session)) {
@@ -50,14 +40,13 @@ class ZhihuAccountClient internal constructor(
         val updatedCookies = session.cookies.toMap()
         cookies.clear()
         cookies.putAll(updatedCookies)
-        mutableSession.value = session.copy(cookies = cookies.toMutableMap())
-        repository.save(mutableSession.value)
+        accountState.save(session.copy(cookies = cookies.toMutableMap()))
     }
 
     fun httpClient(): HttpClient = client
 
     fun temporaryHttpClient(cookies: MutableMap<String, String>): HttpClient =
-        createAccountHttpClient(cookies, load().userAgent, engineProvider)
+        createAccountHttpClient(cookies, load().userAgent)
 
     suspend fun refreshAndSaveProfile(): ZhihuAccountSession? {
         val current = load()
@@ -81,22 +70,14 @@ class ZhihuAccountClient internal constructor(
 }
 
 class ZhihuAccountStore internal constructor(
-    private val repository: ZhihuAccountRepository,
-    private val engineProvider: AccountHttpClientEngineProvider?,
+    repository: ZhihuAccountRepository,
 ) : AutoCloseable {
-    constructor(repository: ZhihuAccountRepository) : this(repository, null)
+    private val accountState = ZhihuAccountState(repository)
+    private var mutableClient = ZhihuAccountClient(accountState)
 
-    private val mutableSession = MutableStateFlow(repository.load())
-    private var mutableClient = ZhihuAccountClient(
-        repository,
-        mutableSession.value,
-        mutableSession,
-        engineProvider,
-    )
-
-    val sessionState: StateFlow<ZhihuAccountSession> = mutableSession.asStateFlow()
+    val sessionState: StateFlow<ZhihuAccountSession> = accountState.session.asStateFlow()
     val session: ZhihuAccountSession
-        get() = mutableSession.value
+        get() = accountState.session.value
     val client: ZhihuAccountClient
         get() = mutableClient
 
@@ -109,13 +90,13 @@ class ZhihuAccountStore internal constructor(
     }
 
     fun replaceSession(session: ZhihuAccountSession) {
-        repository.save(session)
-        replaceClient(session)
+        accountState.save(session)
+        replaceClient()
     }
 
     fun clear() {
-        repository.clear()
-        replaceClient(ZhihuAccountSession())
+        accountState.clear()
+        replaceClient()
     }
 
     suspend fun login(cookies: MutableMap<String, String>): Boolean {
@@ -136,7 +117,7 @@ class ZhihuAccountStore internal constructor(
     }
 
     private suspend fun verifyCandidateSession(cookies: MutableMap<String, String>): ZhihuAccountSession? {
-        val client = createAccountHttpClient(cookies, session.userAgent, engineProvider)
+        val client = createAccountHttpClient(cookies, session.userAgent)
         return try {
             fetchVerifiedZhihuSession(client, cookies, session.userAgent)
         } finally {
@@ -144,25 +125,39 @@ class ZhihuAccountStore internal constructor(
         }
     }
 
-    private fun replaceClient(session: ZhihuAccountSession) {
+    private fun replaceClient() {
         mutableClient.close()
-        mutableSession.value = session
-        mutableClient = ZhihuAccountClient(repository, session, mutableSession, engineProvider)
+        mutableClient = ZhihuAccountClient(accountState)
     }
 
     override fun close() = mutableClient.close()
 }
 
-private fun createAccountHttpClient(
+internal class ZhihuAccountState(
+    private val repository: ZhihuAccountRepository,
+) {
+    val session = MutableStateFlow(repository.load())
+
+    fun save(session: ZhihuAccountSession) {
+        this.session.value = session
+        repository.save(session)
+    }
+
+    fun clear() {
+        session.value = ZhihuAccountSession()
+        repository.clear()
+    }
+}
+
+internal fun createAccountHttpClient(
     cookies: MutableMap<String, String>,
     userAgent: String,
-    engineProvider: AccountHttpClientEngineProvider?,
     onCookieChanged: () -> Unit = {},
 ): HttpClient {
     val configure: io.ktor.client.HttpClientConfig<*>.() -> Unit = {
         installZhihuCommonClientConfig(cookies, userAgent, onCookieChanged)
     }
-    return engineProvider?.create()?.let { HttpClient(it, configure) }
+    return accountHttpClientEngineForTesting?.let { HttpClient(it, configure) }
         ?: HttpClient(accountHttpClientEngineFactory, configure)
 }
 
@@ -180,9 +175,7 @@ private fun ZhihuAccountSession.hasSameIdentityAs(other: ZhihuAccountSession): B
 
 internal expect val accountHttpClientEngineFactory: HttpClientEngineFactory<*>
 
-internal interface AccountHttpClientEngineProvider {
-    fun create(): HttpClientEngine
-}
+var accountHttpClientEngineForTesting: HttpClientEngine? = null
 
 @Composable
 expect fun rememberZhihuAccountStore(): ZhihuAccountStore

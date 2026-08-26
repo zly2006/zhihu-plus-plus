@@ -26,7 +26,6 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,8 +33,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
@@ -49,8 +46,6 @@ import coil3.request.crossfade
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.HistoryStorage
 import com.github.zly2006.zhihu.filter.ContentOpenEventSupport
-import com.github.zly2006.zhihu.filter.ContentOpenFrom
-import com.github.zly2006.zhihu.filter.TrackedContentIdentity
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionContent
@@ -71,28 +66,12 @@ import com.github.zly2006.zhihu.nlp.NlpServiceKeywordSemanticMatcher
 import com.github.zly2006.zhihu.nlp.SentenceEmbeddingManager
 import com.github.zly2006.zhihu.platform.androidSettingsStore
 import com.github.zly2006.zhihu.platform.androidUserMessageSink
-import com.github.zly2006.zhihu.reading.AndroidReadingPlayerBridge
 import com.github.zly2006.zhihu.reading.ContentReadingService
-import com.github.zly2006.zhihu.reading.ReadingContentType
-import com.github.zly2006.zhihu.reading.ReadingPlaybackStatus
-import com.github.zly2006.zhihu.reading.ReadingPreferences
-import com.github.zly2006.zhihu.reading.ReadingQueueItem
-import com.github.zly2006.zhihu.reading.ReadingStartRequest
-import com.github.zly2006.zhihu.reading.ReadingTemplateField
-import com.github.zly2006.zhihu.reading.loadReadingPlaybackSpeed
 import com.github.zly2006.zhihu.theme.AndroidThemeSettings
 import com.github.zly2006.zhihu.theme.ZhihuTheme
+import com.github.zly2006.zhihu.ui.AndroidArticleNavigationHandoff
 import com.github.zly2006.zhihu.ui.AndroidZhihuMain
-import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
-import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchStateOwner
-import com.github.zly2006.zhihu.ui.ArticleNavControllerOwner
-import com.github.zly2006.zhihu.ui.ArticleTtsHost
-import com.github.zly2006.zhihu.ui.ClipboardDestinationOwner
-import com.github.zly2006.zhihu.ui.PendingArticleNavigationOwner
-import com.github.zly2006.zhihu.ui.TtsState
 import com.github.zly2006.zhihu.ui.components.getHighestQualityVideoUrl
-import com.github.zly2006.zhihu.ui.subscreens.DeveloperInfoProvider
-import com.github.zly2006.zhihu.ui.subscreens.DeveloperInfoSnapshot
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.util.ContinuousUsageReminderManager
 import com.github.zly2006.zhihu.util.EmojiManager
@@ -103,7 +82,6 @@ import com.github.zly2006.zhihu.util.clearShareImageCache
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
 import com.github.zly2006.zhihu.util.telemetry
-import com.github.zly2006.zhihu.viewmodel.ArticleAnswerSwitchData
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterManager
 import com.github.zly2006.zhihu.viewmodel.filter.androidKeywordSemanticMatcher
 import com.github.zly2006.zhihu.viewmodel.filter.androidKeywordWeightExtractor
@@ -117,30 +95,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
 
-class MainActivity :
-    ComponentActivity(),
-    ArticleNavControllerOwner,
-    ArticleAnswerSwitchStateOwner,
-    ArticleTtsHost,
-    ClipboardDestinationOwner,
-    PendingArticleNavigationOwner,
-    DeveloperInfoProvider {
-    class SharedData : ViewModel() {
-        var clipboardDestination: NavDestination? = null
-    }
-
-    val sharedData by viewModels<SharedData>()
-    override val articleNavController: NavHostController
-        get() = navController
-    override val articleAnswerSwitchState: ArticleAnswerSwitchState
-        get() = ViewModelProvider(this)[ArticleAnswerSwitchData::class.java]
-    override val articleTtsState: TtsState
-        get() = ttsState
-    override var clipboardDestination: NavDestination?
-        get() = sharedData.clipboardDestination
-        set(value) {
-            sharedData.clipboardDestination = value
-        }
+class MainActivity : ComponentActivity() {
     lateinit var history: HistoryStorage
     val httpClient
         get() = com.github.zly2006.zhihu.account
@@ -148,22 +103,8 @@ class MainActivity :
             .client
             .httpClient()
 
-    private val _ttsState = mutableStateOf(TtsState.Ready)
-    var ttsState: TtsState
-        get() = _ttsState.value
-        private set(value) {
-            if (_ttsState.value != value) {
-                val oldState = _ttsState.value
-                _ttsState.value = value
-                Log.i(TAG, "TTS State: $oldState -> $value")
-            }
-        }
-
     lateinit var navController: NavHostController
     private lateinit var continuousUsageReminderManager: ContinuousUsageReminderManager
-    private var pendingContentOpenIdentity: TrackedContentIdentity? = null
-    private var pendingContentOpenFrom: String? = null
-    private var pendingCommentHolder: CommentHolder? = null
     private var currentMainTabOpenFrom: String? = null
     var mainTabNavigationTarget by mutableStateOf<TopLevelDestination?>(null)
         private set
@@ -315,19 +256,6 @@ class MainActivity :
                 }
             }
 
-        lifecycleScope.launch {
-            AndroidReadingPlayerBridge.state.collect { state ->
-                ttsState = when (state.status) {
-                    ReadingPlaybackStatus.Idle -> TtsState.Ready
-                    ReadingPlaybackStatus.Initializing -> TtsState.Initializing
-                    ReadingPlaybackStatus.Loading -> TtsState.LoadingText
-                    ReadingPlaybackStatus.Playing -> TtsState.Speaking
-                    ReadingPlaybackStatus.Paused -> TtsState.Paused
-                    ReadingPlaybackStatus.Error -> TtsState.Error
-                }
-            }
-        }
-
         // 自动检查更新（在应用启动时）
         if (savedInstanceState == null) {
             @OptIn(DelicateCoroutinesApi::class)
@@ -351,15 +279,6 @@ class MainActivity :
         super.onStop()
     }
 
-    override val developerInfo: DeveloperInfoSnapshot
-        get() = DeveloperInfoSnapshot(
-            continuousUsageDurationMs = continuousUsageReminderManager.currentElapsedForegroundMs(),
-            ttsState = ttsState,
-            currentTtsEngineLabel = AndroidReadingPlayerBridge.state.value.engineLabel
-                .ifBlank { "按需初始化" },
-            availableTtsEngineLabels = AndroidReadingPlayerBridge.state.value.availableEngineLabels,
-        )
-
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         if (hasFocus) {
             if (!handleIntentData(intent)) {
@@ -372,8 +291,8 @@ class MainActivity :
                         val destination = regex.findAll(text).firstNotNullOfOrNull {
                             resolveContent(it.value)
                         }
-                        if (destination != null && destination != sharedData.clipboardDestination) {
-                            sharedData.clipboardDestination = destination
+                        if (destination != null && destination != AndroidArticleNavigationHandoff.clipboardDestination) {
+                            AndroidArticleNavigationHandoff.markClipboardDestination(destination)
                             navigate(destination, popup = true)
                         }
                     }
@@ -399,8 +318,8 @@ class MainActivity :
         Log.i(TAG, "Intent data: $data")
         val destination = resolveContent(data.toString())
         if (destination != null) {
-            if (forceNavigation || destination != sharedData.clipboardDestination) {
-                sharedData.clipboardDestination = destination
+            if (forceNavigation || destination != AndroidArticleNavigationHandoff.clipboardDestination) {
+                AndroidArticleNavigationHandoff.markClipboardDestination(destination)
                 navigate(destination, popup = true)
             }
         } else {
@@ -418,13 +337,11 @@ class MainActivity :
 
     fun navigate(route: NavDestination, popup: Boolean = false) {
         if (route is CommentHolder) {
-            pendingCommentHolder = route
+            AndroidArticleNavigationHandoff.prepareComment(route)
             navigate(route.article, popup)
             return
         }
-        if (pendingCommentHolder?.article != route) {
-            pendingCommentHolder = null
-        }
+        AndroidArticleNavigationHandoff.clearCommentUnless(route)
         preparePendingContentOpen(route)
         history.add(route)
         if (route is Video) {
@@ -480,32 +397,8 @@ class MainActivity :
         }
     }
 
-    override fun consumePendingContentOpenFrom(destination: NavDestination): String {
-        val identity = ContentOpenEventSupport.toTrackedContentIdentity(destination) ?: return ContentOpenFrom.UNKNOWN
-        if (identity != pendingContentOpenIdentity) {
-            return ContentOpenFrom.UNKNOWN
-        }
-        val openFrom = pendingContentOpenFrom ?: ContentOpenFrom.UNKNOWN
-        pendingContentOpenIdentity = null
-        pendingContentOpenFrom = null
-        return openFrom
-    }
-
-    override fun consumePendingCommentId(destination: NavDestination): String? {
-        val holder = pendingCommentHolder?.takeIf { it.article == destination } ?: return null
-        pendingCommentHolder = null
-        return holder.commentId
-    }
-
     private fun preparePendingContentOpen(target: NavDestination) {
-        val identity = ContentOpenEventSupport.toTrackedContentIdentity(target)
-        if (identity == null) {
-            pendingContentOpenIdentity = null
-            pendingContentOpenFrom = null
-            return
-        }
-        pendingContentOpenIdentity = identity
-        pendingContentOpenFrom = if (
+        val openFrom = if (
             runCatching { navController.currentBackStackEntry?.toRoute<MainTabs>() }.getOrNull() != null
         ) {
             currentMainTabOpenFrom
@@ -513,6 +406,7 @@ class MainActivity :
             null
         }
             ?: ContentOpenEventSupport.inferOpenFrom(currentContentOpenSource(), target)
+        AndroidArticleNavigationHandoff.prepareContentOpen(target, openFrom)
     }
 
     private fun navigateToMainTabs() {
@@ -550,34 +444,6 @@ class MainActivity :
         }.getOrNull() ?: runCatching {
             currentEntry?.toRoute<Notification>()
         }.getOrNull()
-    }
-
-    override fun speakArticleText(
-        text: String,
-        title: String,
-    ) {
-        val request = ReadingStartRequest(
-            queue = listOf(
-                ReadingQueueItem(
-                    contentType = ReadingContentType.Article,
-                    id = title.hashCode().toLong() and 0xffffffffL,
-                    title = title,
-                    bodyHtml = text,
-                ),
-            ),
-            preferences = ReadingPreferences(
-                fieldOrder = listOf(ReadingTemplateField.Body),
-                enabledFields = setOf(ReadingTemplateField.Body),
-                queueLimit = 1,
-                transitionText = "",
-            ),
-            playbackSpeed = loadReadingPlaybackSpeed(androidSettingsStore(this)),
-        )
-        AndroidReadingPlayerBridge.start(this, request)
-    }
-
-    override fun stopArticleSpeaking() {
-        startService(ContentReadingService.commandIntent(this, ContentReadingService.ACTION_STOP))
     }
 
     override fun onDestroy() {

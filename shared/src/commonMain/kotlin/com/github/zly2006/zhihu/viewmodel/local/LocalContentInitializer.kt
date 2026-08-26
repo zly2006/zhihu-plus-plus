@@ -24,7 +24,6 @@ import kotlin.time.Clock
 
 class LocalContentInitializer(
     private val dao: LocalContentDao,
-    private val nowMillis: () -> Long = { Clock.System.now().toEpochMilliseconds() },
 ) {
     suspend fun initializeIfNeeded() {
         withContext(Dispatchers.Default) {
@@ -72,7 +71,10 @@ class LocalContentInitializer(
             )
         }
 
-        val recentLikes = dao.getBehaviorsByActionSince("like", nowMillis() - 30 * 24 * 60 * 60 * 1000L)
+        val recentLikes = dao.getBehaviorsByActionSince(
+            "like",
+            Clock.System.now().toEpochMilliseconds() - 30 * 24 * 60 * 60 * 1000L,
+        )
         val questionIds = recentLikes
             .mapNotNull { behavior -> extractQuestionIdFromContentId(behavior.contentId) }
             .distinct()

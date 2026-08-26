@@ -20,7 +20,6 @@ package com.github.zly2006.zhihu.viewmodel
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import com.github.zly2006.zhihu.account.NativeHistoryStorage
-import com.github.zly2006.zhihu.account.ZhihuAccountStore
 import com.github.zly2006.zhihu.account.defaultNativeAccountStore
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.FeedDisplayItem
@@ -35,7 +34,6 @@ import com.github.zly2006.zhihu.notification.nativeNotificationSettingsStore
 import com.github.zly2006.zhihu.platform.copyNativePlainText
 import com.github.zly2006.zhihu.platform.nativeSettingsStore
 import com.github.zly2006.zhihu.platform.platformName
-import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
 import com.github.zly2006.zhihu.util.Log
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeywordService
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedQuestionAuthor
@@ -58,11 +56,9 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.put
 import io.ktor.http.ContentType as KtorContentType
 
-internal val nativeArticleAnswerSwitchState = ArticleAnswerSwitchData()
 private var nativePendingContentOpenIdentity: TrackedContentIdentity? = null
 private var nativePendingContentOpenFrom: String? = null
 
@@ -96,12 +92,11 @@ actual fun rememberPaginationEnvironment(allowGuestAccess: Boolean): PaginationE
     remember(allowGuestAccess) { NativePaginationEnvironment() }
 
 internal class NativePaginationEnvironment(
-    private val accountStore: ZhihuAccountStore = defaultNativeAccountStore,
     override val notificationSettingsStore: NotificationSettingsStore = nativeNotificationSettingsStore(),
-    private val showFetchFailureMessage: ((String) -> Unit)? = null,
 ) : PaginationEnvironment,
     CollectionContentEnvironment,
     NotificationEnvironment {
+    private val accountStore = defaultNativeAccountStore
     private val settingsStore = nativeSettingsStore("settings.properties")
     private val historyStorage = NativeHistoryStorage()
     private val contentFilterDatabase = getContentFilterDatabase()
@@ -109,9 +104,7 @@ internal class NativePaginationEnvironment(
         getNativeLocalContentDatabase()?.contentDao()?.let { dao ->
             buildLocalRecommendationEngine(
                 dao = dao,
-                fetchFeedArray = { url -> fetchJson(url, "")?.get("data")?.jsonArray ?: JsonArray(emptyList()) },
-                logWarning = { message -> Log.w("LocalRecommendationEngine", message) },
-                logError = { message, throwable -> Log.e("LocalRecommendationEngine", message, throwable) },
+                environment = this,
             )
         }
     }
@@ -134,8 +127,6 @@ internal class NativePaginationEnvironment(
     override fun localHistory(): List<NavDestination> = historyStorage.history
 
     override suspend fun postHistoryDestination(destination: NavDestination) = historyStorage.add(destination)
-
-    override fun articleAnswerSwitchState(): ArticleAnswerSwitchState = nativeArticleAnswerSwitchState
 
     override fun setPlainTextClipboard(label: String, text: String) = copyNativePlainText(text)
 
@@ -288,6 +279,5 @@ internal class NativePaginationEnvironment(
 
     override suspend fun handleFetchFailure(tag: String?, error: Exception) {
         Log.e(tag ?: "PaginationViewModel", "Failed to fetch feeds", error)
-        showFetchFailureMessage?.invoke("加载失败: ${error.message}")
     }
 }

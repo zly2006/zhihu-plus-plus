@@ -66,12 +66,7 @@ class ArticleExportEnvironmentInstrumentedTest {
     fun articleImageRendererUsesStableContentHeightBeforeFullLayout() = runBlocking {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val environment = SharedAndroidPaginationEnvironment(context, allowGuestAccess = true)
-        val renderer = environment.articleImageExportRenderer { fileName ->
-            context.assets
-                .open(fileName)
-                .bufferedReader()
-                .use { it.readText() }
-        }
+        val renderer = environment.articleImageExportRenderer()
         val prepared = renderer.prepareExportWebView(
             htmlContent = environment.buildArticleExportHtml(
                 content = sampleLongAnswerContent(),

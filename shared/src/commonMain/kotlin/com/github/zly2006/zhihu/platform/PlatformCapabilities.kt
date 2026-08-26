@@ -25,6 +25,10 @@ internal expect val platformBottomBarItemLimit: Int?
 
 expect val platformName: String
 
+expect val isJvm: Boolean
+
+expect val isNative: Boolean
+
 expect val isAigcVoteSupported: Boolean
 
 expect val isBlocklistNlpSupported: Boolean

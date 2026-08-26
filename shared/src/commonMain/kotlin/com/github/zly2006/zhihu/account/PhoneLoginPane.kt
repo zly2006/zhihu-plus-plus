@@ -39,6 +39,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -58,29 +59,18 @@ import io.ktor.client.HttpClient
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.time.Clock
 
 @Composable
 expect fun rememberLoginHttpClient(cookies: MutableMap<String, String>): HttpClient
-
-@Composable
-expect fun rememberPhoneLoginDeviceInfo(): ZhihuPhoneLoginDeviceInfo
 
 expect fun decodePhoneLoginCaptchaImage(content: String): ImageBitmap?
 
 @Composable
 fun PhoneLoginPane(onLoginSuccess: (String) -> Unit) {
-    val cookies = remember { mutableMapOf<String, String>() }
-    val httpClient = rememberLoginHttpClient(cookies)
-    val deviceInfo = rememberPhoneLoginDeviceInfo()
     val accountStore = rememberZhihuAccountStore()
-    val loginClient = remember(httpClient, deviceInfo) {
-        ZhihuPhoneLoginClient(
-            httpClient = httpClient,
-            cookies = cookies,
-            deviceInfo = deviceInfo,
-            nowEpochSeconds = { Clock.System.now().toEpochMilliseconds() / 1_000 },
-        )
+    val loginClient = remember { ZhihuPhoneLoginClient() }
+    DisposableEffect(loginClient) {
+        onDispose(loginClient::close)
     }
 
     val scope = rememberCoroutineScope()

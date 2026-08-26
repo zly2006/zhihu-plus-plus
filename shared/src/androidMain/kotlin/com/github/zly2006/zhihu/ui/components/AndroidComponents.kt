@@ -39,8 +39,7 @@ import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.nlp.KeywordAnalyzerCore
 import com.github.zly2006.zhihu.nlp.KeywordWithWeight
 import com.github.zly2006.zhihu.platform.androidUserMessageSink
-import com.github.zly2006.zhihu.ui.ClipboardDestinationOwner
-import com.github.zly2006.zhihu.ui.findActivityCapability
+import com.github.zly2006.zhihu.ui.AndroidArticleNavigationHandoff
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import com.github.zly2006.zhihu.viewmodel.filter.androidKeywordWeightExtractor
@@ -129,7 +128,7 @@ actual fun rememberShareActionExecutor(): ShareActionExecutor {
         object : ShareActionExecutor {
             override fun invoke(action: ShareAction, content: NavDestination, shareText: String) {
                 if (action == ShareAction.CopyLink) {
-                    context.findActivityCapability<ClipboardDestinationOwner>()?.clipboardDestination = content
+                    AndroidArticleNavigationHandoff.markClipboardDestination(content)
                     context.clipboardManager.setPrimaryClip(ClipData.newPlainText("Link", shareText))
                     androidUserMessageSink(context).showShortMessage("已复制链接")
                 } else {

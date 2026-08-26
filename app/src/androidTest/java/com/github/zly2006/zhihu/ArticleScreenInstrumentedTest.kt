@@ -102,6 +102,7 @@ import com.github.zly2006.zhihu.ui.article.ArticleActionsMenu
 import com.github.zly2006.zhihu.ui.rememberArticleTtsState
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
+import com.github.zly2006.zhihu.viewmodel.sharedArticleAnswerSwitchState
 import com.hrm.markdown.renderer.Markdown
 import com.hrm.markdown.renderer.MarkdownImageData
 import io.ktor.client.HttpClient
@@ -151,8 +152,8 @@ class ArticleScreenInstrumentedTest {
         ReadingQueueSourceRegistry.register(FULL_ORIGIN_SOURCE_ID, emptyList())
         ReadingQueueSourceRegistry.register(PARTIAL_ORIGIN_SOURCE_ID, emptyList())
         composeRule.runOnIdle {
-            composeRule.activity.articleAnswerSwitchState.navigator = null
-            composeRule.activity.articleAnswerSwitchState.pendingNavigator = null
+            sharedArticleAnswerSwitchState.navigator = null
+            sharedArticleAnswerSwitchState.pendingNavigator = null
         }
     }
 
@@ -1502,7 +1503,7 @@ class ArticleScreenInstrumentedTest {
             }
         }
         composeRule.activity.runOnUiThread {
-            composeRule.activity.articleAnswerSwitchState.pendingNavigator = sharedNavigator
+            sharedArticleAnswerSwitchState.pendingNavigator = sharedNavigator
         }
         composeRule.setScreenContent {
             Scaffold(
@@ -1542,7 +1543,7 @@ class ArticleScreenInstrumentedTest {
             commentCount = 3,
         )
         composeRule.activity.runOnUiThread {
-            composeRule.activity.articleAnswerSwitchState.pendingNavigator = object : AnswerNavigator(
+            sharedArticleAnswerSwitchState.pendingNavigator = object : AnswerNavigator(
                 sourceName = "此问题",
                 environment = NO_OP_API_ENVIRONMENT,
             ) {

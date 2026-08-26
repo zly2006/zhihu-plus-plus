@@ -258,7 +258,7 @@ class ArticleViewModel(
             withContext(Dispatchers.Default) {
                 try {
                     if (article.type == ArticleType.Answer) {
-                        val sharedData = environment.articleAnswerSwitchState()
+                        val sharedData = sharedArticleAnswerSwitchState
                         val answer = environment.fetchContentDetail(article) as? DataHolder.Answer
                         if (answer != null) {
                             exportSourceContent = answer
@@ -303,21 +303,21 @@ class ArticleViewModel(
                             environment.recordOpenEvent(article, answer.question.id)
                             withContext(Dispatchers.Main.immediate) {
                                 // 设置问题回答导航器（如果当前不是收藏夹导航器）
-                                if (sharedData?.navigator !is CollectionAnswerNavigator) {
-                                    val existingNav = sharedData?.navigator
+                                if (sharedData.navigator !is CollectionAnswerNavigator) {
+                                    val existingNav = sharedData.navigator
                                     val isSameQuestion = when (existingNav) {
                                         is QuestionAnswerNavigator -> existingNav.questionId == questionId
                                         is PaginationInfoNavigator -> existingNav.questionId == questionId
                                         else -> false
                                     }
                                     if (!isSameQuestion) {
-                                        sharedData?.navigator = QuestionAnswerNavigator(
+                                        sharedData.navigator = QuestionAnswerNavigator(
                                             questionId = questionId,
                                             environment = environment,
                                         )
                                     }
                                 }
-                                sharedData?.navigator?.pushAnswer(
+                                sharedData.navigator?.pushAnswer(
                                     toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: "此问题"),
                                 )
                             }
@@ -326,7 +326,7 @@ class ArticleViewModel(
 
                             // 仅在无前向历史时预取下一个回答
                             withContext(Dispatchers.Main.immediate) {
-                                sharedData?.navigator?.let { nav ->
+                                sharedData.navigator?.let { nav ->
                                     if (nav.currentAnswerIndex >= nav.answerHistory.size - 1) {
                                         nav.prefetchNext(article.id)
                                     }
@@ -1003,16 +1003,7 @@ class ArticleViewModel(
 
         var preparedWebView: PreparedArticleExportContent? = null
         var bitmap: Any? = null
-        val renderer = environment.articleImageExportRenderer { fileName ->
-            try {
-                environment.loadExportAssetText(fileName)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Log.e("ArticleViewModel", "Failed to load export asset: $fileName", e)
-                ""
-            }
-        }
+        val renderer = environment.articleImageExportRenderer()
         try {
             preparedWebView = renderer.prepareExportWebView(
                 htmlContent = createHtmlContent(

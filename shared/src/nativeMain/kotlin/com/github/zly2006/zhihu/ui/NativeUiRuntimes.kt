@@ -116,12 +116,6 @@ actual fun rememberNotificationEnvironment(
     settingsStore: NotificationSettingsStore,
 ): NotificationEnvironment = remember(settingsStore) { NativePaginationEnvironment(notificationSettingsStore = settingsStore) }
 
-actual val isArticleNavControllerSupported: Boolean = false
-
-@Composable
-actual fun rememberArticleNavController(): androidx.navigation.NavHostController =
-    error("$platformName 暂不支持文章导航控制器")
-
 @Composable
 actual fun consumePendingCommentId(content: com.github.zly2006.zhihu.navigation.NavDestination): String? = null
 

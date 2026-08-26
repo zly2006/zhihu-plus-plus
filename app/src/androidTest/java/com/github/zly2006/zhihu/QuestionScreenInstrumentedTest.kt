@@ -57,6 +57,7 @@ import com.github.zly2006.zhihu.viewmodel.feed.QuestionFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedUser
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.paginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.sharedArticleAnswerSwitchState
 import io.ktor.http.HttpMethod
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.encodeToString
@@ -150,7 +151,7 @@ class QuestionScreenInstrumentedTest {
             listOf(Article(type = ArticleType.Answer, id = 7003L)),
             navigator.destinations,
         )
-        val pendingNavigator = composeRule.activity.articleAnswerSwitchState.pendingNavigator
+        val pendingNavigator = sharedArticleAnswerSwitchState.pendingNavigator
         assertEquals(7002L, pendingNavigator?.previousAnswerPreview?.article?.id)
         assertEquals(7004L, runBlocking { pendingNavigator?.loadNext()?.id })
     }

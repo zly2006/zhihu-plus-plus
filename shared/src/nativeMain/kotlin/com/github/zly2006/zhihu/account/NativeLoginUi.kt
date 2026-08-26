@@ -43,9 +43,8 @@ actual fun rememberLoginHttpClient(cookies: MutableMap<String, String>): HttpCli
     return httpClient
 }
 
-@Composable
-actual fun rememberPhoneLoginDeviceInfo(): ZhihuPhoneLoginDeviceInfo = remember {
-    ZhihuPhoneLoginDeviceInfo(
+actual val phoneLoginDeviceInfo: ZhihuPhoneLoginDeviceInfo
+    get() = ZhihuPhoneLoginDeviceInfo(
         timezoneOffsetSeconds = 0,
         appInstallTimeMillis = 0,
         notificationEnabled = false,
@@ -61,7 +60,6 @@ actual fun rememberPhoneLoginDeviceInfo(): ZhihuPhoneLoginDeviceInfo = remember 
         totalStorageMegabytes = 0,
         freeStorageMegabytes = 0,
     )
-}
 
 actual fun decodePhoneLoginCaptchaImage(content: String) = runCatching {
     val encoded = content.substringAfter("base64,", content)

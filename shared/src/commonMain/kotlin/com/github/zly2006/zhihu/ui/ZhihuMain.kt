@@ -167,6 +167,7 @@ private sealed class MainTabPage(
 }
 
 internal val LocalReadingPlayerOverlayPadding = staticCompositionLocalOf { 0.dp }
+internal val LocalArticleNavController = staticCompositionLocalOf<NavHostController?> { null }
 
 /**
  * Zhihu++ 的共享应用主壳。
@@ -279,7 +280,7 @@ fun ZhihuMain(
     val isOnArticle = navEntry?.destination?.hasRoute<Article>() == true
     LaunchedEffect(navEntry) {
         isReadingPlayerExpandedByUser = false
-        if (!isOnArticle) readingPlayerOverlayOffsetState.revokeOwner()
+        if (!isOnArticle) readingPlayerOverlayOffsetState.clearRoute()
     }
     var wasOnArticle by remember { mutableStateOf(false) }
     if (!isOnArticle && wasOnArticle) {
@@ -500,6 +501,7 @@ fun ZhihuMain(
             },
         ) { innerPadding ->
             CompositionLocalProvider(
+                LocalArticleNavController provides navController,
                 LocalNavigator provides Navigator(
                     onNavigate = { destination ->
                         navigate(destination)

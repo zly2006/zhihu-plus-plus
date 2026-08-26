@@ -18,7 +18,8 @@
 package com.github.zly2006.zhihu.test
 
 import androidx.test.platform.app.InstrumentationRegistry
-import com.github.zly2006.zhihu.account.createAndroidZhihuAccountStoreForTesting
+import com.github.zly2006.zhihu.account.accountHttpClientEngineForTesting
+import com.github.zly2006.zhihu.account.androidZhihuAccountStore
 import com.github.zly2006.zhihu.account.replaceAndroidZhihuAccountStoreForTesting
 import com.github.zly2006.zhihu.notification.ZHIHU_PLUS_PLUS_HOME_NOTIFICATIONS_URL
 import io.ktor.client.engine.mock.MockEngine
@@ -53,16 +54,14 @@ object ZhihuMockApi {
         this.enabled = enabled
         if (!enabled) {
             replaceAndroidZhihuAccountStoreForTesting(null)
+            accountHttpClientEngineForTesting = null
             routes.clear()
             requests.clear()
             return
         }
-        replaceAndroidZhihuAccountStoreForTesting(
-            createAndroidZhihuAccountStoreForTesting(
-                context = InstrumentationRegistry.getInstrumentation().targetContext,
-                createEngine = ::mockEngine,
-            ),
-        )
+        replaceAndroidZhihuAccountStoreForTesting(null)
+        accountHttpClientEngineForTesting = mockEngine()
+        androidZhihuAccountStore(InstrumentationRegistry.getInstrumentation().targetContext)
     }
 
     fun isEnabled(): Boolean = enabled

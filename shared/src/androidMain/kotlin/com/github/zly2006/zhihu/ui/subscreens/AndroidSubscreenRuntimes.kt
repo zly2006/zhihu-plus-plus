@@ -41,8 +41,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.platform.androidUserMessageSink
 import com.github.zly2006.zhihu.platform.rememberIsLiteVariant
+import com.github.zly2006.zhihu.reading.AndroidReadingPlayerBridge
+import com.github.zly2006.zhihu.ui.rememberArticleTtsState
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState
+import com.github.zly2006.zhihu.util.ContinuousUsageReminderManager
 import com.github.zly2006.zhihu.util.PowerSaveModeCompat
 import com.mikepenz.aboutlibraries.Libs
 import com.mikepenz.aboutlibraries.util.withContext
@@ -58,11 +61,11 @@ actual val isIdentityManagementSupported: Boolean = true
 @Composable
 actual fun rememberDeveloperInfo(): DeveloperInfoSnapshot {
     val context = LocalContext.current
-    return produceState(initialValue = DeveloperInfoSnapshot(), context) {
+    val ttsState = rememberArticleTtsState()
+    return produceState(initialValue = DeveloperInfoSnapshot(), context, ttsState) {
         while (true) {
-            val runtimeInfo = (context as? DeveloperInfoProvider)?.developerInfo
-                ?: DeveloperInfoSnapshot()
-            value = runtimeInfo.copy(
+            val readingState = AndroidReadingPlayerBridge.state.value
+            value = DeveloperInfoSnapshot(
                 networkStatus = context.networkStatusText(),
                 powerSaveModeText =
                     when (PowerSaveModeCompat.getPowerSaveMode(context)) {
@@ -70,6 +73,10 @@ actual fun rememberDeveloperInfo(): DeveloperInfoSnapshot {
                         PowerSaveModeCompat.HUAWEI_POWER_SAVE -> "省电模式：华为傻逼模式已开启"
                         else -> null
                     },
+                continuousUsageDurationMs = ContinuousUsageReminderManager.currentElapsedForegroundMs(),
+                ttsState = ttsState,
+                currentTtsEngineLabel = readingState.engineLabel.ifBlank { "按需初始化" },
+                availableTtsEngineLabels = readingState.availableEngineLabels,
             )
             delay(1_000L)
         }

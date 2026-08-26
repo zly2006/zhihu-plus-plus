@@ -33,11 +33,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavHostController
 import com.fleeksoft.ksoup.Ksoup
 import com.github.zly2006.zhihu.account.rememberZhihuAccountStore
 import com.github.zly2006.zhihu.data.DataHolder
-import com.github.zly2006.zhihu.filter.ContentOpenFrom
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.navigation.AnswerNavigator
 import com.github.zly2006.zhihu.navigation.Article
@@ -155,11 +153,6 @@ internal fun <T> rememberObservedSetting(
     return state
 }
 
-expect val isArticleNavControllerSupported: Boolean
-
-@Composable
-expect fun rememberArticleNavController(): NavHostController
-
 @Composable
 expect fun consumePendingCommentId(content: NavDestination): String?
 
@@ -270,41 +263,6 @@ fun articleSpeechText(
             append(Ksoup.parse(contentToProcess).text())
         }
     }
-
-/**
- * 文章页需要从外围应用获取的宿主级服务。
- *
- * 文章会参与历史记录、回答间导航、内容打开来源归因、TTS、剪贴板和 deep link 交接。这个接口刻意比 Activity 窄，
- * 让 common 文章 UI 能同时运行在 Android、Desktop 和测试环境里，而不依赖平台类。
- */
-interface ArticleNavControllerOwner {
-    val articleNavController: NavHostController
-}
-
-interface ArticleAnswerSwitchStateOwner {
-    val articleAnswerSwitchState: ArticleAnswerSwitchState
-}
-
-interface ArticleTtsHost {
-    val articleTtsState: TtsState
-
-    fun speakArticleText(
-        text: String,
-        title: String,
-    )
-
-    fun stopArticleSpeaking()
-}
-
-interface ClipboardDestinationOwner {
-    var clipboardDestination: NavDestination?
-}
-
-interface PendingArticleNavigationOwner {
-    fun consumePendingContentOpenFrom(destination: NavDestination): String = ContentOpenFrom.UNKNOWN
-
-    fun consumePendingCommentId(destination: NavDestination): String? = null
-}
 
 /**
  * 同一问题下不同回答之间导航时使用的共享状态。

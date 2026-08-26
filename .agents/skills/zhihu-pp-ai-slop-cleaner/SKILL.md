@@ -9,6 +9,11 @@ description: Use for Zhihu++ maintenance work that scans Kotlin main sources for
 
 Treat low call count as a queue for review, not proof of deletion.
 
+Use non-test production line count as a hard refactor check, measured per independent change cluster rather than
+only across the whole commit. Deleting one large client must not hide line growth caused by new owners, adapters,
+constructor parameters, or initialization glue elsewhere. A cleanup that preserves behavior but materially grows
+the production implementation is presumed wrong unless the added lines encode a demonstrated new contract.
+
 Do not treat unit-test reachability as a production contract. Before merging or preserving tests for a pure
 function, inspect whether the test caused production code to expose an `internal` helper, accept extra parameters,
 or retain test-only branches and fallback values. When the behavior is simple and already exercised through its

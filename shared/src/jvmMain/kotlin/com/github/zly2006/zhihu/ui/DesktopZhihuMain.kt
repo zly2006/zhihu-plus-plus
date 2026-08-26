@@ -71,8 +71,8 @@ import com.github.zly2006.zhihu.ui.subscreens.normalizeBottomBarSelection
 import com.github.zly2006.zhihu.ui.subscreens.resolveValidStartDestinationKey
 import com.github.zly2006.zhihu.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
-import com.github.zly2006.zhihu.viewmodel.desktopArticleAnswerSwitchState
 import com.github.zly2006.zhihu.viewmodel.prepareDesktopPendingContentOpen
+import com.github.zly2006.zhihu.viewmodel.sharedArticleAnswerSwitchState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -202,7 +202,7 @@ fun DesktopZhihuMain() {
         preferenceState = rememberDesktopZhihuMainPreferenceState(),
         isDarkTheme = ThemeManager.isDarkTheme(),
         articleEnterTransition = {
-            when (desktopArticleAnswerSwitchState.answerTransitionDirection) {
+            when (sharedArticleAnswerSwitchState.answerTransitionDirection) {
                 ArticleAnswerTransitionDirection.VERTICAL_NEXT ->
                     slideInVertically(tween(300)) { it } + fadeIn(tween(300))
                 ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS ->
@@ -215,7 +215,7 @@ fun DesktopZhihuMain() {
             }
         },
         articleExitTransition = {
-            when (desktopArticleAnswerSwitchState.answerTransitionDirection) {
+            when (sharedArticleAnswerSwitchState.answerTransitionDirection) {
                 ArticleAnswerTransitionDirection.VERTICAL_NEXT ->
                     slideOutVertically(tween(300)) { -it } + fadeOut(tween(300))
                 ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS ->

@@ -222,6 +222,8 @@ open class ArticleAnswerSwitchData :
     override fun promoteForNavigation(direction: ArticleAnswerTransitionDirection) = Unit
 }
 
+val sharedArticleAnswerSwitchState = ArticleAnswerSwitchData()
+
 interface PreparedArticleExportContent
 
 interface ArticleImageExportRenderer {
@@ -503,17 +505,13 @@ interface ArticleExportEnvironment {
         bitmap: Any,
     ) = Unit
 
-    fun articleImageExportRenderer(loadAssetText: (String) -> String): ArticleImageExportRenderer =
+    fun articleImageExportRenderer(): ArticleImageExportRenderer =
         error("$platformName 暂不支持文章图片导出")
 }
 
 interface ArticleExportContentEnvironment :
     ArticleExportEnvironment,
     ZhihuApiEnvironment
-
-interface ArticleNavigationEnvironment {
-    fun articleAnswerSwitchState(): ArticleAnswerSwitchState? = null
-}
 
 interface ContentLoadEnvironment :
     ZhihuApiEnvironment,
@@ -527,8 +525,7 @@ interface ProfileLoadEnvironment :
 
 interface ArticleLoadEnvironment :
     ZhihuApiEnvironment,
-    ContentLoadEnvironment,
-    ArticleNavigationEnvironment
+    ContentLoadEnvironment
 
 interface PaginationEnvironment :
     ZhihuApiEnvironment,
