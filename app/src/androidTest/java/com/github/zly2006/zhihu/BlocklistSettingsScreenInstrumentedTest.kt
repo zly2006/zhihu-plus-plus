@@ -19,6 +19,7 @@ package com.github.zly2006.zhihu
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
@@ -78,6 +79,9 @@ class BlocklistSettingsScreenInstrumentedTest {
 
         composeRule.onNodeWithTag("blocklistSettings:tab:3").performClick()
         composeRule.onNodeWithTag(BlocklistSettingsTestTags.FAB).assertIsDisplayed()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithTag(BlocklistSettingsTestTags.QUESTION_AUTHOR_LIST).fetchSemanticsNodes().isNotEmpty()
+        }
         composeRule.onNodeWithTag(BlocklistSettingsTestTags.QUESTION_AUTHOR_LIST).assertIsDisplayed()
         composeRule.onNodeWithTag(BlocklistSettingsTestTags.QUESTION_AUTHOR_LIST).performVerticalSwipeCycle()
         composeRule.onNodeWithTag(BlocklistSettingsTestTags.QUESTION_AUTHOR_LIST).performHorizontalSwipeCycle()

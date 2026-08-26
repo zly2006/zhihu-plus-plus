@@ -339,7 +339,10 @@ class CommentScreenInstrumentedTest {
          */
         val childEntryCommentIds = mutableListOf<String>()
         val seededComments = seedRootComments(count = 4)
-        seedRootCommentViewModel(seededComments)
+        mockRootComments(
+            urlPrefix = "https://www.zhihu.com/api/v4/comment_v5/answers/9001/root_comment",
+            comments = seededComments,
+        )
 
         setCommentScreen(
             onChildCommentClick = { childEntryCommentIds += it.item.id },
@@ -403,14 +406,13 @@ class CommentScreenInstrumentedTest {
          * 2. Kept root comments should also drop embedded child comments from blocked users before
          *    the screen receives them.
          */
-        val viewModel = seedRootCommentViewModel(emptyList())
         runBlocking {
             val database = getContentFilterDatabase(composeRule.activity)
             database.blockedUserDao().insertUser(BlockedUser("blocked-root-author", "被屏蔽根评论作者"))
             database.blockedUserDao().insertUser(BlockedUser("blocked-child-author", "被屏蔽子评论作者"))
-            viewModel.processForTest(
-                composeRule.activity,
-                listOf(
+            mockRootComments(
+                urlPrefix = "https://www.zhihu.com/api/v4/comment_v5/answers/9001/root_comment",
+                comments = listOf(
                     seedComment(
                         id = "blocked-root",
                         authorId = "blocked-root-author",

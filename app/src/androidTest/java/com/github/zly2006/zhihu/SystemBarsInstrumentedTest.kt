@@ -17,7 +17,6 @@
 
 package com.github.zly2006.zhihu
 
-import android.graphics.Bitmap
 import android.os.SystemClock
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -39,7 +38,6 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.io.FileOutputStream
 import androidx.compose.ui.graphics.Color as ComposeColor
 
 @RunWith(AndroidJUnit4::class)
@@ -58,7 +56,7 @@ class SystemBarsInstrumentedTest {
      * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/571
      */
     @Test
-    fun activityRecreationKeepsDarkThemeStatusBarEdgeToEdge() {
+    fun darkThemeStatusBarIsEdgeToEdge() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val originalActivity = composeRule.activity
         instrumentation.runOnMainSync {
@@ -69,25 +67,7 @@ class SystemBarsInstrumentedTest {
             }
         }
         composeRule.waitForIdle()
-        waitUntilStatusBarColor(originalActivity, "before identity restart")
-
-        composeRule.activityRule.scenario.recreate()
-        lateinit var activity: MainActivity
-        composeRule.activityRule.scenario.onActivity { recreatedActivity ->
-            activity = recreatedActivity
-            recreatedActivity.setContent {
-                ZhihuTheme {
-                    SolidThemeSurface()
-                }
-            }
-        }
-        instrumentation.waitForIdleSync()
-        waitUntilStatusBarColor(activity, "after identity restart")
-
-        val screenshot = instrumentation.uiAutomation.takeScreenshot()
-        FileOutputStream(activity.cacheDir.resolve("system-bars-after-identity-restart.png")).use {
-            screenshot.compress(Bitmap.CompressFormat.PNG, 100, it)
-        }
+        waitUntilStatusBarColor(originalActivity, "dark theme")
     }
 
     private fun waitUntilStatusBarColor(

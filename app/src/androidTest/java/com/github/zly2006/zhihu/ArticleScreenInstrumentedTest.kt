@@ -126,6 +126,7 @@ class ArticleScreenInstrumentedTest {
     @Before
     fun setUp() {
         AndroidReadingPlayerBridge.publish(ReadingPlayerState())
+        sharedArticleAnswerSwitchState.reset()
         composeRule.resetAppPreferences()
         composeRule.activity
             .getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)

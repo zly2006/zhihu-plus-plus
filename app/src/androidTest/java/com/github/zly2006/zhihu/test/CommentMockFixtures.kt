@@ -26,15 +26,19 @@ fun mockRootComments(
     urlPrefix: String,
     commentId: String = "offline-root-comment",
     resourceType: String = "answer",
+) = mockRootComments(urlPrefix, listOf(offlineComment(commentId, resourceType)))
+
+fun mockRootComments(
+    urlPrefix: String,
+    comments: List<DataHolder.Comment>,
 ) {
-    val comment = offlineComment(commentId, resourceType)
     ZhihuMockApi.mockJsonPrefix(
         method = HttpMethod.Get,
         urlPrefix = urlPrefix,
         body =
             """
             {
-              "data": [${ZhihuJson.json.encodeToString(comment)}],
+              "data": ${ZhihuJson.json.encodeToString(comments)},
               "paging": {
                 "is_end": true,
                 "is_start": true,
