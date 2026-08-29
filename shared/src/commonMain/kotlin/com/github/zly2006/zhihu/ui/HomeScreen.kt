@@ -568,10 +568,10 @@ fun HomeScreen(
                             Box(
                                 modifier = Modifier
                                     .size(48.dp)
+                                    .testTag(HOME_NOTIFICATION_BUTTON_TAG)
                                     .clickable(role = Role.Button) {
                                         navigator.onNavigate(Notification)
                                     }
-                                    .testTag(HOME_NOTIFICATION_BUTTON_TAG),
                                 contentAlignment = Alignment.Center,
                             ) {
                                 // IconButton 的圆形 Surface 会裁掉越过圆形边界的 badge；点击盒与内容盒必须分离。
