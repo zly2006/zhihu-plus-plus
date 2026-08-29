@@ -565,20 +565,27 @@ fun HomeScreen(
                             Spacer(modifier = Modifier.width(8.dp))
                             IconButton(
                                 onClick = { navigator.onNavigate(Notification) },
-                                modifier = Modifier.testTag(HOME_NOTIFICATION_BUTTON_TAG),
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .testTag(HOME_NOTIFICATION_BUTTON_TAG),
                             ) {
-                                BadgedBox(
-                                    badge = {
-                                        if (showUnreadBadge && unreadCount > 0) {
-                                            Badge { Text("$unreadCount") }
-                                        }
-                                    },
+                                Box(
+                                    modifier = Modifier.size(36.dp),
+                                    contentAlignment = Alignment.Center,
                                 ) {
-                                    Icon(
-                                        Icons.Default.Notifications,
-                                        contentDescription = "通知",
-                                        tint = MaterialTheme.colorScheme.onSurface,
-                                    )
+                                    BadgedBox(
+                                        badge = {
+                                            if (showUnreadBadge && unreadCount > 0) {
+                                                Badge { Text("$unreadCount") }
+                                            }
+                                        },
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Notifications,
+                                            contentDescription = "通知",
+                                            tint = MaterialTheme.colorScheme.onSurface,
+                                        )
+                                    }
                                 }
                             }
                         }

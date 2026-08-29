@@ -22,6 +22,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -354,18 +355,23 @@ fun AccountSettingScreen(
                             verticalArrangement = Arrangement.Center,
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
-                            BadgedBox(
-                                badge = {
-                                    if (showUnreadBadge && unreadCount > 0) {
-                                        Badge { Text(unreadCount.toString()) }
-                                    }
-                                },
+                            Box(
+                                modifier = Modifier.size(36.dp),
+                                contentAlignment = Alignment.Center,
                             ) {
-                                Icon(
-                                    Icons.Default.Notifications,
-                                    null,
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                )
+                                BadgedBox(
+                                    badge = {
+                                        if (showUnreadBadge && unreadCount > 0) {
+                                            Badge { Text(unreadCount.toString()) }
+                                        }
+                                    },
+                                ) {
+                                    Icon(
+                                        Icons.Default.Notifications,
+                                        null,
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    )
+                                }
                             }
                             Spacer(Modifier.height(4.dp))
                             Text(
