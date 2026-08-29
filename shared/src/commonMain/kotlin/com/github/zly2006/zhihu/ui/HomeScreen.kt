@@ -182,6 +182,7 @@ const val HOME_WRITE_QUESTION_BUTTON_TAG = "home_write_question_button"
 const val HOME_WRITE_ANSWER_BUTTON_TAG = "home_write_answer_button"
 const val HOME_WRITE_PIN_BUTTON_TAG = "home_write_pin_button"
 const val HOME_NOTIFICATION_BUTTON_TAG = "home_notification_button"
+const val HOME_NOTIFICATION_BUTTON_CONTENT_TAG = "home_notification_button_content"
 const val HOME_ACCOUNT_BUTTON_TAG = "home_account_button"
 const val HOME_FEED_LIST_TAG = "home_feed_list"
 const val HOME_REFRESH_BUTTON_TAG = "home_refresh_button"
@@ -570,18 +571,25 @@ fun HomeScreen(
                                 onClick = { navigator.onNavigate(Notification) },
                                 modifier = Modifier.testTag(HOME_NOTIFICATION_BUTTON_TAG),
                             ) {
-                                BadgedBox(
-                                    badge = {
-                                        if (showUnreadBadge && unreadCount > 0) {
-                                            Badge { Text("$unreadCount") }
-                                        }
-                                    },
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .testTag(HOME_NOTIFICATION_BUTTON_CONTENT_TAG),
+                                    contentAlignment = Alignment.Center,
                                 ) {
-                                    Icon(
-                                        Icons.Default.Notifications,
-                                        contentDescription = "通知",
-                                        tint = MaterialTheme.colorScheme.onSurface,
-                                    )
+                                    BadgedBox(
+                                        badge = {
+                                            if (showUnreadBadge && unreadCount > 0) {
+                                                Badge { Text("$unreadCount") }
+                                            }
+                                        },
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Notifications,
+                                            contentDescription = "通知",
+                                            tint = MaterialTheme.colorScheme.onSurface,
+                                        )
+                                    }
                                 }
                             }
                         }
