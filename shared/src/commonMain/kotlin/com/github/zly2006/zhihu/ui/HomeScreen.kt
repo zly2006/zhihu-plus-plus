@@ -569,6 +569,7 @@ fun HomeScreen(
                                     .size(48.dp)
                                     .testTag(HOME_NOTIFICATION_BUTTON_TAG),
                             ) {
+                                // Issue #696 的原始截图里 badge 会挤裁图标，所以这里保留更小的居中内容盒子。
                                 Box(
                                     modifier = Modifier.size(36.dp),
                                     contentAlignment = Alignment.Center,
