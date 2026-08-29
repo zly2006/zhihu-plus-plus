@@ -79,7 +79,7 @@ class SystemBarsInstrumentedTest {
             }
         }
         composeRule.waitForIdle()
-        waitUntilStatusBarColor(originalActivity, "before identity restart")
+        val beforeStatusBarColors = waitUntilDarkStatusBarColors(originalActivity, "before identity restart")
 
         val relaunchedActivity = AtomicReference<MainActivity>()
         val resumedLatch = CountDownLatch(1)
@@ -125,7 +125,13 @@ class SystemBarsInstrumentedTest {
             }
         }
         instrumentation.waitForIdleSync()
-        waitUntilStatusBarColor(activity, "after identity restart")
+        val afterStatusBarColors = waitUntilDarkStatusBarColors(activity, "after identity restart")
+        assertTrue(
+            "Identity restart changed status bar colors: before=${
+                beforeStatusBarColors.joinToString { it.toUInt().toString(16) }
+            }, after=${afterStatusBarColors.joinToString { it.toUInt().toString(16) }}",
+            beforeStatusBarColors == afterStatusBarColors,
+        )
 
         val screenshot = instrumentation.uiAutomation.takeScreenshot()
         FileOutputStream(activity.cacheDir.resolve("system-bars-after-identity-restart.png")).use {
@@ -133,10 +139,10 @@ class SystemBarsInstrumentedTest {
         }
     }
 
-    private fun waitUntilStatusBarColor(
+    private fun waitUntilDarkStatusBarColors(
         activity: MainActivity,
         stage: String,
-    ) {
+    ): List<Int> {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val deadline = SystemClock.uptimeMillis() + 10_000
         var consecutiveMatchingFrames = 0
@@ -146,17 +152,18 @@ class SystemBarsInstrumentedTest {
             SystemClock.sleep(16)
             statusBarColors = sampleStatusBarColors(activity)
             consecutiveMatchingFrames =
-                if (statusBarColors.all { it == SOLID_SURFACE_COLOR }) {
+                if (statusBarColors.all { isDarkStatusBarColor(it) }) {
                     consecutiveMatchingFrames + 1
                 } else {
                     0
                 }
         } while (consecutiveMatchingFrames < REQUIRED_MATCHING_FRAMES && SystemClock.uptimeMillis() < deadline)
         assertTrue(
-            "$stage: expected status bar ${SOLID_SURFACE_COLOR.toUInt().toString(16)}, " +
+            "$stage: expected dark status bar, " +
                 "but sampled ${statusBarColors.joinToString { it.toUInt().toString(16) }}",
             consecutiveMatchingFrames >= REQUIRED_MATCHING_FRAMES,
         )
+        return statusBarColors
     }
 
     private fun sampleStatusBarColors(activity: MainActivity): List<Int> {
@@ -186,3 +193,10 @@ private fun SolidThemeSurface() {
 
 private const val SOLID_SURFACE_COLOR = 0xFF121212.toInt()
 private const val REQUIRED_MATCHING_FRAMES = 3
+
+private fun isDarkStatusBarColor(color: Int): Boolean {
+    val red = color ushr 16 and 0xFF
+    val green = color ushr 8 and 0xFF
+    val blue = color and 0xFF
+    return red < 0x40 && green < 0x40 && blue < 0x40
+}
