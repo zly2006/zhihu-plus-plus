@@ -550,7 +550,8 @@ private const val OVERLONG_FORMULA_SOURCE_LIMIT = 4096
 private fun Element.extractEquationNode(): MarkdownNode? = extractEquationTex(this)?.let { formula ->
     if (
         formula.length > OVERLONG_FORMULA_SOURCE_LIMIT ||
-        attr("eeimg") == "2" || formula.zhihuEquationSemantics().isDisplay
+        attr("eeimg") == "2" ||
+        formula.zhihuEquationSemantics().isDisplay
     ) {
         MathBlock(formula)
     } else {
