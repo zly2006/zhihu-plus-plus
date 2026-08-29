@@ -116,6 +116,7 @@ const val ACCOUNT_SETTINGS_PROFILE_NAME_TAG = "accountSettings.profileName"
 const val ACCOUNT_SETTINGS_SHORTCUT_COLLECTIONS_TAG = "accountSettings.shortcutCollections"
 const val ACCOUNT_SETTINGS_SHORTCUT_SUBSCRIPTIONS_TAG = "accountSettings.shortcutSubscriptions"
 const val ACCOUNT_SETTINGS_SHORTCUT_NOTIFICATION_TAG = "accountSettings.shortcutNotification"
+const val ACCOUNT_SETTINGS_NOTIFICATION_BADGE_TAG = "accountSettings.notificationBadge"
 const val ACCOUNT_SETTINGS_SHORTCUT_HISTORY_TAG = "accountSettings.shortcutHistory"
 const val ACCOUNT_SETTINGS_APPEARANCE_TAG = "accountSettings.appearance"
 const val ACCOUNT_SETTINGS_READING_TAG = "accountSettings.reading"
@@ -356,13 +357,15 @@ fun AccountSettingScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             Box(
-                                modifier = Modifier.size(36.dp),
+                                modifier = Modifier.size(40.dp),
                                 contentAlignment = Alignment.Center,
                             ) {
                                 BadgedBox(
                                     badge = {
                                         if (showUnreadBadge && unreadCount > 0) {
-                                            Badge { Text(unreadCount.toString()) }
+                                            Badge(
+                                                modifier = Modifier.testTag(ACCOUNT_SETTINGS_NOTIFICATION_BADGE_TAG),
+                                            ) { Text(unreadCount.toString()) }
                                         }
                                     },
                                 ) {
