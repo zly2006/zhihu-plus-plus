@@ -591,8 +591,7 @@ object ReadingQueueSourceRegistry {
         sourceId: String,
         items: List<ReadingQueueItem>,
     ) {
-        val normalizedItems = items
-            .distinctBy(ReadingQueueItem::key)
+        val normalizedItems = items.distinctBy(ReadingQueueItem::key)
             .map(ReadingQueueItem::withoutBody)
         if (normalizedItems.isEmpty()) {
             sources.remove(sourceId)
@@ -640,8 +639,7 @@ object ReadingQueueSourceRegistry {
             return sourceQueue
         }
 
-        return (sourceQueue + fallbackAfterCurrent)
-            .distinctBy(ReadingQueueItem::key)
+        return (sourceQueue + fallbackAfterCurrent).distinctBy(ReadingQueueItem::key)
             .take(safeLimit)
     }
 
