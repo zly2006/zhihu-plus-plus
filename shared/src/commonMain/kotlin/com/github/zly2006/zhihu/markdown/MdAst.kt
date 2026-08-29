@@ -541,8 +541,17 @@ private fun extractEquationTex(imgElement: Element): String? = extractImageUrl(i
     ?.let { Url(it).parameters["tex"].orEmpty() }
     ?.takeIf { it.isNotBlank() }
 
+/**
+ * 超长公式（如 \rule 拼的像素画）的官方渲染图 URL 过长无法拉取，也不可能当行内正文阅读；
+ * 提升为 Display 块交给整块滚动呈现。
+ */
+private const val OVERLONG_FORMULA_SOURCE_LIMIT = 4096
+
 private fun Element.extractEquationNode(): MarkdownNode? = extractEquationTex(this)?.let { formula ->
-    if (attr("eeimg") == "2" || formula.zhihuEquationSemantics().isDisplay) {
+    if (
+        formula.length > OVERLONG_FORMULA_SOURCE_LIMIT ||
+        attr("eeimg") == "2" || formula.zhihuEquationSemantics().isDisplay
+    ) {
         MathBlock(formula)
     } else {
         InlineMath(formula)
