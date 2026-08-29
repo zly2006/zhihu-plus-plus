@@ -19,10 +19,10 @@ package com.github.zly2006.zhihu
 
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
-import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -154,7 +154,8 @@ class ZhihuMainNavigationInstrumentedTest {
         composeRule.launchZhihuMain(startDestination = Home.name)
 
         composeRule.waitUntilTabSelected("nav_tab_home")
-        composeRule.onNodeWithTag(HOME_NOTIFICATION_BUTTON_TAG)
+        composeRule
+            .onNodeWithTag(HOME_NOTIFICATION_BUTTON_TAG)
             .assertIsDisplayed()
             .assertWidthIsAtLeast(48.dp)
             .assertHeightIsAtLeast(48.dp)
