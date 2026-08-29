@@ -26,12 +26,12 @@ import com.github.zly2006.zhihu.ui.HOME_NOTIFICATION_BADGE_TAG
 import com.github.zly2006.zhihu.ui.HomeScreen
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import io.ktor.http.HttpMethod
-import kotlin.math.max
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import kotlin.math.max
 
 @RunWith(AndroidJUnit4::class)
 class HomeNotificationPixelInstrumentedTest {
@@ -44,13 +44,14 @@ class HomeNotificationPixelInstrumentedTest {
         ZhihuMockApi.mockJson(
             method = HttpMethod.Get,
             url = ZHIHU_ME_URL,
-            body = """
+            body =
+                """
                 {
                   "defaultNotificationsCount": 99,
                   "followNotificationsCount": 99,
                   "voteThankNotificationsCount": 99
                 }
-            """.trimIndent(),
+                """.trimIndent(),
         )
         composeRule.activity.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE).edit(commit = true) {
             putBoolean("duo3_home_account", false)
@@ -59,7 +60,8 @@ class HomeNotificationPixelInstrumentedTest {
         composeRule.setScreenContent {
             HomeScreen(
                 scrollToTopTrigger = 0,
-                innerPadding = androidx.compose.foundation.layout.PaddingValues(),
+                innerPadding = androidx.compose.foundation.layout
+                    .PaddingValues(),
             )
         }
     }
