@@ -81,7 +81,6 @@ import com.github.zly2006.zhihu.account.rememberZhihuAccountStore
 import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.requestLoginNavigation
-import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
@@ -98,8 +97,6 @@ const val IDENTITY_MANAGEMENT_SCREEN_TAG = "identityManagement.screen"
 const val IDENTITY_MANAGEMENT_CREATE_TAG = "identityManagement.create"
 const val IDENTITY_MANAGEMENT_RETRY_TAG = "identityManagement.retry"
 const val IDENTITY_MANAGEMENT_CREATE_CONFIRM_TAG = "identityManagement.createConfirm"
-
-expect val isIdentityManagementSupported: Boolean
 
 data class IdentityManagementState(
     val accounts: List<ZhihuIdentityAccount> = emptyList(),
@@ -192,9 +189,6 @@ private suspend fun completeIdentityChange(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun IdentityManagementScreen() {
-    if (!isIdentityManagementSupported) {
-        error("$platformName 暂不支持身份管理")
-    }
     val navigator = LocalNavigator.current
     val accountStore = rememberZhihuAccountStore()
     val userMessages = rememberUserMessageSink()
@@ -219,7 +213,6 @@ fun IdentityManagementScreen() {
     val savedAccounts by accountStore.accountsState.collectAsState()
 
     suspend fun refresh() {
-        if (!isIdentityManagementSupported) return
         if (state.switchingToAccountId != null || state.creating) return
         state = state.copy(loading = true, errorMessage = null)
         state = try {

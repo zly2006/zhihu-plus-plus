@@ -43,8 +43,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import platform.Foundation.NSFileManager
 
-actual val isIdentityManagementSupported: Boolean = false
-
 private const val PREF_SKIPPED_VERSION = "skippedVersion"
 
 private val nativeSystemUpdateState = MutableStateFlow<SystemUpdateState>(SystemUpdateState.NoUpdate)

@@ -34,8 +34,6 @@ import kotlinx.coroutines.flow.StateFlow
 import java.io.File
 import java.util.Properties
 
-actual val isIdentityManagementSupported: Boolean = false
-
 internal val desktopSystemUpdateState = MutableStateFlow<SystemUpdateState>(SystemUpdateState.NoUpdate)
 
 @Composable

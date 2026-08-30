@@ -48,7 +48,6 @@ import com.github.zly2006.zhihu.platform.SettingsStore
 import com.github.zly2006.zhihu.platform.UserMessageSink
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.subscreens.DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY
-import com.github.zly2006.zhihu.ui.subscreens.isIdentityManagementSupported
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import com.github.zly2006.zhihu.viewmodel.getOrFetchContentDetail
@@ -355,7 +354,6 @@ data class AccountSettingsAccountState(
     val avatarUrl: String? = null,
     val id: String = "",
     val urlToken: String? = null,
-    val identityManagementSupported: Boolean = false,
 )
 
 @Composable
@@ -376,7 +374,6 @@ fun rememberAccountSettingsAccountState(): State<AccountSettingsAccountState> {
                     ?.id
                     .orEmpty(),
                 urlToken = session.profile?.urlToken,
-                identityManagementSupported = isIdentityManagementSupported,
             )
         }
     }

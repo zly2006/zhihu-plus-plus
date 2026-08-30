@@ -455,7 +455,7 @@ fun AccountSettingScreen(
             }
 
             SettingItemGroup {
-                if (data.login && data.identityManagementSupported) {
+                if (data.login) {
                     SettingItem(
                         title = { Text("身份管理") },
                         description = { Text("创建马甲号或切换当前账号") },

@@ -56,8 +56,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import java.io.File
 
-actual val isIdentityManagementSupported: Boolean = true
-
 @Composable
 actual fun rememberDeveloperInfo(): DeveloperInfoSnapshot {
     val context = LocalContext.current
