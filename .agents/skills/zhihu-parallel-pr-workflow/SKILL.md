@@ -140,6 +140,8 @@ If the selected runner cannot perform a needed step, switch to another healthy A
 
 ## PR Requirements
 
+- For every added or changed test, the PR body must explicitly record whether red-to-green verification against the pre-fix and fixed implementations was completed, including commands and terminal results or a precise blocker. Do not describe compilation or a pending CI check as red-to-green evidence.
+
 Workers create draft PRs themselves.
 
 - Base must be `master`.

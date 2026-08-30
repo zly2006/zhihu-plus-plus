@@ -19,6 +19,8 @@ Treat emulator time as a recurring maintenance cost. Keep it only where a real p
 8. Every retained regression test must be red against the pre-fix implementation. Temporarily restore the old behavior (or run the test against the parent revision) and record the failing assertion before accepting the test.
 9. Every retained test must document both the related issue and the fixing or introducing PR with full URLs in its provenance KDoc.
 10. Every retained test must state the target state, what it verifies, and why the assertion protects that behavior; a bare test name or implementation-detail assertion is insufficient.
+11. Before stopping, execute every changed regression test against both the pre-fix implementation (must fail) and the fixed implementation (must pass). Record the exact red/green evidence; compilation alone is not sufficient.
+12. Every PR that adds or changes tests must state in its body, per test, whether red-to-green verification was completed, including the commands and terminal results or an explicit blocker.
 
 Read [references/provenance-and-decisions.md](references/provenance-and-decisions.md) before changing tests.
 
