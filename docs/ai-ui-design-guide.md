@@ -123,7 +123,6 @@ URL 解析集中在 `resolveContent()`。支持知乎问题、回答、文章、
 | key/store | 入口 | 主要影响 | 注意 |
 | --- | --- | --- | --- |
 | `githubToken` | GitHub Token | 更新检查 API 限速 | 不要打印或提交真实 token |
-| `autoCheckUpdates` | 自动检查更新 | 启动后后台检查 | 通过 update runtime 存取 |
 | `checkNightlyUpdates` | Nightly 更新 | 是否检查每日构建 | Android updater 和 Desktop runtime 都读 |
 | `allowTelemetry` | 遥测统计 | 匿名使用统计 | 不影响核心功能 |
 | `continuousUsageReminderIntervalMinutes` | 防沉迷提醒 | 连续使用提醒间隔 | 0 表示关闭 |
