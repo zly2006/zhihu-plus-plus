@@ -16,6 +16,9 @@ Treat emulator time as a recurring maintenance cost. Keep it only where a real p
 5. Do not run the complete instrument suite locally unless the user explicitly asks. Prefer compilation, the smallest relevant test, or GitHub CI.
 6. Flakiness, runtime, or inconvenience never justify deleting a proven regression test. Repair its synchronization, fixture, or execution boundary.
 7. A test must assert user-observable behavior or a proven regression, not copy an implementation constant list into assertions. Delete tests that only restate the current source shape without an independent contract; validate the behavior through real interaction, build, or focused regression evidence instead.
+8. Every retained regression test must be red against the pre-fix implementation. Temporarily restore the old behavior (or run the test against the parent revision) and record the failing assertion before accepting the test.
+9. Every retained test must document both the related issue and the fixing or introducing PR with full URLs in its provenance KDoc.
+10. Every retained test must state the target state, what it verifies, and why the assertion protects that behavior; a bare test name or implementation-detail assertion is insufficient.
 
 Read [references/provenance-and-decisions.md](references/provenance-and-decisions.md) before changing tests.
 

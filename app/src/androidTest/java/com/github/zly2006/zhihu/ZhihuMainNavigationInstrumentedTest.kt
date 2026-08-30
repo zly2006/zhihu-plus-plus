@@ -19,11 +19,9 @@ package com.github.zly2006.zhihu
 
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
-import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
-import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -32,7 +30,6 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
-import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.filter.ContentOpenFrom
@@ -49,7 +46,6 @@ import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setZhihuMainContent
 import com.github.zly2006.zhihu.ui.FOLLOW_SCREEN_PAGER_TAG
-import com.github.zly2006.zhihu.ui.HOME_NOTIFICATION_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY
@@ -147,18 +143,6 @@ class ZhihuMainNavigationInstrumentedTest {
         }
 
         assertEquals(ContentOpenFrom.HOME_FEED, openFrom)
-    }
-
-    @Test
-    fun homeNotificationButtonKeepsFullTouchTarget() {
-        composeRule.launchZhihuMain(startDestination = Home.name)
-
-        composeRule.waitUntilTabSelected("nav_tab_home")
-        composeRule
-            .onNodeWithTag(HOME_NOTIFICATION_BUTTON_TAG)
-            .assertIsDisplayed()
-            .assertWidthIsAtLeast(48.dp)
-            .assertHeightIsAtLeast(48.dp)
     }
 
     /**

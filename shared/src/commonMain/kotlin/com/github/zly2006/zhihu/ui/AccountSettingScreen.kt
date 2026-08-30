@@ -23,7 +23,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -116,7 +115,6 @@ const val ACCOUNT_SETTINGS_PROFILE_NAME_TAG = "accountSettings.profileName"
 const val ACCOUNT_SETTINGS_SHORTCUT_COLLECTIONS_TAG = "accountSettings.shortcutCollections"
 const val ACCOUNT_SETTINGS_SHORTCUT_SUBSCRIPTIONS_TAG = "accountSettings.shortcutSubscriptions"
 const val ACCOUNT_SETTINGS_SHORTCUT_NOTIFICATION_TAG = "accountSettings.shortcutNotification"
-const val ACCOUNT_SETTINGS_NOTIFICATION_BADGE_TAG = "accountSettings.notificationBadge"
 const val ACCOUNT_SETTINGS_SHORTCUT_HISTORY_TAG = "accountSettings.shortcutHistory"
 const val ACCOUNT_SETTINGS_APPEARANCE_TAG = "accountSettings.appearance"
 const val ACCOUNT_SETTINGS_READING_TAG = "accountSettings.reading"
@@ -356,25 +354,18 @@ fun AccountSettingScreen(
                             verticalArrangement = Arrangement.Center,
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
-                            Box(
-                                modifier = Modifier.size(40.dp),
-                                contentAlignment = Alignment.Center,
+                            BadgedBox(
+                                badge = {
+                                    if (showUnreadBadge && unreadCount > 0) {
+                                        Badge { Text(unreadCount.toString()) }
+                                    }
+                                },
                             ) {
-                                BadgedBox(
-                                    badge = {
-                                        if (showUnreadBadge && unreadCount > 0) {
-                                            Badge(
-                                                modifier = Modifier.testTag(ACCOUNT_SETTINGS_NOTIFICATION_BADGE_TAG),
-                                            ) { Text(unreadCount.toString()) }
-                                        }
-                                    },
-                                ) {
-                                    Icon(
-                                        Icons.Default.Notifications,
-                                        null,
-                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    )
-                                }
+                                Icon(
+                                    Icons.Default.Notifications,
+                                    null,
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                )
                             }
                             Spacer(Modifier.height(4.dp))
                             Text(

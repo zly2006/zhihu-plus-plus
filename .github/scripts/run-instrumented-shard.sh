@@ -15,7 +15,6 @@ readonly app_apk=${INSTRUMENT_APP_APK:?INSTRUMENT_APP_APK must point to the app 
 readonly test_apk=${INSTRUMENT_TEST_APK:?INSTRUMENT_TEST_APK must point to the test APK}
 readonly instrumentation_component=com.github.zly2006.zhplus.lite.test/com.github.zly2006.zhihu.ZhihuInstrumentedTestRunner
 readonly instrumentation_result="$results_dir/instrumentation-shard-$shard_index.txt"
-readonly screenshot_path="$results_dir/home-notification-pixel-shard-$shard_index.png"
 
 mkdir -p "$results_dir"
 adb -s "$device_serial" logcat -c
@@ -26,9 +25,6 @@ capture_diagnostics() {
     kill "$logcat_pid" 2>/dev/null || true
     wait "$logcat_pid" 2>/dev/null || true
     adb -s "$device_serial" logcat -d > "$results_dir/logcat-shard-$shard_index.txt" || true
-    adb -s "$device_serial" pull \
-        "/sdcard/Android/data/com.github.zly2006.zhplus.lite/files/home-notification-pixel-annotated.png" \
-        "$screenshot_path" >/dev/null 2>&1 || true
 }
 trap capture_diagnostics EXIT
 
