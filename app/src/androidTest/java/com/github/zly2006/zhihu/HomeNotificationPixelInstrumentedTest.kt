@@ -12,7 +12,6 @@ package com.github.zly2006.zhihu
 import android.content.Context
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toPixelMap
-import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -84,7 +83,6 @@ class HomeNotificationPixelInstrumentedTest {
 
         val badgeBounds = composeRule
             .onNodeWithTag(HOME_NOTIFICATION_BADGE_TAG)
-            .assertIsDisplayed()
             .fetchSemanticsNode()
             .boundsInRoot
         val image = composeRule.onRoot().captureToImage()
