@@ -18,6 +18,7 @@
 package com.github.zly2006.zhihu.reading
 
 import com.github.zly2006.zhihu.platform.SettingsStore
+import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -256,7 +257,7 @@ class ReadingPlayerTest {
     }
 
     @Test
-    fun queueStartsAtCurrentItemAndNeverExceedsLimit() {
+    fun queueStartsAtCurrentItemAndNeverExceedsLimit() = runTest {
         val items = (1L..6L).map { id ->
             ReadingQueueItem(
                 contentType = ReadingContentType.Answer,
@@ -277,8 +278,63 @@ class ReadingPlayerTest {
         assertEquals("<p>正文</p>", queue.first().bodyHtml)
     }
 
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/705
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/708
+     * Target state: already-opened answers are omitted while the remaining question answers keep order.
+     * Verifies the queue's observable item order and current-item body preservation.
+     */
     @Test
-    fun explicitOriginWinsWhenTheSameItemAppearsInMultipleSources() {
+    fun queueSkipsOpenedAnswersWhileKeepingQuestionOrder() = runTest {
+        val items = (1L..6L).map { id ->
+            ReadingQueueItem(
+                contentType = ReadingContentType.Answer,
+                id = id,
+                title = "回答$id",
+            )
+        }
+        ReadingQueueSourceRegistry.register("question:1", items)
+        val current = items[1].copy(bodyHtml = "<p>正文</p>")
+
+        val queue = ReadingQueueSourceRegistry.queueStartingAt(
+            current = current,
+            sourceId = "question:1",
+            limit = 5,
+            openedAnswerIdsProvider = { ids -> ids.filter { it in setOf(3L, 5L) }.toSet() },
+        )
+
+        assertEquals(listOf(2L, 4L, 6L), queue.map(ReadingQueueItem::id))
+        assertEquals("<p>正文</p>", queue.first().bodyHtml)
+    }
+
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/705
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/708
+     * Target state: skipping opened answers still fills the configured queue limit from later answers.
+     * Verifies that users receive the requested number of unread answers instead of a shortened queue.
+     */
+    @Test
+    fun queueFillsLimitAfterSkippingOpenedAnswers() = runTest {
+        val items = (1L..8L).map { id ->
+            ReadingQueueItem(
+                contentType = ReadingContentType.Answer,
+                id = id,
+            )
+        }
+        ReadingQueueSourceRegistry.register("question:1", items)
+
+        val queue = ReadingQueueSourceRegistry.queueStartingAt(
+            current = items.first(),
+            sourceId = "question:1",
+            limit = 3,
+            openedAnswerIdsProvider = { ids -> ids.filter { it in setOf(2L, 3L) }.toSet() },
+        )
+
+        assertEquals(listOf(1L, 4L, 5L), queue.map(ReadingQueueItem::id))
+    }
+
+    @Test
+    fun explicitOriginWinsWhenTheSameItemAppearsInMultipleSources() = runTest {
         val current = ReadingQueueItem(ReadingContentType.Answer, id = 1)
         val sourceA = listOf(current, ReadingQueueItem(ReadingContentType.Answer, id = 2))
         val sourceB = listOf(current, ReadingQueueItem(ReadingContentType.Answer, id = 3))
@@ -295,7 +351,7 @@ class ReadingPlayerTest {
     }
 
     @Test
-    fun directNavigationDoesNotReuseAnOldOrigin() {
+    fun directNavigationDoesNotReuseAnOldOrigin() = runTest {
         val current = ReadingQueueItem(ReadingContentType.Answer, id = 1)
         ReadingQueueSourceRegistry.register(
             "source:a",
@@ -311,7 +367,7 @@ class ReadingPlayerTest {
     }
 
     @Test
-    fun answerSwitchedBeyondItsOriginFallsBackToQuestionOrder() {
+    fun answerSwitchedBeyondItsOriginFallsBackToQuestionOrder() = runTest {
         ReadingQueueSourceRegistry.register(
             "home:feed",
             listOf(
@@ -342,7 +398,7 @@ class ReadingPlayerTest {
     }
 
     @Test
-    fun matchingOriginStillWinsOverQuestionFallback() {
+    fun matchingOriginStillWinsOverQuestionFallback() = runTest {
         val current = ReadingQueueItem(ReadingContentType.Answer, id = 1)
         ReadingQueueSourceRegistry.register(
             "home:feed",
@@ -362,7 +418,7 @@ class ReadingPlayerTest {
     }
 
     @Test
-    fun exhaustedMatchingOriginFallsBackToQuestionOrder() {
+    fun exhaustedMatchingOriginFallsBackToQuestionOrder() = runTest {
         val current = ReadingQueueItem(ReadingContentType.Answer, id = 1)
         ReadingQueueSourceRegistry.register("question:1:answers:default", listOf(current))
 
@@ -380,7 +436,7 @@ class ReadingPlayerTest {
     }
 
     @Test
-    fun matchingQuestionOriginExtendsAfterItsLoadedItems() {
+    fun matchingQuestionOriginExtendsAfterItsLoadedItems() = runTest {
         val current = ReadingQueueItem(ReadingContentType.Answer, id = 1)
         val loadedNext = ReadingQueueItem(ReadingContentType.Answer, id = 11)
         ReadingQueueSourceRegistry.register(
@@ -403,7 +459,7 @@ class ReadingPlayerTest {
     }
 
     @Test
-    fun partiallyMatchingFallbackDoesNotMixDivergingOrderIntoOrigin() {
+    fun partiallyMatchingFallbackDoesNotMixDivergingOrderIntoOrigin() = runTest {
         val current = ReadingQueueItem(ReadingContentType.Answer, id = 1)
         val firstLoaded = ReadingQueueItem(ReadingContentType.Answer, id = 11)
         val secondLoaded = ReadingQueueItem(ReadingContentType.Answer, id = 12)
