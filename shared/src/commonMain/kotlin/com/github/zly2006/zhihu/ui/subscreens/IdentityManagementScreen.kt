@@ -32,7 +32,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SwitchAccount
@@ -51,6 +53,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -71,11 +74,13 @@ import com.github.zly2006.zhihu.account.ZhihuIdentityAccountListResponse
 import com.github.zly2006.zhihu.account.ZhihuIdentityChangeResult
 import com.github.zly2006.zhihu.account.ZhihuIdentityProfile
 import com.github.zly2006.zhihu.account.ZhihuIdentityToken
+import com.github.zly2006.zhihu.account.ZhihuSavedAccount
 import com.github.zly2006.zhihu.account.applyIdentityHeaders
 import com.github.zly2006.zhihu.account.identitySuccessBody
 import com.github.zly2006.zhihu.account.rememberZhihuAccountStore
 import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.navigation.requestLoginNavigation
 import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.components.SettingItem
@@ -85,6 +90,7 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.jsonObject
 
@@ -208,6 +214,9 @@ fun IdentityManagementScreen() {
     var switchTarget by remember { mutableStateOf<ZhihuIdentityAccount?>(null) }
     var showCreateDialog by remember { mutableStateOf(false) }
     var acceptedCreateRules by remember { mutableStateOf(false) }
+    var switchLoginAccount by remember { mutableStateOf<ZhihuSavedAccount?>(null) }
+    var removeLoginAccount by remember { mutableStateOf<ZhihuSavedAccount?>(null) }
+    val savedAccounts by accountStore.accountsState.collectAsState()
 
     suspend fun refresh() {
         if (!isIdentityManagementSupported) return
@@ -306,9 +315,6 @@ fun IdentityManagementScreen() {
             if (state.accounts.isNotEmpty()) {
                 SettingItemGroup(
                     title = "当前手机号下的账号",
-                    footer = {
-                        Text("两个账号共用当前手机号，但昵称、主页、内容、推荐和互动数据相互独立。")
-                    },
                 ) {
                     state.accounts.forEachIndexed { index, account ->
                         val isCurrent = account.id == state.currentAccountId
@@ -365,6 +371,30 @@ fun IdentityManagementScreen() {
             }
 
             if (state.accounts.isNotEmpty()) {
+                val otherAccounts = savedAccounts.accounts.filterNot { it.id == savedAccounts.activeAccountId }
+                SettingItemGroup(
+                    title = "其他登录账号",
+                ) {
+                    otherAccounts.forEach { account ->
+                        SettingItem(
+                            title = { Text(account.session.profile?.name ?: account.session.username) },
+                            description = { Text("切换到这个登录账号") },
+                            icon = { Icon(Icons.Default.SwitchAccount, null) },
+                            endAction = {
+                                IconButton(onClick = { removeLoginAccount = account }) {
+                                    Icon(Icons.Default.DeleteOutline, contentDescription = "移除登录账号")
+                                }
+                            },
+                            onClick = { switchLoginAccount = account },
+                        )
+                    }
+                    SettingItem(
+                        title = { Text("添加其他手机号登录账号") },
+                        icon = { Icon(Icons.AutoMirrored.Filled.Login, null) },
+                        onClick = ::requestLoginNavigation,
+                    )
+                }
+
                 SettingItemGroup(
                     title = "新账号",
                     footer = {
@@ -381,7 +411,6 @@ fun IdentityManagementScreen() {
                 ) {
                     SettingItem(
                         title = { Text("创建新账号") },
-                        description = { Text("共用当前手机号，数据相互独立") },
                         icon = { Icon(Icons.Default.Add, null) },
                         modifier = Modifier.testTag(IDENTITY_MANAGEMENT_CREATE_TAG),
                         enabled = state.canCreateSubAccount && !state.busy,
@@ -546,6 +575,62 @@ fun IdentityManagementScreen() {
                     enabled = !state.busy,
                     onClick = { showCreateDialog = false },
                 ) {
+                    Text("取消")
+                }
+            },
+        )
+    }
+
+    switchLoginAccount?.let { account ->
+        AlertDialog(
+            onDismissRequest = { switchLoginAccount = null },
+            title = { Text("切换登录账号") },
+            text = { Text("将切换到“${account.session.profile?.name ?: account.session.username}”。") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        switchLoginAccount = null
+                        coroutineScope.launch {
+                            try {
+                                if (!accountStore.switchAccount(account.id)) {
+                                    userMessages.showLongMessage("登录凭据已失效，请重新添加这个账号")
+                                }
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                userMessages.showLongMessage(e.message ?: "切换登录账号失败")
+                            }
+                        }
+                    },
+                ) {
+                    Text("切换")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { switchLoginAccount = null }) {
+                    Text("取消")
+                }
+            },
+        )
+    }
+
+    removeLoginAccount?.let { account ->
+        AlertDialog(
+            onDismissRequest = { removeLoginAccount = null },
+            title = { Text("移除登录账号") },
+            text = { Text("将从本机删除“${account.session.profile?.name ?: account.session.username}”的登录凭据，不会注销知乎账号。") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        accountStore.removeAccount(account.id)
+                        removeLoginAccount = null
+                    },
+                ) {
+                    Text("移除")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { removeLoginAccount = null }) {
                     Text("取消")
                 }
             },
