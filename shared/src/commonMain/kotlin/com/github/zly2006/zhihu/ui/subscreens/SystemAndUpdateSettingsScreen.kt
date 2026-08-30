@@ -94,7 +94,7 @@ const val SYSTEM_SETTINGS_AIGC_MARKING_TAG = "system_settings_aigc_marking"
 /**
  * 系统、更新和外部服务设置页。
  *
- * 页面展示更新横幅、下载/安装/跳过版本操作、GitHub Token、自动检查更新、Nightly、遥测、防沉迷提醒和社区链接。
+ * 页面展示更新横幅、下载/安装/跳过版本操作、GitHub Token、Nightly、遥测、防沉迷提醒和社区链接。
  * 更新相关状态由平台 [SystemUpdateRuntime] 提供，防沉迷间隔写入 [CONTINUOUS_USAGE_REMINDER_INTERVAL_MINUTES_KEY]，
  * 改动时要同时考虑 Android 更新管理器和 Desktop 运行时。
  */
@@ -333,19 +333,6 @@ fun SystemAndUpdateSettingsScreen(
                             singleLine = true,
                         )
                     },
-                )
-
-                var autoCheckUpdates by remember { mutableStateOf(updates.autoCheckEnabled()) }
-                SettingItemWithSwitch(
-                    title = { Text("自动检查更新") },
-                    description = { Text("应用启动后后台检查新版本，并在首页显示更新提醒") },
-                    checked = autoCheckUpdates,
-                    onCheckedChange = {
-                        autoCheckUpdates = it
-                        updates.setAutoCheckEnabled(it)
-                    },
-                    settingKey = "autoCheckUpdates",
-                    highlightedKey = highlightedSetting,
                 )
 
                 var checkNightlyUpdates by remember { mutableStateOf(settings.getBoolean("checkNightlyUpdates", false)) }

@@ -106,7 +106,6 @@ class HomeAnnouncementRegressionInstrumentedTest {
             putBoolean("showRefreshFab", false)
             putBoolean("loginForRecommendation", true)
             putBoolean("survey_feedback_done", true)
-            putBoolean("autoCheckUpdates", false)
             putString("recommendationMode", RecommendationMode.WEB.key)
         }
         composeRule.setScreenContent {

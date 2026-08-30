@@ -156,13 +156,6 @@ actual fun rememberSystemUpdateRuntime(): SystemUpdateRuntime {
                 SharingStarted.Eagerly,
                 UpdateManager.updateState.value.toSystemUpdateState(),
             ),
-            autoCheckEnabled = { UpdateManager.isAutoCheckEnabled(context) },
-            setAutoCheckEnabled = { enabled ->
-                UpdateManager.setAutoCheckEnabled(context, enabled)
-                if (!enabled) {
-                    UpdateManager.updateState.value = UpdateState.NoUpdate
-                }
-            },
             checkForUpdate = { UpdateManager.checkForUpdate(context) },
             skipVersion = { version ->
                 UpdateManager.skipVersion(context, version)

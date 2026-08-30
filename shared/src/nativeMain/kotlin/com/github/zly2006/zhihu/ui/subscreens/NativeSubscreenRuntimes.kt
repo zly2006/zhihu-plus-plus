@@ -40,7 +40,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import platform.Foundation.NSFileManager
 
-private const val PREF_AUTO_CHECK_UPDATES = "autoCheckUpdates"
 private const val PREF_SKIPPED_VERSION = "skippedVersion"
 
 private val nativeSystemUpdateState = MutableStateFlow<SystemUpdateState>(SystemUpdateState.NoUpdate)
@@ -53,13 +52,6 @@ actual fun rememberSystemUpdateRuntime(): SystemUpdateRuntime {
     return remember(settings, accountStore, openExternalUrl) {
         SystemUpdateRuntime(
             state = nativeSystemUpdateState,
-            autoCheckEnabled = { settings.getBoolean(PREF_AUTO_CHECK_UPDATES, true) },
-            setAutoCheckEnabled = { enabled ->
-                settings.putBoolean(PREF_AUTO_CHECK_UPDATES, enabled)
-                if (!enabled) {
-                    nativeSystemUpdateState.value = SystemUpdateState.NoUpdate
-                }
-            },
             checkForUpdate = {
                 checkNativeUpdate(
                     accountStore = accountStore,

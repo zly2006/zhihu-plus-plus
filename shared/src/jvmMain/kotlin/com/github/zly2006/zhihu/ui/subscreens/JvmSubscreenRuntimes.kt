@@ -41,13 +41,6 @@ actual fun rememberSystemUpdateRuntime(): SystemUpdateRuntime {
     return remember(settings, accountStore) {
         SystemUpdateRuntime(
             state = desktopSystemUpdateState,
-            autoCheckEnabled = { settings.getBoolean(PREF_AUTO_CHECK_UPDATES, true) },
-            setAutoCheckEnabled = { enabled ->
-                settings.putBoolean(PREF_AUTO_CHECK_UPDATES, enabled)
-                if (!enabled) {
-                    desktopSystemUpdateState.value = SystemUpdateState.NoUpdate
-                }
-            },
             checkForUpdate = {
                 checkDesktopUpdate(
                     client = accountStore.httpClient(),
@@ -81,7 +74,6 @@ actual fun rememberSystemUpdateRuntime(): SystemUpdateRuntime {
     }
 }
 
-private const val PREF_AUTO_CHECK_UPDATES = "autoCheckUpdates"
 private const val PREF_SKIPPED_VERSION = "skippedVersion"
 
 private suspend fun checkDesktopUpdate(

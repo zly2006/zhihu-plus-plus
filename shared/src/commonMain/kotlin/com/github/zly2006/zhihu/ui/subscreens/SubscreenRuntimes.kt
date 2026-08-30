@@ -29,8 +29,6 @@ expect fun WebViewCustomFontSettings(
 
 data class SystemUpdateRuntime(
     val state: StateFlow<SystemUpdateState>,
-    val autoCheckEnabled: () -> Boolean,
-    val setAutoCheckEnabled: (Boolean) -> Unit,
     val checkForUpdate: suspend () -> Unit,
     val skipVersion: (String) -> Unit,
     val resetToNoUpdate: () -> Unit,

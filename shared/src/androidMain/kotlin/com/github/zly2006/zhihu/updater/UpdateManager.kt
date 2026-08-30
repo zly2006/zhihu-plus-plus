@@ -47,7 +47,6 @@ object UpdateManager {
      * 自动检查更新要跳过的版本
      */
     private const val PREF_SKIPPED_VERSION = "skippedVersion"
-    private const val PREF_AUTO_CHECK_UPDATES = "autoCheckUpdates"
     private const val PREF_LAST_UPDATE_CHECK = "lastUpdateCheck"
 
     data class DownloadInfo(
@@ -96,18 +95,11 @@ object UpdateManager {
         androidSettingsStore(context).putString(PREF_SKIPPED_VERSION, version)
     }
 
-    fun isAutoCheckEnabled(context: Context): Boolean = androidSettingsStore(context).getBoolean(PREF_AUTO_CHECK_UPDATES, true)
-
-    fun setAutoCheckEnabled(context: Context, enabled: Boolean) {
-        androidSettingsStore(context).putBoolean(PREF_AUTO_CHECK_UPDATES, enabled)
-    }
-
     /**
      * 检查是否需要进行自动更新检查（避免频繁检查）
      */
     private fun shouldPerformAutoCheck(context: Context): Boolean {
         val settings = androidSettingsStore(context)
-        if (!isAutoCheckEnabled(context)) return false
         return (System.currentTimeMillis() - settings.getLong(PREF_LAST_UPDATE_CHECK, 0)) >= AUTO_CHECK_INTERVAL_MILLIS
     }
 
