@@ -30,10 +30,14 @@ import platform.AppKit.NSPasteboardTypeString
 import platform.AppKit.NSWorkspace
 import platform.Foundation.NSHomeDirectory
 import platform.Foundation.NSURL
+import com.github.zly2006.zhihu.ui.subscreens.MACOS_QUIT_ON_WINDOW_CLOSE_PREFERENCE_KEY
 
 internal actual val nativeIsDesktop: Boolean = true
 
 actual val platformName: String = "macOS"
+
+fun isMacosQuitOnWindowCloseEnabled(): Boolean =
+    nativeSettingsStore("settings.properties").getBoolean(MACOS_QUIT_ON_WINDOW_CLOSE_PREFERENCE_KEY, false)
 
 actual val isAigcVoteSupported: Boolean = false
 
