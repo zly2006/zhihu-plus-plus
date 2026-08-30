@@ -123,12 +123,16 @@ class HomeNotificationPixelInstrumentedTest {
         val backgroundY = ((top + bottom) / 2).coerceIn(0, pixels.height - 1)
         val background = pixels[backgroundX, backgroundY]
 
-        listOf(
+        val contentCorners = listOf(
             left + 1 to top + 1,
             right - 1 to top + 1,
             left + 1 to bottom - 1,
             right - 1 to bottom - 1,
-        ).forEach { (x, y) ->
+        ).filterNot { (x, y) ->
+            x.toFloat() in badgeBounds.left..badgeBounds.right &&
+                y.toFloat() in badgeBounds.top..badgeBounds.bottom
+        }
+        contentCorners.forEach { (x, y) ->
             val corner = pixels[x.coerceIn(0, pixels.width - 1), y.coerceIn(0, pixels.height - 1)]
             assertTrue(
                 "Notification icon content box corners must stay on the app-bar background; corner=$corner background=$background screenshot=${screenshot.absolutePath}",

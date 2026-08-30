@@ -98,6 +98,8 @@ Review the complete diff against `origin/master` before approving a commit:
 - tests that prove the changed behavior rather than only setup or persistence;
 - unexpected binaries, generated artifacts, secrets, or unrelated files.
 
+When merging overlapping visual regression tests, reconcile their asserted pixel regions with the final layout before keeping both assertions. An overlay such as a badge may intentionally cover a corner of its parent content box; the parent-background assertion must exclude the covered region while the overlay gets its own geometry and pixel assertions. Do not combine test bodies mechanically and claim the feature is preserved without checking the final bounds relationship.
+
 Return blocking findings to the same worker. After approval, let the owner commit and continue publication.
 
 ## Publish the PR
