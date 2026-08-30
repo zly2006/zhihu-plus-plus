@@ -88,6 +88,8 @@ Use the repository's required order:
 
 Review the complete diff against `origin/master` before approving a commit:
 
+Never amend or rebase a commit that is already present on a pull-request branch. Fix follow-ups with a new commit so the PR history remains auditable; only rewrite an unshared local commit when no PR or remote branch contains it.
+
 - intended behavior and default values;
 - duplicated logic, unused code, and thin helpers;
 - settings keys with real runtime reads and searchable/highlightable UI entries;
