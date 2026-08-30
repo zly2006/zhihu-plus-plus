@@ -82,7 +82,7 @@ class HomeNotificationPixelInstrumentedTest {
         composeRule.waitForIdle()
 
         val badgeBounds = composeRule
-            .onNodeWithTag(HOME_NOTIFICATION_BADGE_TAG)
+            .onNodeWithTag(HOME_NOTIFICATION_BADGE_TAG, useUnmergedTree = true)
             .fetchSemanticsNode()
             .boundsInRoot
         val image = composeRule.onRoot().captureToImage()
