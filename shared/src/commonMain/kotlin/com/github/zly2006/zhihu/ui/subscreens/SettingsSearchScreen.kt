@@ -54,6 +54,7 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.notification.NotificationType
+import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
@@ -242,6 +243,17 @@ private val settingsSearchEntries = buildList {
     add(systemEntry("system.allowTelemetry", "允许发送遥测统计数据", "控制匿名使用统计。", "allowTelemetry", listOf("统计", "隐私", "数据收集", "使用数据")))
     add(systemEntry("system.aigcMarking", "启用 AIGC 标记", "开启后可查看其他用户对内容是否疑似 AIGC 的标记。", AIGC_MARKING_ENABLED_PREFERENCE_KEY, listOf("AI", "AIGC")))
     add(systemEntry("system.reminder", "防沉迷提醒", "设置连续使用提醒的间隔。", CONTINUOUS_USAGE_REMINDER_INTERVAL_MINUTES_KEY, listOf("连续使用", "休息提醒")))
+    if (platformName == "macOS") {
+        add(
+            systemEntry(
+                "system.macosQuitOnWindowClose",
+                "关闭窗口时退出应用",
+                "关闭最后一个窗口时同时退出 macOS 应用；默认关闭。",
+                MACOS_QUIT_ON_WINDOW_CLOSE_PREFERENCE_KEY,
+                listOf("macOS", "退出应用", "关闭窗口", "退出程序"),
+            ),
+        )
+    }
 
     add(notificationEntry("notification.autoMarkAsRead", "打开通知自动已读", "进入通知页后自动标记当前批次为已读。", "autoMarkAsRead", listOf("已读", "标记已读")))
     add(notificationEntry("notification.unreadBadge", "显示未读红点", "控制首页和账号入口的未读角标。", "unreadBadge", listOf("角标", "红点", "未读数")))
