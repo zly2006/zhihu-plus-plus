@@ -18,6 +18,7 @@
 package com.github.zly2006.zhihu.ui
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -67,6 +68,7 @@ import kotlinx.coroutines.launch
 fun CollectionScreen(
     urlToken: String?,
     testCollections: List<Collection>? = null,
+    contentPadding: PaddingValues = PaddingValues(0.dp),
     showBackButton: Boolean = true,
     isActive: Boolean = true,
 ) {
@@ -90,7 +92,9 @@ fun CollectionScreen(
     }
 
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(contentPadding),
         topBar = {
             TopAppBar(
                 title = {
