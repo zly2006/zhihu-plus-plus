@@ -92,7 +92,6 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
@@ -160,10 +159,8 @@ class MainActivity : ComponentActivity() {
                     Log.i(TAG, "Zhihu token refreshed successfully")
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to refresh Zhihu token", e)
-                    withContext(Dispatchers.Main) {
-                        androidUserMessageSink(this@MainActivity)
-                            .showLongMessage("刷新登录状态失败，如多次看到此提示请重新登录")
-                    }
+                    androidUserMessageSink(this@MainActivity)
+                        .showLongMessage("刷新登录状态失败，如多次看到此提示请重新登录")
                 }
                 if (!PowerSaveModeCompat.getPowerSaveMode(this@MainActivity).isPowerSaveMode) {
                     try {

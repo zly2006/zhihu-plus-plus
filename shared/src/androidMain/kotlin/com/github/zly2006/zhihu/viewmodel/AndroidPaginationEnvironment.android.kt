@@ -226,16 +226,12 @@ open class SharedAndroidPaginationEnvironment(
             showDebugErrorDialog(error)
         }
         Log.e(tag, "Failed to fetch feeds", error)
-        context.mainExecutor.execute {
-            userMessageSink.showShortMessage("加载失败: ${error.message}")
-        }
+        userMessageSink.showShortMessage("加载失败: ${error.message}")
     }
 
     override suspend fun handleMobileHomeFeedFailure(error: Exception) {
         Log.e("AndroidHomeFeedViewModel", "Failed to fetch feeds", error)
-        context.mainExecutor.execute {
-            userMessageSink.showShortMessage("安卓端推荐加载失败: ${error.message}")
-        }
+        userMessageSink.showShortMessage("安卓端推荐加载失败: ${error.message}")
     }
 
     override fun feedDisplaySettings(): FeedDisplaySettings = FeedDisplaySettings(
@@ -472,9 +468,7 @@ open class SharedAndroidPaginationEnvironment(
 
     override suspend fun handleCollectionExportFailure(error: Exception) {
         Log.e("CollectionContentViewModel", "Failed to export collection HTML zip", error)
-        context.mainExecutor.execute {
-            userMessageSink.showShortMessage("导出失败: ${error.message}")
-        }
+        userMessageSink.showShortMessage("导出失败: ${error.message}")
     }
 
     private suspend fun resolveCollectionItemForHtmlExport(

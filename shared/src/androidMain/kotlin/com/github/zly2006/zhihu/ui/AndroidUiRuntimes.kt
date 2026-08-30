@@ -150,9 +150,7 @@ actual fun rememberArticleSpeechToggler(): ArticleSpeechToggler {
                                 }
                             }
                         } catch (e: Exception) {
-                            withContext(Dispatchers.Main) {
-                                userMessages.showMessage("朗读失败：${e.message}")
-                            }
+                            userMessages.showMessage("朗读失败：${e.message}")
                         }
                     }
                 }
