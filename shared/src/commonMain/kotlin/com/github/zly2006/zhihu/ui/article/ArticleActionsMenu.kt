@@ -256,14 +256,17 @@ fun ArticleActionsMenu(
                         readingPlayer.stop()
                     } else {
                         coroutineScope.launch {
+                            // Home feed mixes unrelated content; the question navigator owns answer order.
+                            val useQuestionAnswerOrder = article.type == ArticleType.Answer &&
+                                article.readingQueueSourceId?.startsWith("home:") == true
                             val originQueue = ReadingQueueSourceRegistry.queueStartingAt(
                                 current = readingItem,
-                                sourceId = article.readingQueueSourceId,
+                                sourceId = article.readingQueueSourceId.takeUnless { useQuestionAnswerOrder },
                                 limit = readingPreferences.queueLimit,
                             )
                             val queue = if (
                                 article.type == ArticleType.Answer &&
-                                originQueue.size < readingPreferences.queueLimit &&
+                                (useQuestionAnswerOrder || originQueue.size < readingPreferences.queueLimit) &&
                                 readingPreferences.queueLimit > 1
                             ) {
                                 val fallbackAfterCurrent = try {
@@ -298,7 +301,7 @@ fun ArticleActionsMenu(
                                 }
                                 ReadingQueueSourceRegistry.queueStartingAt(
                                     current = readingItem,
-                                    sourceId = article.readingQueueSourceId,
+                                    sourceId = article.readingQueueSourceId.takeUnless { useQuestionAnswerOrder },
                                     limit = readingPreferences.queueLimit,
                                     fallbackAfterCurrent = fallbackAfterCurrent,
                                 )

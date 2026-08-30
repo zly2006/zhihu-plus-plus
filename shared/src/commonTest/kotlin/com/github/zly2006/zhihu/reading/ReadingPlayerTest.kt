@@ -302,6 +302,26 @@ class ReadingPlayerTest {
     }
 
     @Test
+    fun queueFillsLimitAfterSkippingOpenedAnswers() = runTest {
+        val items = (1L..8L).map { id ->
+            ReadingQueueItem(
+                contentType = ReadingContentType.Answer,
+                id = id,
+            )
+        }
+        ReadingQueueSourceRegistry.register("question:1", items)
+
+        val queue = ReadingQueueSourceRegistry.queueStartingAt(
+            current = items.first(),
+            sourceId = "question:1",
+            limit = 3,
+            openedAnswerIdsProvider = { ids -> ids.filter { it in setOf(2L, 3L) }.toSet() },
+        )
+
+        assertEquals(listOf(1L, 4L, 5L), queue.map(ReadingQueueItem::id))
+    }
+
+    @Test
     fun explicitOriginWinsWhenTheSameItemAppearsInMultipleSources() = runTest {
         val current = ReadingQueueItem(ReadingContentType.Answer, id = 1)
         val sourceA = listOf(current, ReadingQueueItem(ReadingContentType.Answer, id = 2))

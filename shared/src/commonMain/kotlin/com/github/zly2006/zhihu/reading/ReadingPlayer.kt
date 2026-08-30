@@ -592,8 +592,7 @@ object ReadingQueueSourceRegistry {
             .getAlreadyOpenedContentIds(
                 database = getContentFilterDatabase(),
                 content = answerIds.map { answerId -> ContentType.ANSWER to answerId.toString() },
-            )
-            .mapNotNull { key -> key.substringAfter(':', "").toLongOrNull() }
+            ).mapNotNull { key -> key.substringAfter(':', "").toLongOrNull() }
             .toSet()
     }
 
@@ -633,15 +632,15 @@ object ReadingQueueSourceRegistry {
         } else {
             source
                 .drop(currentIndex)
-                .take(safeLimit)
+                // Read past the requested window so skipping opened answers can still fill it.
+                .take(MAX_READING_QUEUE_SIZE)
                 .map { item -> if (item.key == current.key) current else item }
         }
 
         val candidateAnswerIds = buildList {
             addAll(sourceQueue.drop(1))
             addAll(fallbackAfterCurrent)
-        }
-            .asSequence()
+        }.asSequence()
             .filter { it.contentType == ReadingContentType.Answer }
             .map(ReadingQueueItem::id)
             .distinct()
@@ -662,8 +661,7 @@ object ReadingQueueSourceRegistry {
             .distinctBy(ReadingQueueItem::key)
             .filter { item ->
                 item.contentType != ReadingContentType.Answer || item.id !in openedAnswerIds
-            }
-            .toList()
+            }.toList()
         if (source == null || currentIndex < 0) {
             return (filteredSourceQueue + filteredFallbackQueue)
                 .distinctBy(ReadingQueueItem::key)
