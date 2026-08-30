@@ -81,6 +81,7 @@ import org.jetbrains.skia.impl.use
 import platform.Foundation.NSBundle
 import platform.Foundation.NSData
 import platform.Foundation.NSFileManager
+import platform.Foundation.NSHomeDirectory
 import platform.Foundation.NSTemporaryDirectory
 import platform.Foundation.NSUUID
 import platform.Foundation.dataWithBytes
@@ -100,10 +101,11 @@ private const val PROTOCOL = "ZHPP_BACKGROUND_UI_DEBUG_V1"
 private const val DEFAULT_TIMEOUT_MS = 5_000L
 
 fun main(args: Array<String>) {
-    require(args.all { it == "--root=main" || it == "--root=login" }) {
-        "Only --root=main and --root=login are supported"
+    require(args.all { it == "--root=main" || it == "--root=login" || it == "--use-real-account" }) {
+        "Only --root=main, --root=login, and --use-real-account are supported"
     }
     val rootName = if ("--root=login" in args) "login" else "main"
+    val useRealAccount = "--use-real-account" in args
     val isolatedDataHome =
         "${NSTemporaryDirectory().trimEnd('/')}/zhihupp-ui-debug-${NSUUID().UUIDString}"
     check(
@@ -115,6 +117,21 @@ fun main(args: Array<String>) {
         ),
     ) {
         "Cannot create isolated background UI debug data directory"
+    }
+    if (useRealAccount) {
+        val sourceAccountFile = "${NSHomeDirectory()}/.zhihu-plus-plus/account.json"
+        check(NSFileManager.defaultManager.fileExistsAtPath(sourceAccountFile)) {
+            "Cannot use real account: account file does not exist"
+        }
+        check(
+            NSFileManager.defaultManager.copyItemAtPath(
+                sourceAccountFile,
+                toPath = "$isolatedDataHome/account.json",
+                error = null,
+            ),
+        ) {
+            "Cannot copy real account into isolated debug data home"
+        }
     }
     try {
         check(setenv(BACKGROUND_UI_DEBUG_DATA_HOME_ENV, isolatedDataHome, 1) == 0) {

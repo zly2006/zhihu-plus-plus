@@ -26,8 +26,12 @@ import com.github.zly2006.zhihu.ui.MacosZhihuMain
 import kotlinx.cinterop.autoreleasepool
 import platform.AppKit.NSApplication
 import platform.AppKit.NSApplicationActivationPolicy
+import platform.AppKit.NSApplicationDelegateProtocol
 import platform.AppKit.NSImage
+import platform.AppKit.NSWindow
+import platform.AppKit.NSWindowDelegateProtocol
 import platform.Foundation.NSBundle
+import platform.darwin.NSObject
 import kotlin.experimental.ExperimentalNativeApi
 import kotlin.native.setUnhandledExceptionHook
 
@@ -43,6 +47,8 @@ fun main() {
     autoreleasepool {
         val application = NSApplication.sharedApplication()
         application.setActivationPolicy(NSApplicationActivationPolicy.NSApplicationActivationPolicyRegular)
+        val applicationDelegate = MacosApplicationDelegate(application)
+        application.delegate = applicationDelegate
         NSBundle.mainBundle
             .pathForResource("desktop-icon", ofType = "png")
             ?.let { iconPath -> NSImage(contentsOfFile = iconPath) }
@@ -50,6 +56,8 @@ fun main() {
         Window(
             title = "Zhihu++",
         ) {
+            applicationDelegate.window = window
+            window.delegate = applicationDelegate
             ZhihuTheme {
                 MacosUserMessageHost {
                     MacosZhihuMain { chrome, content ->
@@ -64,5 +72,31 @@ fun main() {
         }
         application.activateIgnoringOtherApps(true)
         application.run()
+    }
+}
+
+private class MacosApplicationDelegate(
+    private val application: NSApplication,
+) : NSObject(),
+    NSApplicationDelegateProtocol,
+    NSWindowDelegateProtocol {
+    var window: NSWindow? = null
+
+    override fun applicationShouldHandleReopen(
+        sender: NSApplication,
+        hasVisibleWindows: Boolean,
+    ): Boolean {
+        if (!hasVisibleWindows) {
+            window?.let {
+                it.makeKeyAndOrderFront(null)
+                application.activateIgnoringOtherApps(true)
+            }
+        }
+        return true
+    }
+
+    override fun windowShouldClose(sender: NSWindow): Boolean {
+        sender.orderOut(null)
+        return false
     }
 }

@@ -27,10 +27,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
@@ -66,6 +69,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
 import androidx.lifecycle.ViewModel
 import coil3.compose.AsyncImage
 import com.fleeksoft.ksoup.Ksoup
@@ -704,6 +708,8 @@ fun PeopleScreen(
     }
 
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    val collapsedFraction = scrollBehavior.state.collapsedFraction
+    val statusBarTopInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
 
     Scaffold(
         modifier = Modifier
@@ -779,7 +785,7 @@ fun PeopleScreen(
                         },
                         modifier = Modifier
                             .align(Alignment.TopEnd)
-                            .padding(top = 32.dp, end = 8.dp)
+                            .padding(top = lerp(32.dp, statusBarTopInset + 4.dp, collapsedFraction), end = 8.dp)
                             .testTag(PEOPLE_SCREEN_SEARCH_BUTTON_TAG),
                     ) {
                         Icon(Icons.Default.Search, contentDescription = "搜索 TA 的创作")
