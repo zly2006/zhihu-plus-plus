@@ -16,6 +16,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onRoot
 import androidx.core.content.edit
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.data.ZHIHU_ME_URL
@@ -32,6 +33,8 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import kotlin.math.ceil
+import kotlin.math.floor
 
 @RunWith(AndroidJUnit4::class)
 class HomeNotificationPixelInstrumentedTest {
@@ -79,22 +82,28 @@ class HomeNotificationPixelInstrumentedTest {
         }
         composeRule.waitForIdle()
 
-        val image = composeRule
+        val badgeBounds = composeRule
             .onNodeWithTag(HOME_NOTIFICATION_BADGE_TAG)
             .assertIsDisplayed()
-            .captureToImage()
+            .fetchSemanticsNode()
+            .boundsInRoot
+        val image = composeRule.onRoot().captureToImage()
         val pixels = image.toPixelMap()
+        val left = floor(badgeBounds.left).toInt().coerceIn(0, pixels.width - 1)
+        val right = ceil(badgeBounds.right).toInt().minus(1).coerceIn(left, pixels.width - 1)
+        val top = floor(badgeBounds.top).toInt().coerceIn(0, pixels.height - 1)
+        val bottom = ceil(badgeBounds.bottom).toInt().minus(1).coerceIn(top, pixels.height - 1)
+        val centerX = (left + right) / 2
+        val centerY = (top + bottom) / 2
         val foreground = { x: Int, y: Int -> isBadgeForeground(pixels[x, y]) }
-        val centerX = pixels.width / 2
-        val centerY = pixels.height / 2
 
         assertTrue("badge must have a visible fill", foreground(centerX, centerY))
-        assertTrue("badge top edge must be rendered", foreground(centerX, 0))
-        assertTrue("badge bottom edge must be rendered", foreground(centerX, pixels.height - 1))
-        assertTrue("badge left edge must be rendered", foreground(0, centerY))
-        assertTrue("badge right edge must be rendered", foreground(pixels.width - 1, centerY))
-        assertTrue("badge top-left corner must remain rounded", !foreground(0, 0))
-        assertTrue("badge top-right corner must remain rounded", !foreground(pixels.width - 1, 0))
+        assertTrue("badge top edge must be rendered", foreground(centerX, top))
+        assertTrue("badge bottom edge must be rendered", foreground(centerX, bottom))
+        assertTrue("badge left edge must be rendered", foreground(left, centerY))
+        assertTrue("badge right edge must be rendered", foreground(right, centerY))
+        assertTrue("badge top-left corner must remain rounded", !foreground(left, top))
+        assertTrue("badge top-right corner must remain rounded", !foreground(right, top))
     }
 
     private fun isBadgeForeground(color: Color): Boolean =
