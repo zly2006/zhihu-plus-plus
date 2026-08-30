@@ -35,7 +35,10 @@ import kotlinx.coroutines.flow.receiveAsFlow
 const val MACOS_USER_MESSAGE_HOST_TAG = "macos_user_message_host"
 
 @Composable
-fun MacosUserMessageHost(content: @Composable () -> Unit) {
+fun MacosUserMessageHost(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
     val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(snackbarHostState) {
         macosUserMessages.receiveAsFlow().collect { message ->
@@ -48,7 +51,7 @@ fun MacosUserMessageHost(content: @Composable () -> Unit) {
             )
         }
     }
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = modifier.fillMaxSize()) {
         content()
         SnackbarHost(
             hostState = snackbarHostState,

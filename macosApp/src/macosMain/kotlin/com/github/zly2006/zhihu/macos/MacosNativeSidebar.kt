@@ -34,6 +34,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.platform.MacosUserMessageHost
 import com.github.zly2006.zhihu.ui.MacosWindowChrome
 import com.github.zly2006.zhihu.ui.MacosWindowNavigationItem
 import kotlinx.cinterop.ObjCAction
@@ -75,13 +76,14 @@ internal fun MacosNativeWindowChrome(
     var sidebarVisible by remember { mutableStateOf(true) }
 
     Box(Modifier.fillMaxSize()) {
-        content(
-            if (sidebarVisible) {
-                Modifier.padding(start = SIDEBAR_WIDTH.dp)
-            } else {
-                Modifier
-            },
-        )
+        val contentAreaModifier = if (sidebarVisible) {
+            Modifier.padding(start = SIDEBAR_WIDTH.dp)
+        } else {
+            Modifier
+        }
+        MacosUserMessageHost(modifier = contentAreaModifier) {
+            content(Modifier.fillMaxSize())
+        }
     }
 
     MacosNativeSidebar(
