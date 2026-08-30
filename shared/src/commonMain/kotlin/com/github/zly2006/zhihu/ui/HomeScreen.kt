@@ -40,6 +40,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -89,6 +90,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -183,6 +185,7 @@ const val HOME_WRITE_ANSWER_BUTTON_TAG = "home_write_answer_button"
 const val HOME_WRITE_PIN_BUTTON_TAG = "home_write_pin_button"
 const val HOME_NOTIFICATION_BUTTON_TAG = "home_notification_button"
 const val HOME_NOTIFICATION_BUTTON_CONTENT_TAG = "home_notification_button_content"
+const val HOME_NOTIFICATION_BADGE_TAG = "home_notification_badge"
 const val HOME_ACCOUNT_BUTTON_TAG = "home_account_button"
 const val HOME_FEED_LIST_TAG = "home_feed_list"
 const val HOME_REFRESH_BUTTON_TAG = "home_refresh_button"
@@ -567,28 +570,34 @@ fun HomeScreen(
                                 }
                             }
                             Spacer(modifier = Modifier.width(8.dp))
-                            IconButton(
-                                onClick = { navigator.onNavigate(Notification) },
-                                modifier = Modifier.testTag(HOME_NOTIFICATION_BUTTON_TAG),
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .testTag(HOME_NOTIFICATION_BUTTON_TAG)
+                                    .clickable(role = Role.Button) {
+                                        navigator.onNavigate(Notification)
+                                    },
+                                contentAlignment = Alignment.Center,
                             ) {
+                                // IconButton 的圆形 Surface 会裁掉越过圆形边界的 badge；点击盒与内容盒必须分离。
                                 Box(
                                     modifier = Modifier
                                         .size(40.dp)
                                         .testTag(HOME_NOTIFICATION_BUTTON_CONTENT_TAG),
                                     contentAlignment = Alignment.Center,
                                 ) {
-                                    BadgedBox(
-                                        badge = {
-                                            if (showUnreadBadge && unreadCount > 0) {
-                                                Badge { Text("$unreadCount") }
-                                            }
-                                        },
-                                    ) {
-                                        Icon(
-                                            Icons.Default.Notifications,
-                                            contentDescription = "通知",
-                                            tint = MaterialTheme.colorScheme.onSurface,
-                                        )
+                                    Icon(
+                                        Icons.Default.Notifications,
+                                        contentDescription = "通知",
+                                        tint = MaterialTheme.colorScheme.onSurface,
+                                    )
+                                    if (showUnreadBadge && unreadCount > 0) {
+                                        Badge(
+                                            modifier = Modifier
+                                                .align(Alignment.TopEnd)
+                                                .offset(x = 4.dp, y = (-4).dp)
+                                                .testTag(HOME_NOTIFICATION_BADGE_TAG),
+                                        ) { Text("$unreadCount") }
                                     }
                                 }
                             }

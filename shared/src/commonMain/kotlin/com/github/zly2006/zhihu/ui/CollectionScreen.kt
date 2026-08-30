@@ -18,6 +18,7 @@
 package com.github.zly2006.zhihu.ui
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -66,6 +67,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun CollectionScreen(
     urlToken: String?,
+    testCollections: List<Collection>? = null,
+    contentPadding: PaddingValues = PaddingValues(0.dp),
     showBackButton: Boolean = true,
     isActive: Boolean = true,
 ) {
@@ -77,19 +80,21 @@ fun CollectionScreen(
     val userMessages = rememberUserMessageSink()
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
-    val useLocalCollections = urlToken == null
-    val collections = viewModel.allData
+    val useTestCollections = testCollections != null || urlToken == null
+    val collections = testCollections ?: viewModel.allData
     var showCreateCollectionDialog by remember { mutableStateOf(false) }
     var collectionPendingDeletion by remember { mutableStateOf<Collection?>(null) }
 
     LaunchedEffect(isActive) {
-        if (shouldRefreshCollectionDataOnActivation(isActive, useLocalCollections)) {
+        if (shouldRefreshCollectionDataOnActivation(isActive, useTestCollections)) {
             viewModel.refresh(environment)
         }
     }
 
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(contentPadding),
         topBar = {
             TopAppBar(
                 title = {
@@ -127,11 +132,11 @@ fun CollectionScreen(
         PaginatedList(
             items = collections,
             onLoadMore = {
-                if (!useLocalCollections) {
+                if (!useTestCollections) {
                     viewModel.loadMore(environment)
                 }
             },
-            isEnd = { useLocalCollections || viewModel.isEnd },
+            isEnd = { useTestCollections || viewModel.isEnd },
             listState = listState,
             modifier = Modifier
                 .fillMaxSize()

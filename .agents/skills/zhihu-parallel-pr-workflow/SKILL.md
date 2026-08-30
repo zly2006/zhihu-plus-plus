@@ -13,6 +13,7 @@ Use this workflow to shorten independent Zhihu++ issue work without weakening ev
 - Delegate only independent scopes that can progress concurrently. One cross-platform capability is one scope; do not split its common declaration, callers, and platform implementations among workers.
 - Give each worker exactly one issue or tightly coupled capability and one worktree.
 - If work becomes serial, end coordination overhead and let the main agent continue, unless the user explicitly assigned implementation or PR publication to the worker.
+When the user explicitly requests implementing the latest independent issues in parallel, and those issues contain owner-authored (`to agent:`) directions, parallel delegation is the default. Assign one complete issue/capability to each worker and keep the main agent focused on coordination, review, and final acceptance. This does not relax any trust, version, reproduction, validation, or publication gates below. Mentioning this skill alone is not authorization to use subagents.
 
 ## Apply project gates first
 
@@ -107,6 +108,9 @@ Return blocking findings to the same worker. After approval, let the owner commi
 - For visible UI changes, include a screenshot from the actual app, AVD, or reproducible UI render.
 - Describe the behavior, reason, scope, validation commands and results, screenshot source, and any genuine boundary.
 - Read the PR back and verify title prefix and language, head/base, issue linkage, screenshot rendering, and check status. Never describe checks that are still running as green.
+- For every added or changed test, the PR body must explicitly record whether red-to-green verification against the pre-fix and fixed implementations was completed, including commands and terminal results or a precise blocker. Do not describe compilation or a pending CI check as red-to-green evidence.
+
+Workers create draft PRs themselves.
 
 ## Finish
 

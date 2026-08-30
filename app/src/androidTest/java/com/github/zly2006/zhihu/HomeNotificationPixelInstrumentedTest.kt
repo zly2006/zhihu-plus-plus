@@ -20,6 +20,7 @@ package com.github.zly2006.zhihu
 import android.content.Context
 import android.graphics.Bitmap
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.test.captureToImage
@@ -34,20 +35,22 @@ import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.ZhihuMockApi
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
+import com.github.zly2006.zhihu.ui.HOME_NOTIFICATION_BADGE_TAG
 import com.github.zly2006.zhihu.ui.HOME_NOTIFICATION_BUTTON_CONTENT_TAG
 import com.github.zly2006.zhihu.ui.HomeScreen
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import io.ktor.http.HttpMethod
-import java.io.File
-import java.io.FileOutputStream
-import kotlin.math.abs
-import kotlin.math.ceil
-import kotlin.math.roundToInt
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.io.File
+import java.io.FileOutputStream
+import kotlin.math.abs
+import kotlin.math.ceil
+import kotlin.math.floor
+import kotlin.math.roundToInt
 
 @RunWith(AndroidJUnit4::class)
 class HomeNotificationPixelInstrumentedTest {
@@ -84,14 +87,20 @@ class HomeNotificationPixelInstrumentedTest {
     /**
      * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/696
      * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/709
+     * Target state: an unread notification badge is fully visible with rounded corners.
+     * Verifies the badge's rendered pixels, so restoring the clipped IconButton fails.
      */
     @Test
-    fun homeNotificationButtonContentBoxKeepsRoundedBackgroundWithUnreadBadge() {
+    fun unreadNotificationBadgeIsRenderedWithoutParentClipping() {
         composeRule.waitUntil("Expected unread count request", timeoutMillis = 5_000) {
             ZhihuMockApi.requestCount(HttpMethod.Get, ZHIHU_ME_URL) > 0
         }
         composeRule.waitForIdle()
 
+        val badgeBounds = composeRule
+            .onNodeWithTag(HOME_NOTIFICATION_BADGE_TAG, useUnmergedTree = true)
+            .fetchSemanticsNode()
+            .boundsInRoot
         val contentBounds = composeRule
             .onNodeWithTag(HOME_NOTIFICATION_BUTTON_CONTENT_TAG, useUnmergedTree = true)
             .fetchSemanticsNode()
@@ -136,6 +145,20 @@ class HomeNotificationPixelInstrumentedTest {
             "Notification icon content box must contain visible foreground pixels for the icon/badge; found $foregroundPixels screenshot=${screenshot.absolutePath}",
             foregroundPixels >= 80,
         )
+        val badgeLeft = floor(badgeBounds.left).toInt().coerceIn(0, pixels.width - 1)
+        val badgeRight = ceil(badgeBounds.right).toInt().minus(1).coerceIn(badgeLeft, pixels.width - 1)
+        val badgeTop = floor(badgeBounds.top).toInt().coerceIn(0, pixels.height - 1)
+        val badgeBottom = ceil(badgeBounds.bottom).toInt().minus(1).coerceIn(badgeTop, pixels.height - 1)
+        val badgeCenterX = (badgeLeft + badgeRight) / 2
+        val badgeCenterY = (badgeTop + badgeBottom) / 2
+        val foreground = { x: Int, y: Int -> isBadgeForeground(pixels[x, y]) }
+        assertTrue("badge must have a visible fill", foreground(badgeCenterX, badgeCenterY))
+        assertTrue("badge top edge must be rendered", foreground(badgeCenterX, badgeTop))
+        assertTrue("badge bottom edge must be rendered", foreground(badgeCenterX, badgeBottom))
+        assertTrue("badge left edge must be rendered", foreground(badgeLeft, badgeCenterY))
+        assertTrue("badge right edge must be rendered", foreground(badgeRight, badgeCenterY))
+        assertTrue("badge top-left corner must remain rounded", !foreground(badgeLeft, badgeTop))
+        assertTrue("badge top-right corner must remain rounded", !foreground(badgeRight, badgeTop))
     }
 
     private fun isCloseTo(
@@ -146,4 +169,9 @@ class HomeNotificationPixelInstrumentedTest {
             abs(first.green - second.green) < 0.08f &&
             abs(first.blue - second.blue) < 0.08f &&
             abs(first.alpha - second.alpha) < 0.08f
+
+    private fun isBadgeForeground(color: Color): Boolean =
+        color.alpha > 0.5f &&
+            color.red > color.green + 0.12f &&
+            color.red > color.blue + 0.12f
 }

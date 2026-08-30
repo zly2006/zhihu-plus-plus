@@ -308,18 +308,20 @@ fun PinScreen(
                             if (isCurrentReadingItem) {
                                 readingPlayer.togglePlayPause()
                             } else {
-                                readingPlayer.start(
-                                    ReadingStartRequest(
-                                        queue = ReadingQueueSourceRegistry.queueStartingAt(
-                                            current = item,
+                                coroutineScope.launch {
+                                    readingPlayer.start(
+                                        ReadingStartRequest(
+                                            queue = ReadingQueueSourceRegistry.queueStartingAt(
+                                                current = item,
+                                                sourceId = pin.readingQueueSourceId,
+                                                limit = readingPreferences.queueLimit,
+                                            ),
+                                            preferences = readingPreferences,
                                             sourceId = pin.readingQueueSourceId,
-                                            limit = readingPreferences.queueLimit,
+                                            playbackSpeed = readingPlaybackSpeed,
                                         ),
-                                        preferences = readingPreferences,
-                                        sourceId = pin.readingQueueSourceId,
-                                        playbackSpeed = readingPlaybackSpeed,
-                                    ),
-                                )
+                                    )
+                                }
                             }
                         },
                         enabled = isReadingPlayerSupported && readingItem?.hasReadableFields(readingPreferences) == true,

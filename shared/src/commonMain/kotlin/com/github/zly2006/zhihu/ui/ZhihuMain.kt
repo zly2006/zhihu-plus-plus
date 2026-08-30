@@ -642,7 +642,10 @@ fun ZhihuMain(
                     }
                     composable<Collections> { navEntry ->
                         val data: Collections = navEntry.toRoute()
-                        CollectionScreen(data.userToken)
+                        CollectionScreen(
+                            urlToken = data.userToken,
+                            contentPadding = innerPadding,
+                        )
                     }
                     composable<CollectionContent> { navEntry ->
                         val content: CollectionContent = navEntry.toRoute()
@@ -826,6 +829,7 @@ private fun MainTabsPager(
             )
             MainTabPage.MyCollectionsPage -> MyCollectionsTopLevelPage(
                 scrollToTopTrigger = scrollToTopTrigger,
+                innerPadding = innerPadding,
                 collectionDirectBrowseEnabled = collectionDirectBrowseEnabled,
                 isActive = pagerState.currentPage == pageIndex,
             )
@@ -837,6 +841,7 @@ private fun MainTabsPager(
 @Composable
 private fun MyCollectionsTopLevelPage(
     scrollToTopTrigger: Int,
+    innerPadding: PaddingValues,
     collectionDirectBrowseEnabled: Boolean,
     isActive: Boolean,
 ) {
@@ -844,6 +849,7 @@ private fun MyCollectionsTopLevelPage(
     if (collectionDirectBrowseEnabled) {
         CollectionBrowseScreen(
             urlToken = account.urlToken,
+            contentPadding = innerPadding,
             showBackButton = false,
             scrollToTopTrigger = scrollToTopTrigger,
             isActive = isActive,
@@ -851,6 +857,7 @@ private fun MyCollectionsTopLevelPage(
     } else {
         CollectionScreen(
             urlToken = account.urlToken,
+            contentPadding = innerPadding,
             showBackButton = false,
             isActive = isActive,
         )
