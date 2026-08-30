@@ -42,10 +42,10 @@ import com.github.zly2006.zhihu.ui.MacosWindowChrome
 import com.github.zly2006.zhihu.ui.MacosWindowNavigationItem
 import kotlinx.cinterop.ObjCAction
 import kotlinx.cinterop.ObjCSignatureOverride
+import platform.AppKit.NSAnimationContext
 import platform.AppKit.NSColor
 import platform.AppKit.NSImage
 import platform.AppKit.NSImageView
-import platform.AppKit.NSAnimationContext
 import platform.AppKit.NSOutlineView
 import platform.AppKit.NSOutlineViewDataSourceProtocol
 import platform.AppKit.NSOutlineViewDelegateProtocol

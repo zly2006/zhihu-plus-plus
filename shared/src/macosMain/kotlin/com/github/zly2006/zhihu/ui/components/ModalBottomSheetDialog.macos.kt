@@ -16,7 +16,7 @@ import com.github.zly2006.zhihu.platform.macosContentAreaInsetState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal actual fun ZhihuModalBottomSheetDialog(
+internal actual fun MacosModalBottomSheetDialog(
     onDismissRequest: () -> Unit,
     contentColor: Color,
     properties: ModalBottomSheetProperties,

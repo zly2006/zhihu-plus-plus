@@ -41,6 +41,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ConsumeSwipeWithinBottomSheetBoundsNestedScrollConnection
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheetDialog
 import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.SheetValue.Expanded
@@ -87,6 +88,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import com.github.zly2006.zhihu.platform.PlatformPredictiveBackHandler
 import com.github.zly2006.zhihu.platform.exportTestTagsForUiAutomation
+import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -177,16 +179,28 @@ fun MyModalBottomSheet(
     }
 
     if (usePlatformWindow) {
-        ZhihuModalBottomSheetDialog(
-            properties = properties,
-            contentColor = contentColor,
-            onDismissRequest = {
-                // 修复返回键需要按两次才关闭的问题。
-                scope.launch { sheetState.hide() }.invokeOnCompletion { onDismissRequest() }
-            },
-            predictiveBackProgress = predictiveBackProgress,
-        ) {
-            SheetContent()
+        val dialogContent: @Composable () -> Unit = { SheetContent() }
+        if (platformName == "macOS") {
+            MacosModalBottomSheetDialog(
+                properties = properties,
+                contentColor = contentColor,
+                onDismissRequest = {
+                    scope.launch { sheetState.hide() }.invokeOnCompletion { onDismissRequest() }
+                },
+                predictiveBackProgress = predictiveBackProgress,
+                content = dialogContent,
+            )
+        } else {
+            ModalBottomSheetDialog(
+                properties = properties,
+                contentColor = contentColor,
+                onDismissRequest = {
+                    // 修复返回键需要按两次才关闭的问题。
+                    scope.launch { sheetState.hide() }.invokeOnCompletion { onDismissRequest() }
+                },
+                predictiveBackProgress = predictiveBackProgress,
+                content = dialogContent,
+            )
         }
     } else {
         PlatformPredictiveBackHandler(
@@ -208,7 +222,7 @@ fun MyModalBottomSheet(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal expect fun ZhihuModalBottomSheetDialog(
+internal expect fun MacosModalBottomSheetDialog(
     onDismissRequest: () -> Unit,
     contentColor: Color,
     properties: ModalBottomSheetProperties,
