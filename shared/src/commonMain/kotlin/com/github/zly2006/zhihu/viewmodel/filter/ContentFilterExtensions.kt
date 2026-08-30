@@ -223,12 +223,6 @@ class FeedDisplayFilterPipeline(
     private val contentDetailProvider: ContentDetailProvider,
     private val contentFilterPipeline: FeedContentFilterPipeline,
     private val blockedFeedRecordDao: BlockedFeedRecordDao,
-    private val onDetailFetchFailed: (FeedDisplayItem) -> Unit = { item ->
-        Log.w("ContentFilterExtensions", "Failed to fetch content details for item '${item.title}'. Using dummy content for filtering.")
-    },
-    private val onDetailsKeywordFiltered: (FeedDisplayItem, String) -> Unit = { item, keyword ->
-        Log.e("ContentFilterExtensions", "Filtered item '${item.title}' due to keyword '$keyword' in details: ${item.content}")
-    },
 ) {
     suspend fun filter(items: List<FeedDisplayItem>): List<FeedDisplayItem> {
         val (followedUserItems, otherItems) = if (!settings.filterFollowedUserContent) {
@@ -250,7 +244,7 @@ class FeedDisplayFilterPipeline(
                         val rawContent = resolveRawContent(item)
 
                         if (rawContent is DataHolder.DummyContent) {
-                            onDetailFetchFailed(item)
+                            Log.w("ContentFilterExtensions", "Failed to fetch content details for item '${item.title}'. Using dummy content for filtering.")
                         }
 
                         item to item.toFilterableContent(identity, rawContent)
@@ -313,7 +307,7 @@ class FeedDisplayFilterPipeline(
         detailsPostFilterKeywords.none { keyword ->
             val shouldFilter = item.details.contains(keyword)
             if (shouldFilter) {
-                onDetailsKeywordFiltered(item, keyword)
+                Log.e("ContentFilterExtensions", "Filtered item '${item.title}' due to keyword '$keyword' in details: ${item.content}")
             }
             shouldFilter
         }
