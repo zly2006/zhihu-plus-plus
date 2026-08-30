@@ -12,7 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.github.zly2006.zhihu.platform.LocalMacosContentAreaInset
+import com.github.zly2006.zhihu.platform.macosContentAreaInsetState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,7 +35,7 @@ internal actual fun ZhihuModalBottomSheetDialog(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(start = LocalMacosContentAreaInset.current),
+                .padding(start = macosContentAreaInsetState.value),
         ) {
             content()
         }

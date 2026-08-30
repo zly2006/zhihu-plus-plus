@@ -26,7 +26,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
@@ -35,8 +34,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.github.zly2006.zhihu.platform.LocalMacosContentAreaInset
 import com.github.zly2006.zhihu.platform.MacosUserMessageHost
+import com.github.zly2006.zhihu.platform.macosContentAreaInsetState
 import com.github.zly2006.zhihu.ui.MacosWindowChrome
 import com.github.zly2006.zhihu.ui.MacosWindowNavigationItem
 import kotlinx.cinterop.ObjCAction
@@ -77,18 +76,18 @@ internal fun MacosNativeWindowChrome(
 ) {
     var sidebarVisible by remember { mutableStateOf(true) }
 
+    SideEffect {
+        macosContentAreaInsetState.value = if (sidebarVisible) SIDEBAR_WIDTH.dp else 0.dp
+    }
+
     Box(Modifier.fillMaxSize()) {
         val contentAreaModifier = if (sidebarVisible) {
             Modifier.padding(start = SIDEBAR_WIDTH.dp)
         } else {
             Modifier
         }
-        CompositionLocalProvider(
-            LocalMacosContentAreaInset provides if (sidebarVisible) SIDEBAR_WIDTH.dp else 0.dp,
-        ) {
-            MacosUserMessageHost(modifier = contentAreaModifier) {
-                content(Modifier.fillMaxSize())
-            }
+        MacosUserMessageHost(modifier = contentAreaModifier) {
+            content(Modifier.fillMaxSize())
         }
     }
 
