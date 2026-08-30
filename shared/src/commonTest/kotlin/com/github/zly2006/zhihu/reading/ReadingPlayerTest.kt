@@ -278,6 +278,12 @@ class ReadingPlayerTest {
         assertEquals("<p>正文</p>", queue.first().bodyHtml)
     }
 
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/705
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/708
+     * Target state: already-opened answers are omitted while the remaining question answers keep order.
+     * Verifies the queue's observable item order and current-item body preservation.
+     */
     @Test
     fun queueSkipsOpenedAnswersWhileKeepingQuestionOrder() = runTest {
         val items = (1L..6L).map { id ->
@@ -301,6 +307,12 @@ class ReadingPlayerTest {
         assertEquals("<p>正文</p>", queue.first().bodyHtml)
     }
 
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/705
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/708
+     * Target state: skipping opened answers still fills the configured queue limit from later answers.
+     * Verifies that users receive the requested number of unread answers instead of a shortened queue.
+     */
     @Test
     fun queueFillsLimitAfterSkippingOpenedAnswers() = runTest {
         val items = (1L..8L).map { id ->
