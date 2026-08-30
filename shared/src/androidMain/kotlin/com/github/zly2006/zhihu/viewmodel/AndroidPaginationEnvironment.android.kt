@@ -338,16 +338,20 @@ open class SharedAndroidPaginationEnvironment(
         recordContentOpenEvent(destination, questionId)
     }
 
-    override suspend fun applyHomeFeedFilters(items: List<FeedDisplayItem>): HomeFeedFilterResult {
-        val settings = feedDisplaySettings()
+    override suspend fun applyForegroundHomeFeedFilter(items: List<FeedDisplayItem>): List<FeedDisplayItem> {
         val filterSettings = context.contentFilterSettings()
         val filterDatabase = getContentFilterDatabase(context)
-        val foregroundItems = ForegroundReadFilterPipeline(
+        return ForegroundReadFilterPipeline(
             settings = filterSettings,
             contentFilterManager = ContentFilterManager(filterDatabase.contentFilterDao()),
             blockedFeedRecordDao = filterDatabase.blockedFeedRecordDao(),
         ).filter(items)
-        val filteredItems = FeedDisplayFilterPipeline(
+    }
+
+    override suspend fun applyBackgroundHomeFeedFilter(items: List<FeedDisplayItem>): List<FeedDisplayItem> {
+        val filterSettings = context.contentFilterSettings()
+        val filterDatabase = getContentFilterDatabase(context)
+        return FeedDisplayFilterPipeline(
             settings = filterSettings,
             contentDetailProvider = this::getOrFetchContentDetail,
             contentFilterPipeline = FeedContentFilterPipeline(
@@ -363,12 +367,7 @@ open class SharedAndroidPaginationEnvironment(
                 ),
             ),
             blockedFeedRecordDao = filterDatabase.blockedFeedRecordDao(),
-        ).filter(foregroundItems)
-        return HomeFeedFilterResult(
-            foregroundItems = foregroundItems,
-            filteredItems = filteredItems,
-            reverseBlock = settings.reverseBlock,
-        )
+        ).filter(items)
     }
 
     override suspend fun recordContentInteraction(feed: Feed) {

@@ -30,6 +30,9 @@ import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.platform.SettingsStore
 import com.github.zly2006.zhihu.util.Log
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.Json
 
 class ForegroundReadFilterPipeline(
@@ -226,17 +229,21 @@ class FeedDisplayFilterPipeline(
             emptyList<FeedDisplayItem>() to items
         }
 
-        val itemToFilterableMap = mutableMapOf<FeedDisplayItem, FilterableContent>()
+        val itemToFilterableMap = coroutineScope {
+            otherItems
+                .map { item ->
+                    async {
+                        val identity = item.resolveContentIdentity()
+                        val rawContent = resolveRawContent(item)
 
-        otherItems.forEach { item ->
-            val identity = item.resolveContentIdentity()
-            val rawContent = resolveRawContent(item)
+                        if (rawContent is DataHolder.DummyContent) {
+                            Log.w("ContentFilterExtensions", "Failed to fetch content details for item '${item.title}'. Using dummy content for filtering.")
+                        }
 
-            if (rawContent is DataHolder.DummyContent) {
-                Log.w("ContentFilterExtensions", "Failed to fetch content details for item '${item.title}'. Using dummy content for filtering.")
-            }
-
-            itemToFilterableMap[item] = item.toFilterableContent(identity, rawContent)
+                        item to item.toFilterableContent(identity, rawContent)
+                    }
+                }.awaitAll()
+                .toMap()
         }
 
         val filterableContents = itemToFilterableMap.values.toList()

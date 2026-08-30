@@ -30,6 +30,7 @@ import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.viewmodel.ContentInteractionEnvironment
+import com.github.zly2006.zhihu.viewmodel.HomeFeedFilterResult
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedInteractionViewModel
@@ -85,16 +86,24 @@ class AndroidHomeFeedViewModel :
                     }
 
                 // 前台先做本地已读过滤，再立即展示
-                val filterResult = environment.applyHomeFeedFilters(itemsToDisplay)
-                if (!filterResult.reverseBlock) {
+                val reverseBlock = environment.feedDisplaySettings().reverseBlock
+                val foregroundItems = environment.applyForegroundHomeFeedFilter(itemsToDisplay)
+                if (!reverseBlock) {
                     withContext(Dispatchers.Main) {
-                        addDisplayItems(filterResult.foregroundItems)
+                        addDisplayItems(foregroundItems)
                     }
                 }
 
-                if (filterResult.reverseBlock) {
-                    addDisplayItems(filterResult.filteredItems)
+                val filteredItems = environment.applyBackgroundHomeFeedFilter(foregroundItems)
+                if (reverseBlock) {
+                    addDisplayItems(filteredItems)
                 }
+
+                val filterResult = HomeFeedFilterResult(
+                    foregroundItems = foregroundItems,
+                    filteredItems = filteredItems,
+                    reverseBlock = reverseBlock,
+                )
 
                 // 移除被过滤的条目，并更新已保留条目的 raw 内容
                 withContext(Dispatchers.Main) {
