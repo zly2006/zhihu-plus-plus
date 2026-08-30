@@ -92,6 +92,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.toRoute
+import com.github.zly2006.zhihu.account.LoginScreen
 import com.github.zly2006.zhihu.filter.ContentOpenFrom
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Article
@@ -105,6 +106,7 @@ import com.github.zly2006.zhihu.navigation.History
 import com.github.zly2006.zhihu.navigation.Home
 import com.github.zly2006.zhihu.navigation.HotList
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.navigation.Login
 import com.github.zly2006.zhihu.navigation.MainTabs
 import com.github.zly2006.zhihu.navigation.MyCollections
 import com.github.zly2006.zhihu.navigation.NavDestination
@@ -120,7 +122,9 @@ import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.navigation.Topic
 import com.github.zly2006.zhihu.navigation.WriteAnswer
 import com.github.zly2006.zhihu.navigation.WritePin
+import com.github.zly2006.zhihu.navigation.loginNavigationRequestFlow
 import com.github.zly2006.zhihu.platform.PlatformBackHandler
+import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.reading.rememberReadingPlayerController
 import com.github.zly2006.zhihu.reading.saveReadingPlaybackSpeed
@@ -163,6 +167,7 @@ private sealed class MainTabPage(
 }
 
 internal val LocalReadingPlayerOverlayPadding = staticCompositionLocalOf { 0.dp }
+internal val LocalArticleNavController = staticCompositionLocalOf<NavHostController?> { null }
 
 /**
  * Zhihu++ 的共享应用主壳。
@@ -187,10 +192,15 @@ fun ZhihuMain(
     preferenceState: ZhihuMainPreferenceState,
     isDarkTheme: Boolean,
     articleContent: @Composable (Article, NavBackStackEntry) -> Unit,
+    showMainNavigationBar: Boolean = true,
+    showHomeTopActions: Boolean = true,
+    onCurrentMainTabDestinationChange: (TopLevelDestination) -> Unit = {},
     sentenceSimilarityContent: @Composable () -> Unit = {
-        Text("Sentence similarity test is not available on this platform.")
+        error("$platformName 暂不支持句子相似度测试")
     },
-    blocklistSettingsNlpContent: BlocklistSettingsNlpContent? = null,
+    blocklistSettingsNlpContent: @Composable (onNavigateBack: () -> Unit) -> Unit = {
+        error("$platformName 暂不支持 NLP 智能屏蔽设置")
+    },
     articleEnterTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition?)? = null,
     articleExitTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition?)? = null,
 ) {
@@ -210,6 +220,7 @@ fun ZhihuMain(
     var readingPlayerHeightPx by remember { mutableIntStateOf(0) }
     val readingPlayerOverlayOffsetState = remember { ReadingPlayerOverlayOffsetState() }
     val density = LocalDensity.current
+    val currentOnMainTabDestinationChange by rememberUpdatedState(onCurrentMainTabDestinationChange)
 
     val navEntry by navController.currentBackStackEntryAsState()
     val showMainNavigation = navEntry?.destination?.hasRoute<MainTabs>() == true
@@ -269,7 +280,7 @@ fun ZhihuMain(
     val isOnArticle = navEntry?.destination?.hasRoute<Article>() == true
     LaunchedEffect(navEntry) {
         isReadingPlayerExpandedByUser = false
-        if (!isOnArticle) readingPlayerOverlayOffsetState.revokeOwner()
+        if (!isOnArticle) readingPlayerOverlayOffsetState.clearRoute()
     }
     var wasOnArticle by remember { mutableStateOf(false) }
     if (!isOnArticle && wasOnArticle) {
@@ -345,10 +356,19 @@ fun ZhihuMain(
         }
     }
 
+    LaunchedEffect(navController) {
+        loginNavigationRequestFlow.collect {
+            navController.navigate(Login) {
+                launchSingleTop = true
+            }
+        }
+    }
+
     LaunchedEffect(mainPagerState.currentPage, mainTabPages) {
         mainTabPages.getOrNull(mainPagerState.currentPage)?.bottomDestination?.let { destination ->
             currentMainTabDestination = destination
             setCurrentMainTabOpenFrom(destination.openFrom)
+            currentOnMainTabDestinationChange(destination)
         }
     }
 
@@ -419,7 +439,7 @@ fun ZhihuMain(
             },
             floatingActionButtonPosition = FabPosition.Center,
             bottomBar = {
-                if (navEntry != null) {
+                if (showMainNavigationBar && navEntry != null) {
                     // 页面切换时重置底部导航栏可见状态
                     LaunchedEffect(navEntry) { isBottomBarVisible = true }
                     val currentBottomDestination = mainTabPages
@@ -481,6 +501,7 @@ fun ZhihuMain(
             },
         ) { innerPadding ->
             CompositionLocalProvider(
+                LocalArticleNavController provides navController,
                 LocalNavigator provides Navigator(
                     onNavigate = { destination ->
                         navigate(destination)
@@ -535,6 +556,15 @@ fun ZhihuMain(
                             scrollToTopTrigger = scrollToTopTrigger,
                             innerPadding = innerPadding,
                             collectionDirectBrowseEnabled = collectionDirectBrowseEnabled,
+                            showHomeTopActions = showHomeTopActions,
+                        )
+                    }
+                    composable<Login> {
+                        LoginScreen(
+                            onLoginComplete = { navController.popBackStack() },
+                            onOpenTelemetrySettings = {
+                                navController.navigate(Account.SystemAndUpdateSettings("allowTelemetry"))
+                            },
                         )
                     }
                     composable<Question> { navEntry ->
@@ -765,6 +795,7 @@ private fun MainTabsPager(
     scrollToTopTrigger: Int,
     innerPadding: PaddingValues,
     collectionDirectBrowseEnabled: Boolean,
+    showHomeTopActions: Boolean,
 ) {
     HorizontalPager(
         state = pagerState,
@@ -776,6 +807,7 @@ private fun MainTabsPager(
             MainTabPage.HomePage -> HomeScreen(
                 scrollToTopTrigger = scrollToTopTrigger,
                 innerPadding = innerPadding,
+                showTopActions = showHomeTopActions,
             )
             MainTabPage.FollowPage -> FollowScreen(
                 scrollToTopTrigger = scrollToTopTrigger,

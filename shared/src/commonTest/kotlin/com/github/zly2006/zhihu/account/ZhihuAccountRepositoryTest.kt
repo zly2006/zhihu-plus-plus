@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.account
 
+import com.github.zly2006.zhihu.data.ZhihuJson
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlin.test.Test
@@ -94,6 +95,40 @@ class ZhihuAccountRepositoryTest {
 
         assertNull(store.text)
         assertFalse(repository.load().login)
+    }
+
+    @Test
+    fun legacySessionMigratesIntoOneSavedAccount() {
+        val legacy = ZhihuAccountSession(
+            login = true,
+            username = "alice",
+            profile = ZhihuAccountProfileSnapshot(id = "alice-id", name = "Alice"),
+        )
+        val store = InMemoryAccountSessionStore(ZhihuJson.json.encodeToString(legacy))
+
+        val accounts = ZhihuAccountRepository(store).loadAccounts()
+
+        assertEquals("alice-id", accounts.activeAccountId)
+        assertEquals(listOf(legacy), accounts.accounts.map { it.session })
+    }
+
+    @Test
+    fun savedAccountsRoundTripWithoutLosingInactiveSession() {
+        val repository = ZhihuAccountRepository(InMemoryAccountSessionStore())
+        val alice = ZhihuAccountSession(login = true, username = "alice")
+        val bob = ZhihuAccountSession(login = true, username = "bob")
+
+        repository.saveAccounts(
+            ZhihuAccounts(
+                activeAccountId = "bob",
+                accounts = listOf(ZhihuSavedAccount("alice", alice), ZhihuSavedAccount("bob", bob)),
+            ),
+        )
+
+        val restored = repository.loadAccounts()
+        assertEquals("bob", restored.activeAccountId)
+        assertEquals(listOf("alice", "bob"), restored.accounts.map { it.id })
+        assertEquals(bob, restored.session)
     }
 }
 

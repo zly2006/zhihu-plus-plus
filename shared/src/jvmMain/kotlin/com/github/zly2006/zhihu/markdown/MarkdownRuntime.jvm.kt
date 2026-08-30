@@ -25,8 +25,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.platform.asComposeFontFamily
+import com.github.zly2006.zhihu.account.ZhihuAccountStore
 import com.github.zly2006.zhihu.data.toCookieHeaderString
-import com.github.zly2006.zhihu.desktop.DesktopAccountStore
+import com.github.zly2006.zhihu.desktop.defaultDesktopAccountStore
 import com.github.zly2006.zhihu.desktop.desktopZhihuDataFile
 import com.hrm.latex.renderer.font.MathFont
 import io.ktor.client.call.body
@@ -43,7 +44,7 @@ private val LM_MATH_URLS = listOf(
 
 @Composable
 actual fun rememberMarkdownMathFont(): MathFont? {
-    val store = remember { DesktopAccountStore() }
+    val store = defaultDesktopAccountStore
     var mathFont by remember { mutableStateOf<MathFont?>(null) }
 
     LaunchedEffect(store) {
@@ -57,8 +58,8 @@ actual fun rememberMarkdownMathFont(): MathFont? {
 
 @Composable
 actual fun rememberMarkdownImageRequestHeaders(): MarkdownImageRequestHeaders {
-    val store = remember { DesktopAccountStore() }
-    val session = remember(store) { store.load() }
+    val store = defaultDesktopAccountStore
+    val session = remember(store) { store.session }
     return MarkdownImageRequestHeaders(
         cookieHeader = session.cookies.toCookieHeaderString(),
         userAgent = session.userAgent,
@@ -66,7 +67,7 @@ actual fun rememberMarkdownImageRequestHeaders(): MarkdownImageRequestHeaders {
 }
 
 @OptIn(ExperimentalTextApi::class)
-private suspend fun loadDesktopMathFont(store: DesktopAccountStore): MathFont = withContext(Dispatchers.IO) {
+private suspend fun loadDesktopMathFont(store: ZhihuAccountStore): MathFont = withContext(Dispatchers.IO) {
     val fontFile = desktopZhihuDataFile("latex-fonts/v$FONT_VERSION").resolve("latinmodern-math.otf")
     if (!fontFile.exists()) {
         downloadDesktopMathFont(store, fontFile)
@@ -77,11 +78,11 @@ private suspend fun loadDesktopMathFont(store: DesktopAccountStore): MathFont = 
 }
 
 private suspend fun downloadDesktopMathFont(
-    store: DesktopAccountStore,
+    store: ZhihuAccountStore,
     fontFile: File,
 ) {
     var lastError: Exception? = null
-    val client = store.httpClient()
+    val client = store.client.httpClient()
     for (url in LM_MATH_URLS) {
         try {
             val bytes = client.get(url).body<ByteArray>()

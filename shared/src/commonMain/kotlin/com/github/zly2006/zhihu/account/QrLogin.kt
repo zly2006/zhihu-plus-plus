@@ -372,21 +372,12 @@ private fun <T> decodeZhihuLoginJsonTyped(serializer: KSerializer<T>, json: Json
 
 @Composable
 fun SharedQrLoginPane(
-    createClient: (MutableMap<String, String>) -> HttpClient,
     onLoginSuccess: suspend (Map<String, String>) -> Boolean,
     modifier: Modifier = Modifier,
     generateQrBitmap: (String) -> ImageBitmap = ::generateQrLoginBitmap,
     initialCookies: Map<String, String> = emptyMap(),
     qrReadyMessage: String = "请打开知乎++ App 扫一扫",
     onQrReady: () -> Unit = {},
-    readRiskControlCookies: (String) -> Map<String, String> = { emptyMap() },
-    riskControlContent: (
-        @Composable (
-            url: String,
-            cookies: Map<String, String>,
-            onCookiesChanged: (Map<String, String>) -> Unit,
-        ) -> Unit
-    )? = null,
 ) {
     var refreshKey by rememberSaveable { mutableIntStateOf(0) }
     var qrBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
@@ -395,10 +386,10 @@ fun SharedQrLoginPane(
     var riskControlUrl by remember { mutableStateOf<String?>(null) }
     var riskControlMessage by remember { mutableStateOf<String?>(null) }
     var isWorking by remember { mutableStateOf(true) }
+    val cookies = remember(refreshKey) { sessionCookies.toMutableMap() }
+    val client = rememberLoginHttpClient(cookies)
 
     LaunchedEffect(refreshKey) {
-        val cookies = sessionCookies.toMutableMap()
-        val client = createClient(cookies)
         qrBitmap = null
         statusText = "正在获取二维码"
         riskControlUrl = null
@@ -453,8 +444,6 @@ fun SharedQrLoginPane(
         } catch (e: Exception) {
             statusText = e.message ?: "二维码获取失败，请重试"
             isWorking = false
-        } finally {
-            client.close()
         }
     }
 
@@ -474,7 +463,6 @@ fun SharedQrLoginPane(
             )
             OutlinedButton(
                 onClick = {
-                    sessionCookies = sessionCookies + readRiskControlCookies(currentRiskControlUrl)
                     riskControlUrl = null
                     riskControlMessage = null
                     refreshKey += 1
@@ -490,18 +478,23 @@ fun SharedQrLoginPane(
                     .weight(1f)
                     .fillMaxWidth(),
             ) {
-                riskControlContent?.invoke(
-                    currentRiskControlUrl,
-                    sessionCookies,
-                ) { updatedCookies ->
-                    sessionCookies = sessionCookies + updatedCookies
-                } ?: Text(
-                    text = "当前被知乎风控，请过几个小时再试",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    textAlign = TextAlign.Center,
-                )
+                if (isLoginRiskControlSupported) {
+                    LoginRiskControlPane(
+                        url = currentRiskControlUrl,
+                        cookies = sessionCookies,
+                        onCookiesChanged = { updatedCookies ->
+                            sessionCookies = sessionCookies + updatedCookies
+                        },
+                    )
+                } else {
+                    Text(
+                        text = "当前被知乎风控，请过几个小时再试",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        textAlign = TextAlign.Center,
+                    )
+                }
             }
         }
         return
@@ -573,3 +566,12 @@ fun SharedQrLoginPane(
 }
 
 expect fun generateQrLoginBitmap(content: String): ImageBitmap
+
+expect val isLoginRiskControlSupported: Boolean
+
+@Composable
+expect fun LoginRiskControlPane(
+    url: String,
+    cookies: Map<String, String>,
+    onCookiesChanged: (Map<String, String>) -> Unit,
+)

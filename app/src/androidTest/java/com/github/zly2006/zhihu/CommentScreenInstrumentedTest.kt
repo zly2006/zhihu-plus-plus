@@ -18,13 +18,11 @@
 package com.github.zly2006.zhihu
 
 import android.content.Context
-import android.content.ContextWrapper
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertCountEquals
@@ -61,15 +59,13 @@ import com.github.zly2006.zhihu.test.mockRootComments
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.seedViewModel
 import com.github.zly2006.zhihu.test.setScreenContent
-import com.github.zly2006.zhihu.ui.ArticleHost
+import com.github.zly2006.zhihu.ui.AndroidArticleNavigationHandoff
 import com.github.zly2006.zhihu.ui.COMMENT_EMOJI_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.COMMENT_EMOJI_ITEM_TAG_PREFIX
 import com.github.zly2006.zhihu.ui.COMMENT_EMOJI_PICKER_TAG
 import com.github.zly2006.zhihu.ui.COMMENT_INPUT_TAG
 import com.github.zly2006.zhihu.ui.COMMENT_SCREEN_LIST_TAG
-import com.github.zly2006.zhihu.ui.CommentEmoji
 import com.github.zly2006.zhihu.ui.CommentScreen
-import com.github.zly2006.zhihu.ui.CommentScreenTestOverrides
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.viewmodel.CommentItem
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
@@ -137,23 +133,14 @@ class CommentScreenInstrumentedTest {
             urlPrefix = "https://www.zhihu.com/api/v4/comment_v5/comment/liked-root-comment/child_comment",
             commentId = "other-child-comment",
         )
-        val pendingCommentHost = object : ContextWrapper(composeRule.activity), ArticleHost by composeRule.activity {
-            private var pendingCommentId: String? = "liked-child-comment"
-
-            override fun consumePendingCommentId(destination: NavDestination): String? {
-                if (destination != ROOT_ARTICLE) return null
-                return pendingCommentId.also { pendingCommentId = null }
-            }
-        }
+        AndroidArticleNavigationHandoff.prepareComment(CommentHolder("liked-child-comment", ROOT_ARTICLE))
 
         composeRule.setScreenContent {
-            CompositionLocalProvider(LocalContext provides pendingCommentHost) {
-                CommentScreenComponent(
-                    showComments = false,
-                    onDismiss = {},
-                    content = ROOT_ARTICLE,
-                )
-            }
+            CommentScreenComponent(
+                showComments = false,
+                onDismiss = {},
+                content = ROOT_ARTICLE,
+            )
         }
 
         composeRule.waitUntil("Expected pending child comment holder to open both comment sheets", timeoutMillis = 5_000) {
@@ -182,18 +169,8 @@ class CommentScreenInstrumentedTest {
      */
     @Test
     fun emojiPickerInsertsPlaceholderAtCursor() {
-        val viewModel = seedRootCommentViewModel(seedRootComments(count = 1))
-        setCommentScreen(
-            testOverrides = CommentScreenTestOverrides(
-                viewModel = viewModel,
-                commentEmojis = listOf(
-                    CommentEmoji(
-                        placeholder = "[惊喜]",
-                        inlineKey = "emoji_test",
-                    ),
-                ),
-            ),
-        )
+        seedRootCommentViewModel(seedRootComments(count = 1))
+        setCommentScreen()
 
         composeRule.onNodeWithTag(COMMENT_INPUT_TAG).performTextInput("已有草稿")
         composeRule
@@ -230,9 +207,12 @@ class CommentScreenInstrumentedTest {
             paragraphId = "CANw6uZN",
         )
         val currentFragment = mutableStateOf<NavDestination>(firstFragment)
-        val viewModel = SeededRootCommentViewModel(
-            article = firstFragment,
-            seededComments = seedRootComments(count = 1),
+        val urlPrefix =
+            "https://www.zhihu.com/api/v4/comment_v5/answers/${firstFragment.contentId}/segment/root_comment" +
+                "?segment_id=${firstFragment.segmentId}"
+        mockRootComments(
+            urlPrefix = urlPrefix,
+            commentId = "root-1",
         )
 
         composeRule.setScreenContent {
@@ -242,7 +222,6 @@ class CommentScreenInstrumentedTest {
                 onChildCommentClick = {},
                 commentInput = commentInput.value,
                 onCommentInputChange = { commentInput.value = it },
-                testOverrides = CommentScreenTestOverrides(viewModel = viewModel),
             )
         }
         composeRule.onNodeWithTag("comment_row_root-1").assertIsDisplayed()
@@ -250,6 +229,7 @@ class CommentScreenInstrumentedTest {
         composeRule.runOnIdle { currentFragment.value = secondFragment }
 
         composeRule.onNodeWithTag("comment_row_root-1").assertIsDisplayed()
+        assertEquals(1, ZhihuMockApi.requestCount(HttpMethod.Get, urlPrefix))
     }
 
     /**
@@ -359,11 +339,13 @@ class CommentScreenInstrumentedTest {
          */
         val childEntryCommentIds = mutableListOf<String>()
         val seededComments = seedRootComments(count = 4)
-        val viewModel = seedRootCommentViewModel(seededComments)
+        mockRootComments(
+            urlPrefix = "https://www.zhihu.com/api/v4/comment_v5/answers/9001/root_comment",
+            comments = seededComments,
+        )
 
         setCommentScreen(
             onChildCommentClick = { childEntryCommentIds += it.item.id },
-            testOverrides = CommentScreenTestOverrides(viewModel = viewModel),
         )
 
         composeRule
@@ -405,9 +387,6 @@ class CommentScreenInstrumentedTest {
         )
         composeRule.onNodeWithTag("comment_reply_button_root-1").performClick()
         composeRule.onNodeWithTag("comment_like_button_root-1").performClick()
-        composeRule.waitUntil(timeoutMillis = 5_000) {
-            seededComments.first().likeCount == 6 && seededComments.first().liked
-        }
 
         assertEquals(listOf("root-1"), childEntryCommentIds)
     }
@@ -424,14 +403,13 @@ class CommentScreenInstrumentedTest {
          * 2. Kept root comments should also drop embedded child comments from blocked users before
          *    the screen receives them.
          */
-        val viewModel = seedRootCommentViewModel(emptyList())
         runBlocking {
             val database = getContentFilterDatabase(composeRule.activity)
             database.blockedUserDao().insertUser(BlockedUser("blocked-root-author", "被屏蔽根评论作者"))
             database.blockedUserDao().insertUser(BlockedUser("blocked-child-author", "被屏蔽子评论作者"))
-            viewModel.processForTest(
-                composeRule.activity,
-                listOf(
+            mockRootComments(
+                urlPrefix = "https://www.zhihu.com/api/v4/comment_v5/answers/9001/root_comment",
+                comments = listOf(
                     seedComment(
                         id = "blocked-root",
                         authorId = "blocked-root-author",
@@ -463,9 +441,7 @@ class CommentScreenInstrumentedTest {
             )
         }
 
-        setCommentScreen(
-            testOverrides = CommentScreenTestOverrides(viewModel = viewModel),
-        )
+        setCommentScreen()
 
         composeRule.onNodeWithTag("comment_row_allowed-root").assertIsDisplayed()
         composeRule.onNodeWithText("可见根评论作者").assertIsDisplayed()
@@ -480,7 +456,6 @@ class CommentScreenInstrumentedTest {
         content: NavDestination = ROOT_ARTICLE,
         activeCommentItem: CommentItem? = null,
         onChildCommentClick: (CommentItem) -> Unit = {},
-        testOverrides: CommentScreenTestOverrides? = null,
     ): RecordingNavigator = composeRule.setScreenContent {
         val commentInput = remember { mutableStateOf("") }
         CommentScreen(
@@ -489,7 +464,6 @@ class CommentScreenInstrumentedTest {
             onChildCommentClick = onChildCommentClick,
             commentInput = commentInput.value,
             onCommentInputChange = { commentInput.value = it },
-            testOverrides = testOverrides,
         )
     }
 

@@ -1,4 +1,4 @@
 interface:
   display_name: "Zhihu Parallel PR Workflow"
-  short_description: "Parallel issue PR workflow"
-  default_prompt: "Use $zhihu-parallel-pr-workflow to dispatch Zhihu++ issue work to subagents with worktrees, off AVD screenshots, and draft PRs."
+  short_description: "Parallel Zhihu++ issue and PR coordination"
+  default_prompt: "Use $zhihu-parallel-pr-workflow to coordinate independent Zhihu++ issues through isolated worktrees, evidence-based validation, review, and Chinese PRs."

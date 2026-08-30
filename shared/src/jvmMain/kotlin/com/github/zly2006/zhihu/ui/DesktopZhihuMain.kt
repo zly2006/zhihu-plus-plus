@@ -26,6 +26,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -35,7 +36,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.github.zly2006.zhihu.data.fetchHighestQualityZhihuVideoUrl
-import com.github.zly2006.zhihu.desktop.DesktopAccountStore
+import com.github.zly2006.zhihu.desktop.defaultDesktopAccountStore
 import com.github.zly2006.zhihu.desktop.openDesktopExternalUrl
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Article
@@ -55,6 +56,7 @@ import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.navigation.Video
+import com.github.zly2006.zhihu.platform.platformBottomBarItemLimit
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.ThemeManager
@@ -69,8 +71,8 @@ import com.github.zly2006.zhihu.ui.subscreens.normalizeBottomBarSelection
 import com.github.zly2006.zhihu.ui.subscreens.resolveValidStartDestinationKey
 import com.github.zly2006.zhihu.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
-import com.github.zly2006.zhihu.viewmodel.desktopArticleAnswerSwitchState
 import com.github.zly2006.zhihu.viewmodel.prepareDesktopPendingContentOpen
+import com.github.zly2006.zhihu.viewmodel.sharedArticleAnswerSwitchState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -84,8 +86,10 @@ import kotlinx.coroutines.withContext
 @Composable
 fun DesktopZhihuMain() {
     val navController = rememberNavController()
-    val accountStore = remember { DesktopAccountStore() }
-    val httpClient = accountStore.httpClient()
+    val accountStore = defaultDesktopAccountStore
+    val accounts by accountStore.accountsState.collectAsState()
+    val accountSession = accounts.session
+    val httpClient = remember(accountStore, accountSession) { accountStore.client.httpClient() }
     val coroutineScope = rememberCoroutineScope()
     val userMessages = rememberUserMessageSink()
     var mainTabNavigationTarget by remember { mutableStateOf<TopLevelDestination?>(null) }
@@ -144,7 +148,7 @@ fun DesktopZhihuMain() {
                     else -> return
                 }
                 coroutineScope.launch {
-                    val cookies = accountStore.load().cookies
+                    val cookies = accountStore.session.cookies
                     val videoUrl = withContext(Dispatchers.IO) {
                         runCatching {
                             fetchHighestQualityZhihuVideoUrl(
@@ -199,7 +203,7 @@ fun DesktopZhihuMain() {
         preferenceState = rememberDesktopZhihuMainPreferenceState(),
         isDarkTheme = ThemeManager.isDarkTheme(),
         articleEnterTransition = {
-            when (desktopArticleAnswerSwitchState.answerTransitionDirection) {
+            when (sharedArticleAnswerSwitchState.answerTransitionDirection) {
                 ArticleAnswerTransitionDirection.VERTICAL_NEXT ->
                     slideInVertically(tween(300)) { it } + fadeIn(tween(300))
                 ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS ->
@@ -212,7 +216,7 @@ fun DesktopZhihuMain() {
             }
         },
         articleExitTransition = {
-            when (desktopArticleAnswerSwitchState.answerTransitionDirection) {
+            when (sharedArticleAnswerSwitchState.answerTransitionDirection) {
                 ArticleAnswerTransitionDirection.VERTICAL_NEXT ->
                     slideOutVertically(tween(300)) { -it } + fadeOut(tween(300))
                 ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS ->
@@ -249,10 +253,11 @@ private fun rememberDesktopZhihuMainPreferenceState(): ZhihuMainPreferenceState 
         val selectedKeys = normalizeBottomBarSelection(
             settings.getStringSet(
                 BOTTOM_BAR_ITEMS_PREFERENCE_KEY,
-                defaultBottomBarSelectionKeys(duo3HomeAccount),
+                defaultBottomBarSelectionKeys(duo3HomeAccount, platformBottomBarItemLimit),
             ),
             duo3HomeAccount,
             enforceMinimumSelection = true,
+            maximumSelection = platformBottomBarItemLimit,
         )
         val orderedSelectedKeys = bottomBarItemOrderFromPreference(
             settings.getStringOrNull(BOTTOM_BAR_ITEM_ORDER_PREFERENCE_KEY),

@@ -155,8 +155,6 @@ private fun saveSearchHistory(
 @Composable
 fun SearchScreen(
     search: Search,
-    testHotSearchQueries: List<String>? = null,
-    onTestHotSearchRefresh: (() -> Unit)? = null,
 ) {
     val navigator = LocalNavigator.current
     val userMessages = rememberUserMessageSink()
@@ -194,16 +192,11 @@ fun SearchScreen(
     val shouldAutoFocusSearchInput = search.query.isBlank()
 
     val showHotSearch = remember { mutableStateOf(!isMemberSearch && settings.getBoolean("showSearchHotSearch", true)) }
-    val hotSearchItems = remember(testHotSearchQueries) {
-        mutableStateListOf<HotSearchItem>().apply {
-            addAll(testHotSearchQueries.orEmpty().map { query -> HotSearchItem(query = query) })
-        }
-    }
+    val hotSearchItems = remember { mutableStateListOf<HotSearchItem>() }
     var hotSearchMoreMenuExpanded by remember { mutableStateOf(false) }
     var historyMoreMenuExpanded by remember { mutableStateOf(false) }
     var filterMenuExpanded by remember { mutableStateOf(false) }
     var feedAuthorBlockRequest by remember { mutableStateOf<FeedAuthorBlockRequest?>(null) }
-    val useTestHotSearchQueries = testHotSearchQueries != null
     val showSearchHistory = remember { mutableStateOf(!isMemberSearch && settings.getBoolean("showSearchHistory", true)) }
     val searchHistoryItems = remember {
         mutableStateListOf<String>().apply {
@@ -283,8 +276,8 @@ fun SearchScreen(
         }
     }
 
-    LaunchedEffect(showHotSearch.value, useTestHotSearchQueries, isMemberSearch) {
-        if (!isMemberSearch && showHotSearch.value && !useTestHotSearchQueries) {
+    LaunchedEffect(showHotSearch.value, isMemberSearch) {
+        if (!isMemberSearch && showHotSearch.value) {
             runCatching { fetchHotSearch() }
         }
     }
@@ -494,11 +487,7 @@ fun SearchScreen(
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     IconButton(
                                         onClick = {
-                                            if (useTestHotSearchQueries) {
-                                                onTestHotSearchRefresh?.invoke()
-                                            } else {
-                                                coroutineScope.launch { runCatching { fetchHotSearch() } }
-                                            }
+                                            coroutineScope.launch { runCatching { fetchHotSearch() } }
                                         },
                                         modifier = Modifier
                                             .size(40.dp)

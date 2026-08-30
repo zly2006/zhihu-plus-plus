@@ -20,7 +20,9 @@ package com.github.zly2006.zhihu.ui
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,6 +31,8 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
@@ -48,7 +52,6 @@ import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -61,11 +64,18 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
 import androidx.lifecycle.ViewModel
 import coil3.compose.AsyncImage
 import com.fleeksoft.ksoup.Ksoup
@@ -704,6 +714,12 @@ fun PeopleScreen(
     }
 
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    val density = LocalDensity.current
+    LaunchedEffect(density) {
+        scrollBehavior.state.heightOffsetLimit = -with(density) { 240.dp.toPx() }
+    }
+    val collapsedFraction = scrollBehavior.state.collapsedFraction
+    val headerHeight = lerp(240.dp, 0.dp, collapsedFraction)
 
     Scaffold(
         modifier = Modifier
@@ -712,13 +728,14 @@ fun PeopleScreen(
             .fillMaxSize(),
         topBar = {
             Box {
-                TopAppBar(
-                    title = {
+                Column {
+                    Box(modifier = Modifier.height(headerHeight)) {
                         UserInfoHeader(
                             viewModel = viewModel,
                             pagerState = pagerState,
                             modifier = Modifier
                                 .padding(horizontal = 8.dp)
+                                .fillMaxSize()
                                 .testTag(PEOPLE_SCREEN_HEADER_TAG),
                             onFollowToggle = {
                                 coroutineScope.launch {
@@ -759,12 +776,52 @@ fun PeopleScreen(
                                 }
                             },
                         )
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors().copy(
-                        scrolledContainerColor = MaterialTheme.colorScheme.surface,
-                    ),
-                    scrollBehavior = scrollBehavior,
-                    expandedHeight = 240.dp,
+                    }
+                    PrimaryScrollableTabRow(
+                        selectedTabIndex = pagerState.currentPage,
+                        modifier = Modifier.testTag(PEOPLE_SCREEN_TAB_ROW_TAG),
+                    ) {
+                        PEOPLE_SCREEN_TITLES.forEachIndexed { index, title ->
+                            Tab(
+                                selected = pagerState.currentPage == index,
+                                onClick = {
+                                    coroutineScope.launch {
+                                        pagerState.animateScrollToPage(index)
+                                    }
+                                },
+                                modifier = Modifier.testTag("people_screen_tab_$index"),
+                            ) {
+                                Text(
+                                    text = title,
+                                    modifier = Modifier.padding(16.dp),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        }
+                    }
+                }
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .offset(y = lerp(240.dp, 0.dp, collapsedFraction))
+                        .padding(end = 0.dp)
+                        .size(width = 96.dp, height = 56.dp)
+                        .alpha(collapsedFraction)
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(Color.Transparent, MaterialTheme.colorScheme.surface),
+                            ),
+                        ).pointerInput(Unit) {
+                            awaitPointerEventScope {
+                                while (true) {
+                                    awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                                    while (awaitPointerEvent(PointerEventPass.Initial).changes.any { it.pressed }) {
+                                        awaitPointerEvent(PointerEventPass.Initial).changes.forEach { it.consume() }
+                                    }
+                                }
+                            }
+                        },
                 )
                 if (viewModel.memberHashId.isNotBlank() && viewModel.memberHashId != Person.EMPTY_ID) {
                     IconButton(
@@ -779,7 +836,7 @@ fun PeopleScreen(
                         },
                         modifier = Modifier
                             .align(Alignment.TopEnd)
-                            .padding(top = 32.dp, end = 8.dp)
+                            .padding(top = lerp(32.dp, 4.dp, collapsedFraction), end = 8.dp)
                             .testTag(PEOPLE_SCREEN_SEARCH_BUTTON_TAG),
                     ) {
                         Icon(Icons.Default.Search, contentDescription = "搜索 TA 的创作")
@@ -793,29 +850,6 @@ fun PeopleScreen(
                 .padding(innerPadding)
                 .padding(horizontal = 8.dp),
         ) {
-            PrimaryScrollableTabRow(
-                selectedTabIndex = pagerState.currentPage,
-                modifier = Modifier.testTag(PEOPLE_SCREEN_TAB_ROW_TAG),
-            ) {
-                PEOPLE_SCREEN_TITLES.forEachIndexed { index, title ->
-                    Tab(
-                        selected = pagerState.currentPage == index,
-                        onClick = {
-                            coroutineScope.launch {
-                                pagerState.animateScrollToPage(index)
-                            }
-                        },
-                        modifier = Modifier.testTag("people_screen_tab_$index"),
-                    ) {
-                        Text(
-                            text = title,
-                            modifier = Modifier.padding(16.dp),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                }
-            }
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier

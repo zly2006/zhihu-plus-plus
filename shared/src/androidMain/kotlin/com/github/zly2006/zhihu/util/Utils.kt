@@ -22,6 +22,7 @@ import android.net.Uri
 import androidx.browser.customtabs.CustomTabColorSchemeParams
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.core.net.toUri
+import com.github.zly2006.zhihu.account.androidZhihuAccountStore
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.platform.androidSettingsStore
 import com.github.zly2006.zhihu.util.signZhihuFetchRequest
@@ -67,8 +68,9 @@ fun telemetry(context: Context, usage: String) {
                             ?.let(this::update)
                     }.digest(data.self!!.id.toByteArray())
                     .toHexString()
-                AccountData
-                    .httpClient(context)
+                androidZhihuAccountStore(context)
+                    .client
+                    .httpClient()
                     .post("https://redenmc.com/api/zhihu/usage?client_hash=$hash&usage=$usage") {
                         contentType(ContentType.Application.Json)
                         header(

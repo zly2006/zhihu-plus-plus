@@ -48,6 +48,18 @@ class ZhihuMainPreferencesTest {
     }
 
     @Test
+    fun desktopDefaultSelectionIncludesAllTopLevelDestinations() {
+        assertEquals(
+            linkedSetOf(Home.name, Follow.name, HotList.name, Daily.name, OnlineHistory.name, MyCollections.name, Account.name),
+            defaultBottomBarSelectionKeys(duo3HomeAccount = false, maximumSelection = null),
+        )
+        assertEquals(
+            linkedSetOf(Home.name, Follow.name, HotList.name, Daily.name, OnlineHistory.name, MyCollections.name),
+            defaultBottomBarSelectionKeys(duo3HomeAccount = true, maximumSelection = null),
+        )
+    }
+
+    @Test
     fun normalizeBottomBarSelectionKeepsAccountAsSeparateTabWhenHomeAccountIsOff() {
         val normalized = normalizeBottomBarSelection(
             selectedKeys = linkedSetOf(Home.name, Follow.name, HotList.name, Daily.name, OnlineHistory.name),

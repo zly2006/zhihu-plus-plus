@@ -15,17 +15,15 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.github.zly2006.zhihu.editor
+package com.github.zly2006.zhihu.navigation
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalContext
-import com.github.zly2006.zhihu.data.asApiEnvironment
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.receiveAsFlow
 
-@Composable
-actual fun rememberZhihuPinPublisher(): ZhihuPinPublisher {
-    val context = LocalContext.current.applicationContext
-    return remember(context) {
-        ZhihuApiPinPublisher(context.asApiEnvironment())
-    }
+private val loginNavigationRequests = Channel<Unit>(Channel.UNLIMITED)
+
+internal val loginNavigationRequestFlow = loginNavigationRequests.receiveAsFlow()
+
+fun requestLoginNavigation() {
+    check(loginNavigationRequests.trySend(Unit).isSuccess) { "Login navigation is unavailable" }
 }

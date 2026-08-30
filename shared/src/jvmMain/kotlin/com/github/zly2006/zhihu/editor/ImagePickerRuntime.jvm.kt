@@ -18,6 +18,10 @@
 package com.github.zly2006.zhihu.editor
 
 import androidx.compose.runtime.Composable
+import com.github.zly2006.zhihu.platform.platformName
+
+actual val isImagePickerSupported: Boolean = false
 
 @Composable
-actual fun rememberImagePickerLauncher(onPicked: (PickedImage) -> Unit): (() -> Unit)? = null
+actual fun rememberImagePickerLauncher(onPicked: (PickedImage) -> Unit): ImagePickerLauncher =
+    error("$platformName 暂不支持图片选择")

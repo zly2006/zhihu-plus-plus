@@ -31,17 +31,37 @@ import platform.UIKit.UIPasteboard
 
 internal actual val nativeIsDesktop: Boolean = false
 
+actual val platformName: String = "iOS"
+
+actual val isAigcVoteSupported: Boolean = false
+
 @Composable
 @OptIn(ExperimentalForeignApi::class)
-actual fun rememberExternalUrlOpener(): (String) -> Unit = remember {
-    { url -> NSURL.URLWithString(url)?.let(UIApplication.sharedApplication::openURL) }
+actual fun rememberExternalUrlOpener(): ExternalUrlOpener = remember {
+    object : ExternalUrlOpener {
+        override fun invoke(url: String) {
+            NSURL.URLWithString(url)?.let(UIApplication.sharedApplication::openURL)
+        }
+    }
+}
+
+@Composable
+actual fun rememberImageGalleryOpener(): ImageGalleryOpener {
+    val openExternalUrl = rememberExternalUrlOpener()
+    return remember(openExternalUrl) {
+        object : ImageGalleryOpener {
+            override fun invoke(urls: List<String>, initialIndex: Int) {
+                if (urls.isNotEmpty()) {
+                    urls[initialIndex.coerceIn(0, urls.lastIndex)].let(openExternalUrl)
+                }
+            }
+        }
+    }
 }
 
 internal actual fun copyNativePlainText(text: String) {
     UIPasteboard.generalPasteboard.string = text
 }
-
-internal actual fun requestNativeQrLogin() = Unit
 
 @OptIn(ExperimentalForeignApi::class)
 internal actual fun nativeAccountFilePath(): String = "${nativeAppPrivateDirectoryPath()}/account.json"
@@ -60,5 +80,7 @@ internal actual fun nativeSettingsStore(relativePath: String): SettingsStore = n
 
 @Composable
 actual fun rememberUserMessageSink(): UserMessageSink = remember {
-    UserMessageSink(showShortMessage = ::println)
+    object : UserMessageSink {
+        override fun showShortMessage(message: String) = println(message)
+    }
 }

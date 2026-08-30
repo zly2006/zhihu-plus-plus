@@ -68,16 +68,24 @@ import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.editor.PinContentTopicItem
 import com.github.zly2006.zhihu.editor.PinContentTopicMarker
 import com.github.zly2006.zhihu.editor.PinTopicSuggestion
+import com.github.zly2006.zhihu.editor.PinTopicSuggestionRequest
+import com.github.zly2006.zhihu.editor.PinTopicSuggestionResponse
+import com.github.zly2006.zhihu.editor.PublishPinRequest
+import com.github.zly2006.zhihu.editor.SavePinDraftRequest
 import com.github.zly2006.zhihu.editor.UnknownImageFormatException
 import com.github.zly2006.zhihu.editor.UploadedZhihuImage
 import com.github.zly2006.zhihu.editor.ZhihuImageUploadSource
+import com.github.zly2006.zhihu.editor.buildPinContentPayload
 import com.github.zly2006.zhihu.editor.calculatePinHtmlTextLength
 import com.github.zly2006.zhihu.editor.compilePinMarkdownToZhihuHtml
+import com.github.zly2006.zhihu.editor.isImagePickerSupported
+import com.github.zly2006.zhihu.editor.parsePublishContentId
 import com.github.zly2006.zhihu.editor.rememberImagePickerLauncher
-import com.github.zly2006.zhihu.editor.rememberZhihuPinPublisher
 import com.github.zly2006.zhihu.editor.uploadZhihuImage
 import com.github.zly2006.zhihu.markdown.rememberMarkdownImageModel
 import com.github.zly2006.zhihu.navigation.LocalNavigator
@@ -90,12 +98,22 @@ import com.github.zly2006.zhihu.ui.components.MarkdownShortcut
 import com.github.zly2006.zhihu.ui.components.WriteContentFabColumn
 import com.github.zly2006.zhihu.ui.components.WriteContentMarkdownEditor
 import com.github.zly2006.zhihu.ui.components.WriteContentPreviewSheet
+import com.github.zly2006.zhihu.util.raiseForStatus
+import com.github.zly2006.zhihu.viewmodel.postSigned
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
+import io.ktor.client.call.body
+import io.ktor.client.request.header
+import io.ktor.client.request.setBody
+import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
+import io.ktor.http.contentType
+import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.yield
+import kotlinx.serialization.json.JsonElement
 
 const val WRITE_PIN_TITLE_TAG = "WritePinTitle"
 const val WRITE_PIN_CONTENT_TAG = "WritePinContent"
@@ -192,7 +210,6 @@ private class PinTopicVisualTransformation(
 fun WritePinScreen(destination: WritePin = WritePin()) {
     val navigator = LocalNavigator.current
     val userMessages = rememberUserMessageSink()
-    val publisher = rememberZhihuPinPublisher()
     val coroutineScope = rememberCoroutineScope()
     val copyToClipboard = rememberPlainTextClipboard()
     val settings = rememberSettingsStore()
@@ -249,7 +266,16 @@ fun WritePinScreen(destination: WritePin = WritePin()) {
             val contentHtml = compilePinMarkdownToZhihuHtml(newValue.text, selectedTopics)
             topicSuggestionError = null
             try {
-                val suggestions = publisher.recommendTopics(query.query, title.text, contentHtml)
+                val responseElement = environment
+                    .postSigned(
+                        "https://api.zhihu.com/content/publish/topics/recommend?" +
+                            "recommend_type=pin&key_word=${query.query.encodeURLParameter(spaceToPlus = true)}",
+                    ) {
+                        contentType(ContentType.Application.Json)
+                        setBody(PinTopicSuggestionRequest(title = title.text, content = contentHtml))
+                    }.raiseForStatus(dumpRequest = true)
+                    .body<JsonElement>()
+                val suggestions = ZhihuJson.decodeJson<PinTopicSuggestionResponse>(responseElement).data.list
                 if (activePinTopicQuery(content, selectedTopics) == query) {
                     topicSuggestions = suggestions
                 }
@@ -307,22 +333,42 @@ fun WritePinScreen(destination: WritePin = WritePin()) {
             runCatching {
                 val html = compilePinMarkdownToZhihuHtml(markdownSnapshot, topicsSnapshot)
                 val textLength = calculatePinHtmlTextLength(html)
+                val topics = topicsSnapshot.map(PinContentTopicMarker::topic).distinctBy(PinContentTopicItem::topicId)
+                val payload = buildPinContentPayload(
+                    title = title.text.trim(),
+                    html = html,
+                    textLength = textLength,
+                    images = imagesSnapshot,
+                    topics = topics,
+                )
+                val xsrf = environment.authenticatedCookies()["_xsrf"]
+                    ?: error("缺少 _xsrf Cookie，无法${if (publish) "发布" else "保存"}想法；请先确保已登录。")
                 if (publish) {
-                    publisher.publishPin(
-                        title = title.text.trim(),
-                        html = html,
-                        textLength = textLength,
-                        images = imagesSnapshot,
-                        topics = topicsSnapshot.map(PinContentTopicMarker::topic).distinctBy(PinContentTopicItem::topicId),
+                    val responseElement = environment
+                        .postSigned("https://www.zhihu.com/api/v4/content/publish") {
+                            contentType(ContentType.Application.Json)
+                            header(HttpHeaders.Referrer, "https://www.zhihu.com/")
+                            header("x-xsrftoken", xsrf)
+                            setBody(PublishPinRequest(data = payload))
+                        }.raiseForStatus(dumpRequest = true)
+                        .body<JsonElement>()
+                    val response = ZhihuJson.decodeJson(
+                        DataHolder.ContentPublishResponse.serializer(),
+                        responseElement,
                     )
+                    if (response.message != "success") {
+                        error("发布失败: ${response.message ?: "unknown"}\n$responseElement")
+                    }
+                    parsePublishContentId(response.data?.result ?: error("发布成功但返回缺少 data.result"))
+                        ?: error("发布成功但无法解析 publish.id")
                 } else {
-                    publisher.savePinDraft(
-                        title = title.text.trim(),
-                        html = html,
-                        textLength = textLength,
-                        images = imagesSnapshot,
-                        topics = topicsSnapshot.map(PinContentTopicMarker::topic).distinctBy(PinContentTopicItem::topicId),
-                    )
+                    environment
+                        .postSigned("https://api.zhihu.com/content/drafts") {
+                            contentType(ContentType.Application.Json)
+                            header(HttpHeaders.Referrer, "https://www.zhihu.com/")
+                            header("x-xsrftoken", xsrf)
+                            setBody(SavePinDraftRequest(data = payload))
+                        }.raiseForStatus(dumpRequest = true)
                     null
                 }
             }.onSuccess { pinId ->
@@ -342,34 +388,38 @@ fun WritePinScreen(destination: WritePin = WritePin()) {
         }
     }
 
-    val launchImagePicker = rememberImagePickerLauncher { picked ->
-        if (isSubmitting || isUploadingImage) return@rememberImagePickerLauncher
-        if (images.size >= PIN_IMAGE_LIMIT) {
-            userMessages.showShortMessage("图片最多添加 $PIN_IMAGE_LIMIT 张")
-            return@rememberImagePickerLauncher
-        }
-        isUploadingImage = true
-        coroutineScope.launch {
-            runCatching {
-                uploadZhihuImage(
-                    environment,
-                    picked.bytes,
-                    picked.mimeType,
-                    picked.fileName,
-                    ZhihuImageUploadSource.Pin,
-                )
-            }.onSuccess { uploaded ->
-                images = images + uploaded
-                userMessages.showShortMessage("图片已添加")
-            }.onFailure { e ->
-                if (e is UnknownImageFormatException) {
-                    userMessages.showShortMessage(e.message ?: "无法识别图片格式，已取消上传")
-                } else {
-                    errorDialogMessage = buildWriteOperationErrorMessage("插入图片失败", e)
-                }
+    val launchImagePicker = if (isImagePickerSupported) {
+        rememberImagePickerLauncher { picked ->
+            if (isSubmitting || isUploadingImage) return@rememberImagePickerLauncher
+            if (images.size >= PIN_IMAGE_LIMIT) {
+                userMessages.showShortMessage("图片最多添加 $PIN_IMAGE_LIMIT 张")
+                return@rememberImagePickerLauncher
             }
-            isUploadingImage = false
+            isUploadingImage = true
+            coroutineScope.launch {
+                runCatching {
+                    uploadZhihuImage(
+                        environment,
+                        picked.bytes,
+                        picked.mimeType,
+                        picked.fileName,
+                        ZhihuImageUploadSource.Pin,
+                    )
+                }.onSuccess { uploaded ->
+                    images = images + uploaded
+                    userMessages.showShortMessage("图片已添加")
+                }.onFailure { e ->
+                    if (e is UnknownImageFormatException) {
+                        userMessages.showShortMessage(e.message ?: "无法识别图片格式，已取消上传")
+                    } else {
+                        errorDialogMessage = buildWriteOperationErrorMessage("插入图片失败", e)
+                    }
+                }
+                isUploadingImage = false
+            }
         }
+    } else {
+        null
     }
 
     Scaffold(
@@ -403,15 +453,15 @@ fun WritePinScreen(destination: WritePin = WritePin()) {
         floatingActionButton = {
             WriteContentFabColumn(
                 previewEnabled = !isSubmitting && content.text.isNotBlank(),
-                imageEnabled = launchImagePicker != null && !isSubmitting && !isUploadingImage,
+                imageEnabled = isImagePickerSupported && !isSubmitting && !isUploadingImage,
                 saveEnabled = !isSubmitting,
-                showImageButton = launchImagePicker != null,
+                showImageButton = isImagePickerSupported,
                 isUploadingImage = isUploadingImage,
                 previewTag = WRITE_PIN_FAB_PREVIEW_TAG,
                 imageTag = WRITE_PIN_FAB_IMAGE_TAG,
                 saveTag = WRITE_PIN_FAB_SAVE_TAG,
                 onPreview = ::showPreview,
-                onImage = { launchImagePicker?.invoke() },
+                onImage = { launchImagePicker?.launch() },
                 onSave = { submitPin(publish = false) },
             )
         },

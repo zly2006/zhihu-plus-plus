@@ -286,12 +286,12 @@ fun SettingsSearchScreen() {
         mutableStateOf(settings.getBoolean("developer", false))
     }
     DisposableEffect(settings) {
-        val unregister = settings.observeKeyChanges { key ->
+        val subscription = settings.observeKeyChanges { key ->
             if (key == "developer") {
                 developerModeEnabled = settings.getBoolean("developer", false)
             }
         }
-        onDispose(unregister)
+        onDispose(subscription::close)
     }
     val results = remember(query, developerModeEnabled) {
         settingsSearchEntries

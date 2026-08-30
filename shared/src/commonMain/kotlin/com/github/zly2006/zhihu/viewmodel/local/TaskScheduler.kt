@@ -29,7 +29,7 @@ import kotlinx.coroutines.launch
  */
 class TaskScheduler(
     private val dao: LocalContentDao,
-    private val executeTask: suspend (CrawlingTask) -> Unit,
+    private val crawlingExecutor: CrawlingExecutor,
 ) {
     private var schedulerJob: Job? = null
 
@@ -53,14 +53,6 @@ class TaskScheduler(
     }
 
     /**
-     * 停止调度
-     */
-    fun stopScheduling() {
-        schedulerJob?.cancel()
-        schedulerJob = null
-    }
-
-    /**
      * 执行待处理的任务
      */
     private suspend fun executePendingTasks() {
@@ -69,7 +61,7 @@ class TaskScheduler(
         // 限制并发执行的任务数量
         pendingTasks.take(3).forEach { task ->
             try {
-                executeTask(task)
+                crawlingExecutor.executeTask(task)
             } catch (e: Exception) {
                 // 忽略单个任务的执行错误
             }

@@ -15,16 +15,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.github.zly2006.zhihu.editor
+package com.github.zly2006.zhihu.util
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import com.github.zly2006.zhihu.viewmodel.DesktopPaginationEnvironment
-
-@Composable
-actual fun rememberZhihuAnswerPublisher(): ZhihuAnswerPublisher {
-    val environment = remember { DesktopPaginationEnvironment() }
-    return remember(environment) {
-        ZhihuApiAnswerPublisher(environment)
-    }
-}
+/** 设置项 key：是否允许匿名上报崩溃日志（opt-in，默认关闭）。 */
+const val CRASH_REPORT_ENABLED_PREFERENCE_KEY = "allowCrashReport"

@@ -62,8 +62,9 @@ fun MacosUserMessageHost(content: @Composable () -> Unit) {
 
 @Composable
 actual fun rememberUserMessageSink(): UserMessageSink = remember {
-    UserMessageSink(
-        showShortMessage = { message -> showMacosUserMessage(message) },
-        showLongMessage = { message -> showMacosUserMessage(message, UserMessageDuration.Long) },
-    )
+    object : UserMessageSink {
+        override fun showShortMessage(message: String) = showMacosUserMessage(message)
+
+        override fun showLongMessage(message: String) = showMacosUserMessage(message, UserMessageDuration.Long)
+    }
 }

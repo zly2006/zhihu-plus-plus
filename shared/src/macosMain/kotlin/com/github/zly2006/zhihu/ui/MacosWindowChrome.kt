@@ -15,16 +15,34 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.github.zly2006.zhihu.editor
+package com.github.zly2006.zhihu.ui
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import com.github.zly2006.zhihu.viewmodel.DesktopPaginationEnvironment
+import androidx.compose.ui.Modifier
 
-@Composable
-actual fun rememberZhihuPinPublisher(): ZhihuPinPublisher {
-    val environment = remember { DesktopPaginationEnvironment() }
-    return remember(environment) {
-        ZhihuApiPinPublisher(environment)
-    }
-}
+data class MacosWindowNavigationItem(
+    val identifier: String,
+    val title: String,
+    val systemSymbolName: String,
+    val sectionTitle: String,
+    val selected: Boolean,
+    val action: () -> Unit,
+)
+
+data class MacosWindowToolbarItem(
+    val identifier: String,
+    val label: String,
+    val systemSymbolName: String,
+    val action: () -> Unit,
+)
+
+data class MacosWindowChrome(
+    val navigationItems: List<MacosWindowNavigationItem>,
+    val trailingToolbarItems: List<MacosWindowToolbarItem>,
+)
+
+typealias MacosWindowChromeHost =
+    @Composable (
+        chrome: MacosWindowChrome,
+        content: @Composable (Modifier) -> Unit,
+    ) -> Unit

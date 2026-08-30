@@ -18,6 +18,7 @@
 package com.github.zly2006.zhihu.util
 
 import android.content.Context
+import com.github.zly2006.zhihu.account.androidZhihuAccountStore
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Collection
 import com.github.zly2006.zhihu.data.ZhihuJson
@@ -64,8 +65,9 @@ object OpenInBrowser {
             }
             val url = "https://api.zhihu.com/collections/contents/$contentType/${destination.id}"
             val body = "add_collections=${collection.id}"
-            return AccountData
-                .httpClient(context)
+            return androidZhihuAccountStore(context)
+                .client
+                .httpClient()
                 .put(url) {
                     signFetchRequest()
                     contentType(ContentType.Application.FormUrlEncoded)

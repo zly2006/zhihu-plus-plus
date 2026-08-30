@@ -60,6 +60,7 @@ import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.Topic
+import com.github.zly2006.zhihu.platform.PlainTextClipboard
 import com.github.zly2006.zhihu.platform.SettingsStore
 import com.github.zly2006.zhihu.platform.UserMessageSink
 
@@ -204,21 +205,29 @@ enum class ShareAction {
     CopyLink,
 }
 
-typealias ShareActionExecutor = (ShareAction, NavDestination, String) -> Unit
+interface ShareActionExecutor {
+    operator fun invoke(
+        action: ShareAction,
+        content: NavDestination,
+        shareText: String,
+    )
+}
 
 @Composable
 expect fun rememberShareActionExecutor(): ShareActionExecutor
 
 internal fun clipboardShareActionExecutor(
-    copyPlainText: (label: String, text: String) -> Unit,
+    copyPlainText: PlainTextClipboard,
     userMessages: UserMessageSink,
-): ShareActionExecutor = { action, _, shareText ->
-    if (action == ShareAction.CopyLink) {
-        copyPlainText("Link", shareText)
-        userMessages.showMessage("已复制链接")
-    } else {
-        copyPlainText("Share", shareText)
-        userMessages.showMessage("已复制分享文本")
+): ShareActionExecutor = object : ShareActionExecutor {
+    override fun invoke(action: ShareAction, content: NavDestination, shareText: String) {
+        if (action == ShareAction.CopyLink) {
+            copyPlainText("Link", shareText)
+            userMessages.showMessage("已复制链接")
+        } else {
+            copyPlainText("Share", shareText)
+            userMessages.showMessage("已复制分享文本")
+        }
     }
 }
 

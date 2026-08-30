@@ -62,6 +62,8 @@ import kotlin.math.roundToInt
 @Composable
 fun ExportDialogComponent(
     showDialog: Boolean,
+    isHtmlExportSupported: Boolean,
+    isImageExportSupported: Boolean,
     onDismiss: () -> Unit,
     onExportHtml: suspend (includeAppAttribution: Boolean, onComplete: (Boolean) -> Unit) -> Unit,
     onExportImage: suspend (includeAppAttribution: Boolean, onComplete: (Boolean) -> Unit) -> Unit,
@@ -155,7 +157,7 @@ fun ExportDialogComponent(
                         },
                         shape = RoundedCornerShape(12.dp),
                         color = MaterialTheme.colorScheme.secondaryContainer,
-                        enabled = !isExporting,
+                        enabled = isHtmlExportSupported && !isExporting,
                     ) {
                         Row(
                             modifier = Modifier
@@ -205,7 +207,7 @@ fun ExportDialogComponent(
                         },
                         shape = RoundedCornerShape(12.dp),
                         color = MaterialTheme.colorScheme.secondaryContainer,
-                        enabled = !isExporting,
+                        enabled = isImageExportSupported && !isExporting,
                     ) {
                         Row(
                             modifier = Modifier
@@ -312,7 +314,7 @@ fun ExportDialogComponent(
                         },
                         shape = RoundedCornerShape(12.dp),
                         color = MaterialTheme.colorScheme.tertiaryContainer,
-                        enabled = !isExporting,
+                        enabled = isImageExportSupported && !isExporting,
                     ) {
                         Row(
                             modifier = Modifier
@@ -344,7 +346,7 @@ fun ExportDialogComponent(
                         Checkbox(
                             checked = includeAppAttribution,
                             onCheckedChange = { includeAppAttribution = it },
-                            enabled = !isExporting,
+                            enabled = (isHtmlExportSupported || isImageExportSupported) && !isExporting,
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(

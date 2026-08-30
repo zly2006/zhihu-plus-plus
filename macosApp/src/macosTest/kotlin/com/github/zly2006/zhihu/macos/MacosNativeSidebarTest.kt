@@ -15,15 +15,29 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.github.zly2006.zhihu.editor
+@file:OptIn(
+    kotlinx.cinterop.BetaInteropApi::class,
+    kotlinx.cinterop.ExperimentalForeignApi::class,
+)
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+package com.github.zly2006.zhihu.macos
 
-@Composable
-actual fun rememberZhihuAnswerPublisher(): ZhihuAnswerPublisher {
-    val environment = rememberZhihuPublisherEnvironment()
-    return remember(environment) {
-        ZhihuApiAnswerPublisher(environment)
+import kotlinx.cinterop.autoreleasepool
+import platform.AppKit.NSWindow
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class MacosNativeSidebarTest {
+    @Test
+    fun dataSourceCanQueryControllerDuringConstruction() = autoreleasepool {
+        val controller = MacosNativeSidebarController(NSWindow())
+
+        assertEquals(
+            0L,
+            controller.outlineView(
+                outlineView = controller.outlineView,
+                numberOfChildrenOfItem = null,
+            ),
+        )
     }
 }

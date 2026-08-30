@@ -42,8 +42,8 @@ import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.markdown.RenderMarkdownText
 import com.github.zly2006.zhihu.ui.ZhihuHtmlWebViewContent
+import com.github.zly2006.zhihu.ui.isLegacyWebViewSupported
 import com.github.zly2006.zhihu.ui.questionSelectionWorkaround
-import com.github.zly2006.zhihu.ui.supportsZhihuHtmlWebView
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,7 +89,7 @@ fun WriteContentPreviewSheet(
                         CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                     }
 
-                    html != null && supportsZhihuHtmlWebView() -> {
+                    html != null && isLegacyWebViewSupported -> {
                         val scrollState = rememberScrollState()
                         Column(modifier = Modifier.fillMaxSize().verticalScroll(scrollState)) {
                             ZhihuHtmlWebViewContent(html = html)

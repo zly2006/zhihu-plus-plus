@@ -30,29 +30,47 @@ private const val STRING_SET_SEPARATOR = '\u001F'
 internal actual fun nativeSettingsStore(relativePath: String): SettingsStore {
     val propertiesFile = MacosPropertiesFile("${nativeAppPrivateDirectoryPath()}/$relativePath")
 
-    return SettingsStore(
-        getBoolean = { key, defaultValue ->
-            propertiesFile[key]?.toBooleanStrictOrNull() ?: defaultValue
-        },
-        putBoolean = { key, value -> propertiesFile[key] = value.toString() },
-        getString = { key, defaultValue -> propertiesFile[key] ?: defaultValue },
-        putString = { key, value -> propertiesFile[key] = value },
-        getStringOrNull = propertiesFile::get,
-        putStringSet = { key, value -> propertiesFile[key] = value.joinToString(STRING_SET_SEPARATOR.toString()) },
-        getStringSet = { key, defaultValue ->
-            propertiesFile[key]
-                ?.split(STRING_SET_SEPARATOR)
-                ?.filter(String::isNotEmpty)
-                ?.toSet() ?: defaultValue
-        },
-        getInt = { key, defaultValue -> propertiesFile[key]?.toIntOrNull() ?: defaultValue },
-        putInt = { key, value -> propertiesFile[key] = value.toString() },
-        getLong = { key, defaultValue -> propertiesFile[key]?.toLongOrNull() ?: defaultValue },
-        putLong = { key, value -> propertiesFile[key] = value.toString() },
-        getFloat = { key, defaultValue -> propertiesFile[key]?.toFloatOrNull() ?: defaultValue },
-        putFloat = { key, value -> propertiesFile[key] = value.toString() },
-        remove = propertiesFile::remove,
-    )
+    return object : SettingsStore {
+        override fun getBoolean(key: String, defaultValue: Boolean) = propertiesFile[key]?.toBooleanStrictOrNull() ?: defaultValue
+
+        override fun putBoolean(key: String, value: Boolean) {
+            propertiesFile[key] = value.toString()
+        }
+
+        override fun getString(key: String, defaultValue: String) = propertiesFile[key] ?: defaultValue
+
+        override fun putString(key: String, value: String) {
+            propertiesFile[key] = value
+        }
+
+        override fun getStringOrNull(key: String) = propertiesFile[key]
+
+        override fun putStringSet(key: String, value: Set<String>) {
+            propertiesFile[key] = value.joinToString(STRING_SET_SEPARATOR.toString())
+        }
+
+        override fun getStringSet(key: String, defaultValue: Set<String>) = propertiesFile[key]?.split(STRING_SET_SEPARATOR)?.filter(String::isNotEmpty)?.toSet() ?: defaultValue
+
+        override fun getInt(key: String, defaultValue: Int) = propertiesFile[key]?.toIntOrNull() ?: defaultValue
+
+        override fun putInt(key: String, value: Int) {
+            propertiesFile[key] = value.toString()
+        }
+
+        override fun getLong(key: String, defaultValue: Long) = propertiesFile[key]?.toLongOrNull() ?: defaultValue
+
+        override fun putLong(key: String, value: Long) {
+            propertiesFile[key] = value.toString()
+        }
+
+        override fun getFloat(key: String, defaultValue: Float) = propertiesFile[key]?.toFloatOrNull() ?: defaultValue
+
+        override fun putFloat(key: String, value: Float) {
+            propertiesFile[key] = value.toString()
+        }
+
+        override fun remove(key: String) = propertiesFile.remove(key)
+    }
 }
 
 private class MacosPropertiesFile(

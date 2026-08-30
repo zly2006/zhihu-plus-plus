@@ -15,15 +15,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.github.zly2006.zhihu
+package com.github.zly2006.zhihu.account
 
-import android.content.Context
-import android.content.pm.PackageManager
-import android.graphics.BitmapFactory
-import android.os.Build
-import android.os.Environment
-import android.os.StatFs
-import android.util.Base64
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -56,40 +49,28 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.core.app.NotificationManagerCompat
-import com.github.zly2006.zhihu.account.ZhihuPhoneDigitsResult
-import com.github.zly2006.zhihu.account.ZhihuPhoneLoginClient
-import com.github.zly2006.zhihu.account.ZhihuPhoneLoginDeviceInfo
-import com.github.zly2006.zhihu.data.AccountData
+import io.ktor.client.HttpClient
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.util.TimeZone
-import kotlin.time.Clock
 
 @Composable
-internal fun PhoneLoginPane(activity: LoginActivity) {
-    val context = LocalContext.current
-    val cookies = remember { mutableMapOf<String, String>() }
-    val httpClient = remember { AccountData.httpClient(context, cookies) }
-    val deviceInfo = remember(context) { context.phoneLoginDeviceInfo() }
-    val loginClient = remember {
-        ZhihuPhoneLoginClient(
-            httpClient = httpClient,
-            cookies = cookies,
-            deviceInfo = deviceInfo,
-            nowEpochSeconds = { Clock.System.now().toEpochMilliseconds() / 1000 },
-        )
-    }
-    DisposableEffect(httpClient) {
-        onDispose(httpClient::close)
+expect fun rememberLoginHttpClient(cookies: MutableMap<String, String>): HttpClient
+
+expect fun decodePhoneLoginCaptchaImage(content: String): ImageBitmap?
+
+@Composable
+fun PhoneLoginPane(onLoginSuccess: (String) -> Unit) {
+    val accountStore = rememberZhihuAccountStore()
+    val loginClient = remember { ZhihuPhoneLoginClient() }
+    DisposableEffect(loginClient) {
+        onDispose(loginClient::close)
     }
 
     val scope = rememberCoroutineScope()
@@ -204,12 +185,7 @@ internal fun PhoneLoginPane(activity: LoginActivity) {
 
         if (captchaRequired) {
             val captchaBitmap = remember(captchaImageBase64) {
-                runCatching {
-                    val image = captchaImageBase64.orEmpty()
-                    val encoded = image.substringAfter("base64,", image)
-                    val bytes = Base64.decode(encoded, Base64.DEFAULT)
-                    BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
-                }.getOrNull()
+                captchaImageBase64?.let(::decodePhoneLoginCaptchaImage)
             }
             captchaBitmap?.let { image ->
                 Image(
@@ -352,7 +328,9 @@ internal fun PhoneLoginPane(activity: LoginActivity) {
                     errorMessage = null
                     try {
                         val token = loginClient.signIn(phoneNumber, digits)
-                        if (!activity.finalizeMobileLogin(token)) {
+                        if (accountStore.login(token)) {
+                            onLoginSuccess(accountStore.session.username)
+                        } else {
                             errorMessage = "登录凭证验证失败，请重试"
                         }
                     } catch (error: CancellationException) {
@@ -393,28 +371,4 @@ internal fun PhoneLoginPane(activity: LoginActivity) {
             )
         }
     }
-}
-
-private fun Context.phoneLoginDeviceInfo(): ZhihuPhoneLoginDeviceInfo {
-    val runtime = Runtime.getRuntime()
-    val storage = StatFs(Environment.getDataDirectory().path)
-    val installTime = runCatching {
-        packageManager.getPackageInfo(packageName, 0).firstInstallTime
-    }.getOrDefault(0L)
-    return ZhihuPhoneLoginDeviceInfo(
-        timezoneOffsetSeconds = TimeZone.getDefault().rawOffset / 1_000L,
-        appInstallTimeMillis = installTime,
-        notificationEnabled = NotificationManagerCompat.from(this).areNotificationsEnabled(),
-        bluetoothAvailable = packageManager.hasSystemFeature(PackageManager.FEATURE_BLUETOOTH),
-        phoneBrand = Build.BRAND,
-        phoneModel = Build.MODEL,
-        androidRelease = Build.VERSION.RELEASE,
-        cpuType = Build.SUPPORTED_ABIS.firstOrNull().orEmpty(),
-        cpuCount = runtime.availableProcessors(),
-        cpuUsage = "0.0",
-        totalMemoryMegabytes = (runtime.totalMemory() / 1_048_576L).toInt(),
-        freeMemoryMegabytes = (runtime.freeMemory() / 1_048_576L).toInt(),
-        totalStorageMegabytes = (storage.totalBytes / 1_048_576L).coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
-        freeStorageMegabytes = (storage.availableBytes / 1_048_576L).coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
-    )
 }

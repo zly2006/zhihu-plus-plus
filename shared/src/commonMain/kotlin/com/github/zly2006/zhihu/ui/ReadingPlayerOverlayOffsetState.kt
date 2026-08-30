@@ -25,25 +25,25 @@ import androidx.compose.runtime.staticCompositionLocalOf
 
 @Stable
 internal class ReadingPlayerOverlayOffsetState {
-    private var activeOwner: Any? = null
+    private var activeRouteId: String? = null
 
     var verticalOffsetPx by mutableFloatStateOf(0f)
         private set
 
-    fun activate(owner: Any) {
-        activeOwner = owner
+    fun beginRoute(routeId: String) {
+        activeRouteId = routeId
         verticalOffsetPx = 0f
     }
 
-    fun update(owner: Any, offsetPx: Float) {
-        if (activeOwner === owner) {
+    fun update(routeId: String, offsetPx: Float) {
+        if (activeRouteId == routeId) {
             verticalOffsetPx = offsetPx.coerceAtMost(0f)
         }
     }
 
-    fun deactivate(owner: Any) {
-        if (activeOwner === owner) {
-            activeOwner = null
+    fun endRoute(routeId: String) {
+        if (activeRouteId == routeId) {
+            activeRouteId = null
             verticalOffsetPx = 0f
         }
     }
@@ -52,8 +52,8 @@ internal class ReadingPlayerOverlayOffsetState {
         verticalOffsetPx = 0f
     }
 
-    fun revokeOwner() {
-        activeOwner = null
+    fun clearRoute() {
+        activeRouteId = null
         verticalOffsetPx = 0f
     }
 }

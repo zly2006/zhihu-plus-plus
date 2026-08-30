@@ -50,7 +50,6 @@ class FeedContentFilterPipelineTest {
             ),
         )
 
-        val notified = mutableListOf<List<FilterableContent>>()
         val result = FeedContentFilterPipeline(
             settings = FeedFilterSettings(),
             blockedKeywordDao = database.blockedKeywordDao(),
@@ -58,8 +57,6 @@ class FeedContentFilterPipelineTest {
             blockedQuestionAuthorDao = database.blockedQuestionAuthorDao(),
             blockedTopicDao = database.blockedTopicDao(),
             blockedKeywordService = keywordService,
-            htmlToText = { it },
-            onNlpBlocked = { notified.add(it) },
         ).filter(
             listOf(
                 filterable("keep", authorId = "ok-user"),
@@ -82,7 +79,6 @@ class FeedContentFilterPipelineTest {
             ),
             result.blocked.map { it.second },
         )
-        assertEquals(listOf(listOf("nlp hit")), notified.map { list -> list.map { it.title } })
         database.close()
     }
 

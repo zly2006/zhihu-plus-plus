@@ -95,6 +95,7 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.MyCollections
 import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
+import com.github.zly2006.zhihu.platform.platformBottomBarItemLimit
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.ThemeManager
@@ -113,6 +114,7 @@ import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemOverall
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
 import com.github.zly2006.zhihu.ui.components.normalizedAnswerSwitchSensitivity
+import com.github.zly2006.zhihu.ui.isLegacyWebViewSupported
 import kotlinx.coroutines.delay
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -171,7 +173,16 @@ internal fun resolveValidStartDestinationKey(
     else -> Home.name
 }
 
-internal fun defaultBottomBarSelectionKeys(duo3HomeAccount: Boolean): Set<String> = if (duo3HomeAccount) {
+internal fun defaultBottomBarSelectionKeys(
+    duo3HomeAccount: Boolean,
+    maximumSelection: Int? = 5,
+): Set<String> = if (maximumSelection == null) {
+    if (duo3HomeAccount) {
+        linkedSetOf(Home.name, Follow.name, HotList.name, Daily.name, OnlineHistory.name, MyCollections.name)
+    } else {
+        linkedSetOf(Home.name, Follow.name, HotList.name, Daily.name, OnlineHistory.name, MyCollections.name, Account.name)
+    }
+} else if (duo3HomeAccount) {
     linkedSetOf(Home.name, Follow.name, Daily.name)
 } else {
     linkedSetOf(Home.name, Follow.name, Daily.name, OnlineHistory.name, Account.name)
@@ -181,11 +192,12 @@ internal fun normalizeBottomBarSelection(
     selectedKeys: Collection<String>,
     duo3HomeAccount: Boolean,
     enforceMinimumSelection: Boolean = false,
+    maximumSelection: Int? = 5,
 ): Set<String> {
     val allowedKeys = topLevelDestinationsInOrder.map { it.first }.toSet()
     val normalized = selectedKeys
         .filterTo(linkedSetOf()) { it in allowedKeys }
-        .ifEmpty { defaultBottomBarSelectionKeys(duo3HomeAccount).toMutableSet() }
+        .ifEmpty { defaultBottomBarSelectionKeys(duo3HomeAccount, maximumSelection).toMutableSet() }
 
     if (duo3HomeAccount) {
         if (Home.name in normalized) {
@@ -195,7 +207,7 @@ internal fun normalizeBottomBarSelection(
         }
     } else {
         normalized.add(Account.name)
-        while (normalized.size > 5) {
+        while (maximumSelection != null && normalized.size > maximumSelection) {
             val removableKey = listOf(
                 HotList.name,
                 MyCollections.name,
@@ -301,10 +313,11 @@ fun AppearanceSettingsScreen(
         val normalizedSelection = normalizeBottomBarSelection(
             settings.getStringSet(
                 BOTTOM_BAR_ITEMS_PREFERENCE_KEY,
-                defaultBottomBarSelectionKeys(duo3HomeAccount.value),
+                defaultBottomBarSelectionKeys(duo3HomeAccount.value, platformBottomBarItemLimit),
             ),
             duo3HomeAccount.value,
             enforceMinimumSelection = true,
+            maximumSelection = platformBottomBarItemLimit,
         )
         mutableStateOf(
             bottomBarItemOrderFromPreference(
@@ -313,7 +326,6 @@ fun AppearanceSettingsScreen(
             ),
         )
     }
-
     DisposableEffect(Unit) {
         onDispose {
             onExit()
@@ -758,6 +770,7 @@ fun AppearanceSettingsScreen(
                     title = { Text("使用 WebView 显示文章") },
                     description = { Text("关闭后使用 Compose 渲染，支持代码高亮等高级功能。警告：这个渲染模式不再推荐，非专业人士请不要开启！") },
                     checked = articleUseWebview.value,
+                    enabled = isLegacyWebViewSupported,
                     onCheckedChange = {
                         articleUseWebview.value = it
                         settings.putBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, it)
@@ -767,7 +780,7 @@ fun AppearanceSettingsScreen(
                     bringIntoViewRequester = requesterFor(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY),
                 )
 
-                if (articleUseWebview.value) {
+                if (articleUseWebview.value && isLegacyWebViewSupported) {
                     var customFontName by remember {
                         mutableStateOf(settings.getStringOrNull("webviewCustomFontName"))
                     }
@@ -775,29 +788,31 @@ fun AppearanceSettingsScreen(
                         modifier = Modifier.testTag(APPEARANCE_SETTINGS_WEBVIEW_OPTIONS_TAG),
                         verticalArrangement = Arrangement.spacedBy(2.dp),
                     ) {
-                        SettingItem(
-                            modifier = Modifier.testTag(APPEARANCE_SETTINGS_WEBVIEW_FONT_TAG),
-                            title = {
-                                Text(
-                                    "WebView 自定义字体",
-                                    modifier = Modifier.testTag(APPEARANCE_SETTINGS_WEBVIEW_FONT_TAG),
-                                )
-                            },
-                            description = { Text(customFontName ?: "未设置") },
-                            bottomAction = {
-                                WebViewCustomFontSettings(
-                                    customFontName = customFontName,
-                                    onCustomFontNameChange = { name ->
-                                        if (name == null) {
-                                            settings.remove("webviewCustomFontName")
-                                        } else {
-                                            settings.putString("webviewCustomFontName", name)
-                                        }
-                                        customFontName = name
-                                    },
-                                )
-                            },
-                        )
+                        if (isWebViewCustomFontSupported) {
+                            SettingItem(
+                                modifier = Modifier.testTag(APPEARANCE_SETTINGS_WEBVIEW_FONT_TAG),
+                                title = {
+                                    Text(
+                                        "WebView 自定义字体",
+                                        modifier = Modifier.testTag(APPEARANCE_SETTINGS_WEBVIEW_FONT_TAG),
+                                    )
+                                },
+                                description = { Text(customFontName ?: "未设置") },
+                                bottomAction = {
+                                    WebViewCustomFontSettings(
+                                        customFontName = customFontName,
+                                        onCustomFontNameChange = { name ->
+                                            if (name == null) {
+                                                settings.remove("webviewCustomFontName")
+                                            } else {
+                                                settings.putString("webviewCustomFontName", name)
+                                            }
+                                            customFontName = name
+                                        },
+                                    )
+                                },
+                            )
+                        }
 
                         val useHardwareAcceleration = remember { mutableStateOf(settings.getBoolean("webviewHardwareAcceleration", true)) }
                         SettingItemWithSwitch(
@@ -1056,6 +1071,7 @@ fun AppearanceSettingsScreen(
                     currentOrderKeys,
                     duo3HomeAccountEnabled,
                     enforceMinimumSelection = true,
+                    maximumSelection = platformBottomBarItemLimit,
                 )
                 val normalizedOrderKeys = normalizeBottomBarItemOrder(currentOrderKeys, normalizedSet)
                 val availableKeys = normalizedOrderKeys
@@ -1187,8 +1203,13 @@ fun AppearanceSettingsScreen(
                                                     userMessages.showShortMessage("至少保留3项")
                                                 }
 
-                                                !isChecked && selectedBottomBarItemKeys.value.size >= 5 -> {
-                                                    userMessages.showShortMessage("最多选择5项")
+                                                !isChecked -> {
+                                                    platformBottomBarItemLimit
+                                                        ?.takeIf { selectedBottomBarItemKeys.value.size >= it }
+                                                        ?.let { maximum ->
+                                                            userMessages.showShortMessage("最多选择${maximum}项")
+                                                        }
+                                                        ?: persistBottomBarSelection(candidateOrderKeys)
                                                 }
 
                                                 else -> persistBottomBarSelection(candidateOrderKeys)

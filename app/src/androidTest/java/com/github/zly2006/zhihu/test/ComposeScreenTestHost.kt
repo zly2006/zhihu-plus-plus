@@ -28,6 +28,7 @@ import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
 import androidx.compose.ui.test.swipeUp
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import androidx.test.ext.junit.rules.ActivityScenarioRule
@@ -84,7 +85,10 @@ fun MainActivityComposeRule.setScreenContent(
     waitForIdle()
     activity.setContent {
         ZhihuTheme {
-            CompositionLocalProvider(LocalNavigator provides recordingNavigator.asNavigator()) {
+            CompositionLocalProvider(
+                LocalNavigator provides recordingNavigator.asNavigator(),
+                LocalViewModelStoreOwner provides activity,
+            ) {
                 content()
             }
         }

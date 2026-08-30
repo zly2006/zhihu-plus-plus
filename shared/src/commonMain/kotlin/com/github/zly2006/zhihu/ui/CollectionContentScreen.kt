@@ -71,6 +71,7 @@ import com.github.zly2006.zhihu.viewmodel.CollectionContentViewModel
 import com.github.zly2006.zhihu.viewmodel.CollectionHtmlExportDialogState
 import com.github.zly2006.zhihu.viewmodel.formatArticleDateTime
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.sharedArticleAnswerSwitchState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -187,7 +188,7 @@ internal fun CollectionContentBody(
     displayItems: List<FeedDisplayItem> = viewModel.displayItems,
 ) {
     val navigator = LocalNavigator.current
-    val sharedData = environment.articleAnswerSwitchState()
+    val sharedData = sharedArticleAnswerSwitchState
     val readingQueueSourceId = "collection:$collectionId:contents"
     RegisterReadingQueueSource(
         sourceId = readingQueueSourceId,
@@ -232,7 +233,7 @@ internal fun CollectionContentBody(
                 .padding(vertical = 8.dp)
                 .testTag("${tagPrefix}_item_${item.stableKey}"),
         ) { _, destination ->
-            if (destination is Article && destination.type == ArticleType.Answer && sharedData != null) {
+            if (destination is Article && destination.type == ArticleType.Answer) {
                 val index = displayItems.indexOf(item)
                 val nextItems = if (index >= 0) visibleCollectionItems.drop(index + 1) else emptyList()
                 val previousItems = if (index > 0) visibleCollectionItems.take(index).reversed() else emptyList()

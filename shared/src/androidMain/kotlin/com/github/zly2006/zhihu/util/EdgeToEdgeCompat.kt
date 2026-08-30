@@ -28,9 +28,5 @@ inline fun ComponentActivity.enableEdgeToEdgeCompat() {
         // Fix for three-button nav not properly going edge-to-edge.
         // TODO: https://issuetracker.google.com/issues/298296168
         window.isNavigationBarContrastEnforced = false
-        // Keep the transparent status bar composited directly over the app surface.
-        // Without this explicit setting, API 35+ can apply a dark contrast scrim
-        // during activity recreation, producing pixels darker than the app background.
-        window.isStatusBarContrastEnforced = false
     }
 }

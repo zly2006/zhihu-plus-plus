@@ -20,9 +20,11 @@ package com.github.zly2006.zhihu.viewmodel.local
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.navigation.zhihuQuestionFeedsUrl
+import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.jsonArray
 import kotlin.time.Clock
 
 /**
@@ -30,8 +32,7 @@ import kotlin.time.Clock
  */
 class CrawlingExecutor(
     private val dao: LocalContentDao,
-    private val fetchFeedArray: suspend (String) -> JsonArray,
-    private val nowMillis: () -> Long = { Clock.System.now().toEpochMilliseconds() },
+    private val environment: ZhihuApiEnvironment,
 ) {
     /**
      * 执行爬虫任务
@@ -43,7 +44,8 @@ class CrawlingExecutor(
                 dao.updateTask(
                     task.copy(
                         status = CrawlingStatus.InProgress,
-                        executedAt = nowMillis(),
+                        executedAt = crawlingNowMillisForTesting?.invoke()
+                            ?: Clock.System.now().toEpochMilliseconds(),
                     ),
                 )
 
@@ -139,7 +141,9 @@ class CrawlingExecutor(
     private suspend fun executeCollaborativeFilteringTask(task: CrawlingTask): List<CrawlingResult> {
         // 基于用户行为的协同过滤推荐
         // 获取用户最近点赞的内容，用于发现相似用户
-        val recentLikes = dao.getBehaviorsByActionSince("like", nowMillis() - 7 * 24 * 60 * 60 * 1000)
+        val nowMillis = crawlingNowMillisForTesting?.invoke()
+            ?: Clock.System.now().toEpochMilliseconds()
+        val recentLikes = dao.getBehaviorsByActionSince("like", nowMillis - 7 * 24 * 60 * 60 * 1000)
 
         if (recentLikes.isEmpty()) {
             // 如果没有点赞行为，回退到推荐内容
@@ -158,4 +162,12 @@ class CrawlingExecutor(
             }
         }
     }
+
+    private suspend fun fetchFeedArray(url: String): JsonArray =
+        crawlingFeedArrayForTesting?.invoke(url)
+            ?: environment.fetchJson(url, "")?.get("data")?.jsonArray
+            ?: JsonArray(emptyList())
 }
+
+var crawlingFeedArrayForTesting: (suspend (String) -> JsonArray)? = null
+var crawlingNowMillisForTesting: (() -> Long)? = null

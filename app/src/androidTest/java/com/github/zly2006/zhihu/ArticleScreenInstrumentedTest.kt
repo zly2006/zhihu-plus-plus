@@ -35,10 +35,8 @@ import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.MutableState
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
@@ -67,6 +65,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.text.TextLayoutResult
@@ -95,11 +94,10 @@ import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.ui.ArticleScreen
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
-import com.github.zly2006.zhihu.ui.TtsState
 import com.github.zly2006.zhihu.ui.article.ArticleActionsMenu
-import com.github.zly2006.zhihu.ui.rememberArticleTtsState
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
+import com.github.zly2006.zhihu.viewmodel.sharedArticleAnswerSwitchState
 import com.hrm.markdown.renderer.MarkdownImageData
 import io.ktor.client.HttpClient
 import org.junit.After
@@ -124,6 +122,7 @@ class ArticleScreenInstrumentedTest {
     @Before
     fun setUp() {
         AndroidReadingPlayerBridge.publish(ReadingPlayerState())
+        sharedArticleAnswerSwitchState.reset()
         composeRule.resetAppPreferences()
         composeRule.activity
             .getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
@@ -147,8 +146,8 @@ class ArticleScreenInstrumentedTest {
         ReadingQueueSourceRegistry.register(FULL_ORIGIN_SOURCE_ID, emptyList())
         ReadingQueueSourceRegistry.register(PARTIAL_ORIGIN_SOURCE_ID, emptyList())
         composeRule.runOnIdle {
-            composeRule.activity.articleAnswerSwitchState.navigator = null
-            composeRule.activity.articleAnswerSwitchState.pendingNavigator = null
+            sharedArticleAnswerSwitchState.navigator = null
+            sharedArticleAnswerSwitchState.pendingNavigator = null
         }
     }
 
@@ -1321,27 +1320,13 @@ class ArticleScreenInstrumentedTest {
             }
         }
 
-        composeRule.onNodeWithText("话题收录 我的开源名片").assertIsDisplayed()
-        composeRule.onNodeWithText("创作声明: 内容包含剧透").assertIsDisplayed()
-        composeRule.onNodeWithText("收录于话题: 科技").assertIsDisplayed()
-    }
-
-    /**
-     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/550
-     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/552
-     */
-    @Test
-    fun articleTtsStateReadsFromMainActivityHost() {
-        composeRule.activity.runOnUiThread {
-            composeRule.activity.forceTtsStateForTest(TtsState.Ready)
+        listOf(
+            "话题收录 我的开源名片",
+            "创作声明: 内容包含剧透",
+            "收录于话题: 科技",
+        ).forEach { endorsement ->
+            composeRule.onNodeWithText(endorsement).performScrollTo().assertIsDisplayed()
         }
-
-        composeRule.setScreenContent {
-            val ttsState = rememberArticleTtsState()
-            Text("tts=$ttsState")
-        }
-
-        composeRule.onNodeWithText("tts=Ready").assertIsDisplayed()
     }
 
     /**
@@ -1423,7 +1408,7 @@ class ArticleScreenInstrumentedTest {
             }
         }
         composeRule.activity.runOnUiThread {
-            composeRule.activity.articleAnswerSwitchState.pendingNavigator = sharedNavigator
+            sharedArticleAnswerSwitchState.pendingNavigator = sharedNavigator
         }
         composeRule.setScreenContent {
             Scaffold(
@@ -1463,7 +1448,7 @@ class ArticleScreenInstrumentedTest {
             commentCount = 3,
         )
         composeRule.activity.runOnUiThread {
-            composeRule.activity.articleAnswerSwitchState.pendingNavigator = object : AnswerNavigator(
+            sharedArticleAnswerSwitchState.pendingNavigator = object : AnswerNavigator(
                 sourceName = "此问题",
                 environment = NO_OP_API_ENVIRONMENT,
             ) {
@@ -1673,13 +1658,6 @@ class ArticleScreenInstrumentedTest {
             )
         }
         return viewModel
-    }
-
-    @Suppress("UNCHECKED_CAST")
-    private fun MainActivity.forceTtsStateForTest(state: TtsState) {
-        val ttsStateField = MainActivity::class.java.getDeclaredField("_ttsState")
-        ttsStateField.isAccessible = true
-        (ttsStateField.get(this) as MutableState<TtsState>).value = state
     }
 
     private fun ArticleViewModel.forceAnswerNextIdsForTest(ids: List<Long>) {

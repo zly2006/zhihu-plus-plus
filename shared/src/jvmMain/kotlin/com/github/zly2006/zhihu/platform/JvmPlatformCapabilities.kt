@@ -21,9 +21,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
-import com.github.zly2006.zhihu.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.desktop.DesktopPropertiesFile
 import com.github.zly2006.zhihu.desktop.copyDesktopPlainText
+import com.github.zly2006.zhihu.desktop.defaultDesktopAccountStore
 import com.github.zly2006.zhihu.desktop.desktopZhihuDataDir
 import com.github.zly2006.zhihu.desktop.openDesktopExternalUrl
 import com.github.zly2006.zhihu.desktop.saveImageToDownloads
@@ -42,101 +42,112 @@ fun desktopSettingsStore(): SettingsStore {
     val propertiesFile = DesktopPropertiesFile("settings.properties", "Zhihu++ desktop settings")
     val properties = propertiesFile.properties
 
-    return SettingsStore(
-        getBoolean = { key, defaultValue ->
-            properties.getProperty(key)?.toBooleanStrictOrNull() ?: defaultValue
-        },
-        putBoolean = { key, value ->
-            properties.setProperty(key, value.toString())
-            propertiesFile.save()
-        },
-        getString = { key, defaultValue ->
-            properties.getProperty(key) ?: defaultValue
-        },
-        putString = { key, value ->
-            properties.setProperty(key, value)
-            propertiesFile.save()
-        },
-        getStringOrNull = { key ->
-            properties.getProperty(key)
-        },
-        putStringSet = { key, value ->
-            properties.setProperty(key, value.joinToString("\u001F"))
-            propertiesFile.save()
-        },
-        getStringSet = { key, defaultValue ->
-            properties
-                .getProperty(key)
-                ?.split("\u001F")
-                ?.filter { it.isNotEmpty() }
-                ?.toSet() ?: defaultValue
-        },
-        getInt = { key, defaultValue ->
-            properties.getProperty(key)?.toIntOrNull() ?: defaultValue
-        },
-        putInt = { key, value ->
-            properties.setProperty(key, value.toString())
-            propertiesFile.save()
-        },
-        getLong = { key, defaultValue ->
-            properties.getProperty(key)?.toLongOrNull() ?: defaultValue
-        },
-        putLong = { key, value ->
-            properties.setProperty(key, value.toString())
-            propertiesFile.save()
-        },
-        getFloat = { key, defaultValue ->
-            properties.getProperty(key)?.toFloatOrNull() ?: defaultValue
-        },
-        putFloat = { key, value ->
-            properties.setProperty(key, value.toString())
-            propertiesFile.save()
-        },
-        remove = { key ->
+    return object : SettingsStore {
+        override fun getBoolean(key: String, defaultValue: Boolean) = properties.getProperty(key)?.toBooleanStrictOrNull() ?: defaultValue
+
+        override fun putBoolean(key: String, value: Boolean) = write(key, value.toString())
+
+        override fun getString(key: String, defaultValue: String) = properties.getProperty(key) ?: defaultValue
+
+        override fun putString(key: String, value: String) = write(key, value)
+
+        override fun getStringOrNull(key: String) = properties.getProperty(key)
+
+        override fun putStringSet(key: String, value: Set<String>) = write(key, value.joinToString("\u001F"))
+
+        override fun getStringSet(key: String, defaultValue: Set<String>) = properties
+            .getProperty(key)
+            ?.split("\u001F")
+            ?.filter(String::isNotEmpty)
+            ?.toSet() ?: defaultValue
+
+        override fun getInt(key: String, defaultValue: Int) = properties.getProperty(key)?.toIntOrNull() ?: defaultValue
+
+        override fun putInt(key: String, value: Int) = write(key, value.toString())
+
+        override fun getLong(key: String, defaultValue: Long) = properties.getProperty(key)?.toLongOrNull() ?: defaultValue
+
+        override fun putLong(key: String, value: Long) = write(key, value.toString())
+
+        override fun getFloat(key: String, defaultValue: Float) = properties.getProperty(key)?.toFloatOrNull() ?: defaultValue
+
+        override fun putFloat(key: String, value: Float) = write(key, value.toString())
+
+        override fun remove(key: String) {
             properties.remove(key)
             propertiesFile.save()
-        },
-    )
+        }
+
+        private fun write(key: String, value: String) {
+            properties.setProperty(key, value)
+            propertiesFile.save()
+        }
+    }
 }
 
 @Composable
-actual fun rememberExternalUrlOpener(): (String) -> Unit = remember { { url -> openDesktopExternalUrl(url) } }
+actual fun rememberExternalUrlOpener(): ExternalUrlOpener = remember {
+    object : ExternalUrlOpener {
+        override fun invoke(url: String) {
+            openDesktopExternalUrl(url)
+        }
+    }
+}
 
 @Composable
-actual fun rememberSystemUrlOpener(): (String) -> Unit = rememberExternalUrlOpener()
+actual fun rememberSystemUrlOpener(): SystemUrlOpener = remember {
+    object : SystemUrlOpener {
+        override fun invoke(url: String) {
+            openDesktopExternalUrl(url)
+        }
+    }
+}
 
 @Composable
-actual fun rememberZhihuWebUrlOpener(): (String) -> Unit = rememberExternalUrlOpener()
+actual fun rememberZhihuWebUrlOpener(): ZhihuWebUrlOpener = remember {
+    object : ZhihuWebUrlOpener {
+        override fun invoke(url: String) {
+            openDesktopExternalUrl(url)
+        }
+    }
+}
 
 @Composable
-actual fun rememberImagePreviewOpener(): (String) -> Unit = rememberExternalUrlOpener()
+actual fun rememberImagePreviewOpener(): ImagePreviewOpener = remember {
+    object : ImagePreviewOpener {
+        override fun invoke(url: String) {
+            openDesktopExternalUrl(url)
+        }
+    }
+}
 
 @Composable
-actual fun rememberImageGalleryOpener(): (List<String>, Int) -> Unit {
-    val openExternalUrl = rememberExternalUrlOpener()
-    return remember(openExternalUrl) {
-        { urls, initialIndex ->
+actual fun rememberImageGalleryOpener(): ImageGalleryOpener = remember {
+    object : ImageGalleryOpener {
+        override fun invoke(urls: List<String>, initialIndex: Int) {
             if (urls.isNotEmpty()) {
-                urls[initialIndex.coerceIn(0, urls.lastIndex)].let(openExternalUrl)
+                openDesktopExternalUrl(urls[initialIndex.coerceIn(0, urls.lastIndex)])
             }
         }
     }
 }
 
 @Composable
-actual fun rememberImageSaver(): (String) -> Unit {
+actual fun rememberImageSaver(): ImageSaver {
     val scope = rememberCoroutineScope()
     val userMessages = rememberUserMessageSink()
-    val store = remember { DesktopAccountStore() }
+    val store = defaultDesktopAccountStore
     return remember(scope, userMessages, store) {
-        { imageUrl ->
-            scope.launch {
-                runCatching {
-                    store.saveImageToDownloads(imageUrl, "image")
-                }.onSuccess { file ->
-                    userMessages.showShortMessage("已保存图片: ${file.absolutePath}")
-                }.onFailure { error ->
-                    userMessages.showShortMessage("保存失败: ${error.message}")
+        object : ImageSaver {
+            override fun invoke(url: String) {
+                scope.launch {
+                    runCatching {
+                        store.saveImageToDownloads(url, "image")
+                    }.onSuccess { file ->
+                        userMessages.showShortMessage("已保存图片: ${file.absolutePath}")
+                    }.onFailure { error ->
+                        userMessages.showShortMessage("保存失败: ${error.message}")
+                    }
                 }
             }
         }
@@ -144,35 +155,43 @@ actual fun rememberImageSaver(): (String) -> Unit {
 }
 
 @Composable
-actual fun rememberImageSharer(): (String) -> Unit {
+actual fun rememberImageSharer(): ImageSharer {
     val userMessages = rememberUserMessageSink()
     return remember(userMessages) {
-        { imageUrl ->
-            runCatching {
-                copyDesktopPlainText(imageUrl)
-                userMessages.showShortMessage("已复制图片链接")
-            }.onFailure { error ->
-                userMessages.showShortMessage("分享失败: ${error.message}")
+        object : ImageSharer {
+            override fun invoke(url: String) {
+                runCatching {
+                    copyDesktopPlainText(url)
+                    userMessages.showShortMessage("已复制图片链接")
+                }.onFailure { error ->
+                    userMessages.showShortMessage("分享失败: ${error.message}")
+                }
             }
         }
     }
 }
 
 @Composable
-actual fun rememberPlainTextClipboard(): (label: String, text: String) -> Unit =
-    remember { { _, text -> runCatching { copyDesktopPlainText(text) } } }
+actual fun rememberPlainTextClipboard(): PlainTextClipboard =
+    remember {
+        object : PlainTextClipboard {
+            override fun invoke(label: String, text: String) {
+                runCatching { copyDesktopPlainText(text) }
+            }
+        }
+    }
 
 @Composable
 actual fun rememberUserMessageSink(): UserMessageSink = remember {
-    UserMessageSink(
-        showShortMessage = { message ->
+    object : UserMessageSink {
+        override fun showShortMessage(message: String) {
             println(message)
             runCatching {
                 ProcessBuilder("terminal-notifier", "-message", message, "-sound", "default")
                     .start()
             }
-        },
-    )
+        }
+    }
 }
 
 @Composable
@@ -191,3 +210,21 @@ actual fun PlatformPredictiveBackHandler(
 
 @Composable
 actual fun rememberIsLiteVariant(): Boolean = false
+
+internal actual val platformBottomBarItemLimit: Int? = null
+
+actual val platformName: String = "JVM"
+
+actual val isJvm: Boolean = true
+
+actual val isNative: Boolean = false
+
+actual val isAigcVoteSupported: Boolean = false
+
+actual val isBlocklistNlpSupported: Boolean = false
+
+actual val isSentenceSimilaritySupported: Boolean = false
+
+actual val isArticleHtmlExportSupported: Boolean = true
+
+actual val isArticleImageExportSupported: Boolean = true

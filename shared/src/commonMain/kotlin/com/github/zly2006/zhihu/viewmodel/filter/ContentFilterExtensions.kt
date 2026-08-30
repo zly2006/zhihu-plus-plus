@@ -29,6 +29,7 @@ import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.platform.SettingsStore
+import com.github.zly2006.zhihu.util.Log
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -95,7 +96,6 @@ class FeedContentFilterPipeline(
     private val blockedQuestionAuthorDao: BlockedQuestionAuthorDao,
     private val blockedTopicDao: BlockedTopicDao,
     private val blockedKeywordService: BlockedKeywordService,
-    private val htmlToText: (String) -> String = { html -> Ksoup.parse(html).text() },
     private val onNlpBlocked: suspend (List<FilterableContent>) -> Unit = {},
 ) {
     suspend fun filter(contents: List<FilterableContent>): FeedContentFilterResult {
@@ -132,14 +132,14 @@ class FeedContentFilterPipeline(
         }
 
         if (settings.enableNlpBlocking) {
-            val blockedThisRound = mutableListOf<FilterableContent>()
             val finalFilteredContents = mutableListOf<FilterableContent>()
+            val blockedThisRound = mutableListOf<FilterableContent>()
 
             for (content in filteredContents) {
                 val (shouldBlock, matchedKeywords) = blockedKeywordService.checkNLPBlockingWithWeight(
                     title = content.title,
                     excerpt = content.summary,
-                    content = content.content?.let(htmlToText),
+                    content = content.content?.let { Ksoup.parse(it).text() },
                     threshold = settings.nlpSimilarityThreshold,
                 )
 
@@ -223,8 +223,6 @@ class FeedDisplayFilterPipeline(
     private val contentDetailProvider: ContentDetailProvider,
     private val contentFilterPipeline: FeedContentFilterPipeline,
     private val blockedFeedRecordDao: BlockedFeedRecordDao,
-    private val onDetailFetchFailed: (FeedDisplayItem) -> Unit = {},
-    private val onDetailsKeywordFiltered: (FeedDisplayItem, String) -> Unit = { _, _ -> },
 ) {
     suspend fun filter(items: List<FeedDisplayItem>): List<FeedDisplayItem> {
         val (followedUserItems, otherItems) = if (!settings.filterFollowedUserContent) {
@@ -246,7 +244,7 @@ class FeedDisplayFilterPipeline(
                         val rawContent = resolveRawContent(item)
 
                         if (rawContent is DataHolder.DummyContent) {
-                            onDetailFetchFailed(item)
+                            Log.w("ContentFilterExtensions", "Failed to fetch content details for item '${item.title}'. Using dummy content for filtering.")
                         }
 
                         item to item.toFilterableContent(identity, rawContent)
@@ -309,7 +307,7 @@ class FeedDisplayFilterPipeline(
         detailsPostFilterKeywords.none { keyword ->
             val shouldFilter = item.details.contains(keyword)
             if (shouldFilter) {
-                onDetailsKeywordFiltered(item, keyword)
+                Log.e("ContentFilterExtensions", "Filtered item '${item.title}' due to keyword '$keyword' in details: ${item.content}")
             }
             shouldFilter
         }

@@ -26,8 +26,6 @@ internal val nativeAppVersionName: String
 
 internal expect fun copyNativePlainText(text: String)
 
-internal expect fun requestNativeQrLogin()
-
 internal expect fun nativeAccountFilePath(): String
 
 internal expect fun nativeAppPrivateDirectoryPath(): String

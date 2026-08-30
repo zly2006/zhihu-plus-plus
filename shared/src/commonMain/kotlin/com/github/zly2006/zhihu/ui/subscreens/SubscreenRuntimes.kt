@@ -21,21 +21,12 @@ import androidx.compose.runtime.Composable
 import com.github.zly2006.zhihu.ui.TtsState
 import kotlinx.coroutines.flow.StateFlow
 
+expect val isWebViewCustomFontSupported: Boolean
+
 @Composable
 expect fun WebViewCustomFontSettings(
     customFontName: String?,
     onCustomFontNameChange: (String?) -> Unit,
-)
-
-data class SystemUpdateRuntime(
-    val state: StateFlow<SystemUpdateState>,
-    val checkForUpdate: suspend () -> Unit,
-    val skipVersion: (String) -> Unit,
-    val resetToNoUpdate: () -> Unit,
-    val downloadUpdate: suspend (String) -> Unit,
-    val installDownloadedUpdate: suspend () -> Unit,
-    val setError: (String) -> Unit,
-    val supportsApkInstall: Boolean,
 )
 
 sealed interface SystemUpdateState {
@@ -63,9 +54,43 @@ sealed interface SystemUpdateState {
 }
 
 @Composable
-expect fun rememberSystemUpdateRuntime(): SystemUpdateRuntime
+expect fun rememberSystemUpdateState(): StateFlow<SystemUpdateState>
 
-data class DeveloperRuntimeInfo(
+interface SystemUpdateChecker {
+    suspend fun check()
+}
+
+interface SystemUpdateVersionSkipper {
+    fun skip(version: String)
+}
+
+interface SystemUpdateDownloader {
+    suspend fun download(url: String)
+}
+
+interface DownloadedSystemUpdateInstaller {
+    suspend fun install()
+}
+
+@Composable
+expect fun rememberSystemUpdateChecker(): SystemUpdateChecker
+
+@Composable
+expect fun rememberSystemUpdateVersionSkipper(): SystemUpdateVersionSkipper
+
+@Composable
+expect fun rememberSystemUpdateDownloader(): SystemUpdateDownloader
+
+@Composable
+expect fun rememberDownloadedSystemUpdateInstaller(): DownloadedSystemUpdateInstaller
+
+expect fun resetSystemUpdateState()
+
+expect fun setSystemUpdateError(message: String)
+
+expect val isApkUpdateInstallSupported: Boolean
+
+data class DeveloperInfoSnapshot(
     val networkStatus: String = "网络状态：未知",
     val powerSaveModeText: String? = null,
     val continuousUsageDurationMs: Long = 0L,
@@ -74,9 +99,5 @@ data class DeveloperRuntimeInfo(
     val availableTtsEngineLabels: List<String> = emptyList(),
 )
 
-interface DeveloperRuntimeInfoProvider {
-    val developerRuntimeInfo: DeveloperRuntimeInfo
-}
-
 @Composable
-expect fun rememberDeveloperRuntimeInfo(): DeveloperRuntimeInfo
+expect fun rememberDeveloperInfo(): DeveloperInfoSnapshot

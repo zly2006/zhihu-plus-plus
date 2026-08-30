@@ -43,7 +43,6 @@ private const val ARTICLE_EXPORT_DPI = 200f
 
 class AndroidArticleExportRenderer(
     private val context: Context,
-    private val loadAssetText: (String) -> String,
 ) : ArticleImageExportRenderer {
     override suspend fun prepareExportWebView(
         htmlContent: String,
@@ -193,7 +192,10 @@ class AndroidArticleExportRenderer(
     }
 
     fun injectExportFootnoteScript(webView: WebView, onInjected: () -> Unit) {
-        val jsCode = loadAssetText("footnotes.js")
+        val jsCode = context.assets
+            .open("footnotes.js")
+            .bufferedReader()
+            .use { it.readText() }
         if (jsCode.isBlank()) {
             onInjected()
             return

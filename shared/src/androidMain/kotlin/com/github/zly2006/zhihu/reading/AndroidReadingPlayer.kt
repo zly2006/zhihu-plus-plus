@@ -61,8 +61,6 @@ private class AndroidReadingPlayerController(
     private val context: Context,
     override val state: State<ReadingPlayerState>,
 ) : ReadingPlayerController {
-    override val isSupported: Boolean = true
-
     override fun start(request: ReadingStartRequest) {
         val normalizedPreferences = request.preferences.normalized()
         val normalizedQueue = request.queue
@@ -111,10 +109,12 @@ private class AndroidReadingPlayerController(
 }
 
 @Composable
-actual fun rememberReadingPlayerController(): ReadingPlayerController {
+internal actual fun rememberSupportedReadingPlayerController(): ReadingPlayerController {
     val context = LocalContext.current
     val state = AndroidReadingPlayerBridge.state.collectAsState()
     return remember(context, state) {
         AndroidReadingPlayerController(context, state)
     }
 }
+
+actual val isReadingPlayerSupported: Boolean = true
