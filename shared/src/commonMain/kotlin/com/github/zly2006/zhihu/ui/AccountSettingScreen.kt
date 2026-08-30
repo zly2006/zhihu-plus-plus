@@ -31,7 +31,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -58,6 +57,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SwitchAccount
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
@@ -360,18 +360,20 @@ fun AccountSettingScreen(
                                 modifier = Modifier.size(40.dp),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                Icon(
-                                    Icons.Default.Notifications,
-                                    null,
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                )
-                                if (showUnreadBadge && unreadCount > 0) {
-                                    Badge(
-                                        modifier = Modifier
-                                            .align(Alignment.TopEnd)
-                                            .offset(x = 4.dp, y = (-4).dp)
-                                            .testTag(ACCOUNT_SETTINGS_NOTIFICATION_BADGE_TAG),
-                                    ) { Text(unreadCount.toString()) }
+                                BadgedBox(
+                                    badge = {
+                                        if (showUnreadBadge && unreadCount > 0) {
+                                            Badge(
+                                                modifier = Modifier.testTag(ACCOUNT_SETTINGS_NOTIFICATION_BADGE_TAG),
+                                            ) { Text(unreadCount.toString()) }
+                                        }
+                                    },
+                                ) {
+                                    Icon(
+                                        Icons.Default.Notifications,
+                                        null,
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    )
                                 }
                             }
                             Spacer(Modifier.height(4.dp))
