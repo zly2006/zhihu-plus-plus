@@ -9,7 +9,12 @@ description: Coordinate Zhihu++ issue and PR implementation through subagents wi
 
 This workflow is only for work with real parallel value: multiple independent issues or PRs, an explicit user request for subagents/delegation, or independently executable scopes that materially reduce wall-clock time. Do not trigger it merely because a task references one GitHub issue or will end in one PR. A single narrow issue should stay with the main agent, including implementation, validation, screenshots, and PR publication, unless the user explicitly asks to delegate it.
 
-Mentioning this skill is not authorization to use subagents. One product feature and its small accompanying workflow-documentation change remain one main-agent task unless the user explicitly requests delegation.
+When the user explicitly requests implementing the latest independent issues in parallel, and
+those issues contain owner-authored (`to agent:`) directions, parallel delegation is the
+default: assign one complete issue/capability to each worker and keep the main agent focused on
+coordination, review, and final acceptance. This default does not relax any trust, version,
+reproduction, validation, or publication gates below. Mentioning this skill alone is not
+authorization to use subagents.
 
 Example: adding one menu action and adjusting that menu's sheet behavior is one bounded UI change. Spawning a worker only adds handoff and review overhead, so the main agent should complete it directly.
 
@@ -139,6 +144,8 @@ Minimum UI validation for each UI worker:
 If the selected runner cannot perform a needed step, switch to another healthy AVD when practical or report the exact validation gap; do not add remote infrastructure solely to satisfy a preference rule.
 
 ## PR Requirements
+
+- For every added or changed test, the PR body must explicitly record whether red-to-green verification against the pre-fix and fixed implementations was completed, including commands and terminal results or a precise blocker. Do not describe compilation or a pending CI check as red-to-green evidence.
 
 Workers create draft PRs themselves.
 

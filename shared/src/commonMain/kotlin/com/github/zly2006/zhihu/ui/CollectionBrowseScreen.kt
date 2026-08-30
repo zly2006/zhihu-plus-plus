@@ -19,6 +19,7 @@ package com.github.zly2006.zhihu.ui
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -86,6 +87,7 @@ import kotlin.random.Random
 @Composable
 fun CollectionBrowseScreen(
     urlToken: String?,
+    contentPadding: PaddingValues = PaddingValues(0.dp),
     showBackButton: Boolean = true,
     scrollToTopTrigger: Int = 0,
     isActive: Boolean = true,
@@ -194,7 +196,9 @@ fun CollectionBrowseScreen(
     }
 
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(contentPadding),
         topBar = {
             TopAppBar(
                 title = {
