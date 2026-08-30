@@ -240,14 +240,18 @@ internal class NativePaginationEnvironment(
     override suspend fun recordOpenEvent(destination: Article, questionId: Long?) =
         recordContentOpenEvent(destination, questionId)
 
-    override suspend fun applyHomeFeedFilters(items: List<FeedDisplayItem>): HomeFeedFilterResult {
+    override suspend fun applyForegroundHomeFeedFilter(items: List<FeedDisplayItem>): List<FeedDisplayItem> {
         val settings = settingsStore.toFeedFilterSettings()
-        val foregroundItems = ForegroundReadFilterPipeline(
+        return ForegroundReadFilterPipeline(
             settings = settings,
             contentFilterManager = ContentFilterManager(contentFilterDatabase.contentFilterDao()),
             blockedFeedRecordDao = contentFilterDatabase.blockedFeedRecordDao(),
         ).filter(items)
-        val filteredItems = FeedDisplayFilterPipeline(
+    }
+
+    override suspend fun applyBackgroundHomeFeedFilter(items: List<FeedDisplayItem>): List<FeedDisplayItem> {
+        val settings = settingsStore.toFeedFilterSettings()
+        return FeedDisplayFilterPipeline(
             settings = settings,
             contentDetailProvider = ContentDetailProvider(::getOrFetchContentDetail),
             contentFilterPipeline = FeedContentFilterPipeline(
@@ -263,12 +267,7 @@ internal class NativePaginationEnvironment(
                 ),
             ),
             blockedFeedRecordDao = contentFilterDatabase.blockedFeedRecordDao(),
-        ).filter(foregroundItems)
-        return HomeFeedFilterResult(
-            foregroundItems = foregroundItems,
-            filteredItems = filteredItems,
-            reverseBlock = settings.reverseBlock,
-        )
+        ).filter(items)
     }
 
     override suspend fun recordContentInteraction(feed: Feed) {
