@@ -137,3 +137,7 @@ Gate 4 未通过条件：真实设备出现高频失败、错误只显示 `null`
 
 - 只有任务涉及 `segment_infos` 正文划线时，读取 [references/segment_infos.md](references/segment_infos.md)。
 - 其他历史案例不能替代当前任务的证据账本。
+
+## 资源收尾
+
+启动独立浏览器或调试进程只服务于当前取证；完成页面核查后必须立即关闭该进程并确认端口/进程已退出，不能把 headless 实例留在后台占用内存。

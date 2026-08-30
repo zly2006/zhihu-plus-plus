@@ -101,6 +101,12 @@ class HomeNotificationPixelInstrumentedTest {
             "badge image is too small: ${right - left + 1}x${bottom - top + 1}; screenshot: $screenshot",
             right - left + 1 >= 8 && bottom - top + 1 >= 8,
         )
+        val minimumBadgeWidth = (20f * composeRule.activity.resources.displayMetrics.density).toInt()
+        assertTrue(
+            "badge text is horizontally clipped: width=${right - left + 1}px, expected at least " +
+                "${minimumBadgeWidth}px for two digits; screenshot: $screenshot",
+            right - left + 1 >= minimumBadgeWidth,
+        )
 
         // All four outer corners must be outside the fill, while every edge midpoint is filled.
         listOf(left to top, right to top, left to bottom, right to bottom).forEach { (x, y) ->

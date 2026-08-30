@@ -40,6 +40,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -579,20 +580,18 @@ fun HomeScreen(
                                     modifier = Modifier.size(40.dp),
                                     contentAlignment = Alignment.Center,
                                 ) {
-                                    BadgedBox(
-                                        badge = {
-                                            if (showUnreadBadge && unreadCount > 0) {
-                                                Badge(
-                                                    modifier = Modifier.testTag(HOME_NOTIFICATION_BADGE_TAG),
-                                                ) { Text("$unreadCount") }
-                                            }
-                                        },
-                                    ) {
-                                        Icon(
-                                            Icons.Default.Notifications,
-                                            contentDescription = "通知",
-                                            tint = MaterialTheme.colorScheme.onSurface,
-                                        )
+                                    Icon(
+                                        Icons.Default.Notifications,
+                                        contentDescription = "通知",
+                                        tint = MaterialTheme.colorScheme.onSurface,
+                                    )
+                                    if (showUnreadBadge && unreadCount > 0) {
+                                        Badge(
+                                            modifier = Modifier
+                                                .align(Alignment.TopEnd)
+                                                .offset(x = 4.dp, y = (-4).dp)
+                                                .testTag(HOME_NOTIFICATION_BADGE_TAG),
+                                        ) { Text("$unreadCount") }
                                     }
                                 }
                             }
