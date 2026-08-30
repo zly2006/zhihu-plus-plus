@@ -27,13 +27,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
@@ -51,7 +49,6 @@ import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -67,6 +64,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
@@ -708,8 +706,12 @@ fun PeopleScreen(
     }
 
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    val density = LocalDensity.current
+    LaunchedEffect(density) {
+        scrollBehavior.state.heightOffsetLimit = -with(density) { 240.dp.toPx() }
+    }
     val collapsedFraction = scrollBehavior.state.collapsedFraction
-    val statusBarTopInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val headerHeight = lerp(240.dp, 0.dp, collapsedFraction)
 
     Scaffold(
         modifier = Modifier
@@ -718,13 +720,14 @@ fun PeopleScreen(
             .fillMaxSize(),
         topBar = {
             Box {
-                TopAppBar(
-                    title = {
+                Column {
+                    Box(modifier = Modifier.height(headerHeight)) {
                         UserInfoHeader(
                             viewModel = viewModel,
                             pagerState = pagerState,
                             modifier = Modifier
                                 .padding(horizontal = 8.dp)
+                                .fillMaxSize()
                                 .testTag(PEOPLE_SCREEN_HEADER_TAG),
                             onFollowToggle = {
                                 coroutineScope.launch {
@@ -765,13 +768,31 @@ fun PeopleScreen(
                                 }
                             },
                         )
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors().copy(
-                        scrolledContainerColor = MaterialTheme.colorScheme.surface,
-                    ),
-                    scrollBehavior = scrollBehavior,
-                    expandedHeight = 240.dp,
-                )
+                    }
+                    PrimaryScrollableTabRow(
+                        selectedTabIndex = pagerState.currentPage,
+                        modifier = Modifier.testTag(PEOPLE_SCREEN_TAB_ROW_TAG),
+                    ) {
+                        PEOPLE_SCREEN_TITLES.forEachIndexed { index, title ->
+                            Tab(
+                                selected = pagerState.currentPage == index,
+                                onClick = {
+                                    coroutineScope.launch {
+                                        pagerState.animateScrollToPage(index)
+                                    }
+                                },
+                                modifier = Modifier.testTag("people_screen_tab_$index"),
+                            ) {
+                                Text(
+                                    text = title,
+                                    modifier = Modifier.padding(16.dp),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        }
+                    }
+                }
                 if (viewModel.memberHashId.isNotBlank() && viewModel.memberHashId != Person.EMPTY_ID) {
                     IconButton(
                         onClick = {
@@ -785,7 +806,7 @@ fun PeopleScreen(
                         },
                         modifier = Modifier
                             .align(Alignment.TopEnd)
-                            .padding(top = lerp(32.dp, statusBarTopInset + 4.dp, collapsedFraction), end = 8.dp)
+                            .padding(top = lerp(32.dp, 4.dp, collapsedFraction), end = 8.dp)
                             .testTag(PEOPLE_SCREEN_SEARCH_BUTTON_TAG),
                     ) {
                         Icon(Icons.Default.Search, contentDescription = "搜索 TA 的创作")
@@ -799,29 +820,6 @@ fun PeopleScreen(
                 .padding(innerPadding)
                 .padding(horizontal = 8.dp),
         ) {
-            PrimaryScrollableTabRow(
-                selectedTabIndex = pagerState.currentPage,
-                modifier = Modifier.testTag(PEOPLE_SCREEN_TAB_ROW_TAG),
-            ) {
-                PEOPLE_SCREEN_TITLES.forEachIndexed { index, title ->
-                    Tab(
-                        selected = pagerState.currentPage == index,
-                        onClick = {
-                            coroutineScope.launch {
-                                pagerState.animateScrollToPage(index)
-                            }
-                        },
-                        modifier = Modifier.testTag("people_screen_tab_$index"),
-                    ) {
-                        Text(
-                            text = title,
-                            modifier = Modifier.padding(16.dp),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                }
-            }
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier
