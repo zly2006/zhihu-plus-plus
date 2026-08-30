@@ -410,12 +410,9 @@ interface MobileHomeFeedEnvironment : ZhihuApiEnvironment {
 interface FeedDisplayEnvironment {
     fun feedDisplaySettings(): FeedDisplaySettings = FeedDisplaySettings()
 
-    suspend fun applyHomeFeedFilters(items: List<FeedDisplayItem>): HomeFeedFilterResult =
-        HomeFeedFilterResult(
-            foregroundItems = items,
-            filteredItems = items,
-            reverseBlock = feedDisplaySettings().reverseBlock,
-        )
+    suspend fun applyForegroundHomeFeedFilter(items: List<FeedDisplayItem>): List<FeedDisplayItem> = items
+
+    suspend fun applyBackgroundHomeFeedFilter(items: List<FeedDisplayItem>): List<FeedDisplayItem> = items
 }
 
 interface HistoryEnvironment {

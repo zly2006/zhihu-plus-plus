@@ -29,7 +29,9 @@ import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.viewmodel.feed.resolveFeedQuestionAuthorInfo
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.buildJsonObject
 import kotlin.io.path.createTempDirectory
@@ -104,6 +106,31 @@ class FeedDisplayFilterPipelineTest {
                 .observeAll()
                 .first(),
         )
+        fixture.database.close()
+    }
+
+    @Test
+    fun fetchesContentDetailsConcurrently() = runTest {
+        val fixture = fixture()
+        val allDetailsStarted = CompletableDeferred<Unit>()
+        val releaseDetails = CompletableDeferred<Unit>()
+        var startedCount = 0
+        val provider = ContentDetailProvider {
+            startedCount++
+            if (startedCount == 2) allDetailsStarted.complete(Unit)
+            releaseDetails.await()
+            article("loaded")
+        }
+        val job = launch {
+            fixture.pipeline(detailProvider = provider).filter(
+                listOf(item("one", 1), item("two", 2)),
+            )
+        }
+
+        allDetailsStarted.await()
+        assertEquals(2, startedCount)
+        releaseDetails.complete(Unit)
+        job.join()
         fixture.database.close()
     }
 
