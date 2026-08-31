@@ -87,7 +87,11 @@ fun MiuixAccountSheet(
         title = "账号设置",
     ) {
         LazyColumn(
-            modifier = Modifier.fillMaxWidth().scrollEndHaptic().overScrollVertical(),
+            modifier = Modifier
+                .miuixSheetBottomInsets()
+                .fillMaxWidth()
+                .scrollEndHaptic()
+                .overScrollVertical(),
         ) {
             // ── 用户信息 ──
             if (data.login) {

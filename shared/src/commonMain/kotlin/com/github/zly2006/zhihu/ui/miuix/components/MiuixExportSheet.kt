@@ -79,7 +79,7 @@ fun MiuixExportSheet(
 
     WindowBottomSheet(cornerRadius = miuixSheetCornerRadius(), show = show, title = "导出文章", onDismissRequest = onDismiss) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier.fillMaxWidth().miuixSheetBottomInsets().padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             ExportActionRow(Icons.Filled.PictureAsPdf, "导出为 PDF", "暂时禁用，后续切第三方库实现", enabled = false) {}

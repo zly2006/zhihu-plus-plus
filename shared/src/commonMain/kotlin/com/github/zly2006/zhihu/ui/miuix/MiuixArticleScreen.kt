@@ -120,6 +120,7 @@ import com.github.zly2006.zhihu.ui.miuix.components.MiuixExportSheet
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixSheetActionRow
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixVotersSheet
+import com.github.zly2006.zhihu.ui.miuix.components.miuixSheetBottomInsets
 import com.github.zly2006.zhihu.ui.miuix.components.miuixSheetCornerRadius
 import com.github.zly2006.zhihu.ui.rememberArticleBrowserOpener
 import com.github.zly2006.zhihu.ui.rememberArticleSpeechToggler
@@ -771,7 +772,10 @@ fun MiuixArticleScreen(
         onDismissRequest = { showCollections.value = false },
         title = "收藏到收藏夹",
     ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(
+            modifier = Modifier.fillMaxWidth().miuixSheetBottomInsets().padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             // 新建收藏夹（对齐 M3 的 onCreateCollection）。
             MiuixSheetActionRow("新建收藏夹", icon = Icons.Default.Add, onClick = { showCreateCollection = !showCreateCollection })
             AnimatedVisibility(visible = showCreateCollection) {
@@ -833,7 +837,10 @@ fun MiuixArticleScreen(
     ) {
         val speaking = ttsState.isSpeaking
         val ttsEnabled = ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)
-        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(
+            modifier = Modifier.fillMaxWidth().miuixSheetBottomInsets().padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             MiuixActionMenuRow(
                 if (speaking) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
                 if (speaking) "停止朗读" else "开始朗读",
@@ -883,7 +890,13 @@ fun MiuixArticleScreen(
         },
         title = "总结本文",
     ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).verticalScroll(rememberScrollState())) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .miuixSheetBottomInsets()
+                .padding(horizontal = 16.dp)
+                .verticalScroll(rememberScrollState()),
+        ) {
             if (viewModel.aiSummaryLoading && viewModel.aiSummaryText.isBlank()) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     CircularProgressIndicator(modifier = Modifier.size(20.dp))
@@ -921,7 +934,11 @@ fun MiuixArticleScreen(
             viewModel.aigcVoterName.isNotBlank() &&
             (viewModel.aigcCreditBypassAvailable || (viewModel.aigcVoteCredit > 0 && viewModel.isAigcFlagEvidenceReady()))
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).verticalScroll(rememberScrollState()),
+            modifier = Modifier
+                .fillMaxWidth()
+                .miuixSheetBottomInsets()
+                .padding(horizontal = 16.dp)
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Text(
@@ -991,7 +1008,10 @@ fun MiuixArticleScreen(
         onDismissRequest = { showDoubleTapActionDialog = false },
         title = "设置双击回答动作",
     ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(
+            modifier = Modifier.fillMaxWidth().miuixSheetBottomInsets().padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
             Text(
                 "选择以后双击回答时默认执行的动作，选择后会立即保存到设置。",
                 style = MiuixTheme.textStyles.body2,

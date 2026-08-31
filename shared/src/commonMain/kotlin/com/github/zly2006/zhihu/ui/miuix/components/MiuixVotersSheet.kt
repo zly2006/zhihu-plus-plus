@@ -65,7 +65,11 @@ fun MiuixVotersSheet(
         onDismissRequest = onDismissRequest,
     ) {
         LazyColumn(
-            modifier = Modifier.fillMaxWidth().height(520.dp).overScrollVertical(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(520.dp)
+                .miuixSheetBottomInsets()
+                .overScrollVertical(),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {

@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.util.SegmentHighlightSpan
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
+import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.Text
@@ -39,8 +40,9 @@ import top.yukonga.miuix.kmp.window.WindowBottomSheet
 /**
  * 划线片段操作弹层的 miuix 版本，对标 M3 `SegmentActionSheet`。
  *
- * M3 版整层用的是 `MaterialTheme.colorScheme`；miuix 主题下那套配色没有初始化，
- * 点赞/评论按钮上的数字会退化成浅灰色，几乎看不见。这里换成 miuix 组件和 miuix 配色。
+ * M3 版整层用的是 `MaterialTheme.colorScheme`；miuix 主题下 `FilledTonalButton` 会拿到
+ * miuix 的 `onSecondaryContainer`（偏灰），点赞/评论数字几乎看不见。这里换成 miuix 组件与配色，
+ * 片段正文放进 miuix `Card`（16dp 圆角，与设置页、`MiuixSheetActionRow` 一致）。
  */
 @Composable
 fun MiuixSegmentActionSheet(
@@ -54,21 +56,25 @@ fun MiuixSegmentActionSheet(
         cornerRadius = miuixSheetCornerRadius(),
         show = true,
         title = "划线片段",
-        insideMargin = DpSize(20.dp, 0.dp),
+        insideMargin = DpSize(16.dp, 0.dp),
         onDismissRequest = onDismiss,
     ) {
-        Column(Modifier.padding(bottom = 8.dp)) {
-            Text(
-                text = "“${highlight.displayText}”",
-                modifier = Modifier
-                    .fillMaxWidth()
-                    // 长片段不能把弹层顶满，超出部分自己滚动。
-                    .heightIn(max = 260.dp)
-                    .verticalScroll(rememberScrollState())
-                    .padding(vertical = 12.dp),
-                color = MiuixTheme.colorScheme.onSurface,
-                style = MiuixTheme.textStyles.body1,
-            )
+        Column(
+            modifier = Modifier.fillMaxWidth().miuixSheetBottomInsets().padding(bottom = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Card(Modifier.fillMaxWidth()) {
+                Text(
+                    text = "“${highlight.displayText}”",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        // 长片段不能把弹层顶满，超出部分自己滚动。
+                        .heightIn(max = 240.dp)
+                        .verticalScroll(rememberScrollState()),
+                    color = MiuixTheme.colorScheme.onSurface,
+                    style = MiuixTheme.textStyles.body1,
+                )
+            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),

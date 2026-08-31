@@ -32,7 +32,9 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,12 +57,19 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.platform.rememberZhihuWebUrlOpener
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
+import com.github.zly2006.zhihu.ui.FollowedQuestion
+import com.github.zly2006.zhihu.ui.FollowedTopic
+import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_SUBSCRIPTION_TITLES
+import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_TITLES
 import com.github.zly2006.zhihu.ui.PersonViewModel
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
+import com.github.zly2006.zhihu.ui.peopleScreenInitialPage
+import com.github.zly2006.zhihu.ui.webUrl
 import com.github.zly2006.zhihu.util.Log
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
@@ -81,19 +90,10 @@ import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 import com.github.zly2006.zhihu.navigation.Pin as PinNav
 import com.github.zly2006.zhihu.navigation.Question as QuestionNav
 import com.github.zly2006.zhihu.navigation.Search as SearchDestination
+import com.github.zly2006.zhihu.navigation.Topic as TopicNav
 
-private val PEOPLE_SCREEN_TITLES = listOf(
-    "回答",
-    "文章",
-    "动态",
-    "收藏",
-    "提问",
-    "想法",
-    "专栏",
-    "粉丝",
-    "关注",
-    "关注订阅",
-)
+/** 「关注订阅」在 [PEOPLE_SCREEN_TITLES] 里的下标：它没有单一 feed，由页内二级 tab 各自加载。 */
+private val SUBSCRIPTIONS_PAGE = PEOPLE_SCREEN_TITLES.lastIndex
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -109,9 +109,9 @@ fun MiuixPeopleScreen(
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
 
-    val initialPage = 0
+    var subscriptionTab by rememberSaveable { mutableIntStateOf(0) }
     val pagerState = rememberPagerState(
-        initialPage = initialPage,
+        initialPage = peopleScreenInitialPage(person),
         pageCount = { PEOPLE_SCREEN_TITLES.size },
     )
     val searchMemberHashId = viewModel.memberHashId
@@ -156,9 +156,18 @@ fun MiuixPeopleScreen(
             state = pagerState,
             modifier = Modifier.fillMaxSize(),
         ) { page ->
-            val subModel = viewModel.subFeedModels.getOrNull(page)
+            val subModel = if (page == SUBSCRIPTIONS_PAGE) {
+                when (subscriptionTab) {
+                    0 -> viewModel.followingColumnsFeedModel
+                    1 -> viewModel.followingTopicsFeedModel
+                    2 -> viewModel.followingQuestionsFeedModel
+                    else -> viewModel.followingCollectionsFeedModel
+                }
+            } else {
+                viewModel.subFeedModels.getOrNull(page)
+            }
             if (subModel != null) {
-                LaunchedEffect(page) {
+                LaunchedEffect(page, subModel) {
                     if (page == 2) {
                         val vm = subModel as BaseFeedViewModel
                         if (vm.displayItems.isEmpty()) vm.loadMore(paginationEnvironment)
@@ -263,6 +272,17 @@ fun MiuixPeopleScreen(
                             }
                         }
 
+                        if (page == SUBSCRIPTIONS_PAGE) {
+                            item(key = "subscriptionTabs") {
+                                TabRow(
+                                    tabs = PEOPLE_SCREEN_SUBSCRIPTION_TITLES,
+                                    selectedTabIndex = subscriptionTab,
+                                    onTabSelected = { subscriptionTab = it },
+                                    modifier = Modifier.padding(horizontal = 12.dp).padding(bottom = 8.dp),
+                                )
+                            }
+                        }
+
                         if (items.isEmpty()) {
                             // 首次加载列表为空时显示转圈，加载结束仍为空才显示「暂无内容」
                             item {
@@ -276,8 +296,19 @@ fun MiuixPeopleScreen(
                             }
                         } else {
                             items(items.size, key = { items[it].hashCode() }) { index ->
-                                val feedItem = coerceToFeedItem(items[index])
-                                MiuixFeedCard(item = feedItem, onClick = { feedItem.navDestination?.let { navigator.onNavigate(it) } })
+                                // 用户、专栏、话题都带头像或独立跳转目标，套信息流卡片会退化成一行 toString()
+                                when (val item = items[index]) {
+                                    is DataHolder.People -> MiuixPeopleRow(item)
+                                    is DataHolder.Column -> MiuixColumnRow(item)
+                                    is FollowedTopic -> MiuixTopicRow(item)
+                                    else -> {
+                                        val feedItem = coerceToFeedItem(item)
+                                        MiuixFeedCard(
+                                            item = feedItem,
+                                            onClick = { feedItem.navDestination?.let { navigator.onNavigate(it) } },
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -321,6 +352,15 @@ private fun coerceToFeedItem(item: Any): FeedDisplayItem = when (item) {
         navDestinationJson = QuestionNav(questionId = item.id, title = item.title)
             .toFeedDisplayItemNavDestinationJson(),
     )
+    is FollowedQuestion -> FeedDisplayItem(
+        title = item.title,
+        summary = null,
+        details = "",
+        feed = null,
+        navDestinationJson = item.id
+            .toLongOrNull()
+            ?.let { QuestionNav(questionId = it, title = item.title).toFeedDisplayItemNavDestinationJson() },
+    )
     is DataHolder.Pin -> {
         val pinId = item.id.toLongOrNull() ?: 0L
         FeedDisplayItem(
@@ -347,5 +387,102 @@ private fun StatItem(label: String, count: Int, onClick: () -> Unit) {
     ) {
         Text(count.toString(), fontWeight = FontWeight.Bold, fontSize = 16.sp)
         Text(label, fontSize = 12.sp, color = MiuixTheme.colorScheme.onSurfaceSecondary)
+    }
+}
+
+/** 粉丝 / 关注列表里的用户行，对标 M3 `PeopleListItem`。 */
+@Composable
+private fun MiuixPeopleRow(people: DataHolder.People) {
+    val navigator = LocalNavigator.current
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp)
+            .padding(bottom = 8.dp)
+            .clickable {
+                navigator.onNavigate(
+                    Person(id = people.id, name = people.name, urlToken = people.urlToken ?: ""),
+                )
+            },
+    ) {
+        Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            AsyncImage(
+                model = people.avatarUrl,
+                contentDescription = "用户头像",
+                modifier = Modifier.size(48.dp).clip(CircleShape),
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(people.name, fontWeight = FontWeight.Bold, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (people.headline.isNotEmpty()) {
+                    Text(
+                        people.headline,
+                        fontSize = 13.sp,
+                        color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Text(
+                    "${people.answerCount} 回答 · ${people.articlesCount} 文章 · ${people.followerCount} 粉丝",
+                    fontSize = 12.sp,
+                    color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                )
+            }
+        }
+    }
+}
+
+/** 「我订阅的专栏」列表行。专栏没有站内页面，点开的是知乎网页版。 */
+@Composable
+private fun MiuixColumnRow(column: DataHolder.Column) {
+    val openZhihuWebUrl = rememberZhihuWebUrlOpener()
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp)
+            .padding(bottom = 8.dp)
+            .clickable { openZhihuWebUrl(column.webUrl()) },
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
+            Text(column.title, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            if (column.description.isNotEmpty()) {
+                Text(
+                    column.description,
+                    fontSize = 13.sp,
+                    color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Text(
+                "${column.articlesCount} 文章 · ${column.followerCount.coerceAtLeast(column.followers)} 关注",
+                fontSize = 12.sp,
+                color = MiuixTheme.colorScheme.onSurfaceSecondary,
+            )
+        }
+    }
+}
+
+/** 「关注的话题」列表行。 */
+@Composable
+private fun MiuixTopicRow(topic: FollowedTopic) {
+    val navigator = LocalNavigator.current
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp)
+            .padding(bottom = 8.dp)
+            .clickable { navigator.onNavigate(TopicNav(topic.displayId, topic.displayName)) },
+    ) {
+        Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            AsyncImage(
+                model = topic.displayAvatarUrl,
+                contentDescription = "话题头像",
+                modifier = Modifier.size(40.dp).clip(CircleShape),
+            )
+            Spacer(Modifier.width(12.dp))
+            Text(topic.displayName, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        }
     }
 }

@@ -47,7 +47,10 @@ fun MiuixShareSheet(
         insideMargin = DpSize(16.dp, 0.dp),
         onDismissRequest = onDismissRequest,
     ) {
-        Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(
+            modifier = Modifier.fillMaxWidth().miuixSheetBottomInsets(),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             MiuixSheetActionRow("分享", icon = Icons.Filled.Share, onClick = {
                 onDismissRequest()
                 executeShareAction(ShareAction.Share, content, shareText)

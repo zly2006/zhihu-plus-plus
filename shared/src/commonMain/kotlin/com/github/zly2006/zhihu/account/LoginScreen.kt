@@ -21,8 +21,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -42,7 +44,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.platform.rememberExternalUrlOpener
+import com.github.zly2006.zhihu.theme.ThemeManager
+import com.github.zly2006.zhihu.theme.ThemeStyle
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
+import top.yukonga.miuix.kmp.basic.TabRowWithContour
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.window.WindowDialog
+import top.yukonga.miuix.kmp.basic.Button as MiuixButton
+import top.yukonga.miuix.kmp.basic.ButtonDefaults as MiuixButtonDefaults
+import top.yukonga.miuix.kmp.basic.Icon as MiuixIcon
+import top.yukonga.miuix.kmp.basic.IconButton as MiuixIconButton
+import top.yukonga.miuix.kmp.basic.Scaffold as MiuixScaffold
+import top.yukonga.miuix.kmp.basic.Text as MiuixText
+import top.yukonga.miuix.kmp.basic.TextButton as MiuixTextButton
+import top.yukonga.miuix.kmp.basic.TopAppBar as MiuixTopAppBar
 
 enum class LoginMethod(
     val label: String,
@@ -66,7 +83,9 @@ fun LoginScreen(
     onLoginComplete: () -> Unit,
     onOpenTelemetrySettings: () -> Unit,
 ) {
+    val navigator = LocalNavigator.current
     val openExternalUrl = rememberExternalUrlOpener()
+    val useMiuix = ThemeManager.getThemeStyle() == ThemeStyle.Miuix
     var noticeStep by rememberSaveable {
         mutableIntStateOf(0)
     }
@@ -75,21 +94,50 @@ fun LoginScreen(
     }
     var loggedInUsername by remember { mutableStateOf<String?>(null) }
     val onLoginSuccess: (String) -> Unit = { username -> loggedInUsername = username }
+    val onSecondaryNoticeAction: () -> Unit = {
+        when (noticeStep) {
+            0 -> openExternalUrl("https://www.zhihu.com/app/")
+            1 -> openExternalUrl("https://www.zhihu.com/term/zhihu-terms")
+            else -> onOpenTelemetrySettings()
+        }
+    }
+    val methodPane: @Composable (LoginMethod) -> Unit = { method ->
+        when (method) {
+            LoginMethod.Phone -> PhoneLoginPane(onLoginSuccess)
+            LoginMethod.Qr -> QrLoginPane(onLoginSuccess)
+            LoginMethod.Web -> WebLoginPane(onLoginSuccess)
+        }
+    }
 
     if (noticeStep < LOGIN_NOTICE_COUNT) {
         val notice = loginNotices[noticeStep]
-        LoginNoticeScreen(
-            stepTag = "login_notice_step_${noticeStep + 1}",
-            message = notice.message,
-            secondaryButtonText = notice.secondaryButtonText,
-            onSecondaryAction = {
-                when (noticeStep) {
-                    0 -> openExternalUrl("https://www.zhihu.com/app/")
-                    1 -> openExternalUrl("https://www.zhihu.com/term/zhihu-terms")
-                    else -> onOpenTelemetrySettings()
-                }
-            },
-            onConfirm = { noticeStep++ },
+        val stepTag = "login_notice_step_${noticeStep + 1}"
+        if (useMiuix) {
+            MiuixLoginNoticeScreen(
+                stepTag = stepTag,
+                stepLabel = "${noticeStep + 1}/$LOGIN_NOTICE_COUNT",
+                message = notice.message,
+                secondaryButtonText = notice.secondaryButtonText,
+                onSecondaryAction = onSecondaryNoticeAction,
+                onConfirm = { noticeStep++ },
+                // 第一条须知再往回退就是离开登录页，交回导航栈。
+                onBack = { if (noticeStep > 0) noticeStep-- else navigator.onNavigateBack() },
+            )
+        } else {
+            LoginNoticeScreen(
+                stepTag = stepTag,
+                message = notice.message,
+                secondaryButtonText = notice.secondaryButtonText,
+                onSecondaryAction = onSecondaryNoticeAction,
+                onConfirm = { noticeStep++ },
+            )
+        }
+    } else if (useMiuix) {
+        MiuixLoginMethodScreen(
+            selectedMethod = selectedMethod,
+            onMethodSelected = { selectedMethod = it },
+            onBack = navigator.onNavigateBack,
+            pane = methodPane,
         )
     } else {
         Column(
@@ -117,26 +165,146 @@ fun LoginScreen(
                     .fillMaxWidth()
                     .weight(1f),
             ) {
-                when (selectedMethod) {
-                    LoginMethod.Phone -> PhoneLoginPane(onLoginSuccess)
-                    LoginMethod.Qr -> QrLoginPane(onLoginSuccess)
-                    LoginMethod.Web -> WebLoginPane(onLoginSuccess)
-                }
+                methodPane(selectedMethod)
             }
         }
     }
 
     loggedInUsername?.let { username ->
-        AlertDialog(
-            onDismissRequest = onLoginComplete,
-            title = { Text("登录成功") },
-            text = { Text("欢迎回来，$username") },
-            confirmButton = {
-                TextButton(onClick = onLoginComplete) {
-                    Text("确定")
+        if (useMiuix) {
+            WindowDialog(
+                show = true,
+                title = "登录成功",
+                summary = "欢迎回来，$username",
+                onDismissRequest = onLoginComplete,
+            ) {
+                MiuixButton(
+                    onClick = onLoginComplete,
+                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                    colors = MiuixButtonDefaults.buttonColorsPrimary(),
+                ) {
+                    MiuixText("确定")
                 }
-            },
-        )
+            }
+        } else {
+            AlertDialog(
+                onDismissRequest = onLoginComplete,
+                title = { Text("登录成功") },
+                text = { Text("欢迎回来，$username") },
+                confirmButton = {
+                    TextButton(onClick = onLoginComplete) {
+                        Text("确定")
+                    }
+                },
+            )
+        }
+    }
+}
+
+/**
+ * 登录方式选择页的 miuix 版本。
+ *
+ * 登录方式由平台的 [supportedLoginMethods] 决定，这里只把它投影成 TabRow；
+ * 各方式的面板本身仍是共享实现，miuix 主题下由 `ZhihuMiuixTheme` 的 M3 兜底配色着色。
+ */
+@Composable
+private fun MiuixLoginMethodScreen(
+    selectedMethod: LoginMethod,
+    onMethodSelected: (LoginMethod) -> Unit,
+    onBack: () -> Unit,
+    pane: @Composable (LoginMethod) -> Unit,
+) {
+    MiuixScaffold(
+        topBar = {
+            MiuixTopAppBar(
+                title = "登录知乎",
+                navigationIcon = {
+                    MiuixIconButton(onClick = onBack) {
+                        MiuixIcon(MiuixIconsEmbedded.Back, "返回", tint = MiuixTheme.colorScheme.onBackground)
+                    }
+                },
+            )
+        },
+    ) { padding ->
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            TabRowWithContour(
+                tabs = supportedLoginMethods.map(LoginMethod::label),
+                selectedTabIndex = supportedLoginMethods.indexOf(selectedMethod).coerceAtLeast(0),
+                onTabSelected = { onMethodSelected(supportedLoginMethods[it]) },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+            )
+            Spacer(Modifier.height(8.dp))
+            Box(modifier = Modifier.fillMaxWidth().weight(1f).padding(horizontal = 12.dp)) {
+                pane(selectedMethod)
+            }
+        }
+    }
+}
+
+@Composable
+private fun MiuixLoginNoticeScreen(
+    stepTag: String,
+    stepLabel: String,
+    message: String,
+    secondaryButtonText: String,
+    onSecondaryAction: () -> Unit,
+    onConfirm: () -> Unit,
+    onBack: () -> Unit,
+) {
+    MiuixScaffold(
+        topBar = {
+            MiuixTopAppBar(
+                title = "登录须知",
+                navigationIcon = {
+                    MiuixIconButton(onClick = onBack) {
+                        MiuixIcon(MiuixIconsEmbedded.Back, "返回", tint = MiuixTheme.colorScheme.onBackground)
+                    }
+                },
+            )
+        },
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(horizontal = 24.dp)
+                .testTag(stepTag),
+            verticalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    MiuixText(
+                        text = message,
+                        style = MiuixTheme.textStyles.body1,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    MiuixText(
+                        text = stepLabel,
+                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                        style = MiuixTheme.textStyles.body2,
+                    )
+                }
+            }
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                MiuixTextButton(
+                    text = secondaryButtonText,
+                    onClick = onSecondaryAction,
+                    modifier = Modifier.fillMaxWidth().testTag("login_notice_secondary_action"),
+                )
+                MiuixButton(
+                    onClick = onConfirm,
+                    modifier = Modifier.fillMaxWidth().testTag("login_notice_confirm"),
+                    colors = MiuixButtonDefaults.buttonColorsPrimary(),
+                ) {
+                    MiuixText("确认并继续")
+                }
+            }
+        }
     }
 }
 
