@@ -58,6 +58,7 @@ fun MiuixVotersSheet(
     onNavigate: (Person) -> Unit,
 ) {
     WindowBottomSheet(
+        cornerRadius = miuixSheetCornerRadius(),
         show = show,
         title = title,
         insideMargin = DpSize(0.dp, 0.dp),

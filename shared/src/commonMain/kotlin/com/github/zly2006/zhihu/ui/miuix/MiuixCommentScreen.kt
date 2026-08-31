@@ -21,15 +21,19 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.exclude
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
@@ -234,7 +238,13 @@ fun MiuixCommentScreen(
     }
 
     Column(
-        modifier = Modifier.fillMaxWidth().height(sheetHeight).imePadding(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(sheetHeight)
+            // miuix 的 WindowBottomSheet 只做了 imePadding，没有让开手势导航条，
+            // 内容会压在小白条下面。这里只补「未被键盘遮住」的那部分导航栏高度：
+            // 键盘弹出时 ime 已经把整个弹层抬起，再叠加导航栏会多出一截空隙。
+            .windowInsetsPadding(WindowInsets.navigationBars.exclude(WindowInsets.ime)),
     ) {
         Box(modifier = Modifier.weight(1f)) {
             when {

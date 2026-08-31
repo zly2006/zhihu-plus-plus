@@ -78,6 +78,7 @@ import com.github.zly2006.zhihu.ui.components.SegmentActionSheet
 import com.github.zly2006.zhihu.ui.components.SegmentActionSheetState
 import com.github.zly2006.zhihu.ui.components.SegmentHighlightInteractionHost
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixCommentSheet
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixSegmentActionSheet
 import com.github.zly2006.zhihu.ui.subscreens.DUO3_TIQIAN_MATH_FONT_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.PREF_BLOCK_SPACING
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
@@ -426,6 +427,16 @@ private fun RenderMarkdownDocument(
         )
     }
     segmentActionSheetState?.let { state ->
-        SegmentActionSheet(state)
+        if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+            MiuixSegmentActionSheet(
+                highlight = state.highlight,
+                onDismiss = state.onDismiss,
+                onLikeClick = state.onLikeClick,
+                onCommentClick = state.onCommentClick,
+                onCopyClick = state.onCopyClick,
+            )
+        } else {
+            SegmentActionSheet(state)
+        }
     }
 }

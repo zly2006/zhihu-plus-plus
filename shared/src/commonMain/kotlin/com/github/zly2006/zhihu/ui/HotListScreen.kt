@@ -79,8 +79,6 @@ fun HotListScreen(
     innerPadding: PaddingValues = PaddingValues(0.dp),
     scrollToTopTrigger: Int = 0,
     isActive: Boolean = true,
-    onTestRefreshClick: (() -> Unit)? = null,
-    onTestLoadMore: (() -> Unit)? = null,
     backdrop: LayerBackdrop? = null,
     scrollBehavior: ScrollBehavior? = null,
     contentTopPadding: Dp = 0.dp,
@@ -142,7 +140,7 @@ fun HotListScreen(
                     PaginatedList(
                         items = viewModel.displayItems,
                         listState = listState,
-                        onLoadMore = { onTestLoadMore?.invoke() ?: viewModel.loadMore(environment) },
+                        onLoadMore = { viewModel.loadMore(environment) },
                         modifier = Modifier
                             .fillMaxHeight()
                             .overScrollVertical()
@@ -165,7 +163,7 @@ fun HotListScreen(
                 if (showRefreshFab) {
                     DraggableRefreshButton(
                         modifier = Modifier.testTag(HOT_LIST_REFRESH_BUTTON_TAG),
-                        onClick = { onTestRefreshClick?.invoke() ?: viewModel.refresh(environment) },
+                        onClick = { viewModel.refresh(environment) },
                     ) {
                         if (viewModel.isLoading) {
                             CircularProgressIndicator(modifier = Modifier.size(36.dp))
@@ -181,7 +179,7 @@ fun HotListScreen(
                 PaginatedList(
                     items = viewModel.displayItems,
                     listState = listState,
-                    onLoadMore = { onTestLoadMore?.invoke() ?: viewModel.loadMore(environment) },
+                    onLoadMore = { viewModel.loadMore(environment) },
                     modifier = Modifier.padding(innerPadding).testTag(HOT_LIST_LIST_TAG),
                     isEnd = { viewModel.isEnd },
                     footer = ProgressIndicatorFooter,
@@ -197,7 +195,7 @@ fun HotListScreen(
                 if (showRefreshFab) {
                     DraggableRefreshButton(
                         modifier = Modifier.testTag(HOT_LIST_REFRESH_BUTTON_TAG),
-                        onClick = { onTestRefreshClick?.invoke() ?: viewModel.refresh(environment) },
+                        onClick = { viewModel.refresh(environment) },
                     ) {
                         if (viewModel.isLoading) {
                             CircularProgressIndicator(modifier = Modifier.size(36.dp))

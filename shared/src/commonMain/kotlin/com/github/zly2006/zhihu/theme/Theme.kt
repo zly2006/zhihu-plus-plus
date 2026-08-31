@@ -192,6 +192,9 @@ fun ZhihuMiuixTheme(
             surfaceContainerHigh = mc.surfaceContainerHigh,
             surfaceContainerHighest = mc.surfaceContainerHighest,
             outline = mc.outline,
+            // 划线片段的虚线下划线（markdown-renderer 的 ParagraphRenderer）直接取 outlineVariant，
+            // 漏映射时会落到 M3 baseline 的浅灰，在 miuix 背景上几乎看不见。
+            outlineVariant = mc.outline,
             error = mc.error,
             errorContainer = mc.errorContainer,
             onErrorContainer = mc.onErrorContainer,

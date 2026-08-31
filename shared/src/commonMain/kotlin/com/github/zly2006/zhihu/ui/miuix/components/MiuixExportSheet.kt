@@ -77,7 +77,7 @@ fun MiuixExportSheet(
         }
     }
 
-    WindowBottomSheet(show = show, title = "导出文章", onDismissRequest = onDismiss) {
+    WindowBottomSheet(cornerRadius = miuixSheetCornerRadius(), show = show, title = "导出文章", onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),

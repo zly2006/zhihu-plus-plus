@@ -41,7 +41,11 @@ import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
+import com.github.zly2006.zhihu.ui.AUTO_REFRESH_HOME_ON_STARTUP_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
+import com.github.zly2006.zhihu.ui.miuix.components.miuixSheetCornerRadius
+import com.github.zly2006.zhihu.viewmodel.QUALITY_FILTER_MODE_PREFERENCE_KEY
+import com.github.zly2006.zhihu.viewmodel.QualityFilterMode
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Button
@@ -132,6 +136,18 @@ fun MiuixContentFilterSettingsScreen(
                             settings.putBoolean("loginForRecommendation", it)
                         },
                     )
+                    val autoRefreshHomeOnStartup = remember {
+                        mutableStateOf(settings.getBoolean(AUTO_REFRESH_HOME_ON_STARTUP_PREFERENCE_KEY, true))
+                    }
+                    SwitchPreference(
+                        title = "启动时自动刷新首页",
+                        summary = "关闭后优先显示上次获取的一批首页推荐；没有缓存时仍会加载新推荐",
+                        checked = autoRefreshHomeOnStartup.value,
+                        onCheckedChange = {
+                            autoRefreshHomeOnStartup.value = it
+                            settings.putBoolean(AUTO_REFRESH_HOME_ON_STARTUP_PREFERENCE_KEY, it)
+                        },
+                    )
                 }
             }
 
@@ -139,16 +155,7 @@ fun MiuixContentFilterSettingsScreen(
             item { SmallTitle(text = "内容过滤") }
             item {
                 Card(Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
-                    val enableQualityFilter = remember { mutableStateOf(settings.getBoolean("enableQualityFilter", true)) }
-                    SwitchPreference(
-                        title = "启用质量过滤规则",
-                        summary = "根据赞同数、关注数等指标过滤低质量内容",
-                        checked = enableQualityFilter.value,
-                        onCheckedChange = {
-                            enableQualityFilter.value = it
-                            settings.putBoolean("enableQualityFilter", it)
-                        },
-                    )
+                    QualityFilterModeSpinner(settings)
 
                     val enableContentFilter = remember { mutableStateOf(settings.getBoolean("enableContentFilter", true)) }
                     SwitchPreference(
@@ -318,6 +325,7 @@ fun MiuixContentFilterSettingsScreen(
     }
 
     WindowBottomSheet(
+        cornerRadius = miuixSheetCornerRadius(),
         show = showStatsSheet.value,
         onDismissRequest = { showStatsSheet.value = false },
         title = "过滤统计详情",
@@ -365,6 +373,7 @@ fun MiuixContentFilterSettingsScreen(
     }
 
     WindowBottomSheet(
+        cornerRadius = miuixSheetCornerRadius(),
         show = showThresholdSheet.value,
         onDismissRequest = { showThresholdSheet.value = false },
         title = "设置主题屏蔽阈值",
@@ -401,6 +410,44 @@ fun MiuixContentFilterSettingsScreen(
             }
         }
     }
+}
+
+/**
+ * 质量屏蔽的三态选择。
+ *
+ * 过滤链路读的是 [QUALITY_FILTER_MODE_PREFERENCE_KEY]（OFF/RULES/HIDE），不是早期的
+ * `enableQualityFilter` 布尔值；后者已经没有任何读取方，写了也不会生效。
+ */
+@Composable
+private fun QualityFilterModeSpinner(settings: SettingsStore) {
+    val options = remember {
+        listOf(
+            QualityFilterMode.OFF to "不屏蔽",
+            QualityFilterMode.RULES to "屏蔽规则",
+            QualityFilterMode.HIDE to "隐藏",
+        )
+    }
+    val currentMode = remember {
+        mutableStateOf(
+            QualityFilterMode.entries.find {
+                it.name == settings.getString(QUALITY_FILTER_MODE_PREFERENCE_KEY, QualityFilterMode.RULES.name)
+            } ?: QualityFilterMode.RULES,
+        )
+    }
+    val items = remember(options) { options.map { DropdownItem(title = it.second) } }
+    val idx = remember(currentMode.value) { options.indexOfFirst { it.first == currentMode.value }.coerceAtLeast(0) }
+
+    WindowSpinnerPreference(
+        title = "质量屏蔽",
+        summary = "根据赞同数、关注数等指标处理低质量内容",
+        items = items,
+        selectedIndex = idx,
+        onSelectedIndexChange = { newIdx ->
+            val mode = options[newIdx].first
+            currentMode.value = mode
+            settings.putString(QUALITY_FILTER_MODE_PREFERENCE_KEY, mode.name)
+        },
+    )
 }
 
 @Composable

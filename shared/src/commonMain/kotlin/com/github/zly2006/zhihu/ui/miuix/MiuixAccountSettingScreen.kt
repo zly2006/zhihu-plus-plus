@@ -36,7 +36,11 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SwitchAccount
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,7 +63,10 @@ import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.AccountSettingsAccountState
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixConfirmDialog
 import com.github.zly2006.zhihu.ui.rememberAccountSettingsAccountState
+import com.github.zly2006.zhihu.ui.subscreens.SystemUpdateState
+import com.github.zly2006.zhihu.ui.subscreens.rememberSystemUpdateState
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
@@ -88,6 +95,8 @@ fun MiuixAccountSettingScreen(
     val accountState by rememberAccountSettingsAccountState()
     val data = testAccountData ?: accountState
     val userMessages = rememberUserMessageSink()
+    val updateState by rememberSystemUpdateState().collectAsState()
+    var showLogoutDialog by remember { mutableStateOf(false) }
     val blurEnabled = rememberSettingBoolean("blurEnabled", true, settings)
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
@@ -100,6 +109,17 @@ fun MiuixAccountSettingScreen(
             } catch (e: Exception) {
                 userMessages.showShortMessage("获取用户信息失败")
             }
+        }
+    }
+
+    LaunchedEffect(updateState) {
+        when (val state = updateState) {
+            is SystemUpdateState.UpdateAvailable ->
+                userMessages.showShortMessage(
+                    "发现新${if (state.isNightly) "Nightly版本" else "正式版本"} ${state.version}",
+                )
+            is SystemUpdateState.Error -> userMessages.showLongMessage("检查更新失败: ${state.message}")
+            else -> Unit
         }
     }
 
@@ -281,7 +301,7 @@ fun MiuixAccountSettingScreen(
                     ) {
                         ArrowPreference(
                             title = "退出登录",
-                            onClick = { accountStore.clear() },
+                            onClick = { showLogoutDialog = true },
                             startAction = { Icon(Icons.AutoMirrored.Filled.Logout, null, tint = MiuixTheme.colorScheme.error) },
                         )
                     }
@@ -291,4 +311,20 @@ fun MiuixAccountSettingScreen(
             item { Spacer(Modifier.height(24.dp)) }
         }
     }
+
+    MiuixConfirmDialog(
+        show = showLogoutDialog,
+        title = "退出登录",
+        summary = if (accountStore.accounts.size > 1) {
+            "确定退出并移除当前登录账号吗？退出后会自动切换到另一个已保存账号。"
+        } else {
+            "确定要退出登录吗？"
+        },
+        confirmText = "退出",
+        onConfirm = {
+            accountStore.clear()
+            showLogoutDialog = false
+        },
+        onDismiss = { showLogoutDialog = false },
+    )
 }

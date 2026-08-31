@@ -145,8 +145,11 @@ import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixAppearanceSettingsScree
 import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixBlockedFeedHistoryScreen
 import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixContentFilterSettingsScreen
 import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixDeveloperSettingsScreen
+import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixIdentityManagementScreen
 import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixNotificationSettingsScreen
 import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixOpenSourceLicensesScreen
+import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixReadingSettingsScreen
+import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixSettingsSearchScreen
 import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixSystemAndUpdateSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.AboutScreen
 import com.github.zly2006.zhihu.ui.subscreens.AppearanceSettingsScreen
@@ -797,15 +800,26 @@ fun ZhihuMain(
                             AboutScreen(innerPadding)
                         }
                     }
-                    // 上游新增的三个设置页暂无 miuix 版本，两种风格共用 M3 实现。
                     entry<Account.IdentityManagement> {
-                        IdentityManagementScreen()
+                        if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                            MiuixIdentityManagementScreen()
+                        } else {
+                            IdentityManagementScreen()
+                        }
                     }
                     entry<Account.ReadingSettings> {
-                        ReadingSettingsScreen()
+                        if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                            MiuixReadingSettingsScreen()
+                        } else {
+                            ReadingSettingsScreen()
+                        }
                     }
                     entry<Account.SettingsSearch> {
-                        SettingsSearchScreen()
+                        if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                            MiuixSettingsSearchScreen()
+                        } else {
+                            SettingsSearchScreen()
+                        }
                     }
                     entry<Account.OpenSourceLicenses> {
                         if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {

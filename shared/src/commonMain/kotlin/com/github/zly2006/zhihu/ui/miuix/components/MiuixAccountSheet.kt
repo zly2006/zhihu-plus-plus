@@ -81,6 +81,7 @@ fun MiuixAccountSheet(
     val data = testAccountData ?: accountState
 
     WindowBottomSheet(
+        cornerRadius = miuixSheetCornerRadius(),
         show = true,
         onDismissRequest = onDismiss,
         title = "账号设置",

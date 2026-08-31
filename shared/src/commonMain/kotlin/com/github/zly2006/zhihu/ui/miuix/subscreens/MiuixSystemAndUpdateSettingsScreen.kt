@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.github.zly2006.zhihu.data.AIGC_MARKING_ENABLED_PREFERENCE_KEY
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
@@ -55,6 +56,7 @@ import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixExpandableArrowPreference
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import com.github.zly2006.zhihu.ui.subscreens.CONTINUOUS_USAGE_REMINDER_INTERVAL_MINUTES_KEY
+import com.github.zly2006.zhihu.ui.subscreens.MACOS_QUIT_ON_WINDOW_CLOSE_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.SystemUpdateState
 import com.github.zly2006.zhihu.ui.subscreens.rememberDownloadedSystemUpdateInstaller
 import com.github.zly2006.zhihu.ui.subscreens.rememberSystemUpdateChecker
@@ -386,6 +388,26 @@ fun MiuixSystemAndUpdateSettingsScreen() {
                             settings.putInt(CONTINUOUS_USAGE_REMINDER_INTERVAL_MINUTES_KEY, minutes)
                         },
                     )
+                }
+            }
+
+            if (platformName == "macOS") {
+                item { SmallTitle(text = "macOS") }
+                item {
+                    Card(Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
+                        var quitOnWindowClose by remember {
+                            mutableStateOf(settings.getBoolean(MACOS_QUIT_ON_WINDOW_CLOSE_PREFERENCE_KEY, false))
+                        }
+                        SwitchPreference(
+                            checked = quitOnWindowClose,
+                            onCheckedChange = {
+                                quitOnWindowClose = it
+                                settings.putBoolean(MACOS_QUIT_ON_WINDOW_CLOSE_PREFERENCE_KEY, it)
+                            },
+                            title = "关闭窗口时退出应用",
+                            summary = "关闭最后一个窗口时同时退出 macOS 应用；默认关闭",
+                        )
+                    }
                 }
             }
 

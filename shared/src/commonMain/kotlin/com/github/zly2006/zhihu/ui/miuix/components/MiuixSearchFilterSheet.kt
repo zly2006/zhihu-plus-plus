@@ -39,7 +39,7 @@ fun MiuixSearchFilterSheet(
     viewModel: SearchViewModel,
     environment: PaginationEnvironment,
 ) {
-    WindowBottomSheet(show = show, onDismissRequest = onDismiss, title = "筛选搜索结果") {
+    WindowBottomSheet(cornerRadius = miuixSheetCornerRadius(), show = show, onDismissRequest = onDismiss, title = "筛选搜索结果") {
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
             FilterSection("排序", SearchSortOption.entries, { it.label }, viewModel.filters.sort) {
                 viewModel.updateFilters(environment, viewModel.filters.copy(sort = it))

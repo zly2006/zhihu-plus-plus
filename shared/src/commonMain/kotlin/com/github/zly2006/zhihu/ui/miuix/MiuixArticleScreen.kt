@@ -120,6 +120,7 @@ import com.github.zly2006.zhihu.ui.miuix.components.MiuixExportSheet
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixSheetActionRow
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixVotersSheet
+import com.github.zly2006.zhihu.ui.miuix.components.miuixSheetCornerRadius
 import com.github.zly2006.zhihu.ui.rememberArticleBrowserOpener
 import com.github.zly2006.zhihu.ui.rememberArticleSpeechToggler
 import com.github.zly2006.zhihu.ui.rememberArticleTtsState
@@ -765,6 +766,7 @@ fun MiuixArticleScreen(
 
     // 收藏夹选择（始终留在树里，show 用 MutableState）。
     WindowBottomSheet(
+        cornerRadius = miuixSheetCornerRadius(),
         show = showCollections.value,
         onDismissRequest = { showCollections.value = false },
         title = "收藏到收藏夹",
@@ -824,6 +826,7 @@ fun MiuixArticleScreen(
 
     // 更多操作菜单（对齐 M3 ArticleActionsMenu）：朗读 / 总结 / 复制链接 / 导出 / 电脑打开。
     WindowBottomSheet(
+        cornerRadius = miuixSheetCornerRadius(),
         show = showActionsMenu,
         onDismissRequest = { showActionsMenu = false },
         title = "更多操作",
@@ -872,6 +875,7 @@ fun MiuixArticleScreen(
 
     // AI 总结弹层（对齐 M3 ArticleSummarySheet）。
     WindowBottomSheet(
+        cornerRadius = miuixSheetCornerRadius(),
         show = showSummarySheet,
         onDismissRequest = {
             showSummarySheet = false
@@ -906,6 +910,7 @@ fun MiuixArticleScreen(
 
     // 标记疑似 AIGC 弹层（对齐 M3 AigcFlagSheet）。
     WindowBottomSheet(
+        cornerRadius = miuixSheetCornerRadius(),
         show = showAigcSheet,
         onDismissRequest = { showAigcSheet = false },
         title = "标记疑似 AIGC",
@@ -981,6 +986,7 @@ fun MiuixArticleScreen(
 
     // 双击回答动作配置（对齐 M3）。
     WindowBottomSheet(
+        cornerRadius = miuixSheetCornerRadius(),
         show = showDoubleTapActionDialog,
         onDismissRequest = { showDoubleTapActionDialog = false },
         title = "设置双击回答动作",

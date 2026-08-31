@@ -72,6 +72,7 @@ import com.github.zly2006.zhihu.theme.AppTokens
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.subscreens.DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY
 import com.github.zly2006.zhihu.util.parseEmphasizedHtmlTextWithTheme
+import com.github.zly2006.zhihu.viewmodel.QUALITY_FILTER_MODE_PREFERENCE_KEY
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -471,7 +472,11 @@ private fun MiuixFeedCardMenuBox(
         topics.forEach { topic -> add("屏蔽「${topic.name}」" to { onBlockTopic!!(topic.id, topic.name) }) }
         add("外观设置" to { navigator.onNavigate(Account.AppearanceSettings()) })
         if (item.isFiltered) {
-            add("不再屏蔽低赞内容" to { navigator.onNavigate(Account.RecommendSettings("enableQualityFilter")) })
+            add(
+                "不再屏蔽低赞内容" to {
+                    navigator.onNavigate(Account.RecommendSettings(QUALITY_FILTER_MODE_PREFERENCE_KEY))
+                },
+            )
         }
     }
 

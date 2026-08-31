@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.markdown.isTiqianMarkdownRendererAvailable
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Daily
 import com.github.zly2006.zhihu.navigation.Follow
@@ -52,6 +53,7 @@ import com.github.zly2006.zhihu.navigation.HotList
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.MyCollections
 import com.github.zly2006.zhihu.navigation.OnlineHistory
+import com.github.zly2006.zhihu.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.ThemeManager
@@ -63,13 +65,26 @@ import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.AnswerDoubleTapAction
+import com.github.zly2006.zhihu.ui.components.ANSWER_SWITCH_SENSITIVITY_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.components.DEFAULT_ANSWER_SWITCH_SENSITIVITY
+import com.github.zly2006.zhihu.ui.components.DISABLE_BOTTOM_SHEET_ROUNDED_CORNERS_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.components.MAX_ANSWER_SWITCH_SENSITIVITY
+import com.github.zly2006.zhihu.ui.components.MIN_ANSWER_SWITCH_SENSITIVITY
+import com.github.zly2006.zhihu.ui.components.normalizedAnswerSwitchSensitivity
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixColorPickerSheet
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixExpandableArrowPreference
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixSliderRow
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixWebViewCustomFontSettings
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEM_ORDER_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.subscreens.COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_FAB_OPACITY
 import com.github.zly2006.zhihu.ui.subscreens.DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.subscreens.DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.subscreens.DUO3_TIQIAN_MATH_FONT_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.subscreens.PREF_BLOCK_SPACING
+import com.github.zly2006.zhihu.ui.subscreens.PREF_FAB_OPACITY
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
 import com.github.zly2006.zhihu.ui.subscreens.START_DESTINATION_PREFERENCE_KEY
@@ -87,7 +102,6 @@ import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
-import top.yukonga.miuix.kmp.basic.Slider
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TopAppBar
@@ -97,6 +111,7 @@ import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.preference.WindowSpinnerPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
+import kotlin.math.roundToInt
 
 private val bottomBarItemLabels = mapOf(
     Home.name to "主页",
@@ -118,6 +133,7 @@ fun MiuixAppearanceSettingsScreen(
     val settings = rememberSettingsStore()
     val userMessages = rememberUserMessageSink()
     val navigator = LocalNavigator.current
+    val openUrl = rememberExternalUrlOpener()
     val blurEnabled = remember { mutableStateOf(settings.getBoolean("blurEnabled", true)) }
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled.value)
     val scrollBehavior = MiuixScrollBehavior()
@@ -130,12 +146,19 @@ fun MiuixAppearanceSettingsScreen(
     val isDark = ThemeManager.isDarkTheme()
     val bgColor = ThemeManager.getBackgroundColor()
     val luotianYiColor = remember { mutableStateOf(Color(settings.getInt("luotianyi_color", 0xff_66CCFF.toInt()))) }
+    val disableSheetRoundedCorners = remember {
+        mutableStateOf(settings.getBoolean(DISABLE_BOTTOM_SHEET_ROUNDED_CORNERS_PREFERENCE_KEY, false))
+    }
+    var fabOpacity by remember { mutableIntStateOf(settings.getInt(PREF_FAB_OPACITY, DEFAULT_FAB_OPACITY)) }
+    var showFabOpacitySlider by remember { mutableStateOf(false) }
 
     // 阅读
     var fontSize by remember { mutableIntStateOf(settings.getInt(PREF_FONT_SIZE, 100)) }
     var lineHeight by remember { mutableIntStateOf(settings.getInt(PREF_LINE_HEIGHT, 160)) }
+    var blockSpacing by remember { mutableIntStateOf(settings.getInt(PREF_BLOCK_SPACING, 100)) }
     var showFontSlider by remember { mutableStateOf(false) }
     var showLineSlider by remember { mutableStateOf(false) }
+    var showBlockSpacingSlider by remember { mutableStateOf(false) }
     val showWebViewFontSettings = remember { mutableStateOf(false) }
 
     // 信息流
@@ -153,6 +176,14 @@ fun MiuixAppearanceSettingsScreen(
     val autoHideSkipBtn = remember { mutableStateOf(settings.getBoolean("autoHideSkipAnswerButton", true)) }
     val pinAnswerDate = remember { mutableStateOf(settings.getBoolean("pinAnswerDate", false)) }
     val answerSwitchMode = remember { mutableStateOf(settings.getString("answerSwitchMode", "vertical")) }
+    var answerSwitchSensitivity by remember {
+        mutableStateOf(
+            normalizedAnswerSwitchSensitivity(
+                settings.getFloat(ANSWER_SWITCH_SENSITIVITY_PREFERENCE_KEY, DEFAULT_ANSWER_SWITCH_SENSITIVITY),
+            ),
+        )
+    }
+    var showAnswerSwitchSensitivitySlider by remember { mutableStateOf(false) }
     val answerDoubleTap = remember {
         mutableStateOf(
             AnswerDoubleTapAction.fromPreference(
@@ -189,6 +220,9 @@ fun MiuixAppearanceSettingsScreen(
             ),
         )
     }
+    val collectionDirectBrowse = remember {
+        mutableStateOf(settings.getBoolean(COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY, false))
+    }
     val tapToRefresh = remember { mutableStateOf(settings.getBoolean("bottomBarTapScrollToTop", true)) }
     val autoHideTopBar = remember { mutableStateOf(settings.getBoolean("autoHideTopBar", false)) }
     val autoHideNavBar = remember { mutableStateOf(settings.getBoolean("autoHideBottomBar", false)) }
@@ -205,12 +239,13 @@ fun MiuixAppearanceSettingsScreen(
     // 123Duo3
     val duo3All = remember { mutableStateOf(settings.getBoolean("duo3_all", false)) }
     val duo3HomeAccount = remember { mutableStateOf(settings.getBoolean("duo3_home_account", false)) }
-    val duo3NavStyle = remember { mutableStateOf(settings.getBoolean("duo3_nav_style", false)) }
     val duo3CardAppearance = remember { mutableStateOf(settings.getBoolean("duo3_card_appearance", false)) }
     val duo3CardLayout = remember { mutableStateOf(settings.getBoolean("duo3_card_layout", false)) }
     val duo3CardLargeTitle = remember { mutableStateOf(settings.getBoolean(DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY, true)) }
     val duo3ArticleBar = remember { mutableStateOf(settings.getBoolean("duo3_article_bar", false)) }
     val duo3ArticleActions = remember { mutableStateOf(settings.getBoolean("duo3_article_actions", false)) }
+    val duo3TiqianMarkdown = remember { mutableStateOf(settings.getBoolean(DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY, false)) }
+    val duo3TiqianMathFont = remember { mutableStateOf(settings.getString(DUO3_TIQIAN_MATH_FONT_PREFERENCE_KEY, "lete")) }
 
     // Color picker state (MutableState ref for WindowBottomSheet pattern)
     val showColorPicker = remember { mutableStateOf(false) }
@@ -334,6 +369,26 @@ fun MiuixAppearanceSettingsScreen(
                         onClick = { showBgPicker.value = true },
                         endActions = { ColorCircle(bgColor) },
                     )
+                    SwitchPreference(
+                        checked = disableSheetRoundedCorners.value,
+                        onCheckedChange = {
+                            disableSheetRoundedCorners.value = it
+                            settings.putBoolean(DISABLE_BOTTOM_SHEET_ROUNDED_CORNERS_PREFERENCE_KEY, it)
+                        },
+                        title = "禁用 popup 圆角",
+                        summary = "开启后，评论等 popup 顶部不再显示圆角",
+                    )
+                    MiuixExpandableArrowPreference(
+                        title = "悬浮按钮透明度",
+                        summary = "控制所有悬浮按钮的透明度 ($fabOpacity%)",
+                        expanded = showFabOpacitySlider,
+                        onExpandedChange = { showFabOpacitySlider = !showFabOpacitySlider },
+                    ) {
+                        MiuixSliderRow(fabOpacity.toFloat(), 10f..100f, 17) {
+                            fabOpacity = it.roundToInt()
+                            settings.putInt(PREF_FAB_OPACITY, fabOpacity)
+                        }
+                    }
                 }
             }
 
@@ -347,9 +402,9 @@ fun MiuixAppearanceSettingsScreen(
                         expanded = showFontSlider,
                         onExpandedChange = { showFontSlider = !showFontSlider },
                     ) {
-                        SliderRow(fontSize.toFloat(), 50f..200f, 14) {
-                            fontSize = it
-                            settings.putInt(PREF_FONT_SIZE, it)
+                        MiuixSliderRow(fontSize.toFloat(), 50f..200f, 14) {
+                            fontSize = it.roundToInt()
+                            settings.putInt(PREF_FONT_SIZE, fontSize)
                         }
                     }
                     MiuixExpandableArrowPreference(
@@ -358,9 +413,20 @@ fun MiuixAppearanceSettingsScreen(
                         expanded = showLineSlider,
                         onExpandedChange = { showLineSlider = !showLineSlider },
                     ) {
-                        SliderRow(lineHeight.toFloat(), 100f..300f, 19) {
-                            lineHeight = it
-                            settings.putInt(PREF_LINE_HEIGHT, it)
+                        MiuixSliderRow(lineHeight.toFloat(), 100f..300f, 19) {
+                            lineHeight = it.roundToInt()
+                            settings.putInt(PREF_LINE_HEIGHT, lineHeight)
+                        }
+                    }
+                    MiuixExpandableArrowPreference(
+                        title = "段间距",
+                        summary = "调整正文段落和块级内容间距 ($blockSpacing%)",
+                        expanded = showBlockSpacingSlider,
+                        onExpandedChange = { showBlockSpacingSlider = !showBlockSpacingSlider },
+                    ) {
+                        MiuixSliderRow(blockSpacing.toFloat(), 0f..300f, 29) {
+                            blockSpacing = it.roundToInt()
+                            settings.putInt(PREF_BLOCK_SPACING, blockSpacing)
                         }
                     }
                 }
@@ -490,6 +556,26 @@ fun MiuixAppearanceSettingsScreen(
                         answerSwitchMode.value = it
                         settings.putString("answerSwitchMode", it)
                     }
+                    if (answerSwitchMode.value != "off") {
+                        MiuixExpandableArrowPreference(
+                            title = "回答切换灵敏度",
+                            summary = "当前 ${(answerSwitchSensitivity * 10).roundToInt() / 10f}x，" +
+                                "数值越高滑动越短；同时作用于上下和左右切换",
+                            expanded = showAnswerSwitchSensitivitySlider,
+                            onExpandedChange = {
+                                showAnswerSwitchSensitivitySlider = !showAnswerSwitchSensitivitySlider
+                            },
+                        ) {
+                            MiuixSliderRow(
+                                answerSwitchSensitivity,
+                                MIN_ANSWER_SWITCH_SENSITIVITY..MAX_ANSWER_SWITCH_SENSITIVITY,
+                                24,
+                            ) {
+                                answerSwitchSensitivity = (it * 10).roundToInt() / 10f
+                                settings.putFloat(ANSWER_SWITCH_SENSITIVITY_PREFERENCE_KEY, answerSwitchSensitivity)
+                            }
+                        }
+                    }
                     AnswerDoubleTapSpinner(answerDoubleTap.value) { action ->
                         answerDoubleTap.value = action
                         settings.putString(ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY, action.preferenceValue)
@@ -527,6 +613,15 @@ fun MiuixAppearanceSettingsScreen(
                             }
                         },
                         onMove = ::moveBottomBarItem,
+                    )
+                    SwitchPreference(
+                        checked = collectionDirectBrowse.value,
+                        onCheckedChange = {
+                            collectionDirectBrowse.value = it
+                            settings.putBoolean(COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY, it)
+                        },
+                        title = "收藏直达浏览（测试）",
+                        summary = "测试功能，请谨慎开启。开启后支持收藏夹直览、顺序模式与随机模式，欢迎提交 Issue",
                     )
                     SwitchPreference(
                         checked = tapToRefresh.value,
@@ -629,13 +724,16 @@ fun MiuixAppearanceSettingsScreen(
                         onCheckedChange = { all ->
                             duo3All.value = all
                             settings.putBoolean("duo3_all", all)
-                            listOf(duo3HomeAccount, duo3NavStyle, duo3CardAppearance, duo3CardLayout, duo3ArticleBar, duo3ArticleActions).forEach { it.value = all }
+                            listOf(duo3HomeAccount, duo3CardAppearance, duo3CardLayout, duo3ArticleBar, duo3ArticleActions).forEach { it.value = all }
                             settings.putBoolean("duo3_home_account", all)
-                            settings.putBoolean("duo3_nav_style", all)
                             settings.putBoolean("duo3_card_appearance", all)
                             settings.putBoolean("duo3_card_layout", all)
                             settings.putBoolean("duo3_article_bar", all)
                             settings.putBoolean("duo3_article_actions", all)
+                            if (isTiqianMarkdownRendererAvailable) {
+                                duo3TiqianMarkdown.value = all
+                                settings.putBoolean(DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY, all)
+                            }
                             if (all) {
                                 showRefreshFab.value = false
                                 buttonSkipAnswer.value = false
@@ -667,10 +765,6 @@ fun MiuixAppearanceSettingsScreen(
                         title = "主页：账号入口迁移至顶部头像",
                         summary = "搜索栏样式变更，点击头像弹出账号与设置",
                     )
-                    SwitchPreference(checked = duo3NavStyle.value, onCheckedChange = {
-                        duo3NavStyle.value = it
-                        settings.putBoolean("duo3_nav_style", it)
-                    }, title = "底部导航栏：改为 Material 样式", summary = "移除自定义样式，更改关注图标")
                     SwitchPreference(checked = duo3CardAppearance.value, onCheckedChange = {
                         duo3CardAppearance.value = it
                         settings.putBoolean("duo3_card_appearance", it)
@@ -695,6 +789,34 @@ fun MiuixAppearanceSettingsScreen(
                             settings.putBoolean("duo3_article_actions", it)
                         }, title = "文章阅读页：更改操作栏样式", summary = "底栏操作用药丸包裹")
                     }
+                    if (isTiqianMarkdownRendererAvailable) {
+                        SwitchPreference(
+                            checked = duo3TiqianMarkdown.value,
+                            onCheckedChange = {
+                                duo3TiqianMarkdown.value = it
+                                settings.putBoolean(DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY, it)
+                            },
+                            title = "正文：使用「提椠」Markdown 渲染器",
+                            summary = "段落两端对齐，改进中西混排间距、代码、表格、公式与脚注样式。" +
+                                "作用于文章、想法与问题详情。实验功能",
+                        )
+                        if (duo3TiqianMarkdown.value) {
+                            SwitchPreference(
+                                checked = duo3TiqianMathFont.value == "lete",
+                                onCheckedChange = {
+                                    duo3TiqianMathFont.value = if (it) "lete" else "stix"
+                                    settings.putString(DUO3_TIQIAN_MATH_FONT_PREFERENCE_KEY, duo3TiqianMathFont.value)
+                                },
+                                title = "正文：使用非衬线数学字体",
+                                summary = "默认公式使用非衬线的 Lete Sans Math；关闭后改用衬线的 STIX Two Math",
+                            )
+                        }
+                    }
+                    ArrowPreference(
+                        title = "提交 Issue",
+                        summary = "以上设置项可能随时更改或并入主线，欢迎反馈 UI/UX 问题",
+                        onClick = { openUrl("https://github.com/zly2006/zhihu-plus-plus/issues") },
+                    )
                 }
             }
         }
@@ -746,22 +868,6 @@ private fun ColorCircle(color: Color) {
             .background(color)
             .border(1.dp, MiuixTheme.colorScheme.onSurfaceVariantSummary, CircleShape),
     )
-}
-
-@Composable
-private fun SliderRow(value: Float, range: ClosedFloatingPointRange<Float>, steps: Int, onValueChange: (Int) -> Unit) {
-    var sliderValue by remember(value) { mutableStateOf(value) }
-    Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Slider(
-            value = sliderValue,
-            onValueChange = {
-                sliderValue = it
-                onValueChange(it.toInt())
-            },
-            valueRange = range,
-            modifier = Modifier.weight(1f),
-        )
-    }
 }
 
 @Composable

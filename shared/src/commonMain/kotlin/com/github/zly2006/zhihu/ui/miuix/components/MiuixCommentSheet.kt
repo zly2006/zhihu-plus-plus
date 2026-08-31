@@ -43,6 +43,7 @@ fun MiuixCommentSheet(
     val childTarget = activeChildComment?.clickTarget
 
     WindowBottomSheet(
+        cornerRadius = miuixSheetCornerRadius(),
         show = showComments,
         title = "评论",
         // 评论列表自带 12dp 左右内边距；去掉弹层默认的 24dp 横向 insideMargin，
@@ -62,6 +63,7 @@ fun MiuixCommentSheet(
     }
 
     WindowBottomSheet(
+        cornerRadius = miuixSheetCornerRadius(),
         show = showComments && activeChildComment != null && childTarget != null,
         title = "回复",
         insideMargin = DpSize(0.dp, 0.dp),

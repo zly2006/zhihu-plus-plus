@@ -29,7 +29,6 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.Composable
@@ -92,6 +91,7 @@ import top.yukonga.miuix.kmp.basic.PullToRefresh
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.TabRow
+import top.yukonga.miuix.kmp.basic.TabRowWithContour
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
@@ -99,80 +99,6 @@ import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-fun MiuixFollowScreen(
-    scrollToTopTrigger: Int = 0,
-    innerPadding: PaddingValues = PaddingValues(0.dp),
-    onTestRecommendRefreshClick: (() -> Unit)? = null,
-    onTestRecommendLoadMore: (() -> Unit)? = null,
-    onTestDynamicRefreshClick: (() -> Unit)? = null,
-    onTestDynamicLoadMore: (() -> Unit)? = null,
-) {
-    val viewModel = viewModel<FollowScreenData>()
-    val pagerState = rememberPagerState(pageCount = { 2 })
-    val coroutineScope = rememberCoroutineScope()
-    val settings = rememberSettingsStore()
-    // 模糊开关只在这里用一次：blurEnabled=false 时 backdrop 为 null，
-    // 之后 getMiuixAppBarColor()/installerMiuixBlurEffect() 自动按 null 处理，调用处不再判 blurEnabled
-    val blurEnabled = rememberSettingBoolean("blurEnabled", true, settings)
-    val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
-    val scrollBehavior = MiuixScrollBehavior()
-
-    LaunchedEffect(pagerState.currentPage) { viewModel.selectedTabIndex = pagerState.currentPage }
-    LaunchedEffect(viewModel.selectedTabIndex) {
-        if (pagerState.currentPage != viewModel.selectedTabIndex) pagerState.animateScrollToPage(viewModel.selectedTabIndex)
-    }
-
-    Scaffold(
-        topBar = {
-            Column(
-                modifier = Modifier
-                    .installerMiuixBlurEffect(backdrop),
-            ) {
-                TopAppBar(
-                    color = backdrop.getMiuixAppBarColor(),
-                    title = "关注",
-                    scrollBehavior = scrollBehavior,
-                )
-                MiuixFollowTabRow(
-                    selectedTabIndex = viewModel.selectedTabIndex,
-                    onTabSelected = { index ->
-                        viewModel.selectedTabIndex = index
-                        coroutineScope.launch { pagerState.animateScrollToPage(index) }
-                    },
-                )
-            }
-        },
-    ) { padding ->
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier.fillMaxSize().testTag(FOLLOW_SCREEN_PAGER_TAG),
-        ) { page ->
-            when (page) {
-                0 -> MiuixFollowRecommendScreen(
-                    scrollToTopTrigger = scrollToTopTrigger,
-                    isActive = pagerState.currentPage == 0,
-                    backdrop = backdrop,
-                    scrollBehavior = scrollBehavior,
-                    contentTopPadding = padding.calculateTopPadding(),
-                    onTestRefreshClick = onTestRecommendRefreshClick,
-                    onTestLoadMore = onTestRecommendLoadMore,
-                )
-                1 -> MiuixFollowDynamicScreen(
-                    scrollToTopTrigger = scrollToTopTrigger,
-                    isActive = pagerState.currentPage == 1,
-                    backdrop = backdrop,
-                    scrollBehavior = scrollBehavior,
-                    contentTopPadding = padding.calculateTopPadding(),
-                    onTestRefreshClick = onTestDynamicRefreshClick,
-                    onTestLoadMore = onTestDynamicLoadMore,
-                )
-            }
-        }
-    }
-}
 
 /**
  * 关注页的 miuix 版本，对标 M3 [com.github.zly2006.zhihu.ui.FollowScreen]。
@@ -258,23 +184,24 @@ fun MiuixFollowTopLevelPage(
     }
 }
 
+/**
+ * 「推荐 / 动态」分段控件。
+ *
+ * 用 [TabRowWithContour] 而不是 [TabRow] 外面手工套一个圆角 Box：后者的选中块会一直画到容器边缘，
+ * 圆角半径又和外框不一致，导致外框四角的描边被选中块盖住。带 contour 的版本自带 5dp 内缩，
+ * 外框圆角 = 选中块圆角 + 内缩量，两者同心。
+ */
 @Composable
 private fun MiuixFollowTabRow(selectedTabIndex: Int, onTabSelected: (Int) -> Unit, modifier: Modifier = Modifier) {
-    Box(
+    TabRowWithContour(
+        tabs = listOf("推荐", "动态"),
+        selectedTabIndex = selectedTabIndex,
+        onTabSelected = onTabSelected,
         modifier = modifier
             .padding(horizontal = 12.dp)
             .padding(bottom = 8.dp)
-            .clip(RoundedCornerShape(18.dp))
-            .background(MiuixTheme.colorScheme.surfaceContainerHigh)
             .testTag(FOLLOW_SCREEN_TAB_ROW_TAG),
-    ) {
-        TabRow(
-            tabs = listOf("推荐", "动态"),
-            selectedTabIndex = selectedTabIndex,
-            onTabSelected = onTabSelected,
-            modifier = Modifier.fillMaxWidth(),
-        )
-    }
+    )
 }
 
 @Composable
@@ -354,8 +281,6 @@ fun MiuixFollowRecommendScreen(
     backdrop: LayerBackdrop? = null,
     scrollBehavior: ScrollBehavior? = null,
     contentTopPadding: Dp = 0.dp,
-    onTestRefreshClick: (() -> Unit)? = null,
-    onTestLoadMore: (() -> Unit)? = null,
 ) {
     val viewModel: FollowRecommendViewModel = viewModel { FollowRecommendViewModel() }
     val environment = rememberPaginationEnvironment(allowGuestAccess = viewModel.allowGuestAccess)
@@ -415,7 +340,7 @@ fun MiuixFollowRecommendScreen(
                         .testTag(FOLLOW_RECOMMEND_LIST_TAG),
                     contentPadding = PaddingValues(top = contentTopPadding + 6.dp),
                     topContent = { item { MiuixFollowingUsersRow() } },
-                    onLoadMore = { onTestLoadMore?.invoke() ?: viewModel.loadMore(environment) },
+                    onLoadMore = { viewModel.loadMore(environment) },
                 ) { item ->
                     MiuixFeedCard(
                         item = item,
@@ -438,7 +363,7 @@ fun MiuixFollowRecommendScreen(
             if (showRefreshFab) {
                 DraggableRefreshButton(
                     modifier = Modifier.testTag(FOLLOW_RECOMMEND_REFRESH_BUTTON_TAG),
-                    onClick = { onTestRefreshClick?.invoke() ?: viewModel.refresh(environment) },
+                    onClick = { viewModel.refresh(environment) },
                 ) {
                     if (viewModel.isLoading) {
                         CircularProgressIndicator(modifier = Modifier.size(36.dp))
@@ -470,8 +395,6 @@ fun MiuixFollowDynamicScreen(
     backdrop: LayerBackdrop? = null,
     scrollBehavior: ScrollBehavior? = null,
     contentTopPadding: Dp = 0.dp,
-    onTestRefreshClick: (() -> Unit)? = null,
-    onTestLoadMore: (() -> Unit)? = null,
 ) {
     val viewModel: FollowViewModel = viewModel { FollowViewModel() }
     val environment = rememberPaginationEnvironment(allowGuestAccess = viewModel.allowGuestAccess)
@@ -531,7 +454,7 @@ fun MiuixFollowDynamicScreen(
                         .testTag(FOLLOW_DYNAMIC_LIST_TAG),
                     contentPadding = PaddingValues(top = contentTopPadding + 6.dp),
                     topContent = { item { Spacer(modifier = Modifier.height(8.dp)) } },
-                    onLoadMore = { onTestLoadMore?.invoke() ?: viewModel.loadMore(environment) },
+                    onLoadMore = { viewModel.loadMore(environment) },
                 ) { item ->
                     MiuixFeedCard(
                         item = item,
@@ -557,7 +480,7 @@ fun MiuixFollowDynamicScreen(
             if (showRefreshFab) {
                 DraggableRefreshButton(
                     modifier = Modifier.testTag(FOLLOW_DYNAMIC_REFRESH_BUTTON_TAG),
-                    onClick = { onTestRefreshClick?.invoke() ?: viewModel.refresh(environment) },
+                    onClick = { viewModel.refresh(environment) },
                 ) {
                     if (viewModel.isLoading) {
                         CircularProgressIndicator(modifier = Modifier.size(36.dp))

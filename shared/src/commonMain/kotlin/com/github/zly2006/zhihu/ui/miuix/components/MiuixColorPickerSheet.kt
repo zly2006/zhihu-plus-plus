@@ -58,6 +58,7 @@ fun MiuixColorPickerSheet(
     }
 
     WindowBottomSheet(
+        cornerRadius = miuixSheetCornerRadius(),
         show = show.value,
         onDismissRequest = { show.value = false },
         title = title,

@@ -41,6 +41,7 @@ fun MiuixShareSheet(
     val navigator = LocalNavigator.current
     val executeShareAction = rememberShareActionExecutor()
     WindowBottomSheet(
+        cornerRadius = miuixSheetCornerRadius(),
         show = showDialog,
         title = "分享",
         insideMargin = DpSize(16.dp, 0.dp),

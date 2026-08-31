@@ -19,12 +19,16 @@ package com.github.zly2006.zhihu.account
 
 import com.github.zly2006.zhihu.data.ZhihuJson
 import io.ktor.client.request.accept
+import io.ktor.client.request.get
 import io.ktor.client.request.header
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.contentType
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.jsonObject
@@ -133,3 +137,102 @@ internal data class ZhihuIdentityProfile(
     val accountType: Int = 0,
     val subAccountControlStatus: Int = 0,
 )
+
+/**
+ * 用一份新签发的凭证替换当前会话。
+ *
+ * 切换账号和创建马甲号返回的 body 结构相同：新的 access token + cookie。这里先用临时客户端拉
+ * `/people/self` 校验凭证确实指向预期账号，成功后再由账户 store 原子替换「会话 + 绑定客户端」。
+ */
+private suspend fun ZhihuAccountStore.completeIdentityChange(
+    body: String,
+    expectedAccountId: String? = null,
+): ZhihuIdentityChangeResult {
+    val token = ZhihuJson.decodeJson<ZhihuIdentityToken>(ZhihuJson.json.parseToJsonElement(body))
+    check(token.accessToken.isNotBlank()) { "服务器未返回新账号凭证" }
+    check(token.cookie["z_c0"].isNullOrBlank().not()) { "服务器未返回新账号 Cookie" }
+    val oldSession = session
+    val newCookies = oldSession.cookies.toMutableMap().apply { putAll(token.cookie) }
+    val tempClient = client.temporaryHttpClient(newCookies)
+    return try {
+        val response = tempClient.get("https://api.zhihu.com/people/self") {
+            applyIdentityHeaders(
+                oldSession.copy(
+                    mobileAccessToken = token.accessToken,
+                    mobileTokenType = token.tokenType,
+                ),
+            )
+        }
+        val rawProfile = ZhihuJson.json
+            .parseToJsonElement(
+                response.identitySuccessBody("初始化新账号"),
+            ).jsonObject
+        val profile = ZhihuJson.decodeJson<ZhihuIdentityProfile>(rawProfile)
+        check(profile.id.isNotBlank() && profile.name.isNotBlank()) { "服务器返回的账号资料不完整" }
+        check(expectedAccountId == null || profile.id == expectedAccountId) { "服务器返回的账号与目标账号不一致" }
+        val nextSession = oldSession.copy(
+            login = true,
+            username = profile.name,
+            cookies = newCookies,
+            profile = ZhihuAccountProfileSnapshot(
+                id = profile.id,
+                name = profile.name,
+                urlToken = profile.urlToken,
+                userType = profile.userType,
+                avatarUrl = profile.avatarUrl,
+            ),
+            self = ZhihuJson.snakeCaseToCamelCase(rawProfile),
+            mobileAccessToken = token.accessToken,
+            mobileRefreshToken = token.refreshToken,
+            mobileTokenType = token.tokenType,
+            mobileTokenExpiresAt = token.expiresAt,
+        )
+        replaceSession(nextSession)
+        ZhihuIdentityChangeResult(
+            account = ZhihuIdentityAccount(
+                id = profile.id,
+                urlToken = profile.urlToken,
+                name = profile.name,
+                avatarUrl = profile.avatarUrl,
+                isActive = true,
+                canCreateSubAccount = profile.canCreateSubAccount,
+                accountType = profile.accountType,
+                subAccountControlStatus = profile.subAccountControlStatus,
+            ),
+            session = nextSession,
+        )
+    } finally {
+        tempClient.close()
+    }
+}
+
+/** 当前手机号下可管理的账号列表（主账号 + 马甲号）。 */
+internal suspend fun ZhihuAccountStore.fetchIdentityAccounts(): List<ZhihuIdentityAccount> = ZhihuJson
+    .decodeJson<ZhihuIdentityAccountListResponse>(
+        ZhihuJson.json.parseToJsonElement(
+            client
+                .httpClient()
+                .get("https://api.zhihu.com/people/account/list") {
+                    applyIdentityHeaders(session)
+                }.identitySuccessBody("获取身份列表"),
+        ),
+    ).data
+
+/** 切换到同一手机号下的另一个账号，成功后当前会话已经是目标账号。 */
+internal suspend fun ZhihuAccountStore.switchIdentityAccount(accountId: String): ZhihuIdentityChangeResult {
+    require(accountId.isNotBlank()) { "目标账号不能为空" }
+    val response = client.httpClient().post("https://api.zhihu.com/account/switch") {
+        applyIdentityHeaders(session)
+        contentType(ContentType.Application.Json)
+        setBody(SwitchAccountRequest(accountId))
+    }
+    return completeIdentityChange(response.identitySuccessBody("切换账号"), accountId)
+}
+
+/** 在当前手机号下创建马甲号，成功后会直接切换到新账号。 */
+internal suspend fun ZhihuAccountStore.createSubIdentityAccount(): ZhihuIdentityChangeResult {
+    val response = client.httpClient().post("https://api.zhihu.com/account/sub/register") {
+        applyIdentityHeaders(session)
+    }
+    return completeIdentityChange(response.identitySuccessBody("创建新账号"))
+}
