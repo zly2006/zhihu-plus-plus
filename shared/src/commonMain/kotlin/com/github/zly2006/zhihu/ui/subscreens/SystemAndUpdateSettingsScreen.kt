@@ -75,6 +75,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.data.AIGC_MARKING_ENABLED_PREFERENCE_KEY
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.components.SettingItem
@@ -89,6 +90,7 @@ import zhihu.shared.generated.resources.ic_github_24dp
 import zhihu.shared.generated.resources.ic_telegram_24dp
 
 internal const val CONTINUOUS_USAGE_REMINDER_INTERVAL_MINUTES_KEY = "continuousUsageReminderIntervalMinutes"
+internal const val MACOS_QUIT_ON_WINDOW_CLOSE_PREFERENCE_KEY = "macosQuitOnWindowClose"
 const val SYSTEM_SETTINGS_AIGC_MARKING_TAG = "system_settings_aigc_marking"
 
 /**
@@ -343,6 +345,23 @@ fun SystemAndUpdateSettingsScreen(
                         )
                     },
                 )
+
+                if (platformName == "macOS") {
+                    var quitOnWindowClose by remember {
+                        mutableStateOf(settings.getBoolean(MACOS_QUIT_ON_WINDOW_CLOSE_PREFERENCE_KEY, false))
+                    }
+                    SettingItemWithSwitch(
+                        title = { Text("关闭窗口时退出应用") },
+                        description = { Text("关闭最后一个窗口时同时退出 macOS 应用；默认关闭") },
+                        checked = quitOnWindowClose,
+                        onCheckedChange = {
+                            quitOnWindowClose = it
+                            settings.putBoolean(MACOS_QUIT_ON_WINDOW_CLOSE_PREFERENCE_KEY, it)
+                        },
+                        settingKey = MACOS_QUIT_ON_WINDOW_CLOSE_PREFERENCE_KEY,
+                        highlightedKey = highlightedSetting,
+                    )
+                }
 
                 var checkNightlyUpdates by remember { mutableStateOf(settings.getBoolean("checkNightlyUpdates", false)) }
                 SettingItemWithSwitch(
