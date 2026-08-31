@@ -18,23 +18,38 @@
 package com.github.zly2006.zhihu.platform
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.github.zly2006.zhihu.ui.rememberObservedSetting
 import kotlinx.io.files.Path
+
+internal expect val platformBottomBarItemLimit: Int?
+
+expect val platformName: String
+
+expect val isJvm: Boolean
+
+expect val isNative: Boolean
+
+expect val isAigcVoteSupported: Boolean
+
+expect val isBlocklistNlpSupported: Boolean
+
+expect val isSentenceSimilaritySupported: Boolean
+
+expect val isArticleHtmlExportSupported: Boolean
+
+expect val isArticleImageExportSupported: Boolean
 
 enum class UserMessageDuration {
     Short,
     Long,
 }
 
-data class UserMessageSink(
-    val showShortMessage: (String) -> Unit,
-    val showLongMessage: (String) -> Unit = showShortMessage,
-) {
+interface UserMessageSink {
+    fun showShortMessage(message: String)
+
+    fun showLongMessage(message: String) = showShortMessage(message)
+
     fun showMessage(
         message: String,
         duration: UserMessageDuration = UserMessageDuration.Short,
@@ -49,23 +64,70 @@ data class UserMessageSink(
 @Composable
 expect fun rememberUserMessageSink(): UserMessageSink
 
-data class SettingsStore(
-    val getBoolean: (String, Boolean) -> Boolean,
-    val putBoolean: (String, Boolean) -> Unit,
-    val getString: (String, String) -> String,
-    val putString: (String, String) -> Unit,
-    val getStringOrNull: (String) -> String?,
-    val putStringSet: (String, Set<String>) -> Unit,
-    val getStringSet: (String, Set<String>) -> Set<String>,
-    val getInt: (String, Int) -> Int,
-    val putInt: (String, Int) -> Unit,
-    val getLong: (String, Long) -> Long,
-    val putLong: (String, Long) -> Unit,
-    val getFloat: (String, Float) -> Float,
-    val putFloat: (String, Float) -> Unit,
-    val remove: (String) -> Unit,
-    val observeKeyChanges: (onChanged: (String) -> Unit) -> () -> Unit = { {} },
-)
+interface SettingsStore {
+    fun getBoolean(key: String, defaultValue: Boolean): Boolean
+
+    fun putBoolean(key: String, value: Boolean)
+
+    fun getString(key: String, defaultValue: String): String
+
+    fun putString(key: String, value: String)
+
+    fun getStringOrNull(key: String): String?
+
+    fun putStringSet(key: String, value: Set<String>)
+
+    fun getStringSet(key: String, defaultValue: Set<String>): Set<String>
+
+    fun getInt(key: String, defaultValue: Int): Int
+
+    fun putInt(key: String, value: Int)
+
+    fun getLong(key: String, defaultValue: Long): Long
+
+    fun putLong(key: String, value: Long)
+
+    fun getFloat(key: String, defaultValue: Float): Float
+
+    fun putFloat(key: String, value: Float)
+
+    fun remove(key: String)
+
+    fun observeKeyChanges(onChanged: (String) -> Unit): AutoCloseable = AutoCloseable { }
+}
+
+interface SystemUrlOpener {
+    operator fun invoke(url: String)
+}
+
+interface ZhihuWebUrlOpener {
+    operator fun invoke(url: String)
+}
+
+interface ImagePreviewOpener {
+    operator fun invoke(url: String)
+}
+
+interface ExternalUrlOpener :
+    SystemUrlOpener,
+    ZhihuWebUrlOpener,
+    ImagePreviewOpener
+
+interface ImageGalleryOpener {
+    operator fun invoke(urls: List<String>, initialIndex: Int)
+}
+
+interface ImageSaver {
+    operator fun invoke(url: String)
+}
+
+interface ImageSharer {
+    operator fun invoke(url: String)
+}
+
+interface PlainTextClipboard {
+    operator fun invoke(label: String, text: String)
+}
 
 @Composable
 expect fun rememberSettingsStore(): SettingsStore
@@ -75,104 +137,55 @@ expect fun Modifier.exportTestTagsForUiAutomation(): Modifier
 @Composable
 expect fun rememberAppPrivateDirectory(): Path
 
+/*
+ * 按类型包装 rememberObservedSetting：调用点只写一次 key 和默认值，且直接拿到值而不是 MutableState。
+ * 观察机制本身只有 rememberObservedSetting 一份实现。
+ */
+
 @Composable
 fun rememberSettingBoolean(
     key: String,
     defaultValue: Boolean,
     settings: SettingsStore = rememberSettingsStore(),
-): Boolean {
-    var value by remember(settings, key, defaultValue) {
-        mutableStateOf(settings.getBoolean(key, defaultValue))
-    }
-    DisposableEffect(settings, key, defaultValue) {
-        val unregister = settings.observeKeyChanges { changedKey ->
-            if (changedKey == key) {
-                value = settings.getBoolean(key, defaultValue)
-            }
-        }
-        onDispose(unregister)
-    }
-    return value
-}
+): Boolean = rememberObservedSetting(settings, key) { getBoolean(key, defaultValue) }.value
 
 @Composable
 fun rememberSettingString(
     key: String,
     defaultValue: String,
     settings: SettingsStore = rememberSettingsStore(),
-): String {
-    var value by remember(settings, key, defaultValue) {
-        mutableStateOf(settings.getString(key, defaultValue))
-    }
-    DisposableEffect(settings, key, defaultValue) {
-        val unregister = settings.observeKeyChanges { changedKey ->
-            if (changedKey == key) {
-                value = settings.getString(key, defaultValue)
-            }
-        }
-        onDispose(unregister)
-    }
-    return value
-}
+): String = rememberObservedSetting(settings, key) { getString(key, defaultValue) }.value
 
 @Composable
 fun rememberSettingInt(
     key: String,
     defaultValue: Int,
     settings: SettingsStore = rememberSettingsStore(),
-): Int {
-    var value by remember(settings, key, defaultValue) {
-        mutableStateOf(settings.getInt(key, defaultValue))
-    }
-    DisposableEffect(settings, key, defaultValue) {
-        val unregister = settings.observeKeyChanges { changedKey ->
-            if (changedKey == key) {
-                value = settings.getInt(key, defaultValue)
-            }
-        }
-        onDispose(unregister)
-    }
-    return value
-}
+): Int = rememberObservedSetting(settings, key) { getInt(key, defaultValue) }.value
 
 @Composable
-expect fun rememberExternalUrlOpener(): (String) -> Unit
+expect fun rememberExternalUrlOpener(): ExternalUrlOpener
 
 @Composable
-expect fun rememberSystemUrlOpener(): (String) -> Unit
+expect fun rememberSystemUrlOpener(): SystemUrlOpener
 
 @Composable
-expect fun rememberZhihuWebUrlOpener(): (String) -> Unit
+expect fun rememberZhihuWebUrlOpener(): ZhihuWebUrlOpener
 
 @Composable
-expect fun rememberImagePreviewOpener(): (String) -> Unit
+expect fun rememberImagePreviewOpener(): ImagePreviewOpener
 
 @Composable
-expect fun rememberImageGalleryOpener(): (List<String>, Int) -> Unit
+expect fun rememberImageGalleryOpener(): ImageGalleryOpener
 
 @Composable
-expect fun rememberImageSaver(): (String) -> Unit
+expect fun rememberImageSaver(): ImageSaver
 
 @Composable
-expect fun rememberImageSharer(): (String) -> Unit
+expect fun rememberImageSharer(): ImageSharer
 
 @Composable
-expect fun rememberPlainTextClipboard(): (label: String, text: String) -> Unit
-
-/**
- * 开发者诊断信息：包名/版本/网络状态等只读快照，以及剪贴板读取、全量配置导出
- * 这些动作依赖各平台原生 API（Android ConnectivityManager/PackageManager/ClipboardManager/SharedPreferences.all）。
- */
-data class DeveloperDiagnostics(
-    val appInfo: String,
-    val deviceInfo: String,
-    val networkStatus: String,
-    val readClipboardText: () -> String?,
-    val exportAllSettings: () -> String,
-)
-
-@Composable
-expect fun rememberDeveloperDiagnostics(): DeveloperDiagnostics
+expect fun rememberPlainTextClipboard(): PlainTextClipboard
 
 @Composable
 expect fun PlatformBackHandler(

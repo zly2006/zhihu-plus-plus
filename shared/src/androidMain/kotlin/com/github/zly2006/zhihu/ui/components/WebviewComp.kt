@@ -62,6 +62,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.webkit.WebResourceErrorCompat
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewClientCompat
+import com.github.zly2006.zhihu.account.androidZhihuAccountStore
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.fetchHighestQualityZhihuVideoUrl
 import com.github.zly2006.zhihu.navigation.NavDestination
@@ -184,13 +185,13 @@ class CustomWebView : WebView {
                     }
                     menu.add("保存图片").setOnMenuItemClickListener {
                         GlobalScope.launch(Dispatchers.Main) {
-                            saveImageToGallery(context, AccountData.httpClient(context), url)
+                            saveImageToGallery(context, androidZhihuAccountStore(context).client.httpClient(), url)
                         }
                         true
                     }
                     menu.add("分享图片").setOnMenuItemClickListener {
                         GlobalScope.launch(Dispatchers.Main) {
-                            shareImage(context, AccountData.httpClient(context), url)
+                            shareImage(context, androidZhihuAccountStore(context).client.httpClient(), url)
                         }
                         true
                     }

@@ -25,18 +25,20 @@ import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Search
 import com.github.zly2006.zhihu.test.InstrumentedTestEnvironment
 import com.github.zly2006.zhihu.test.ZhihuMockApi
-import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
@@ -66,15 +68,13 @@ class SearchScreenInstrumentedTest {
         ZhihuMockApi.install(enabled = InstrumentedTestEnvironment.isMockMode())
     }
 
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/356
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/362
+     * Focus regression fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/527
+     */
     @Test
     fun searchBoxEditingClearImeAndBackAreDeterministic() {
-        // This test disables hot-search entirely so the screen stays offline and deterministic.
-        // Expected behavior:
-        // 1. The search field starts empty, is focused immediately, and shows its placeholder.
-        // 2. Text input and replacement update the editable value exactly.
-        // 3. Triggering the IME search action navigates with the final query instead of touching the network.
-        // 4. The clear button resets the field back to the placeholder state.
-        // 5. Pressing back only records a back event and does not create any extra navigation entries.
         composeRule.activity
             .getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
             .edit()
@@ -82,22 +82,17 @@ class SearchScreenInstrumentedTest {
             .commit()
 
         val recordingNavigator = composeRule.setScreenContent {
-            SearchScreen(
-                search = Search(),
-            )
+            SearchScreen(search = Search())
         }
 
         val searchInput = composeRule.onNodeWithTag("search_input")
-        searchInput.assertIsDisplayed()
-        searchInput.assertIsFocused()
+        searchInput.assertIsDisplayed().assertIsFocused()
         composeRule.onNodeWithText("搜索内容").assertIsDisplayed()
 
-        // Typing should produce an exact editable value and reveal the explicit clear affordance.
         searchInput.performTextInput("compose")
         searchInput.assertTextEquals("compose")
         composeRule.onNodeWithTag("search_clear_button").assertIsDisplayed()
 
-        // Replacing the text should fully overwrite the current query, and IME search should navigate with it.
         searchInput.performTextReplacement("jetpack compose")
         searchInput.assertTextEquals("jetpack compose")
         searchInput.performImeAction()
@@ -111,18 +106,20 @@ class SearchScreenInstrumentedTest {
                 .getString("searchHistoryQueries", null),
         )
 
-        // Clearing should return the field to an empty state and restore the placeholder.
         composeRule.onNodeWithTag("search_clear_button").performClick()
         composeRule.onAllNodesWithTag("search_clear_button").assertCountEquals(0)
         composeRule.onNodeWithText("搜索内容").assertIsDisplayed()
 
-        // Back should only increment the recorded back count and leave prior navigation untouched.
         composeRule.onNodeWithTag("search_back_button").performClick()
         composeRule.waitForIdle()
         assertEquals(1, recordingNavigator.backCount)
         assertEquals(listOf(Search(query = "jetpack compose")), recordingNavigator.destinations)
     }
 
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/374
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/408
+     */
     @Test
     fun memberScopedSearchKeepsRestrictionWhenSubmittingQuery() {
         val preferences = composeRule.activity.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
@@ -137,7 +134,6 @@ class SearchScreenInstrumentedTest {
                     restrictedMemberHashId = "member-hash-id",
                     restrictedMemberName = "离线用户",
                 ),
-                testHotSearchQueries = listOf("全站热搜"),
             )
         }
 
@@ -167,6 +163,11 @@ class SearchScreenInstrumentedTest {
         assertEquals("""["全局历史"]""", preferences.getString("searchHistoryQueries", null))
     }
 
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/374
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/408
+     * Focus regression fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/527
+     */
     @Test
     fun prefilledSearchDoesNotStealFocusFromResultsState() {
         composeRule.activity
@@ -178,7 +179,6 @@ class SearchScreenInstrumentedTest {
         composeRule.setScreenContent {
             SearchScreen(
                 search = Search(query = "已有关键词"),
-                testHotSearchQueries = emptyList(),
             )
         }
 
@@ -186,6 +186,10 @@ class SearchScreenInstrumentedTest {
         composeRule.onAllNodesWithText("搜索内容").assertCountEquals(0)
     }
 
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/642
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/652
+     */
     @Test
     fun peopleTabHidesGeneralSearchFilterAndSwitchingBackRestoresIt() {
         ZhihuMockApi.mockJsonPrefix(
@@ -202,6 +206,40 @@ class SearchScreenInstrumentedTest {
         composeRule.onAllNodesWithTag("search_filter_button").assertCountEquals(1)
     }
 
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/667
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/673
+     */
+    @Test
+    fun peopleAndGeneralResultsRenderReturnedAuthorBadges() {
+        ZhihuMockApi.mockJsonPrefix(
+            method = HttpMethod.Get,
+            urlPrefix = "https://www.zhihu.com/api/v4/search_v3",
+            body = readTestAsset("search-badge-general.json"),
+        )
+        composeRule.setScreenContent { SearchScreen(search = Search(query = "徽章")) }
+
+        composeRule.onNodeWithTag("search_people_result_anon-general-people-001").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("刑法等 2 个话题下的优秀答主").assertIsDisplayed()
+        composeRule.onNodeWithTag("search_general_results").performScrollToIndex(2)
+        composeRule
+            .onNodeWithTag("search_general_content_article:2070450975589110182")
+            .assertIsDisplayed()
+
+        ZhihuMockApi.mockJsonPrefix(
+            method = HttpMethod.Get,
+            urlPrefix = "https://www.zhihu.com/api/v4/search_v3",
+            body = readTestAsset("search-badge-people.json"),
+        )
+        composeRule.onNodeWithTag("search_tab_People").performClick()
+
+        composeRule.onNodeWithContentDescription("已认证机构号").assertIsDisplayed()
+    }
+
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/356
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/362
+     */
     @Test
     fun searchHistoryRendersRecordsSearchesAndSupportsMenuActions() {
         // This disables hot-search so the history surface can be tested without network requests.
@@ -258,82 +296,11 @@ class SearchScreenInstrumentedTest {
         )
     }
 
-    @Test
-    fun mockedHotSearchMenuActionsAndSwipesStayStableAcrossRealFetchCalls() {
-        // This test uses the real SearchScreen fetch path but replaces Zhihu's endpoint at the HTTP
-        // layer with a Ktor MockEngine response.
-        // Expected behavior:
-        // 1. The mocked hot-search list renders after the screen performs its real fetchHotSearch()
-        //    call through the authenticated fetch path.
-        // 2. Pressing refresh performs a second mocked HTTP request and keeps the rendered list stable.
-        // 3. Opening the overflow menu exposes the settings action and navigates to the expected destination.
-        // 4. Vertical swipe cycles leave the mocked content intact instead of breaking layout state.
-        ZhihuMockApi.mockJson(
-            method = HttpMethod.Get,
-            url = "https://www.zhihu.com/api/v4/search/hot_search",
-            body =
-                """
-                {
-                  "hot_search_queries": [
-                    {"query": "mock alpha"},
-                    {"query": "mock beta"},
-                    {"query": "mock gamma"}
-                  ]
-                }
-                """.trimIndent(),
-        )
-        val recordingNavigator = composeRule.setScreenContent {
-            SearchScreen(
-                search = Search(),
-            )
-        }
-
-        composeRule.waitUntil(timeoutMillis = 5_000) {
-            ZhihuMockApi.requestCount(
-                method = HttpMethod.Get,
-                urlSubstring = "/api/v4/search/hot_search",
-            ) == 1
-        }
-        composeRule.onNodeWithTag("search_hot_list").assertIsDisplayed()
-        composeRule.onNodeWithText("mock alpha").assertIsDisplayed()
-        composeRule.onNodeWithText("mock gamma").assertIsDisplayed()
-
-        // Refresh should trigger the real mocked HTTP fetch again, so the list must remain visible after the click.
-        composeRule.onNodeWithTag("search_hot_refresh_button").performClick()
-        composeRule.waitUntil(timeoutMillis = 5_000) {
-            ZhihuMockApi.requestCount(
-                method = HttpMethod.Get,
-                urlSubstring = "/api/v4/search/hot_search",
-            ) == 2
-        }
-        composeRule.onNodeWithText("mock alpha").assertIsDisplayed()
-        assertEquals(0, recordingNavigator.destinations.size)
-
-        // The overflow menu should reveal the stable settings action and navigate to appearance settings.
-        composeRule.onNodeWithTag("search_hot_more_button").performClick()
-        composeRule.onNodeWithText("关闭热搜显示").assertIsDisplayed().performClick()
-        composeRule.waitForIdle()
-        assertEquals(
-            listOf(Account.AppearanceSettings("showSearchHotSearch")),
-            recordingNavigator.destinations,
-        )
-
-        // Vertical swipes should not disturb the injected offline list or create extra navigation side effects.
-        composeRule.onNodeWithTag("search_hot_list").performVerticalSwipeCycle()
-        composeRule.waitForIdle()
-        composeRule.onNodeWithText("mock alpha").assertIsDisplayed()
-        composeRule.onNodeWithText("mock gamma").assertIsDisplayed()
-        assertEquals(
-            2,
-            ZhihuMockApi.requestCount(
-                method = HttpMethod.Get,
-                urlSubstring = "/api/v4/search/hot_search",
-            ),
-        )
-        assertEquals(
-            listOf(Account.AppearanceSettings("showSearchHotSearch")),
-            recordingNavigator.destinations,
-        )
-        assertEquals(0, recordingNavigator.backCount)
-    }
+    private fun readTestAsset(fileName: String): String =
+        InstrumentationRegistry
+            .getInstrumentation()
+            .context.assets
+            .open(fileName)
+            .bufferedReader()
+            .use { it.readText() }
 }

@@ -96,10 +96,12 @@ import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
+import com.github.zly2006.zhihu.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.ui.ArticleAnswerTransitionDirection
 import com.github.zly2006.zhihu.ui.ArticleImmersiveModeEffect
 import com.github.zly2006.zhihu.ui.LocalArticleAnswerSwitcher
+import com.github.zly2006.zhihu.ui.LocalArticleNavController
 import com.github.zly2006.zhihu.ui.TtsState
 import com.github.zly2006.zhihu.ui.article.ArticleVideoAttachmentContent
 import com.github.zly2006.zhihu.ui.article.voteUpNeutralContent
@@ -119,15 +121,15 @@ import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixSheetActionRow
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixVotersSheet
 import com.github.zly2006.zhihu.ui.rememberArticleBrowserOpener
-import com.github.zly2006.zhihu.ui.rememberArticleHost
-import com.github.zly2006.zhihu.ui.rememberArticleScreenSettingsState
 import com.github.zly2006.zhihu.ui.rememberArticleSpeechToggler
 import com.github.zly2006.zhihu.ui.rememberArticleTtsState
+import com.github.zly2006.zhihu.ui.rememberObservedSetting
 import com.github.zly2006.zhihu.util.formatCompactCount
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
 import com.github.zly2006.zhihu.viewmodel.formatArticleDateTime
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.sharedArticleAnswerSwitchState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Button
@@ -176,10 +178,30 @@ fun MiuixArticleScreen(
     val scrollBehavior = rememberPreferCollapsedExitUntilCollapsedScrollBehavior()
     val scrollState = rememberScrollState()
     val coroutineScope = rememberCoroutineScope()
-    val articleHost = rememberArticleHost()
-    val articleSettings = rememberArticleScreenSettingsState()
-    val answerSwitchMode = articleSettings.answerSwitchMode
-    val sharedData = if (article.type == ArticleType.Answer) environment.articleAnswerSwitchState() else null
+    val articleNavController = LocalArticleNavController.current
+    val isTitleAutoHide by rememberObservedSetting(settings, "titleAutoHide") { getBoolean("titleAutoHide", false) }
+    val autoHideArticleBottomBar by rememberObservedSetting(settings, "autoHideArticleBottomBar") {
+        getBoolean("autoHideArticleBottomBar", false)
+    }
+    val answerSwitchMode by rememberObservedSetting(settings, "answerSwitchMode") {
+        getString("answerSwitchMode", "vertical")
+    }
+    val pinAnswerDate by rememberObservedSetting(settings, "pinAnswerDate") { getBoolean("pinAnswerDate", false) }
+    val buttonSkipAnswer by rememberObservedSetting(settings, "buttonSkipAnswer") { getBoolean("buttonSkipAnswer", true) }
+    val autoHideSkipAnswerButton by rememberObservedSetting(settings, "autoHideSkipAnswerButton") {
+        getBoolean("autoHideSkipAnswerButton", true)
+    }
+    var answerDoubleTapAction by rememberObservedSetting(settings, ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY) {
+        AnswerDoubleTapAction.fromPreference(
+            getString(ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY, AnswerDoubleTapAction.Ask.preferenceValue),
+        )
+    }
+
+    fun saveAnswerDoubleTapAction(action: AnswerDoubleTapAction) {
+        answerDoubleTapAction = action
+        settings.putString(ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY, action.preferenceValue)
+    }
+    val sharedData = sharedArticleAnswerSwitchState.takeIf { article.type == ArticleType.Answer }
     var isImmersiveMode by remember(sharedData) {
         mutableStateOf(sharedData?.isImmersiveMode ?: false)
     }
@@ -207,7 +229,7 @@ fun MiuixArticleScreen(
 
     fun handleAnswerDoubleTap() {
         if (article.type != ArticleType.Answer) return
-        when (articleSettings.answerDoubleTapAction) {
+        when (answerDoubleTapAction) {
             AnswerDoubleTapAction.None -> Unit
             AnswerDoubleTapAction.Ask -> showDoubleTapActionDialog = true
             AnswerDoubleTapAction.VoteUp -> upVoteFromDoubleTap()
@@ -222,9 +244,9 @@ fun MiuixArticleScreen(
     }
     val answerDoubleTapModifier = if (
         article.type == ArticleType.Answer &&
-        articleSettings.answerDoubleTapAction != AnswerDoubleTapAction.None
+        answerDoubleTapAction != AnswerDoubleTapAction.None
     ) {
-        Modifier.pointerInput(articleSettings.answerDoubleTapAction) {
+        Modifier.pointerInput(answerDoubleTapAction) {
             detectTapGestures(onDoubleTap = { handleAnswerDoubleTap() })
         }
     } else {
@@ -232,7 +254,7 @@ fun MiuixArticleScreen(
     }
 
     // 标题/底栏自动隐藏：方向驱动的显隐（对齐 M3 的 master-style showTopBar/showBottomBar）。
-    // articleSettings.* 是 mutableStateOf 且监听 key 变化，直接在 derivedStateOf 内读取保持响应式。
+    // 上面这些设置项由 rememberObservedSetting 监听 key 变化，直接在 derivedStateOf 内读取保持响应式。
     var previousScrollValue by remember { mutableIntStateOf(0) }
     var isScrollingUp by remember { mutableStateOf(false) }
     LaunchedEffect(scrollState.value) {
@@ -245,7 +267,7 @@ fun MiuixArticleScreen(
     val showTopBar by remember {
         derivedStateOf {
             when {
-                !articleSettings.isTitleAutoHide -> true
+                !isTitleAutoHide -> true
                 scrollState.maxValue <= 0 -> true
                 isScrollingUp -> true
                 scrollState.value < 100 -> true
@@ -256,7 +278,7 @@ fun MiuixArticleScreen(
     val showBottomBar by remember {
         derivedStateOf {
             when {
-                !articleSettings.autoHideArticleBottomBar -> true
+                !autoHideArticleBottomBar -> true
                 scrollState.maxValue <= 0 -> true
                 isScrollingUp -> true
                 scrollState.value == 0 -> true
@@ -577,7 +599,7 @@ fun MiuixArticleScreen(
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             // 置顶日期：置顶模式下日期放在内容顶部
-                            if (articleSettings.pinAnswerDate && viewModel.createdAt > 0) {
+                            if (pinAnswerDate && viewModel.createdAt > 0) {
                                 Text(
                                     "发布于 " + formatArticleDateTime(viewModel.createdAt),
                                     style = MiuixTheme.textStyles.footnote2,
@@ -622,7 +644,7 @@ fun MiuixArticleScreen(
                             // 视频附件（type=video）入口，对齐 M3
                             ArticleVideoAttachmentContent(viewModel.attachment)
                             // 非置顶日期 + IP属地 放在内容底部
-                            if (!articleSettings.pinAnswerDate && viewModel.createdAt > 0) {
+                            if (!pinAnswerDate && viewModel.createdAt > 0) {
                                 Spacer(Modifier.height(8.dp))
                                 Text(
                                     "发布于 " + formatArticleDateTime(viewModel.createdAt),
@@ -693,8 +715,8 @@ fun MiuixArticleScreen(
         }
 
         // 跳到下一个回答（对齐 M3）：仅回答页 + buttonSkipAnswer 开启时显示，可自动隐藏。
-        if (article.type == ArticleType.Answer && articleSettings.buttonSkipAnswer && !isImmersiveMode) {
-            val showSkip = !articleSettings.autoHideSkipAnswerButton || isScrollingUp || scrollState.value == 0
+        if (article.type == ArticleType.Answer && buttonSkipAnswer && !isImmersiveMode) {
+            val showSkip = !autoHideSkipAnswerButton || isScrollingUp || scrollState.value == 0
             val skipAlpha by animateFloatAsState(if (showSkip) 1f else 0f, tween(200), label = "skipAlpha")
             var fabClickCount by remember { mutableIntStateOf(0) }
             LaunchedEffect(fabClickCount) {
@@ -971,7 +993,7 @@ fun MiuixArticleScreen(
             )
             val applyDoubleTap: (AnswerDoubleTapAction) -> Unit = { action ->
                 showDoubleTapActionDialog = false
-                articleSettings.saveAnswerDoubleTapAction(action)
+                saveAnswerDoubleTapAction(action)
                 userMessages.showMessage("已将双击回答动作设为：${action.label}")
             }
             MiuixSheetActionRow("无操作", onClick = { applyDoubleTap(AnswerDoubleTapAction.None) })

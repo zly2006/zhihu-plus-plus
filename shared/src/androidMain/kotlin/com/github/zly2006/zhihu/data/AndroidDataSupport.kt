@@ -19,6 +19,7 @@ package com.github.zly2006.zhihu.data
 
 import android.content.Context
 import android.util.Log
+import com.github.zly2006.zhihu.account.androidZhihuAccountStore
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import io.ktor.client.HttpClient
 
@@ -27,7 +28,7 @@ fun Context.asApiEnvironment(): ZhihuApiEnvironment {
     AccountData.loadData(appContext)
 
     return object : ZhihuApiEnvironment {
-        override fun httpClient(): HttpClient = AccountData.httpClient(appContext)
+        override fun httpClient(): HttpClient = androidZhihuAccountStore(appContext).client.httpClient()
 
         override fun authenticatedCookies(): Map<String, String> = AccountData.data.cookies
 

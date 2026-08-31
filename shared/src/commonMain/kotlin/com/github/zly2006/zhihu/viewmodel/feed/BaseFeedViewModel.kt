@@ -18,6 +18,7 @@
 package com.github.zly2006.zhihu.viewmodel.feed
 
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -31,6 +32,7 @@ import com.github.zly2006.zhihu.viewmodel.FeedDisplayEnvironment
 import com.github.zly2006.zhihu.viewmodel.HomeFeedFilterResult
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel
+import com.github.zly2006.zhihu.viewmodel.QualityFilterMode
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedTopic
 import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
@@ -42,6 +44,7 @@ import kotlin.reflect.typeOf
 abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
     var displayItems = mutableStateListOf<FeedDisplayItem>()
     internal var latestLoadedDisplayItems = mutableStateOf<List<FeedDisplayItem>>(emptyList())
+    internal var completedPageCount by mutableIntStateOf(0)
     var isPullToRefresh by mutableStateOf(false)
         protected set
 
@@ -81,7 +84,7 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
     open fun createDisplayItem(environment: FeedDisplayEnvironment, feed: Feed): FeedDisplayItem {
         val settings = environment.feedDisplaySettings()
         return feed.toDisplayItem(
-            enableQualityFilter = settings.enableQualityFilter,
+            enableQualityFilter = settings.qualityFilterMode != QualityFilterMode.OFF,
             reverseBlock = settings.reverseBlock,
         )
     }

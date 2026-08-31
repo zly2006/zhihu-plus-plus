@@ -122,6 +122,7 @@ fun <T> PaginatedList(
     footer: @Composable ((LazyListState) -> Unit)? = null,
     key: ((T) -> Any)? = null,
     topContent: LazyListScope.() -> Unit = {},
+    bottomContent: LazyListScope.() -> Unit = {},
     itemContent: @Composable LazyItemScope.(T) -> Unit,
 ) {
     val shouldLoadMore by remember {
@@ -163,6 +164,8 @@ fun <T> PaginatedList(
                 PaginatedListItem(item, itemContent)
             }
         }
+
+        bottomContent(this)
 
         item {
             if (isEnd()) {

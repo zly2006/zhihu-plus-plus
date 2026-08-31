@@ -18,10 +18,11 @@
 package com.github.zly2006.zhihu.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Comment
 import androidx.compose.material.icons.filled.ThumbUp
@@ -29,11 +30,13 @@ import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -46,6 +49,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.layoutId
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.github.zly2006.zhihu.data.SegmentInfoMeta
@@ -56,6 +63,9 @@ import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.deleteSigned
 import com.github.zly2006.zhihu.viewmodel.postSigned
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
+import com.hrm.markdown.parser.ast.ContainerNode
+import com.hrm.markdown.parser.ast.Document
+import com.hrm.markdown.parser.ast.Node
 import com.hrm.markdown.parser.ast.SegmentHighlight
 import com.hrm.markdown.renderer.LocalOnSegmentHighlightClick
 import io.ktor.client.call.body
@@ -70,6 +80,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import kotlin.math.roundToInt
 
 /**
  * 在可选中的 Markdown 子树外承载划线交互弹窗。
@@ -151,6 +162,7 @@ fun updateSegmentMetaAfterLike(
 
 @Composable
 internal fun SegmentHighlightInteractionHost(
+    document: Document,
     content: @Composable () -> Unit,
 ) {
     val environment = rememberPaginationEnvironment(allowGuestAccess = false)
@@ -160,8 +172,13 @@ internal fun SegmentHighlightInteractionHost(
     var selectedHighlight by remember { mutableStateOf<Pair<String, SegmentHighlightSpan>?>(null) }
     val openSegmentComments = LocalSegmentCommentHost.current
     val showSegmentActionSheet = LocalSegmentActionSheetHost.current
-    val onSegmentHighlightClick: (SegmentHighlight) -> Unit = remember {
-        { node -> selectedHighlight = node.interactionKey to node.toSegmentHighlightSpan() }
+    val displayTexts = remember(document) { document.segmentDisplayTexts() }
+    val onSegmentHighlightClick: (SegmentHighlight) -> Unit = remember(displayTexts) {
+        { node ->
+            selectedHighlight = node.interactionKey to node.toSegmentHighlightSpan(
+                displayText = displayTexts[node.segmentThreadKey()] ?: node.text,
+            )
+        }
     }
 
     CompositionLocalProvider(
@@ -200,7 +217,7 @@ internal fun SegmentHighlightInteractionHost(
                     }
                 },
                 onCopyClick = {
-                    copyPlainText("segment_text", selected.text)
+                    copyPlainText("segment_text", selected.displayText)
                     selectedHighlight = null
                     showSegmentActionSheet(null)
                 },
@@ -261,65 +278,140 @@ private fun SegmentActionSheet(
     onCommentClick: () -> Unit,
     onCopyClick: () -> Unit,
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(
+    val sheetState = rememberModalBottomSheetState()
+    val textScrollState = rememberScrollState()
+    val overflowTolerance = with(LocalDensity.current) { 1.dp.roundToPx() }
+    val hasMeasuredOverflow = textScrollState.viewportSize > 0 &&
+        textScrollState.maxValue > overflowTolerance
+    val showTopDivider = hasMeasuredOverflow && textScrollState.value > overflowTolerance
+    val showBottomDivider = hasMeasuredOverflow &&
+        textScrollState.value < textScrollState.maxValue - overflowTolerance
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+    ) {
+        Layout(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text(
-                text = "划线片段",
-                style = MaterialTheme.typography.titleMedium,
-            )
-            Text(
-                text = "“${highlight.text}”",
-                style = MaterialTheme.typography.bodyLarge,
-                lineHeight = 24.sp,
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                FilledTonalButton(
-                    onClick = onLikeClick,
-                    modifier = Modifier.weight(1f),
+            content = {
+                Text(
+                    text = "划线片段",
+                    modifier = Modifier.layoutId("title"),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                if (showTopDivider) {
+                    HorizontalDivider(
+                        modifier = Modifier
+                            .layoutId("topDivider")
+                            .testTag("segment_action_sheet_top_divider"),
+                    )
+                }
+                Text(
+                    text = "“${highlight.displayText}”",
+                    modifier = Modifier
+                        .layoutId("text")
+                        .verticalScroll(textScrollState),
+                    style = MaterialTheme.typography.bodyLarge,
+                    lineHeight = 24.sp,
+                )
+                if (showBottomDivider) {
+                    HorizontalDivider(
+                        modifier = Modifier
+                            .layoutId("bottomDivider")
+                            .testTag("segment_action_sheet_bottom_divider"),
+                    )
+                }
+                Row(
+                    modifier = Modifier
+                        .layoutId("actions")
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Icon(
-                        imageVector = if (highlight.meta.isLike) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
-                        contentDescription = null,
-                    )
-                    Text(
-                        text = highlight.meta.likeCount.toString(),
-                        modifier = Modifier.padding(start = 8.dp),
-                    )
+                    FilledTonalButton(
+                        onClick = onLikeClick,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Icon(
+                            imageVector = if (highlight.meta.isLike) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
+                            contentDescription = null,
+                        )
+                        Text(
+                            text = highlight.meta.likeCount.toString(),
+                            modifier = Modifier.padding(start = 8.dp),
+                        )
+                    }
+                    FilledTonalButton(
+                        onClick = onCommentClick,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Outlined.Comment,
+                            contentDescription = null,
+                        )
+                        Text(
+                            text = highlight.meta.commentCount.toString(),
+                            modifier = Modifier.padding(start = 8.dp),
+                        )
+                    }
+                    IconButton(onClick = onCopyClick) {
+                        Icon(
+                            imageVector = Icons.Outlined.ContentCopy,
+                            contentDescription = "复制内容",
+                        )
+                    }
                 }
-                FilledTonalButton(
-                    onClick = onCommentClick,
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Outlined.Comment,
-                        contentDescription = null,
-                    )
-                    Text(
-                        text = highlight.meta.commentCount.toString(),
-                        modifier = Modifier.padding(start = 8.dp),
-                    )
-                }
-                IconButton(onClick = onCopyClick) {
-                    Icon(
-                        imageVector = Icons.Outlined.ContentCopy,
-                        contentDescription = "复制内容",
-                    )
-                }
+            },
+        ) { measurables, constraints ->
+            val spacing = 12.dp.roundToPx()
+            val looseConstraints = constraints.copy(minWidth = 0, minHeight = 0)
+            val title = measurables.first { it.layoutId == "title" }.measure(looseConstraints)
+            val textMeasurable = measurables.first { it.layoutId == "text" }
+            val topDivider = measurables
+                .firstOrNull { it.layoutId == "topDivider" }
+                ?.measure(looseConstraints)
+            val bottomDivider = measurables
+                .firstOrNull { it.layoutId == "bottomDivider" }
+                ?.measure(looseConstraints)
+            val actions = measurables.first { it.layoutId == "actions" }.measure(looseConstraints)
+            val naturalTextHeight = textMeasurable
+                .maxIntrinsicHeight(constraints.maxWidth)
+                .coerceAtMost(constraints.maxHeight)
+            val naturalHeight = title.height + naturalTextHeight + actions.height + spacing * 2
+            val needsPartialExpansion = naturalHeight > constraints.maxHeight / 2
+            val layoutHeight = if (needsPartialExpansion) constraints.maxHeight else naturalHeight
+            val visibleHeight = if (needsPartialExpansion) {
+                val sheetOffset = runCatching { sheetState.requireOffset() }
+                    .getOrDefault(constraints.maxHeight.toFloat())
+                (constraints.maxHeight - sheetOffset.roundToInt()).coerceIn(
+                    minimumValue = title.height + actions.height + spacing * 2,
+                    maximumValue = constraints.maxHeight,
+                )
+            } else {
+                layoutHeight
+            }
+            val textTop = title.height + spacing
+            val actionsTop = visibleHeight - actions.height
+            val textBottom = actionsTop - spacing
+            val textHeight = (textBottom - textTop).coerceAtLeast(0)
+            val text = textMeasurable.measure(
+                looseConstraints.copy(maxHeight = textHeight),
+            )
+
+            layout(constraints.maxWidth, layoutHeight) {
+                title.placeRelative(0, 0)
+                text.placeRelative(0, textTop)
+                topDivider?.placeRelative(0, textTop - topDivider.height)
+                bottomDivider?.placeRelative(0, textBottom - bottomDivider.height)
+                actions.placeRelative(0, actionsTop)
             }
         }
     }
 }
 
-private fun SegmentHighlight.toSegmentHighlightSpan(): SegmentHighlightSpan = SegmentHighlightSpan(
+private fun SegmentHighlight.toSegmentHighlightSpan(displayText: String): SegmentHighlightSpan = SegmentHighlightSpan(
     text = text,
+    displayText = displayText,
     meta = SegmentInfoMeta(
         segIds = attributes["data-highlight-id"]
             .orEmpty()
@@ -339,6 +431,27 @@ private fun SegmentHighlight.toSegmentHighlightSpan(): SegmentHighlightSpan = Se
     startOffset = attributes["data-highlight-start-offset"]?.toIntOrNull(),
     endOffset = attributes["data-highlight-end-offset"]?.toIntOrNull(),
 )
+
+private fun SegmentHighlight.segmentThreadKey(): String = listOf(
+    attributes["data-highlight-content-type"],
+    attributes["data-highlight-content-id"],
+    attributes["data-highlight-id"],
+).joinToString("|") { it.orEmpty() }
+
+private fun Document.segmentDisplayTexts(): Map<String, String> {
+    val displayTexts = mutableMapOf<String, String>()
+
+    fun collect(node: Node) {
+        if (node is SegmentHighlight) {
+            node.attributes["data-highlight-display-text"]?.let {
+                displayTexts[node.segmentThreadKey()] = it
+            }
+        }
+        if (node is ContainerNode) node.children.forEach(::collect)
+    }
+    collect(this)
+    return displayTexts
+}
 
 private fun SegmentHighlightSpan.toSegmentCommentHolder(): SegmentCommentHolder? {
     val contentId = contentId ?: return null

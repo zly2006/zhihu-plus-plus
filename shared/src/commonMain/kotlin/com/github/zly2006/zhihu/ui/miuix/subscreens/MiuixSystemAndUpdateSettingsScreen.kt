@@ -56,7 +56,13 @@ import com.github.zly2006.zhihu.ui.miuix.components.MiuixExpandableArrowPreferen
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import com.github.zly2006.zhihu.ui.subscreens.CONTINUOUS_USAGE_REMINDER_INTERVAL_MINUTES_KEY
 import com.github.zly2006.zhihu.ui.subscreens.SystemUpdateState
-import com.github.zly2006.zhihu.ui.subscreens.rememberSystemUpdateRuntime
+import com.github.zly2006.zhihu.ui.subscreens.rememberDownloadedSystemUpdateInstaller
+import com.github.zly2006.zhihu.ui.subscreens.rememberSystemUpdateChecker
+import com.github.zly2006.zhihu.ui.subscreens.rememberSystemUpdateDownloader
+import com.github.zly2006.zhihu.ui.subscreens.rememberSystemUpdateState
+import com.github.zly2006.zhihu.ui.subscreens.rememberSystemUpdateVersionSkipper
+import com.github.zly2006.zhihu.ui.subscreens.resetSystemUpdateState
+import com.github.zly2006.zhihu.ui.subscreens.setSystemUpdateError
 import com.github.zly2006.zhihu.util.ContinuousUsageReminderPolicy
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
@@ -85,12 +91,16 @@ import zhihu.shared.generated.resources.ic_telegram_24dp
 fun MiuixSystemAndUpdateSettingsScreen() {
     val navigator = LocalNavigator.current
     val settings = rememberSettingsStore()
-    val updates = rememberSystemUpdateRuntime()
+    val updateStateFlow = rememberSystemUpdateState()
+    val checkForUpdate = rememberSystemUpdateChecker()
+    val skipUpdateVersion = rememberSystemUpdateVersionSkipper()
+    val downloadUpdate = rememberSystemUpdateDownloader()
+    val installDownloadedUpdate = rememberDownloadedSystemUpdateInstaller()
     val openExternalUrl = rememberExternalUrlOpener()
     val blurEnabled = rememberSettingBoolean("blurEnabled", true, settings)
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
-    val updateState by updates.state.collectAsState()
+    val updateState by updateStateFlow.collectAsState()
     val coroutineScope = rememberCoroutineScope()
     val showUpdateBanner = updateState is SystemUpdateState.UpdateAvailable ||
         updateState is SystemUpdateState.Downloading ||
@@ -182,7 +192,7 @@ fun MiuixSystemAndUpdateSettingsScreen() {
                                 Card(
                                     modifier = Modifier.fillMaxWidth().clickable {
                                         runCatching { openExternalUrl(cnDownloadUrl) }
-                                            .onFailure { updates.setError(it.message ?: "无法打开浏览器") }
+                                            .onFailure { setSystemUpdateError(it.message ?: "无法打开浏览器") }
                                     },
                                 ) {
                                     Box(Modifier.fillMaxWidth().padding(14.dp), contentAlignment = Alignment.Center) {
@@ -199,7 +209,7 @@ fun MiuixSystemAndUpdateSettingsScreen() {
                                     modifier = Modifier.weight(1f).clickable {
                                         val state = updateState
                                         if (state is SystemUpdateState.UpdateAvailable) {
-                                            updates.skipVersion(state.version)
+                                            skipUpdateVersion.skip(state.version)
                                         }
                                     },
                                 ) {
@@ -211,8 +221,8 @@ fun MiuixSystemAndUpdateSettingsScreen() {
                                     modifier = Modifier.weight(1f).clickable {
                                         coroutineScope.launch {
                                             when (val state = updateState) {
-                                                is SystemUpdateState.UpdateAvailable -> updates.downloadUpdate(state.downloadUrl)
-                                                is SystemUpdateState.Downloaded -> updates.installDownloadedUpdate()
+                                                is SystemUpdateState.UpdateAvailable -> downloadUpdate.download(state.downloadUrl)
+                                                is SystemUpdateState.Downloaded -> installDownloadedUpdate.install()
                                                 else -> {}
                                             }
                                         }
@@ -280,16 +290,6 @@ fun MiuixSystemAndUpdateSettingsScreen() {
             item { SmallTitle(text = "更新设置") }
             item {
                 Card(Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
-                    var autoCheckUpdates by remember { mutableStateOf(updates.autoCheckEnabled()) }
-                    SwitchPreference(
-                        title = "自动检查更新",
-                        summary = "应用启动后后台检查新版本，并在首页显示更新提醒",
-                        checked = autoCheckUpdates,
-                        onCheckedChange = {
-                            autoCheckUpdates = it
-                            updates.setAutoCheckEnabled(it)
-                        },
-                    )
                     var checkNightlyUpdates by remember { mutableStateOf(settings.getBoolean("checkNightlyUpdates", false)) }
                     SwitchPreference(
                         title = "检查 Nightly 版本更新",
@@ -333,8 +333,8 @@ fun MiuixSystemAndUpdateSettingsScreen() {
                             .clickable {
                                 coroutineScope.launch {
                                     when (updateState) {
-                                        is SystemUpdateState.NoUpdate, is SystemUpdateState.Error -> updates.checkForUpdate()
-                                        SystemUpdateState.Latest -> updates.resetToNoUpdate()
+                                        is SystemUpdateState.NoUpdate, is SystemUpdateState.Error -> checkForUpdate.check()
+                                        SystemUpdateState.Latest -> resetSystemUpdateState()
                                         else -> {}
                                     }
                                 }

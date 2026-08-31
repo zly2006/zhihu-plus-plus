@@ -84,6 +84,8 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.markdown.TiqianBrandTitle
+import com.github.zly2006.zhihu.markdown.isTiqianMarkdownRendererAvailable
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Daily
 import com.github.zly2006.zhihu.navigation.Follow
@@ -93,6 +95,7 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.MyCollections
 import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
+import com.github.zly2006.zhihu.platform.platformBottomBarItemLimit
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.ThemeManager
@@ -104,6 +107,7 @@ import com.github.zly2006.zhihu.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.ui.components.ANSWER_SWITCH_SENSITIVITY_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.components.ColorPickerDialog
 import com.github.zly2006.zhihu.ui.components.DEFAULT_ANSWER_SWITCH_SENSITIVITY
+import com.github.zly2006.zhihu.ui.components.DISABLE_BOTTOM_SHEET_ROUNDED_CORNERS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.components.MAX_ANSWER_SWITCH_SENSITIVITY
 import com.github.zly2006.zhihu.ui.components.MIN_ANSWER_SWITCH_SENSITIVITY
 import com.github.zly2006.zhihu.ui.components.SettingItem
@@ -111,11 +115,15 @@ import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemOverall
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
 import com.github.zly2006.zhihu.ui.components.normalizedAnswerSwitchSensitivity
+import com.github.zly2006.zhihu.ui.isLegacyWebViewSupported
 import kotlinx.coroutines.delay
+import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 
 const val DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY = "duo3_card_large_title"
+const val DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY = "duo3_tiqian_markdown"
+const val DUO3_TIQIAN_MATH_FONT_PREFERENCE_KEY = "duo3_tiqian_math_font"
 const val PREF_FONT_SIZE = "contentFontSize"
 const val PREF_LINE_HEIGHT = "contentLineHeight"
 const val PREF_BLOCK_SPACING = "contentBlockSpacing"
@@ -131,16 +139,19 @@ fun appearanceSettingsStartDestinationOptionTag(key: String) = "appearanceSettin
 const val APPEARANCE_SETTINGS_ANSWER_DOUBLE_TAP_TAG = "appearanceSettings.answerDoubleTap"
 const val APPEARANCE_SETTINGS_ANSWER_SWITCH_SENSITIVITY_TAG = "appearanceSettings.answerSwitchSensitivity"
 const val APPEARANCE_SETTINGS_USE_WEBVIEW_TAG = "appearanceSettings.useWebView"
+const val APPEARANCE_SETTINGS_TIQIAN_MARKDOWN_TAG = "appearanceSettings.tiqianMarkdown"
 const val APPEARANCE_SETTINGS_WEBVIEW_FONT_TAG = "appearanceSettings.webViewFont"
 const val APPEARANCE_SETTINGS_WEBVIEW_OPTIONS_TAG = "appearanceSettings.webViewOptions"
 const val APPEARANCE_SETTINGS_BOTTOM_BAR_SECTION_KEY = "appearanceSettings.bottomBarSection"
 const val APPEARANCE_SETTINGS_COLLECTION_DIRECT_BROWSE_TAG = "appearanceSettings.collectionDirectBrowse"
+const val APPEARANCE_SETTINGS_DISABLE_BOTTOM_SHEET_ROUNDED_CORNERS_TAG = "appearanceSettings.disableBottomSheetRoundedCorners"
 
 const val START_DESTINATION_PREFERENCE_KEY = "startDestination"
 const val BOTTOM_BAR_ITEMS_PREFERENCE_KEY = "bottom_bar_items"
 const val BOTTOM_BAR_ITEM_ORDER_PREFERENCE_KEY = "bottom_bar_item_order"
 const val COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY = "collectionDirectBrowse"
 private const val BOTTOM_BAR_ITEM_ORDER_SEPARATOR = ","
+internal val contentFontSizeLevels = (50..120 step 5).toList() + (130..200 step 10).toList()
 private val bottomBarSettingItemHeight = 64.dp
 private val bottomBarSettingItemSpacing = 4.dp
 
@@ -168,7 +179,16 @@ internal fun resolveValidStartDestinationKey(
     else -> Home.name
 }
 
-internal fun defaultBottomBarSelectionKeys(duo3HomeAccount: Boolean): Set<String> = if (duo3HomeAccount) {
+internal fun defaultBottomBarSelectionKeys(
+    duo3HomeAccount: Boolean,
+    maximumSelection: Int? = 5,
+): Set<String> = if (maximumSelection == null) {
+    if (duo3HomeAccount) {
+        linkedSetOf(Home.name, Follow.name, HotList.name, Daily.name, OnlineHistory.name, MyCollections.name)
+    } else {
+        linkedSetOf(Home.name, Follow.name, HotList.name, Daily.name, OnlineHistory.name, MyCollections.name, Account.name)
+    }
+} else if (duo3HomeAccount) {
     linkedSetOf(Home.name, Follow.name, Daily.name)
 } else {
     linkedSetOf(Home.name, Follow.name, Daily.name, OnlineHistory.name, Account.name)
@@ -178,11 +198,12 @@ internal fun normalizeBottomBarSelection(
     selectedKeys: Collection<String>,
     duo3HomeAccount: Boolean,
     enforceMinimumSelection: Boolean = false,
+    maximumSelection: Int? = 5,
 ): Set<String> {
     val allowedKeys = topLevelDestinationsInOrder.map { it.first }.toSet()
     val normalized = selectedKeys
         .filterTo(linkedSetOf()) { it in allowedKeys }
-        .ifEmpty { defaultBottomBarSelectionKeys(duo3HomeAccount).toMutableSet() }
+        .ifEmpty { defaultBottomBarSelectionKeys(duo3HomeAccount, maximumSelection).toMutableSet() }
 
     if (duo3HomeAccount) {
         if (Home.name in normalized) {
@@ -192,7 +213,7 @@ internal fun normalizeBottomBarSelection(
         }
     } else {
         normalized.add(Account.name)
-        while (normalized.size > 5) {
+        while (maximumSelection != null && normalized.size > maximumSelection) {
             val removableKey = listOf(
                 HotList.name,
                 MyCollections.name,
@@ -298,10 +319,11 @@ fun AppearanceSettingsScreen(
         val normalizedSelection = normalizeBottomBarSelection(
             settings.getStringSet(
                 BOTTOM_BAR_ITEMS_PREFERENCE_KEY,
-                defaultBottomBarSelectionKeys(duo3HomeAccount.value),
+                defaultBottomBarSelectionKeys(duo3HomeAccount.value, platformBottomBarItemLimit),
             ),
             duo3HomeAccount.value,
             enforceMinimumSelection = true,
+            maximumSelection = platformBottomBarItemLimit,
         )
         mutableStateOf(
             bottomBarItemOrderFromPreference(
@@ -310,7 +332,6 @@ fun AppearanceSettingsScreen(
             ),
         )
     }
-
     DisposableEffect(Unit) {
         onDispose {
             onExit()
@@ -563,6 +584,23 @@ fun AppearanceSettingsScreen(
                     )
                 }
 
+                val disableBottomSheetRoundedCorners = remember {
+                    mutableStateOf(settings.getBoolean(DISABLE_BOTTOM_SHEET_ROUNDED_CORNERS_PREFERENCE_KEY, false))
+                }
+                SettingItemWithSwitch(
+                    modifier = Modifier.testTag(APPEARANCE_SETTINGS_DISABLE_BOTTOM_SHEET_ROUNDED_CORNERS_TAG),
+                    title = { Text("禁用 popup 圆角") },
+                    description = { Text("开启后，评论等 popup 顶部不再显示圆角。") },
+                    checked = disableBottomSheetRoundedCorners.value,
+                    onCheckedChange = {
+                        disableBottomSheetRoundedCorners.value = it
+                        settings.putBoolean(DISABLE_BOTTOM_SHEET_ROUNDED_CORNERS_PREFERENCE_KEY, it)
+                    },
+                    settingKey = DISABLE_BOTTOM_SHEET_ROUNDED_CORNERS_PREFERENCE_KEY,
+                    highlightedKey = settingKey,
+                    bringIntoViewRequester = requesterFor(DISABLE_BOTTOM_SHEET_ROUNDED_CORNERS_PREFERENCE_KEY),
+                )
+
                 var fabOpacity by remember {
                     mutableIntStateOf(settings.getInt(PREF_FAB_OPACITY, DEFAULT_FAB_OPACITY))
                 }
@@ -588,7 +626,18 @@ fun AppearanceSettingsScreen(
             SettingItemGroup(
                 title = "阅读",
             ) {
-                var fontSize by remember { mutableIntStateOf(settings.getInt(PREF_FONT_SIZE, 100)) }
+                var fontSize by remember {
+                    val storedValue = settings.getInt(PREF_FONT_SIZE, 100)
+                    val boundedValue = storedValue.coerceIn(
+                        contentFontSizeLevels.first(),
+                        contentFontSizeLevels.last(),
+                    )
+                    val snappedValue = contentFontSizeLevels.minBy { abs(it - boundedValue) }
+                    if (storedValue != snappedValue) {
+                        settings.putInt(PREF_FONT_SIZE, snappedValue)
+                    }
+                    mutableIntStateOf(snappedValue)
+                }
                 SettingItem(
                     title = { Text("字号") },
                     description = { Text("调整内容文字大小 ($fontSize%)") },
@@ -597,13 +646,14 @@ fun AppearanceSettingsScreen(
                     bringIntoViewRequester = requesterFor("fontScale"),
                     bottomAction = {
                         Slider(
-                            value = fontSize.toFloat(),
+                            value = contentFontSizeLevels.indexOf(fontSize).toFloat(),
                             onValueChange = {
-                                fontSize = it.toInt()
-                                settings.putInt(PREF_FONT_SIZE, it.toInt())
+                                val levelIndex = it.roundToInt().coerceIn(0, contentFontSizeLevels.lastIndex)
+                                fontSize = contentFontSizeLevels[levelIndex]
+                                settings.putInt(PREF_FONT_SIZE, fontSize)
                             },
-                            valueRange = 50f..200f,
-                            steps = 14,
+                            valueRange = 0f..contentFontSizeLevels.lastIndex.toFloat(),
+                            steps = contentFontSizeLevels.size - 2,
                             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                         )
                     },
@@ -745,6 +795,7 @@ fun AppearanceSettingsScreen(
                     title = { Text("使用 WebView 显示文章") },
                     description = { Text("关闭后使用 Compose 渲染，支持代码高亮等高级功能。警告：这个渲染模式不再推荐，非专业人士请不要开启！") },
                     checked = articleUseWebview.value,
+                    enabled = isLegacyWebViewSupported,
                     onCheckedChange = {
                         articleUseWebview.value = it
                         settings.putBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, it)
@@ -754,7 +805,7 @@ fun AppearanceSettingsScreen(
                     bringIntoViewRequester = requesterFor(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY),
                 )
 
-                if (articleUseWebview.value) {
+                if (articleUseWebview.value && isLegacyWebViewSupported) {
                     var customFontName by remember {
                         mutableStateOf(settings.getStringOrNull("webviewCustomFontName"))
                     }
@@ -762,29 +813,31 @@ fun AppearanceSettingsScreen(
                         modifier = Modifier.testTag(APPEARANCE_SETTINGS_WEBVIEW_OPTIONS_TAG),
                         verticalArrangement = Arrangement.spacedBy(2.dp),
                     ) {
-                        SettingItem(
-                            modifier = Modifier.testTag(APPEARANCE_SETTINGS_WEBVIEW_FONT_TAG),
-                            title = {
-                                Text(
-                                    "WebView 自定义字体",
-                                    modifier = Modifier.testTag(APPEARANCE_SETTINGS_WEBVIEW_FONT_TAG),
-                                )
-                            },
-                            description = { Text(customFontName ?: "未设置") },
-                            bottomAction = {
-                                WebViewCustomFontSettings(
-                                    customFontName = customFontName,
-                                    onCustomFontNameChange = { name ->
-                                        if (name == null) {
-                                            settings.remove("webviewCustomFontName")
-                                        } else {
-                                            settings.putString("webviewCustomFontName", name)
-                                        }
-                                        customFontName = name
-                                    },
-                                )
-                            },
-                        )
+                        if (isWebViewCustomFontSupported) {
+                            SettingItem(
+                                modifier = Modifier.testTag(APPEARANCE_SETTINGS_WEBVIEW_FONT_TAG),
+                                title = {
+                                    Text(
+                                        "WebView 自定义字体",
+                                        modifier = Modifier.testTag(APPEARANCE_SETTINGS_WEBVIEW_FONT_TAG),
+                                    )
+                                },
+                                description = { Text(customFontName ?: "未设置") },
+                                bottomAction = {
+                                    WebViewCustomFontSettings(
+                                        customFontName = customFontName,
+                                        onCustomFontNameChange = { name ->
+                                            if (name == null) {
+                                                settings.remove("webviewCustomFontName")
+                                            } else {
+                                                settings.putString("webviewCustomFontName", name)
+                                            }
+                                            customFontName = name
+                                        },
+                                    )
+                                },
+                            )
+                        }
 
                         val useHardwareAcceleration = remember { mutableStateOf(settings.getBoolean("webviewHardwareAcceleration", true)) }
                         SettingItemWithSwitch(
@@ -1043,6 +1096,7 @@ fun AppearanceSettingsScreen(
                     currentOrderKeys,
                     duo3HomeAccountEnabled,
                     enforceMinimumSelection = true,
+                    maximumSelection = platformBottomBarItemLimit,
                 )
                 val normalizedOrderKeys = normalizeBottomBarItemOrder(currentOrderKeys, normalizedSet)
                 val availableKeys = normalizedOrderKeys
@@ -1175,8 +1229,13 @@ fun AppearanceSettingsScreen(
                                                     userMessages.showShortMessage("至少保留3项")
                                                 }
 
-                                                !isChecked && selectedBottomBarItemKeys.value.size >= 5 -> {
-                                                    userMessages.showShortMessage("最多选择5项")
+                                                !isChecked -> {
+                                                    platformBottomBarItemLimit
+                                                        ?.takeIf { selectedBottomBarItemKeys.value.size >= it }
+                                                        ?.let { maximum ->
+                                                            userMessages.showShortMessage("最多选择${maximum}项")
+                                                        }
+                                                        ?: persistBottomBarSelection(candidateOrderKeys)
                                                 }
 
                                                 else -> persistBottomBarSelection(candidateOrderKeys)
@@ -1416,8 +1475,18 @@ fun AppearanceSettingsScreen(
             }
             val duo3ArticleBar = remember { mutableStateOf(settings.getBoolean("duo3_article_bar", false)) }
             val duo3ArticleActions = remember { mutableStateOf(settings.getBoolean("duo3_article_actions", false)) }
+            val duo3TiqianMarkdown = remember {
+                mutableStateOf(settings.getBoolean(DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY, false))
+            }
+            val duo3TiqianMathFont = remember {
+                mutableStateOf(settings.getString(DUO3_TIQIAN_MATH_FONT_PREFERENCE_KEY, "lete"))
+            }
 
             fun enableAllSubs() {
+                if (isTiqianMarkdownRendererAvailable) {
+                    settings.putBoolean(DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY, true)
+                    duo3TiqianMarkdown.value = true
+                }
                 settings.putBoolean("duo3_home_account", true)
                 settings.putBoolean("duo3_card_appearance", true)
                 settings.putBoolean("duo3_card_layout", true)
@@ -1444,6 +1513,10 @@ fun AppearanceSettingsScreen(
             }
 
             fun disableAllSubs() {
+                if (isTiqianMarkdownRendererAvailable) {
+                    settings.putBoolean(DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY, false)
+                    duo3TiqianMarkdown.value = false
+                }
                 settings.putBoolean("duo3_home_account", false)
                 settings.putBoolean("duo3_card_appearance", false)
                 settings.putBoolean("duo3_card_layout", false)
@@ -1500,6 +1573,34 @@ fun AppearanceSettingsScreen(
                     )
                 },
             ) {
+                if (isTiqianMarkdownRendererAvailable) {
+                    SettingItemWithSwitch(
+                        modifier = Modifier.testTag(APPEARANCE_SETTINGS_TIQIAN_MARKDOWN_TAG),
+                        title = { TiqianBrandTitle(prefix = "正文：使用", suffix = " Markdown 渲染器") },
+                        description = { Text("使用「提椠」段落书写器排版正文：段落两端对齐，改进中西混排间距、代码、表格、公式与脚注等样式，接近纸质书的排版效果。作用于文章、想法与问题详情。实验功能。") },
+                        checked = duo3TiqianMarkdown.value,
+                        onCheckedChange = {
+                            duo3TiqianMarkdown.value = it
+                            settings.putBoolean(DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY, it)
+                        },
+                        settingKey = DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY,
+                        highlightedKey = settingKey,
+                        bringIntoViewRequester = requesterFor(DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY),
+                    )
+                    AnimatedVisibility(visible = duo3TiqianMarkdown.value) {
+                        SettingItemWithSwitch(
+                            title = { Text("正文：使用非衬线数学字体") },
+                            description = { Text("默认公式使用非衬线的 Lete Sans Math；关闭后改用衬线的 STIX Two Math。") },
+                            checked = duo3TiqianMathFont.value == "lete",
+                            onCheckedChange = {
+                                val fontId = if (it) "lete" else "stix"
+                                duo3TiqianMathFont.value = fontId
+                                settings.putString(DUO3_TIQIAN_MATH_FONT_PREFERENCE_KEY, fontId)
+                            },
+                        )
+                    }
+                }
+
                 SettingItemWithSwitch(
                     title = { Text("主页：账号入口迁移至顶部头像") },
                     description = { Text("搜索栏样式变更；点击头像弹出账号与设置；「历史」入口可挪入账号设置页。") },

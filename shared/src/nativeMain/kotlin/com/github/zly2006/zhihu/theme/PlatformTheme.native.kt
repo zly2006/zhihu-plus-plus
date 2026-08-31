@@ -21,10 +21,7 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.runtime.Composable
 
 @Composable
-actual fun currentSystemInDarkTheme(): Boolean = false // TODO: iOS 检测系统暗色模式
+actual fun platformDynamicColorScheme(darkTheme: Boolean): ColorScheme? = null
 
 @Composable
-actual fun platformDynamicColorScheme(darkTheme: Boolean): ColorScheme? = null // TODO: iOS 动态色彩方案
-
-@Composable
-actual fun PlatformSystemBarEffect(darkTheme: Boolean) = Unit // TODO: iOS 系统栏效果
+actual fun PlatformSystemBarEffect(darkTheme: Boolean) = Unit

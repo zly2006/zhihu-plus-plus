@@ -35,6 +35,8 @@ import com.hrm.markdown.parser.ast.StrongEmphasis
 import com.hrm.markdown.parser.ast.Text
 import org.jsoup.Jsoup
 import java.io.File
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -106,6 +108,7 @@ class MdAstTest {
                 data-highlight-my-comment-count="0"
                 data-highlight-is-like="true"
                 data-highlight-is-span="false"
+                data-highlight-display-text="第一句需要划线&#10;&#10;跨段续句"
                 data-highlight-content-id="42"
                 data-highlight-content-type="answer"
                 data-highlight-pid="seg-1"
@@ -118,6 +121,7 @@ class MdAstTest {
         val highlight = paragraph.children.first() as SegmentHighlight
         assertEquals("第一句需要划线", highlight.text)
         assertEquals("abc", highlight.attributes["data-highlight-id"])
+        assertEquals("第一句需要划线\n\n跨段续句", highlight.attributes["data-highlight-display-text"])
         assertEquals("第一句需要划线，第二句保持原样。", document.toMarkdown())
     }
 
@@ -166,7 +170,7 @@ class MdAstTest {
     }
 
     @Test
-    fun paragraph_with_only_inline_equation_with_space_should_convert_to_math_block() {
+    fun paragraph_with_only_inline_equation_with_space_should_stay_inline() {
         val document = htmlToMdAst(
             """
             <p>  <img eeimg="1" src="https://www.zhihu.com/equation?tex=E%3Dmc%5E2" alt="E=mc^2"/>  </p>
@@ -174,9 +178,153 @@ class MdAstTest {
         )
 
         assertEquals(1, document.children.size)
-        assertTrue(document.children.single() is MathBlock)
-        assertEquals("E=mc^2", (document.children.single() as MathBlock).literal)
+        assertTrue(document.children.single() is Paragraph)
+        assertEquals(
+            "E=mc^2",
+            document
+                .allNodes()
+                .filterIsInstance<InlineMath>()
+                .single()
+                .literal,
+        )
+        assertFalse(document.allNodes().any { it is MathBlock })
+    }
+
+    @Test
+    fun songby_terminal_row_separator_should_promote_eeimg1_and_preserve_tex() {
+        // Songby answer captured 2026-08-20: https://www.zhihu.com/question/7177834636/answer/1924167314070278930
+        val formula = "\\frac{1}{\\text D}e^t\\frac{1}{\\text D}e^tt\\\\"
+        val document = htmlToMdAst("<p>解为 ${equationImage(formula)} 由引理可知。</p>")
+
+        assertEquals(listOf(Paragraph::class, MathBlock::class, Paragraph::class), document.children.map { it::class })
+        assertEquals("解为 ", (document.children[0] as Paragraph).plainText())
+        assertEquals(formula, (document.children[1] as MathBlock).literal)
+        assertEquals(" 由引理可知。", (document.children[2] as Paragraph).plainText())
+    }
+
+    @Test
+    fun top_level_align_should_promote_eeimg1_to_math_block() {
+        val formula = "% leading comment\n  \\begin{align}a&=b\\\\c&=d\\end{align}\\\\"
+        val document = htmlToMdAst("<p>${equationImage(formula)}</p>")
+
+        assertEquals(
+            formula,
+            document.children
+                .filterIsInstance<MathBlock>()
+                .single()
+                .literal,
+        )
         assertFalse(document.allNodes().any { it is InlineMath })
+    }
+
+    @Test
+    fun tag_command_should_promote_eeimg1_and_preserve_tex() {
+        val formulas = listOf(
+            "x^2+y^2=1\\tag{2}",
+            "\\tan\\theta=\\mu\\tag1",
+            "\\vec{DE'}\\cdot\\vec{AC'}=0\\tag 3",
+            "x=1\\tag*{named}",
+            "\\boxed{x=1\\tag{4}}",
+        )
+
+        formulas.forEach { formula ->
+            val document = htmlToMdAst("<p>before ${equationImage(formula)} after</p>")
+
+            assertTrue(formula.zhihuEquationSemantics().hasEquationTag)
+            assertEquals(listOf(Paragraph::class, MathBlock::class, Paragraph::class), document.children.map { it::class })
+            assertEquals(formula, (document.children[1] as MathBlock).literal)
+        }
+    }
+
+    @Test
+    fun tag_inside_comment_should_not_promote_eeimg1() {
+        val formula = "% \\tag{1}\nx=1"
+        val document = htmlToMdAst("<p>before ${equationImage(formula)} after</p>")
+
+        assertFalse(formula.zhihuEquationSemantics().hasEquationTag)
+        assertEquals(
+            formula,
+            document
+                .allNodes()
+                .filterIsInstance<InlineMath>()
+                .single()
+                .literal,
+        )
+        assertFalse(document.allNodes().any { it is MathBlock })
+    }
+
+    @Test
+    fun nested_row_separators_should_not_promote_eeimg1() {
+        val formulas = listOf(
+            "\\begin{matrix}a\\\\b\\end{matrix}",
+            "\\begin{cases}a&x>0\\\\b&x\\leq0\\end{cases}",
+            "\\begin{aligned}a&=b\\\\c&=d\\end{aligned}",
+        )
+
+        formulas.forEach { formula ->
+            val document = htmlToMdAst("<p>before ${equationImage(formula)} after</p>")
+
+            assertEquals(
+                formula,
+                document
+                    .allNodes()
+                    .filterIsInstance<InlineMath>()
+                    .single()
+                    .literal,
+            )
+            assertFalse(document.allNodes().any { it is MathBlock }, formula)
+        }
+    }
+
+    @Test
+    fun nonterminal_top_level_row_separator_should_promote_eeimg1_and_preserve_tex() {
+        val formula = "a\\\\b"
+        val document = htmlToMdAst("<p>before ${equationImage(formula)} after</p>")
+
+        assertEquals(listOf(Paragraph::class, MathBlock::class, Paragraph::class), document.children.map { it::class })
+        assertEquals(formula, (document.children[1] as MathBlock).literal)
+    }
+
+    @Test
+    fun terminal_row_separator_should_allow_trailing_whitespace_and_comments() {
+        val formula = "\\frac12x^2\\ln x-\\frac34x^2\\\\   % Zhihu source comment\n\t"
+
+        listOf("1", "0").forEach { eeimg ->
+            val document = htmlToMdAst("<p>${equationImage(formula, eeimg)}</p>")
+
+            assertEquals(
+                formula,
+                document.children
+                    .filterIsInstance<MathBlock>()
+                    .single()
+                    .literal,
+            )
+        }
+    }
+
+    @Test
+    fun displaystyle_alone_should_not_promote_eeimg1() {
+        val formula = "\\displaystyle\\int_0^t te^t\\text dt"
+        val document = htmlToMdAst("<p>before ${equationImage(formula)} after</p>")
+
+        assertEquals(
+            formula,
+            document
+                .allNodes()
+                .filterIsInstance<InlineMath>()
+                .single()
+                .literal,
+        )
+        assertFalse(document.allNodes().any { it is MathBlock })
+    }
+
+    @Test
+    fun eeimg2_should_always_be_math_block() {
+        val formula = "x"
+        val document = htmlToMdAst("<p>before ${equationImage(formula, eeimg = "2")} after</p>")
+
+        assertEquals(listOf(Paragraph::class, MathBlock::class, Paragraph::class), document.children.map { it::class })
+        assertEquals(formula, (document.children[1] as MathBlock).literal)
     }
 
     @Test
@@ -304,10 +452,24 @@ class MdAstTest {
         val html = File("../app/src/androidTest/assets/issue-495-answer.html").readText()
         val document = htmlToMdAst(html)
         val nodes = document.allNodes()
+        val mathBlocks = nodes.filterIsInstance<MathBlock>()
 
         assertTrue(document.children.size > 100)
-        assertEquals(406, nodes.size)
-        assertEquals(148, nodes.count { it is MathBlock || it is InlineMath })
+        assertEquals(
+            // Two formula-only paragraphs use nonterminal top-level rows, so promoting them removes
+            // their former Paragraph wrappers while preserving the formula count and source.
+            listOf(407, 148, 67, 81, 53, 62),
+            listOf(
+                nodes.size,
+                nodes.count { it is MathBlock || it is InlineMath },
+                mathBlocks.size,
+                nodes.count { it is InlineMath },
+                mathBlocks.count { it.literal.endsWith("\\\\") },
+                mathBlocks.count { it.literal.zhihuEquationSemantics().hasEquationTag },
+            ),
+        )
+        // A numbered equation has display intent independently of a terminal row separator.
+        assertFalse(nodes.filterIsInstance<InlineMath>().any { it.literal.zhihuEquationSemantics().hasEquationTag })
     }
 
     @Test
@@ -349,6 +511,14 @@ class MdAstTest {
         is ContainerNode -> children.joinToString(separator = "") { it.plainText() }
         else -> ""
     }
+
+    private fun equationImage(
+        formula: String,
+        eeimg: String = "1",
+    ): String =
+        """<img class="ztext-math" eeimg="$eeimg" src="https://www.zhihu.com/equation?tex=${
+            URLEncoder.encode(formula, StandardCharsets.UTF_8.name())
+        }" alt="formula"/>"""
 }
 
 internal fun Node.allNodes(): List<Node> =

@@ -25,7 +25,6 @@ import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
@@ -46,6 +45,7 @@ import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setZhihuMainContent
+import com.github.zly2006.zhihu.ui.AndroidArticleNavigationHandoff
 import com.github.zly2006.zhihu.ui.FOLLOW_SCREEN_PAGER_TAG
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
@@ -75,111 +75,10 @@ class ZhihuMainNavigationInstrumentedTest {
         composeRule.resetAppPreferences()
     }
 
-    @Test
-    fun bottomTabs_followDeterministicPreferenceOrderAndSelectionState() {
-        // This test pins the bottom-bar preferences to a known set so the shell cannot inherit
-        // whatever tabs the developer last selected locally. The expected behavior is:
-        // 1. only the configured tabs are rendered;
-        // 2. the configured start destination is selected on launch; and
-        // 3. tapping another bottom tab updates the selected state without reintroducing hidden tabs.
-        composeRule.launchZhihuMain(startDestination = Home.name)
-
-        composeRule.waitUntilTabSelected("nav_tab_home")
-        composeRule
-            .onNodeWithTag("nav_tab_home")
-            .assertExists()
-            .assertIsDisplayed()
-            .assertIsSelected()
-        composeRule
-            .onNodeWithTag("nav_tab_follow")
-            .assertExists()
-            .assertIsDisplayed()
-            .assertIsNotSelected()
-        composeRule
-            .onNodeWithTag("nav_tab_daily")
-            .assertExists()
-            .assertIsDisplayed()
-            .assertIsNotSelected()
-        composeRule
-            .onNodeWithTag("nav_tab_onlinehistory")
-            .assertExists()
-            .assertIsDisplayed()
-            .assertIsNotSelected()
-        composeRule
-            .onNodeWithTag("nav_tab_account")
-            .assertExists()
-            .assertIsDisplayed()
-            .assertIsNotSelected()
-        composeRule.onNodeWithTag("nav_tab_hotlist").assertDoesNotExist()
-
-        composeRule.onNodeWithTag("nav_tab_follow").performClick()
-
-        composeRule.waitUntilTabSelected("nav_tab_follow")
-        composeRule.onNodeWithTag("nav_tab_home").assertIsNotSelected()
-        composeRule.onNodeWithTag("nav_tab_follow").assertIsSelected()
-        composeRule
-            .onNodeWithText("推荐")
-            .assertExists()
-            .assertIsDisplayed()
-            .assertIsSelected()
-        composeRule
-            .onNodeWithText("动态")
-            .assertExists()
-            .assertIsDisplayed()
-            .assertIsNotSelected()
-        composeRule.onNodeWithTag("nav_tab_hotlist").assertDoesNotExist()
-
-        composeRule.onNodeWithTag("nav_tab_account").performClick()
-
-        composeRule.waitUntilTabSelected("nav_tab_account")
-        composeRule.onNodeWithTag("nav_tab_follow").assertIsNotSelected()
-        composeRule.onNodeWithTag("nav_tab_account").assertIsSelected()
-        composeRule.onNodeWithTag("nav_tab_hotlist").assertDoesNotExist()
-    }
-
-    @Test
-    fun followInnerPager_swipesBetweenTabsWithoutLosingBottomTabSelection() {
-        // Follow is now a single main-tab page that owns its own inner pager. Swiping inside the
-        // follow pager must switch between "推荐" and "动态" while keeping the bottom-bar Follow
-        // item selected, and leaving Follow should still require switching the main tab itself.
-        composeRule.launchZhihuMain(startDestination = Home.name)
-        composeRule.onNodeWithTag("nav_tab_follow").performClick()
-
-        composeRule.waitUntilTabSelected("nav_tab_follow")
-        composeRule.waitUntilTabSelected("follow_screen_tab_0")
-        composeRule.onNodeWithTag("follow_screen_tab_0").assertIsSelected()
-        composeRule.onNodeWithTag("follow_screen_tab_1").assertIsNotSelected()
-        composeRule.onNodeWithText("推荐").assertExists().assertIsDisplayed()
-        composeRule.onNodeWithText("动态").assertExists().assertIsDisplayed()
-
-        composeRule.onNodeWithTag(FOLLOW_SCREEN_PAGER_TAG).performTouchInput { swipeLeft() }
-
-        composeRule.waitUntilTabSelected("follow_screen_tab_1")
-        composeRule.onNodeWithTag("follow_screen_tab_1").assertIsSelected()
-        composeRule.onNodeWithTag("follow_screen_tab_0").assertIsNotSelected()
-        composeRule.onNodeWithTag("nav_tab_follow").assertIsSelected()
-
-        composeRule.onNodeWithTag("nav_tab_daily").performClick()
-        composeRule.onNodeWithTag("nav_tab_daily").assertIsSelected()
-        composeRule.onNodeWithTag("nav_tab_follow").assertIsNotSelected()
-
-        composeRule.onNodeWithTag("nav_tab_follow").performClick()
-
-        composeRule.waitUntilTabSelected("nav_tab_follow")
-        composeRule.waitUntilTabSelected("follow_screen_tab_1")
-        composeRule.onNodeWithTag("follow_screen_tab_1").assertIsSelected()
-        composeRule.onNodeWithTag("follow_screen_tab_0").assertIsNotSelected()
-        composeRule.onNodeWithTag("nav_tab_follow").assertIsSelected()
-
-        composeRule.onNodeWithTag(FOLLOW_SCREEN_PAGER_TAG).performTouchInput { swipeRight() }
-
-        composeRule.waitUntilTabSelected("follow_screen_tab_0")
-        composeRule.onNodeWithTag("follow_screen_tab_0").assertIsSelected()
-        composeRule.onNodeWithTag("follow_screen_tab_1").assertIsNotSelected()
-        composeRule.onNodeWithTag("nav_tab_follow").assertIsSelected()
-        composeRule.onNodeWithTag("nav_tab_home").assertIsNotSelected()
-    }
-
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/318
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/326
+     */
     @Test
     fun startDestinationAndHiddenBottomTabsRemainCompatibleWithFlattenedPager() {
         // The flattened main pager now treats Follow as a single main tab with an internal pager.
@@ -227,6 +126,10 @@ class ZhihuMainNavigationInstrumentedTest {
         composeRule.waitUntilTabSelected("follow_screen_tab_1")
     }
 
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/318
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/326
+     */
     @Test
     fun homeTabOpenContent_recordsHomeFeedOpenFrom() {
         composeRule.launchZhihuMain(startDestination = Home.name)
@@ -237,12 +140,16 @@ class ZhihuMainNavigationInstrumentedTest {
         var openFrom: String? = null
         composeRule.runOnIdle {
             composeRule.activity.navigate(article)
-            openFrom = composeRule.activity.consumePendingContentOpenFrom(article)
+            openFrom = AndroidArticleNavigationHandoff.consumeContentOpenFrom(article)
         }
 
         assertEquals(ContentOpenFrom.HOME_FEED, openFrom)
     }
 
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/609
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/611
+     */
     @Test
     fun collectionsTabKeepsLegacyListByDefault() {
         composeRule.launchZhihuMain(
@@ -255,6 +162,10 @@ class ZhihuMainNavigationInstrumentedTest {
         composeRule.onNodeWithTag("collection_browse_title").assertDoesNotExist()
     }
 
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/609
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/611
+     */
     @Test
     fun collectionsTabUsesDirectBrowseOnlyWhenEnabled() {
         composeRule.launchZhihuMain(

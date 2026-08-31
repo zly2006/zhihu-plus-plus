@@ -17,7 +17,6 @@
 
 package com.github.zly2006.zhihu
 
-import android.os.SystemClock
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -57,6 +56,10 @@ class ZzzFollowPagerRegressionInstrumentedTest {
     @get:Rule
     val composeRule: MainActivityComposeRule = createAndroidComposeRule<MainActivity>()
 
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/318
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/548
+     */
     @Test
     fun boundaryReverseGesture_settlesParentToWholePage() {
         val outerPagerState = AtomicReference<PagerState>()
@@ -86,8 +89,7 @@ class ZzzFollowPagerRegressionInstrumentedTest {
             composeRule.onNodeWithTag("follow_screen_tab_1").assertIsSelected()
 
             injectReverseBoundaryGesture()
-            SystemClock.sleep(800)
-            composeRule.mainClock.advanceTimeBy(200)
+            composeRule.mainClock.advanceTimeBy(1_000)
             composeRule.waitForIdle()
 
             composeRule.runOnIdle {
@@ -107,6 +109,10 @@ class ZzzFollowPagerRegressionInstrumentedTest {
         }
     }
 
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/318
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/548
+     */
     @Test
     fun boundaryReverseGesture_withoutHandoffLeavesParentBetweenPages() {
         val outerPagerState = AtomicReference<PagerState>()
@@ -153,8 +159,7 @@ class ZzzFollowPagerRegressionInstrumentedTest {
 
         composeRule.waitForIdle()
         injectReverseBoundaryGesture()
-        SystemClock.sleep(800)
-        composeRule.mainClock.advanceTimeBy(200)
+        composeRule.mainClock.advanceTimeBy(1_000)
         composeRule.waitForIdle()
 
         composeRule.runOnIdle {

@@ -57,6 +57,7 @@ import com.github.zly2006.zhihu.viewmodel.CollectionContentEnvironment
 import com.github.zly2006.zhihu.viewmodel.CollectionContentViewModel
 import com.github.zly2006.zhihu.viewmodel.formatArticleDateTime
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.sharedArticleAnswerSwitchState
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
@@ -93,7 +94,7 @@ fun MiuixCollectionContentScreen(
     val onExportAllToHtmlZip = { includeImages: Boolean ->
         screenViewModel.exportAllToHtmlZip(environment = collectionEnvironment, includeImages = includeImages)
     }
-    val sharedData = collectionEnvironment.articleAnswerSwitchState()
+    val sharedData = sharedArticleAnswerSwitchState
     val settings = rememberSettingsStore()
     val blurEnabled = rememberSettingBoolean("blurEnabled", true, settings)
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled)

@@ -20,8 +20,6 @@ package com.github.zly2006.zhihu.platform
 import android.content.ClipData
 import android.content.Context
 import android.content.Intent
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
 import android.os.Handler
 import android.os.Looper
 import android.widget.Toast
@@ -36,7 +34,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.core.content.edit
 import androidx.core.net.toUri
-import com.github.zly2006.zhihu.data.AccountData
+import com.github.zly2006.zhihu.account.androidZhihuAccountStore
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.components.OpenImageDialog
 import com.github.zly2006.zhihu.util.clipboardManager
@@ -50,102 +48,112 @@ import kotlinx.io.files.Path
 private const val WEBVIEW_ACTIVITY_CLASS = "com.github.zly2006.zhihu.WebviewActivity"
 
 @Composable
-actual fun rememberExternalUrlOpener(): (String) -> Unit {
+actual fun rememberExternalUrlOpener(): ExternalUrlOpener {
     val context = LocalContext.current
-    return remember(context) { { url -> luoTianYiUrlLauncher(context, url.toUri()) } }
+    return remember(context) {
+        object : ExternalUrlOpener {
+            override fun invoke(url: String) = luoTianYiUrlLauncher(context, url.toUri())
+        }
+    }
+}
+
+internal actual val platformBottomBarItemLimit: Int? = 5
+
+actual val platformName: String = "Android"
+
+actual val isJvm: Boolean = false
+
+actual val isNative: Boolean = false
+
+actual val isAigcVoteSupported: Boolean = true
+
+actual val isBlocklistNlpSupported: Boolean = true
+
+actual val isSentenceSimilaritySupported: Boolean = true
+
+actual val isArticleHtmlExportSupported: Boolean = true
+
+actual val isArticleImageExportSupported: Boolean = true
+
+@Composable
+actual fun rememberSystemUrlOpener(): SystemUrlOpener {
+    val context = LocalContext.current
+    return remember(context) {
+        object : SystemUrlOpener {
+            override fun invoke(url: String) = context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
+        }
+    }
 }
 
 @Composable
-actual fun rememberSystemUrlOpener(): (String) -> Unit {
+actual fun rememberZhihuWebUrlOpener(): ZhihuWebUrlOpener {
     val context = LocalContext.current
-    return remember(context) { { url -> context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri())) } }
+    return remember(context) {
+        object : ZhihuWebUrlOpener {
+            override fun invoke(url: String) = context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()).setClassName(context, WEBVIEW_ACTIVITY_CLASS))
+        }
+    }
 }
 
 @Composable
-actual fun rememberZhihuWebUrlOpener(): (String) -> Unit {
-    val context = LocalContext.current
-    return remember(context) { { url -> context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()).setClassName(context, WEBVIEW_ACTIVITY_CLASS)) } }
-}
-
-@Composable
-actual fun rememberImagePreviewOpener(): (String) -> Unit {
+actual fun rememberImagePreviewOpener(): ImagePreviewOpener {
     val openGallery = rememberImageGalleryOpener()
-    return remember(openGallery) { { url -> openGallery(listOf(url), 0) } }
-}
-
-@Composable
-actual fun rememberImageGalleryOpener(): (List<String>, Int) -> Unit {
-    val context = LocalContext.current
-    return remember(context) {
-        { urls, initialIndex ->
-            OpenImageDialog(context, urls, initialIndex).show()
+    return remember(openGallery) {
+        object : ImagePreviewOpener {
+            override fun invoke(url: String) = openGallery(listOf(url), 0)
         }
     }
 }
 
 @Composable
-actual fun rememberImageSaver(): (String) -> Unit {
+actual fun rememberImageGalleryOpener(): ImageGalleryOpener {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    return remember(context, scope) {
-        { imageUrl ->
-            scope.launch {
-                saveImageToGallery(context, AccountData.httpClient(context), imageUrl)
+    return remember(context) {
+        object : ImageGalleryOpener {
+            override fun invoke(urls: List<String>, initialIndex: Int) {
+                OpenImageDialog(context, urls, initialIndex).show()
             }
         }
     }
 }
 
 @Composable
-actual fun rememberImageSharer(): (String) -> Unit {
+actual fun rememberImageSaver(): ImageSaver {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     return remember(context, scope) {
-        { imageUrl ->
-            scope.launch {
-                shareImage(context, AccountData.httpClient(context), imageUrl)
-            }
-        }
-    }
-}
-
-@Composable
-actual fun rememberPlainTextClipboard(): (label: String, text: String) -> Unit {
-    val context = LocalContext.current
-    return remember(context) { { label, text -> context.clipboardManager.setPrimaryClip(ClipData.newPlainText(label, text)) } }
-}
-
-@Composable
-actual fun rememberDeveloperDiagnostics(): DeveloperDiagnostics {
-    val context = LocalContext.current.applicationContext
-    return remember(context) {
-        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-        val pm = context.packageManager
-        val deviceInfo = runCatching {
-            val info = pm.getPackageInfo(context.packageName, 0)
-            "versionName=${info.versionName}, versionCode=${info.longVersionCode}"
-        }.getOrDefault("unknown")
-        DeveloperDiagnostics(
-            appInfo = context.packageName,
-            deviceInfo = deviceInfo,
-            networkStatus = run {
-                val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
-                val nc = cm?.getNetworkCapabilities(cm.activeNetwork)
-                when {
-                    nc == null -> "无网络"
-                    nc.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> "WiFi"
-                    nc.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "蜂窝网络"
-                    else -> "其他"
+        object : ImageSaver {
+            override fun invoke(url: String) {
+                scope.launch {
+                    saveImageToGallery(context, androidZhihuAccountStore(context).client.httpClient(), url)
                 }
-            },
-            readClipboardText = {
-                context.clipboardManager.primaryClip
-                    ?.getItemAt(0)
-                    ?.text
-                    ?.toString()
-            },
-            exportAllSettings = { preferences.all.entries.joinToString("\n") { "${it.key}: ${it.value}" } },
-        )
+            }
+        }
+    }
+}
+
+@Composable
+actual fun rememberImageSharer(): ImageSharer {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    return remember(context, scope) {
+        object : ImageSharer {
+            override fun invoke(url: String) {
+                scope.launch {
+                    shareImage(context, androidZhihuAccountStore(context).client.httpClient(), url)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+actual fun rememberPlainTextClipboard(): PlainTextClipboard {
+    val context = LocalContext.current
+    return remember(context) {
+        object : PlainTextClipboard {
+            override fun invoke(label: String, text: String) = context.clipboardManager.setPrimaryClip(ClipData.newPlainText(label, text))
+        }
     }
 }
 
@@ -165,34 +173,47 @@ actual fun rememberAppPrivateDirectory(): Path {
 
 fun androidSettingsStore(context: Context): SettingsStore {
     val preferences = context.applicationContext.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-    return SettingsStore(
-        getBoolean = { key, defaultValue -> preferences.getBoolean(key, defaultValue) },
-        putBoolean = { key, value -> preferences.edit { putBoolean(key, value) } },
-        getString = { key, defaultValue -> preferences.getString(key, defaultValue) ?: defaultValue },
-        putString = { key, value -> preferences.edit { putString(key, value) } },
-        getStringOrNull = { key -> preferences.getString(key, null) },
-        putStringSet = { key, value -> preferences.edit { putStringSet(key, value) } },
-        getStringSet = { key, defaultValue -> preferences.getStringSet(key, defaultValue)?.toSet() ?: defaultValue },
-        getInt = { key, defaultValue -> preferences.getInt(key, defaultValue) },
-        putInt = { key, value -> preferences.edit { putInt(key, value) } },
-        getLong = { key, defaultValue -> preferences.getLong(key, defaultValue) },
-        putLong = { key, value -> preferences.edit { putLong(key, value) } },
-        getFloat = { key, defaultValue -> preferences.getFloat(key, defaultValue) },
-        putFloat = { key, value -> preferences.edit { putFloat(key, value) } },
-        remove = { key -> preferences.edit { remove(key) } },
-        observeKeyChanges = { onChanged ->
+    return object : SettingsStore {
+        override fun getBoolean(key: String, defaultValue: Boolean) = preferences.getBoolean(key, defaultValue)
+
+        override fun putBoolean(key: String, value: Boolean) = preferences.edit { putBoolean(key, value) }
+
+        override fun getString(key: String, defaultValue: String) = preferences.getString(key, defaultValue) ?: defaultValue
+
+        override fun putString(key: String, value: String) = preferences.edit { putString(key, value) }
+
+        override fun getStringOrNull(key: String) = preferences.getString(key, null)
+
+        override fun putStringSet(key: String, value: Set<String>) = preferences.edit { putStringSet(key, value) }
+
+        override fun getStringSet(key: String, defaultValue: Set<String>) = preferences.getStringSet(key, defaultValue)?.toSet() ?: defaultValue
+
+        override fun getInt(key: String, defaultValue: Int) = preferences.getInt(key, defaultValue)
+
+        override fun putInt(key: String, value: Int) = preferences.edit { putInt(key, value) }
+
+        override fun getLong(key: String, defaultValue: Long) = preferences.getLong(key, defaultValue)
+
+        override fun putLong(key: String, value: Long) = preferences.edit { putLong(key, value) }
+
+        override fun getFloat(key: String, defaultValue: Float) = preferences.getFloat(key, defaultValue)
+
+        override fun putFloat(key: String, value: Float) = preferences.edit { putFloat(key, value) }
+
+        override fun remove(key: String) = preferences.edit { remove(key) }
+
+        override fun observeKeyChanges(onChanged: (String) -> Unit): AutoCloseable {
             val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
                 if (key != null) {
                     onChanged(key)
                 }
             }
             preferences.registerOnSharedPreferenceChangeListener(listener)
-            val unregister = {
+            return AutoCloseable {
                 preferences.unregisterOnSharedPreferenceChangeListener(listener)
             }
-            unregister
-        },
-    )
+        }
+    }
 }
 
 fun androidUserMessageSink(context: Context): UserMessageSink {
@@ -212,14 +233,11 @@ fun androidUserMessageSink(context: Context): UserMessageSink {
         }
     }
 
-    return UserMessageSink(
-        showShortMessage = { message ->
-            showToast(message, Toast.LENGTH_SHORT)
-        },
-        showLongMessage = { message ->
-            showToast(message, Toast.LENGTH_LONG)
-        },
-    )
+    return object : UserMessageSink {
+        override fun showShortMessage(message: String) = showToast(message, Toast.LENGTH_SHORT)
+
+        override fun showLongMessage(message: String) = showToast(message, Toast.LENGTH_LONG)
+    }
 }
 
 @Composable

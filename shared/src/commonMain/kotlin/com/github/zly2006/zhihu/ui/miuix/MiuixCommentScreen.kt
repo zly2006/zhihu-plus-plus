@@ -82,7 +82,7 @@ import com.github.zly2006.zhihu.ui.COMMENT_SORT_TIME_TAG
 import com.github.zly2006.zhihu.ui.ClickableImageWithMenu
 import com.github.zly2006.zhihu.ui.SwipeToReplyContainer
 import com.github.zly2006.zhihu.ui.commentSelectionWorkaround
-import com.github.zly2006.zhihu.ui.commentViewModelKey
+import com.github.zly2006.zhihu.ui.commentThreadKey
 import com.github.zly2006.zhihu.ui.dfsSimple
 import com.github.zly2006.zhihu.ui.formatCommentTime
 import com.github.zly2006.zhihu.ui.rememberCommentEmojiInlineContent
@@ -124,7 +124,7 @@ fun MiuixCommentScreen(
     var isSending by remember { mutableStateOf(false) }
     var replyToComment by remember { mutableStateOf<CommentItem?>(null) }
     val resolvedContent = content()
-    val viewModelKey = commentViewModelKey(resolvedContent)
+    val viewModelKey = resolvedContent.commentThreadKey()
 
     val viewModel: BaseCommentViewModel = when (resolvedContent) {
         is CommentHolder -> remember(viewModelKey) { ChildCommentViewModel(resolvedContent) }
@@ -475,7 +475,7 @@ private fun MiuixCommentRow(
                         stripped.select("a.comment_img").forEach { it.remove() }
                         stripped.select("a.comment_gif").forEach { it.remove() }
                         stripped.select("a.comment_sticker").forEach { it.remove() }
-                        dfsSimple(stripped, navigator.onNavigate, openExternalUrl, emojisUsed)
+                        dfsSimple(stripped, navigator.onNavigate, { url -> openExternalUrl(url) }, emojisUsed)
                     }
                 }
                 val inlineContent = rememberCommentEmojiInlineContent(emojisUsed)

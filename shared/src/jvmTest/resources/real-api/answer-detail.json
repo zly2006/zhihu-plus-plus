@@ -1,0 +1,199 @@
+{
+  "allow_segment_interaction": 1,
+  "answer_type": "normal",
+  "author": {
+    "avatar_url": "https://pic.example/redacted-avatar-001.jpg",
+    "avatar_url_template": "https://pic.example/redacted-avatar-001.jpg",
+    "badge": [],
+    "badge_v2": {
+      "detail_badges": [],
+      "icon": "",
+      "merged_badges": [],
+      "night_icon": "",
+      "title": ""
+    },
+    "gender": -1,
+    "headline": "脱敏简介",
+    "id": "redacted-person-001",
+    "is_advertiser": false,
+    "is_followed": false,
+    "is_org": false,
+    "is_privacy": false,
+    "name": "脱敏用户001",
+    "type": "people",
+    "url": "https://www.zhihu.com/people/redacted-person-token-001",
+    "url_token": "redacted-person-token-001",
+    "user_type": "people"
+  },
+  "biz_ext": {
+    "share_guide": {
+      "has_positive_bubble": false,
+      "has_time_bubble": false,
+      "hit_share_guide_cluster": false
+    }
+  },
+  "can_comment": {
+    "reason": "",
+    "status": true
+  },
+  "comment_count": 71,
+  "content": "<p data-pid=\"LYe6bxYE\">以前我也是Kotlin信徒，直到现在我也觉得Kotlin在语言上可圈可点。</p><p data-pid=\"6e1vbR2W\">但Jvm系的基础设施开发体验真的是稀烂，尤其是整个Maven/Gradle体系。</p><p data-pid=\"ZuszR6c7\">卡、慢、臃肿无处不在。开项目、构建、启动，简直像在屎坑里打滚。</p><p data-pid=\"bHOxRKr4\">举个例子，.Net的Roslyn的代码生成是实时的，不断的检查代码变动，MSBuild会随时生成代码。</p><p data-pid=\"7NsUwLvi\">你能想象出，Kotlin每写一行代码，Gradle就重新Build一遍的样子吗？</p><p data-pid=\"xF05p1AV\">另外就是涉及到Native方面，无论是AOT还是JNI，你就用吧，一用一个不吱声。</p><p data-pid=\"iG7VZFV6\">Jvm体系根本就不是通用的解决方案，他只能在Web和Android撒欢。</p><p data-pid=\"MOnRAmi4\">Kotlin只能自己搓一个Kotlin Multiplatform，想突破限制，但做了几年也没什么成效。</p><hr/><p data-pid=\"yCOyOsbm\">但如果你问我最喜欢的语言，我仍然会答Kotlin。</p><p data-pid=\"7721-ZOK\">尤其是玩Compose的时候，被mvvm强暴了多少年的大脑，都感到了一丝通透。</p><div class=\"highlight\"><pre><code class=\"language-kotlin\"><span class=\"n\">@Composable</span>\n<span class=\"k\">fun</span> <span class=\"nf\">MessageCard</span><span class=\"p\">(</span><span class=\"n\">msg</span><span class=\"p\">:</span> <span class=\"n\">Message</span><span class=\"p\">)</span> <span class=\"p\">{</span>\n    <span class=\"n\">Row</span> <span class=\"p\">{</span>\n        <span class=\"n\">Image</span><span class=\"p\">(</span>\n            <span class=\"n\">painter</span> <span class=\"p\">=</span> <span class=\"n\">painterResource</span><span class=\"p\">(</span><span class=\"n\">R</span><span class=\"p\">.</span><span class=\"n\">drawable</span><span class=\"p\">.</span><span class=\"n\">profile_picture</span><span class=\"p\">),</span>\n            <span class=\"n\">contentDescription</span> <span class=\"p\">=</span> <span class=\"s\">&#34;Contact profile picture&#34;</span><span class=\"p\">,</span>\n        <span class=\"p\">)</span>\n    \n       <span class=\"n\">Column</span> <span class=\"p\">{</span>\n            <span class=\"n\">Text</span><span class=\"p\">(</span><span class=\"n\">text</span> <span class=\"p\">=</span> <span class=\"n\">msg</span><span class=\"p\">.</span><span class=\"n\">author</span><span class=\"p\">)</span>\n            <span class=\"n\">Text</span><span class=\"p\">(</span><span class=\"n\">text</span> <span class=\"p\">=</span> <span class=\"n\">msg</span><span class=\"p\">.</span><span class=\"n\">body</span><span class=\"p\">)</span>\n        <span class=\"p\">}</span>\n    <span class=\"p\">}</span>\n<span class=\"p\">}</span>\n\n<span class=\"n\">@Composable</span>\n<span class=\"k\">fun</span> <span class=\"nf\">Conversation</span><span class=\"p\">(</span><span class=\"n\">messages</span><span class=\"p\">:</span> <span class=\"n\">List</span><span class=\"p\">&lt;</span><span class=\"n\">Message</span><span class=\"p\">&gt;)</span> <span class=\"p\">{</span>\n    <span class=\"n\">LazyColumn</span> <span class=\"p\">{</span>\n        <span class=\"n\">items</span><span class=\"p\">(</span><span class=\"n\">messages</span><span class=\"p\">)</span> <span class=\"p\">{</span> <span class=\"n\">message</span> <span class=\"p\">-&gt;</span>\n            <span class=\"n\">MessageCard</span><span class=\"p\">(</span><span class=\"n\">message</span><span class=\"p\">)</span>\n        <span class=\"p\">}</span>\n    <span class=\"p\">}</span>\n<span class=\"p\">}</span></code></pre></div><p data-pid=\"8cg0GPkp\">C#再进化十年也学不来的。</p><hr/><p data-pid=\"VNL-E90J\">评论区有些朋友不了解Kotlin的DSL，误以为Kotlin的Lambda只是省了几个括号。</p><p data-pid=\"zVOnIun2\">实际上Kotlin的Lambda包含了隐含this作用域，隐含it参数等重要内容。这两个让Kotlin的Lambda有了质的差距。</p><div class=\"highlight\"><pre><code class=\"language-kotlin\"><span class=\"k\">fun</span> <span class=\"nf\">List</span><span class=\"p\">(</span><span class=\"n\">scope</span><span class=\"p\">:</span> <span class=\"n\">ListScope</span><span class=\"p\">.()</span> <span class=\"p\">-&gt;</span> <span class=\"n\">Unit</span><span class=\"p\">)</span> <span class=\"p\">{</span> <span class=\"p\">}</span>\n\n<span class=\"k\">class</span> <span class=\"nc\">ListScope</span>\n\n<span class=\"k\">fun</span> <span class=\"nf\">ListScope</span><span class=\"p\">.</span><span class=\"n\">Item</span><span class=\"p\">(){</span> <span class=\"p\">}</span></code></pre></div><p data-pid=\"AMLUdDzq\">上述代码中，Item只允许在List的作用域内使用，无法在外部使用。</p><div class=\"highlight\"><pre><code class=\"language-kotlin\"><span class=\"n\">List</span> <span class=\"p\">{</span>\n    <span class=\"n\">Item</span><span class=\"p\">()</span>\n<span class=\"p\">}</span></code></pre></div><p data-pid=\"zFn1Y7iR\">如果使用其他语言，就无法省略this作用域。</p><div class=\"highlight\"><pre><code class=\"language-csharp\"><span class=\"n\">List</span><span class=\"p\">(</span><span class=\"n\">s</span> <span class=\"p\">=&gt;</span> <span class=\"p\">{</span> \n   <span class=\"n\">s</span><span class=\"p\">.</span><span class=\"n\">Item</span><span class=\"p\">()</span>\n<span class=\"p\">});</span>\n</code></pre></div><p data-pid=\"SUEbCDqJ\">这种情况下，两者的代码量差距就明显了，如果是多层嵌套：</p><div class=\"highlight\"><pre><code class=\"language-kotlin\"><span class=\"n\">A</span> <span class=\"p\">{</span>\n    <span class=\"n\">B</span> <span class=\"p\">{</span>\n        <span class=\"n\">C</span> <span class=\"p\">{</span>\n            \n        <span class=\"p\">}</span>\n    <span class=\"p\">}</span>\n    \n    <span class=\"n\">D</span> <span class=\"p\">{</span>\n        <span class=\"n\">E</span> <span class=\"p\">{</span>\n            \n        <span class=\"p\">}</span>\n    <span class=\"p\">}</span>\n<span class=\"p\">}</span></code></pre></div><p data-pid=\"VntnfBx3\">换做其他语言如C#就会变得臃肿无比。</p><div class=\"highlight\"><pre><code class=\"language-csharp\"><span class=\"n\">A</span><span class=\"p\">(</span><span class=\"n\">s1</span> <span class=\"p\">=&gt;</span> <span class=\"p\">{</span>\n    <span class=\"n\">s1</span><span class=\"p\">.</span><span class=\"n\">B</span><span class=\"p\">(</span><span class=\"n\">s2</span> <span class=\"p\">=&gt;</span> <span class=\"p\">{</span>\n        <span class=\"n\">s2</span><span class=\"p\">.</span><span class=\"n\">C</span><span class=\"p\">(</span><span class=\"n\">s3</span> <span class=\"p\">=&gt;</span> <span class=\"p\">{</span>\n           \n        <span class=\"p\">});</span>\n    <span class=\"p\">});</span>\n    <span class=\"n\">s1</span><span class=\"p\">.</span><span class=\"n\">D</span><span class=\"p\">(</span><span class=\"n\">s2</span> <span class=\"p\">=&gt;</span> <span class=\"p\">{</span>\n        <span class=\"n\">s2</span><span class=\"p\">.</span><span class=\"n\">E</span><span class=\"p\">(</span><span class=\"n\">s3</span> <span class=\"p\">=&gt;</span> <span class=\"p\">{</span>\n        \n        <span class=\"p\">});</span>\n    <span class=\"p\">});</span>\n<span class=\"p\">});</span>\n</code></pre></div><p data-pid=\"xQKTSL93\">实际上Kotlin的Lambda设计的并不是很好，有些情况下需要打补丁。但奈何他的体验是独一份的，找不到更好的代餐。</p>",
+  "content_need_truncated": false,
+  "created_time": 1754546015,
+  "editable_content": "",
+  "endorsements": [
+    {
+      "action_url": "https://www.zhihu.com/people/redacted-person-token-003",
+      "background_color": {
+        "alpha": 0.1,
+        "group": "GBL01A"
+      },
+      "elements": [
+        {
+          "height": 16,
+          "image_color": {
+            "alpha": 1,
+            "group": "GBL07A"
+          },
+          "image_key": "zhicon_icon_24_crab_fill",
+          "type": "IMAGE",
+          "width": 16
+        },
+        {
+          "content": "谢邀 @脱敏用户003",
+          "font_color": {
+            "alpha": 1,
+            "group": "GBL07A"
+          },
+          "font_size": 13,
+          "is_bold": true,
+          "max_line": 1,
+          "type": "TEXT"
+        }
+      ],
+      "sub_elements": [],
+      "sub_elements_type": "DESCRIPTION",
+      "za": {
+        "block_text": "ThanksForInvitingLabel",
+        "text": "",
+        "type": "text"
+      }
+    }
+  ],
+  "excerpt": "以前我也是Kotlin信徒，直到现在我也觉得Kotlin在语言上可圈可点。 但Jvm系的基础设施开发体验真的是稀烂，尤其是整个Maven/Gradle体系。 卡、慢、臃肿无处不在。开项目、构建、启动，简直像在屎坑里打滚。 举个例子，.Net的Roslyn的代码生成是实时的，不断的检查代码变动，MSBuild会随时生成代码。 你能想象出，Kotlin每写一行代码，Gradle就重新Build一遍的样子吗？ 另外就是涉及到Native方面，无论是AOT还是JNI，你就用吧，一…",
+  "extras": "",
+  "force_login_when_click_read_more": false,
+  "id": "1936787046304842491",
+  "ip_info": "吉林",
+  "is_collapsed": false,
+  "is_copyable": true,
+  "is_jump_native": false,
+  "pagination_info": {
+    "index": 0,
+    "next_answer_ids": [
+      "1975203588134420496",
+      "1975303520560357705",
+      "2055347374596395787",
+      "1924062655544557711",
+      "2056471470763669416",
+      "1924476956197511677",
+      "2072041046171711322",
+      "1937288523968386402",
+      "1936828177608583018",
+      "1936790882637571447",
+      "1927269226449699156",
+      "1924081841612240278"
+    ],
+    "prev_answer_ids": []
+  },
+  "podcast_audio_enter": {
+    "action_url": "zhihu://podcast/audio_player/37485017874?contentId=1936787046304842491&contentType=answer&subType=&entrance=detail_page",
+    "sub_type": "",
+    "text": "1 人听过",
+    "text_color": "MapBrand",
+    "text_size": 13
+  },
+  "question": {
+    "author": {
+      "avatar_url": "https://pic.example/redacted-avatar-002.jpg",
+      "avatar_url_template": "https://pic.example/redacted-avatar-002.jpg",
+      "badge": [],
+      "badge_v2": null,
+      "gender": -1,
+      "headline": "脱敏简介",
+      "id": "redacted-person-002",
+      "is_advertiser": false,
+      "is_org": false,
+      "is_privacy": false,
+      "name": "脱敏用户002",
+      "type": "people",
+      "url": "https://www.zhihu.com/people/redacted-person-token-002",
+      "url_token": "redacted-person-token-002",
+      "user_type": "people"
+    },
+    "created": 1751510227,
+    "id": "1924054028658116132",
+    "question_type": "normal",
+    "relationship": {},
+    "title": "如何评价kotlin？",
+    "topics": [
+      {
+        "avatar_url": "https://pica.zhimg.com/v2-f47d858dcf652a9a0ae9c0608e5172b6_qhd.jpg?source=57bbeac9",
+        "id": "20008824",
+        "name": "Kotlin",
+        "topic_type": "NORMAL",
+        "type": "topic",
+        "url": "https://www.zhihu.com/api/v4/topics/20008824"
+      }
+    ],
+    "type": "question",
+    "updated_time": 1751510227,
+    "url": "https://www.zhihu.com/api/v4/questions/1924054028658116132"
+  },
+  "reaction": {
+    "image_reactions": {},
+    "relation": {
+      "current_user_is_navigator": false,
+      "faved": false,
+      "following": false,
+      "is_author": false,
+      "is_navigator_vote": false,
+      "liked": false,
+      "subcribed": false,
+      "vote": "UP",
+      "vote_next_step": "vote"
+    },
+    "statistics": {
+      "applaud_count": 0,
+      "bullet_count": 0,
+      "comment_count": 71,
+      "down_vote_count": 3,
+      "favorites": 42,
+      "interest_play_count": 0,
+      "like_count": 7,
+      "plaincontent_like_count": 0,
+      "plaincontent_vote_up_count": 0,
+      "play_count": 0,
+      "pv_count": 0,
+      "question_answer_count": 0,
+      "question_follower_count": 0,
+      "republishers": [],
+      "share_count": 0,
+      "subscribe_count": 0,
+      "up_vote_count": 101
+    }
+  },
+  "relationship": {
+    "upvoted_followees": []
+  },
+  "settings": {
+    "table_of_contents": {
+      "enabled": false
+    }
+  },
+  "thanks_count": 7,
+  "type": "answer",
+  "updated_time": 1754560634,
+  "url": "https://www.zhihu.com/api/v4/answers/1936787046304842491",
+  "voteup_count": 101
+}

@@ -19,8 +19,9 @@ package com.github.zly2006.zhihu.ui.subscreens
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import com.github.zly2006.zhihu.desktop.DesktopAccountStore
+import com.github.zly2006.zhihu.desktop.defaultDesktopAccountStore
 import com.github.zly2006.zhihu.desktop.openDesktopExternalUrl
+import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.updater.SchematicVersion
 import com.github.zly2006.zhihu.updater.extractGithubReleaseNotes
@@ -29,59 +30,82 @@ import com.github.zly2006.zhihu.updater.fetchNightlyZhihuRelease
 import com.mikepenz.aboutlibraries.Libs
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import java.io.File
 import java.util.Properties
 
 internal val desktopSystemUpdateState = MutableStateFlow<SystemUpdateState>(SystemUpdateState.NoUpdate)
 
 @Composable
-actual fun rememberSystemUpdateRuntime(): SystemUpdateRuntime {
+actual fun rememberSystemUpdateState(): StateFlow<SystemUpdateState> = desktopSystemUpdateState
+
+@Composable
+actual fun rememberSystemUpdateChecker(): SystemUpdateChecker {
     val settings = rememberSettingsStore()
-    val accountStore = remember { DesktopAccountStore() }
+    val accountStore = defaultDesktopAccountStore
     return remember(settings, accountStore) {
-        SystemUpdateRuntime(
-            state = desktopSystemUpdateState,
-            autoCheckEnabled = { settings.getBoolean(PREF_AUTO_CHECK_UPDATES, true) },
-            setAutoCheckEnabled = { enabled ->
-                settings.putBoolean(PREF_AUTO_CHECK_UPDATES, enabled)
-                if (!enabled) {
-                    desktopSystemUpdateState.value = SystemUpdateState.NoUpdate
-                }
-            },
-            checkForUpdate = {
+        object : SystemUpdateChecker {
+            override suspend fun check() {
                 checkDesktopUpdate(
-                    client = accountStore.httpClient(),
+                    client = accountStore.client.httpClient(),
                     githubToken = settings.getStringOrNull("githubToken")?.takeIf { it.isNotBlank() },
                     checkNightly = settings.getBoolean("checkNightlyUpdates", false),
                     skippedVersion = settings.getStringOrNull(PREF_SKIPPED_VERSION),
                     state = desktopSystemUpdateState,
                 )
-            },
-            skipVersion = { version ->
-                settings.putString(PREF_SKIPPED_VERSION, version)
-                desktopSystemUpdateState.value = SystemUpdateState.Latest
-            },
-            resetToNoUpdate = { desktopSystemUpdateState.value = SystemUpdateState.NoUpdate },
-            downloadUpdate = { url ->
-                runCatching {
-                    if (url.isBlank()) {
-                        error("下载链接为空")
-                    }
-                    openDesktopExternalUrl(url)
-                }.onFailure {
-                    desktopSystemUpdateState.value = SystemUpdateState.Error(it.message ?: "无法打开浏览器")
-                }
-            },
-            installDownloadedUpdate = {
-                desktopSystemUpdateState.value = SystemUpdateState.Error("桌面端不支持 APK 更新安装")
-            },
-            setError = { message -> desktopSystemUpdateState.value = SystemUpdateState.Error(message) },
-            supportsApkInstall = false,
-        )
+            }
+        }
     }
 }
 
-private const val PREF_AUTO_CHECK_UPDATES = "autoCheckUpdates"
+@Composable
+actual fun rememberSystemUpdateVersionSkipper(): SystemUpdateVersionSkipper {
+    val settings = rememberSettingsStore()
+    return remember(settings) {
+        object : SystemUpdateVersionSkipper {
+            override fun skip(version: String) {
+                settings.putString(PREF_SKIPPED_VERSION, version)
+                desktopSystemUpdateState.value = SystemUpdateState.Latest
+            }
+        }
+    }
+}
+
+@Composable
+actual fun rememberSystemUpdateDownloader(): SystemUpdateDownloader = remember {
+    object : SystemUpdateDownloader {
+        override suspend fun download(url: String) {
+            runCatching {
+                if (url.isBlank()) {
+                    error("下载链接为空")
+                }
+                openDesktopExternalUrl(url)
+            }.onFailure {
+                desktopSystemUpdateState.value = SystemUpdateState.Error(it.message ?: "无法打开浏览器")
+            }
+        }
+    }
+}
+
+@Composable
+actual fun rememberDownloadedSystemUpdateInstaller(): DownloadedSystemUpdateInstaller = remember {
+    object : DownloadedSystemUpdateInstaller {
+        override suspend fun install() {
+            desktopSystemUpdateState.value = SystemUpdateState.Error("$platformName 暂不支持 APK 更新安装")
+        }
+    }
+}
+
+actual fun resetSystemUpdateState() {
+    desktopSystemUpdateState.value = SystemUpdateState.NoUpdate
+}
+
+actual fun setSystemUpdateError(message: String) {
+    desktopSystemUpdateState.value = SystemUpdateState.Error(message)
+}
+
+actual val isApkUpdateInstallSupported: Boolean = false
+
 private const val PREF_SKIPPED_VERSION = "skippedVersion"
 
 private suspend fun checkDesktopUpdate(
@@ -143,7 +167,7 @@ private suspend fun checkDesktopUpdate(
 
 internal fun desktopVersionName(): String =
     System.getProperty("zhihu.version")
-        ?: SystemUpdateRuntime::class.java.`package`?.implementationVersion
+        ?: SystemUpdateState::class.java.`package`?.implementationVersion
         ?: readDesktopVersionFromGradleProperties()
         ?: "0.0.0"
 
@@ -162,8 +186,8 @@ private fun readDesktopVersionFromGradleProperties(): String? {
 }
 
 @Composable
-actual fun rememberDeveloperRuntimeInfo(): DeveloperRuntimeInfo =
-    DeveloperRuntimeInfo(networkStatus = "网络状态：桌面端使用系统网络")
+actual fun rememberDeveloperInfo(): DeveloperInfoSnapshot =
+    DeveloperInfoSnapshot(networkStatus = "网络状态：桌面端使用系统网络")
 
 @Composable
 actual fun rememberOpenSourceLicensesLibraries(): Libs = remember {
@@ -203,8 +227,12 @@ private fun loadDesktopAboutLibrariesJson(): String? {
     }
 }
 
+actual val isWebViewCustomFontSupported: Boolean = false
+
 @Composable
 actual fun WebViewCustomFontSettings(
     customFontName: String?,
     onCustomFontNameChange: (String?) -> Unit,
-) = Unit // TODO: 桌面端 WebView 自定义字体设置
+) {
+    error("$platformName 暂不支持 WebView 自定义字体设置")
+}

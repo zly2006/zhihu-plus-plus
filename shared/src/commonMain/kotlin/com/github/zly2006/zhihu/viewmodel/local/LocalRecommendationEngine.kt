@@ -19,10 +19,10 @@ package com.github.zly2006.zhihu.viewmodel.local
 
 import com.github.zly2006.zhihu.data.CommonFeed
 import com.github.zly2006.zhihu.data.Feed
-import com.github.zly2006.zhihu.data.FeedDisplayItem
 import com.github.zly2006.zhihu.data.target
-import com.github.zly2006.zhihu.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.util.Log
+import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import com.github.zly2006.zhihu.viewmodel.local.LocalReasonPreference
 import com.github.zly2006.zhihu.viewmodel.local.applyReasonDiversity
 import com.github.zly2006.zhihu.viewmodel.local.buildLocalRecommendationReason
@@ -32,21 +32,17 @@ import com.github.zly2006.zhihu.viewmodel.local.toLocalContentIdentity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.JsonArray
 import kotlin.time.Clock
 
 class LocalRecommendationEngine(
     private val dao: LocalContentDao,
-    private val feedGenerator: FeedGenerator,
-    private val userBehaviorAnalyzer: UserBehaviorAnalyzer,
-    private val initializeContentIfNeeded: suspend () -> Unit,
-    private val startScheduling: () -> Unit,
-    private val stopScheduling: () -> Unit,
-    private val executeTask: suspend (CrawlingTask) -> Unit,
-    private val isNetworkAvailable: () -> Boolean = { true },
-    private val logWarning: (String) -> Unit = {},
-    private val logError: (String, Throwable) -> Unit = { _, _ -> },
+    private val crawlingExecutor: CrawlingExecutor,
 ) {
+    private val feedGenerator = FeedGenerator(dao)
+    private val userBehaviorAnalyzer = UserBehaviorAnalyzer(dao)
+    private val contentInitializer = LocalContentInitializer(dao)
+    private val taskScheduler = TaskScheduler(dao, crawlingExecutor)
+
     @kotlin.concurrent.Volatile
     private var initialized = false
 
@@ -59,8 +55,10 @@ class LocalRecommendationEngine(
             if (initialized) {
                 return@withContext
             }
-            initializeContentIfNeeded()
-            startScheduling()
+            localRecommendationEngineForTesting?.initializeContent?.invoke()
+                ?: contentInitializer.initializeIfNeeded()
+            localRecommendationEngineForTesting?.startScheduling?.invoke()
+                ?: taskScheduler.startScheduling()
             initialized = true
         }
     }
@@ -121,21 +119,17 @@ class LocalRecommendationEngine(
     }
 
     private suspend fun executeHighPriorityTasks() {
-        if (!isNetworkAvailable()) {
-            logWarning("No network connection, skipping task execution")
-            return
-        }
-
         dao
             .getTasksByStatus(CrawlingStatus.NotStarted)
             .sortedByDescending { it.priority }
             .take(3)
             .forEach { task ->
                 try {
-                    executeTask(task)
+                    localRecommendationEngineForTesting?.executeTask?.invoke(task)
+                        ?: crawlingExecutor.executeTask(task)
                     delay(1_000L)
                 } catch (e: Exception) {
-                    logError("Task execution failed: ${e.message}", e)
+                    Log.e("LocalRecommendationEngine", "Task execution failed: ${e.message}", e)
                 }
             }
     }
@@ -143,33 +137,16 @@ class LocalRecommendationEngine(
 
 fun buildLocalRecommendationEngine(
     dao: LocalContentDao,
-    fetchFeedArray: suspend (String) -> JsonArray,
-    isNetworkAvailable: () -> Boolean = { true },
-    logWarning: (String) -> Unit = {},
-    logError: (String, Throwable) -> Unit = { _, _ -> },
-): LocalRecommendationEngine {
-    val crawlingExecutor = CrawlingExecutor(
-        dao = dao,
-        fetchFeedArray = fetchFeedArray,
-    )
-    val taskScheduler = TaskScheduler(
-        dao = dao,
-        executeTask = { task -> crawlingExecutor.executeTask(task) },
-    )
-    val contentInitializer = LocalContentInitializer(dao)
-    return LocalRecommendationEngine(
-        dao = dao,
-        feedGenerator = FeedGenerator(dao),
-        userBehaviorAnalyzer = UserBehaviorAnalyzer(dao),
-        initializeContentIfNeeded = { contentInitializer.initializeIfNeeded() },
-        startScheduling = { taskScheduler.startScheduling() },
-        stopScheduling = { taskScheduler.stopScheduling() },
-        executeTask = { task -> crawlingExecutor.executeTask(task) },
-        isNetworkAvailable = isNetworkAvailable,
-        logWarning = logWarning,
-        logError = logError,
-    )
-}
+    environment: ZhihuApiEnvironment,
+): LocalRecommendationEngine = LocalRecommendationEngine(dao, CrawlingExecutor(dao, environment))
+
+data class LocalRecommendationEngineTestOverrides(
+    val initializeContent: suspend () -> Unit = {},
+    val startScheduling: () -> Unit = {},
+    val executeTask: suspend (CrawlingTask) -> Unit = {},
+)
+
+var localRecommendationEngineForTesting: LocalRecommendationEngineTestOverrides? = null
 
 data class RankedLocalResult(
     val result: CrawlingResult,
@@ -212,15 +189,6 @@ internal fun zhihuFollowingUpvoteRecommendUrl(
             append("&offset=$offset")
         }
     }
-
-internal fun createLocalFeedDisplayItem(entry: LocalRecommendationEntry): FeedDisplayItem = FeedDisplayItem(
-    title = entry.feed.title,
-    summary = entry.feed.summary,
-    details = entry.feed.reasonDisplay,
-    feed = null,
-    navDestinationJson = entry.navDestination?.toFeedDisplayItemNavDestinationJson(),
-    isFiltered = false,
-)
 
 internal suspend fun cleanupLocalRecommendationData(
     dao: LocalContentDao,
@@ -412,7 +380,7 @@ internal fun rankCandidate(
     )
 }
 
-internal suspend fun toRecommendationEntry(
+private suspend fun toRecommendationEntry(
     rankedResult: RankedLocalResult,
     feedGenerator: FeedGenerator,
 ): LocalRecommendationEntry? {

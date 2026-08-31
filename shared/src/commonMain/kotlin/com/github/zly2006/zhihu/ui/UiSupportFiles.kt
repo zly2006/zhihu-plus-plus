@@ -23,17 +23,19 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.State
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.fleeksoft.ksoup.Ksoup
+import com.github.zly2006.zhihu.account.rememberZhihuAccountStore
 import com.github.zly2006.zhihu.data.DataHolder
-import com.github.zly2006.zhihu.filter.ContentOpenFrom
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.navigation.AnswerNavigator
 import com.github.zly2006.zhihu.navigation.Article
@@ -45,18 +47,13 @@ import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.platform.SettingsStore
 import com.github.zly2006.zhihu.platform.UserMessageSink
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
-import com.github.zly2006.zhihu.ui.AnswerDoubleTapAction
-import com.github.zly2006.zhihu.ui.components.ANSWER_SWITCH_SENSITIVITY_PREFERENCE_KEY
-import com.github.zly2006.zhihu.ui.components.DEFAULT_ANSWER_SWITCH_SENSITIVITY
-import com.github.zly2006.zhihu.ui.components.normalizedAnswerSwitchSensitivity
+import com.github.zly2006.zhihu.ui.subscreens.DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import com.github.zly2006.zhihu.viewmodel.getOrFetchContentDetail
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.jsonPrimitive
-import top.yukonga.miuix.kmp.nav.core.NavController
 
 data class PinLikeResult(
     val isLiked: Boolean,
@@ -113,12 +110,13 @@ internal fun JsonObject?.booleanCompat(vararg keys: String): Boolean {
  * 想法正文的 HTML 渲染入口。
  *
  * 根据当前 WebView 设置选择平台 WebView 或 Compose Markdown 渲染。这样想法页、问题详情和文章页可以共享同一条“正文渲染模式”
- * 语义，避免用户打开 WebView 后只有部分内容类型生效。
+ * 语义，避免用户打开 WebView 后只有部分内容类型生效；提椠 Markdown 开关同理，对这些内容类型一并生效。
  */
 @Composable
 fun PinHtmlContent(html: String) {
-    if (rememberSettingsStore().getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false) &&
-        supportsZhihuHtmlWebView()
+    val settings = rememberSettingsStore()
+    if (settings.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false) &&
+        isLegacyWebViewSupported
     ) {
         ZhihuHtmlWebViewContent(html)
     } else {
@@ -128,131 +126,34 @@ fun PinHtmlContent(html: String) {
             modifier = Modifier.questionSelectionWorkaround(),
             selectable = true,
             enableScroll = false,
+            useTiqianRenderer = settings.getBoolean(DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY, false),
         )
     }
 }
 
-expect fun supportsZhihuHtmlWebView(): Boolean
+expect val isLegacyWebViewSupported: Boolean
 
 @Composable
 expect fun ZhihuHtmlWebViewContent(html: String)
 
-/**
- * 文章页 Compose UI 使用的运行时设置视图。
- *
- * 这些值保存在可变 state 中，是因为大多数阅读设置都应该在用户已经打开文章时即时生效：标题/底栏自动隐藏、回答切换、
- * WebView 渲染和双击正文动作都不应要求重建页面。持久化仍由 [SettingsStore] 负责；这个类只镜像会影响当前 UI 的值，
- * 并暴露文章页内弹窗会用到的显式保存入口。
- */
-class ArticleScreenSettingsState(
-    isTitleAutoHide: Boolean,
-    autoHideArticleBottomBar: Boolean,
-    answerSwitchMode: String,
-    answerSwitchSensitivity: Float,
-    pinAnswerDate: Boolean,
-    useDuo3ArticleActions: Boolean,
-    buttonSkipAnswer: Boolean,
-    autoHideSkipAnswerButton: Boolean,
-    answerDoubleTapAction: AnswerDoubleTapAction,
-    useWebView: Boolean,
-    private val saveAnswerDoubleTapActionPreference: (AnswerDoubleTapAction) -> Unit,
-) {
-    var isTitleAutoHide by mutableStateOf(isTitleAutoHide)
-    var autoHideArticleBottomBar by mutableStateOf(autoHideArticleBottomBar)
-    var answerSwitchMode by mutableStateOf(answerSwitchMode)
-    var answerSwitchSensitivity by mutableFloatStateOf(answerSwitchSensitivity)
-    var pinAnswerDate by mutableStateOf(pinAnswerDate)
-    var useDuo3ArticleActions by mutableStateOf(useDuo3ArticleActions)
-    var buttonSkipAnswer by mutableStateOf(buttonSkipAnswer)
-    var autoHideSkipAnswerButton by mutableStateOf(autoHideSkipAnswerButton)
-    var answerDoubleTapAction by mutableStateOf(answerDoubleTapAction)
-    var useWebView by mutableStateOf(useWebView)
-
-    fun saveAnswerDoubleTapAction(action: AnswerDoubleTapAction) {
-        answerDoubleTapAction = action
-        saveAnswerDoubleTapActionPreference(action)
-    }
-}
-
-/**
- * 订阅会改变文章页可见阅读行为的设置项。
- *
- * 设置页和文章页内弹窗可能修改同一批 key。这里通过监听这些 key 并原地更新 [ArticleScreenSettingsState]，
- * 让文章 UI 在保留滚动位置、已加载内容和 ViewModel 状态的同时应用新设置。
- */
 @Composable
-fun rememberArticleScreenSettingsState(): ArticleScreenSettingsState {
-    val settings = rememberSettingsStore()
-    val state = remember(settings) {
-        ArticleScreenSettingsState(
-            isTitleAutoHide = settings.getBoolean("titleAutoHide", false),
-            autoHideArticleBottomBar = settings.getBoolean("autoHideArticleBottomBar", false),
-            answerSwitchMode = settings.getString("answerSwitchMode", "vertical"),
-            answerSwitchSensitivity = normalizedAnswerSwitchSensitivity(
-                settings.getFloat(
-                    ANSWER_SWITCH_SENSITIVITY_PREFERENCE_KEY,
-                    DEFAULT_ANSWER_SWITCH_SENSITIVITY,
-                ),
-            ),
-            pinAnswerDate = settings.getBoolean("pinAnswerDate", false),
-            useDuo3ArticleActions = settings.getBoolean("duo3_article_actions", false),
-            buttonSkipAnswer = settings.getBoolean("buttonSkipAnswer", true),
-            autoHideSkipAnswerButton = settings.getBoolean("autoHideSkipAnswerButton", true),
-            answerDoubleTapAction = settings.answerDoubleTapAction(),
-            useWebView = settings.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false),
-            saveAnswerDoubleTapActionPreference = { action ->
-                settings.putString(
-                    ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY,
-                    action.preferenceValue,
-                )
-            },
-        )
-    }
-
-    DisposableEffect(settings, state) {
-        val unregister = settings.observeKeyChanges { key ->
-            when (key) {
-                "titleAutoHide" -> state.isTitleAutoHide = settings.getBoolean(key, false)
-                "autoHideArticleBottomBar" -> {
-                    state.autoHideArticleBottomBar = settings.getBoolean(key, false)
-                }
-
-                "buttonSkipAnswer" -> state.buttonSkipAnswer = settings.getBoolean(key, true)
-                "autoHideSkipAnswerButton" -> state.autoHideSkipAnswerButton = settings.getBoolean(key, true)
-                "answerSwitchMode" -> {
-                    state.answerSwitchMode = settings.getString(key, "vertical")
-                }
-
-                ANSWER_SWITCH_SENSITIVITY_PREFERENCE_KEY -> {
-                    state.answerSwitchSensitivity = normalizedAnswerSwitchSensitivity(
-                        settings.getFloat(key, DEFAULT_ANSWER_SWITCH_SENSITIVITY),
-                    )
-                }
-
-                "pinAnswerDate" -> state.pinAnswerDate = settings.getBoolean(key, false)
-                "duo3_article_actions" -> state.useDuo3ArticleActions = settings.getBoolean(key, false)
-                ARTICLE_USE_WEBVIEW_PREFERENCE_KEY -> state.useWebView = settings.getBoolean(key, false)
-                ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY -> {
-                    state.answerDoubleTapAction = settings.answerDoubleTapAction()
-                }
-            }
+internal fun <T> rememberObservedSetting(
+    settings: SettingsStore,
+    key: String,
+    read: SettingsStore.() -> T,
+): MutableState<T> {
+    val state = remember(settings, key) { mutableStateOf(settings.read()) }
+    DisposableEffect(settings, key, state) {
+        val subscription = settings.observeKeyChanges { changedKey ->
+            if (changedKey == key) state.value = settings.read()
         }
-        onDispose(unregister)
+        onDispose(subscription::close)
     }
-
     return state
 }
 
-private fun SettingsStore.answerDoubleTapAction(): AnswerDoubleTapAction =
-    AnswerDoubleTapAction.fromPreference(
-        getString(
-            ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY,
-            AnswerDoubleTapAction.Ask.preferenceValue,
-        ),
-    )
-
 @Composable
-expect fun rememberArticleHost(): ArticleHost?
+expect fun consumePendingCommentId(content: NavDestination): String?
 
 @Composable
 expect fun ArticleWebViewContent(
@@ -280,8 +181,9 @@ fun QuestionDetailContent(
     questionId: Long,
     html: String,
 ) {
-    if (rememberSettingsStore().getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false) &&
-        supportsQuestionDetailWebView()
+    val settings = rememberSettingsStore()
+    if (settings.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false) &&
+        isLegacyWebViewSupported
     ) {
         QuestionDetailWebViewContent(
             questionId = questionId,
@@ -293,11 +195,10 @@ fun QuestionDetailContent(
             modifier = Modifier.questionSelectionWorkaround(),
             selectable = true,
             enableScroll = false,
+            useTiqianRenderer = settings.getBoolean(DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY, false),
         )
     }
 }
-
-expect fun supportsQuestionDetailWebView(): Boolean
 
 @Composable
 expect fun QuestionDetailWebViewContent(
@@ -308,11 +209,19 @@ expect fun QuestionDetailWebViewContent(
 @Composable
 expect fun rememberArticleTtsState(): TtsState
 
-@Composable
-expect fun rememberArticleSpeechToggler(): (title: String, content: String) -> Unit
+interface ArticleSpeechToggler {
+    operator fun invoke(title: String, content: String)
+}
 
 @Composable
-expect fun rememberArticleBrowserOpener(): (Article) -> Unit
+expect fun rememberArticleSpeechToggler(): ArticleSpeechToggler
+
+interface ArticleBrowserOpener {
+    operator fun invoke(article: Article)
+}
+
+@Composable
+expect fun rememberArticleBrowserOpener(): ArticleBrowserOpener
 
 fun articleActionText(
     article: Article,
@@ -353,32 +262,6 @@ fun articleSpeechText(
             append(Ksoup.parse(contentToProcess).text())
         }
     }
-
-/**
- * 文章页需要从外围应用获取的宿主级服务。
- *
- * 文章会参与历史记录、回答间导航、内容打开来源归因、TTS、剪贴板和 deep link 交接。这个接口刻意比 Activity 窄，
- * 让 common 文章 UI 能同时运行在 Android、Desktop 和测试环境里，而不依赖平台类。
- */
-interface ArticleHost {
-    val articleNavController: NavController<NavDestination>
-    val articleAnswerSwitchState: ArticleAnswerSwitchState
-    val articleTtsState: TtsState
-    var clipboardDestination: NavDestination?
-
-    fun postHistoryDestination(destination: NavDestination)
-
-    fun consumePendingContentOpenFrom(destination: NavDestination): String = ContentOpenFrom.UNKNOWN
-
-    fun consumePendingCommentId(destination: NavDestination): String? = null
-
-    fun speakArticleText(
-        text: String,
-        title: String,
-    )
-
-    fun stopArticleSpeaking()
-}
 
 /**
  * 同一问题下不同回答之间导航时使用的共享状态。
@@ -477,7 +360,7 @@ fun rememberZhihuMainPreferenceState(
                     state.reload()
                 }
             }
-            onDispose(unregister)
+            onDispose(unregister::close)
         }
     }
     return state
@@ -490,34 +373,63 @@ data class AccountSettingsAccountState(
     val avatarUrl: String? = null,
     val id: String = "",
     val urlToken: String? = null,
-    val identityManagementSupported: Boolean = false,
 )
 
 @Composable
-expect fun rememberAccountSettingsAccountState(): State<AccountSettingsAccountState>
-
-@Composable
-expect fun rememberAccountQrLoginRequester(): () -> Unit
+fun rememberAccountSettingsAccountState(): State<AccountSettingsAccountState> {
+    val accountStore = rememberZhihuAccountStore()
+    val accounts = accountStore.accountsState.collectAsState()
+    return remember(accounts) {
+        derivedStateOf {
+            val session = accounts.value.session
+            AccountSettingsAccountState(
+                login = session.login,
+                hasRequiredCookie = session.cookies["d_c0"]
+                    .isNullOrBlank()
+                    .not(),
+                username = session.username,
+                avatarUrl = session.profile?.avatarUrl,
+                id = session.profile
+                    ?.id
+                    .orEmpty(),
+                urlToken = session.profile?.urlToken,
+            )
+        }
+    }
+}
 
 @Composable
 expect fun rememberAppVersionInfo(): String
 
-fun noopSettingsStore(): SettingsStore = SettingsStore(
-    getBoolean = { _, defaultValue -> defaultValue },
-    putBoolean = { _, _ -> },
-    getString = { _, defaultValue -> defaultValue },
-    putString = { _, _ -> },
-    getStringOrNull = { _ -> null },
-    putStringSet = { _, _ -> },
-    getStringSet = { _, defaultValue -> defaultValue },
-    getInt = { _, defaultValue -> defaultValue },
-    putInt = { _, _ -> },
-    getLong = { _, defaultValue -> defaultValue },
-    putLong = { _, _ -> },
-    getFloat = { _, defaultValue -> defaultValue },
-    putFloat = { _, _ -> },
-    remove = { _ -> },
-)
+fun noopSettingsStore(): SettingsStore = object : SettingsStore {
+    override fun getBoolean(key: String, defaultValue: Boolean) = defaultValue
+
+    override fun putBoolean(key: String, value: Boolean) = Unit
+
+    override fun getString(key: String, defaultValue: String) = defaultValue
+
+    override fun putString(key: String, value: String) = Unit
+
+    override fun getStringOrNull(key: String): String? = null
+
+    override fun putStringSet(key: String, value: Set<String>) = Unit
+
+    override fun getStringSet(key: String, defaultValue: Set<String>) = defaultValue
+
+    override fun getInt(key: String, defaultValue: Int) = defaultValue
+
+    override fun putInt(key: String, value: Int) = Unit
+
+    override fun getLong(key: String, defaultValue: Long) = defaultValue
+
+    override fun putLong(key: String, value: Long) = Unit
+
+    override fun getFloat(key: String, defaultValue: Float) = defaultValue
+
+    override fun putFloat(key: String, value: Float) = Unit
+
+    override fun remove(key: String) = Unit
+}
 
 internal const val PEOPLE_PROFILE_INCLUDE_PATH =
     "allow_message,is_followed,is_following,is_org,is_blocking,badge_v2,answer_count,follower_count,following_count,articles_count,question_count,pins_count"
@@ -543,10 +455,19 @@ expect fun Modifier.commentSelectionWorkaround(): Modifier
 @Composable
 expect fun rememberBlocklistRuleImporter(
     userMessages: UserMessageSink,
-): (((String) -> Unit) -> Unit)
+    onImported: (String) -> Unit,
+): BlocklistRuleImporter
+
+interface BlocklistRuleImporter {
+    operator fun invoke()
+}
+
+interface BlocklistRuleExporter {
+    suspend operator fun invoke(): String
+}
 
 @Composable
-expect fun rememberBlocklistRuleExporter(): suspend () -> String
+expect fun rememberBlocklistRuleExporter(): BlocklistRuleExporter
 
 /**
  * 沉浸式阅读时控制系统栏（状态栏/导航栏）的显隐。

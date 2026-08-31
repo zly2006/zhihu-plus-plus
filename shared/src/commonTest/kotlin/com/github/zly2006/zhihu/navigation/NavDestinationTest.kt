@@ -23,6 +23,44 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
 class NavDestinationTest {
+    @Test
+    fun resolvesSupportedContentLinks() {
+        listOf(
+            "https://www.zhihu.com/topic/19550517" to Topic("19550517"),
+            "zhihu://topic/19550517" to Topic("19550517"),
+            "zhihu://pin20/topic?topic_id=19550517" to Topic("19550517"),
+            "https://www.zhihu.com/topic/19550517/hot" to Topic("19550517", section = "hot"),
+            "https://www.zhihu.com/topic/19550517/newest" to Topic("19550517", section = "newest"),
+            "https://www.zhihu.com/topic/19550517/top-answers" to Topic("19550517", section = "top-answers"),
+            "https://www.zhihu.com/topic/19550517/unanswered" to Topic("19550517", section = "unanswered"),
+            "zhihu://topic/19550517/newest" to Topic("19550517", section = "newest"),
+            "https://www.zhihu.com/question/1/answer/42" to Article(type = ArticleType.Answer, id = 42),
+            "zhihu://comment/list/answer/42?anchor_comment_id=123456&is_child=false" to
+                CommentHolder("123456", Article(type = ArticleType.Answer, id = 42)),
+            "zhihu://comment/list/article/43?anchor_comment_id=123457&is_child=false" to
+                CommentHolder("123457", Article(type = ArticleType.Article, id = 43)),
+            "zhihu://comment/list/pin/44?anchor_comment_id=123458&is_child=true" to
+                CommentHolder("123458", Pin(44)),
+            "zhihu://comment/list/question/45?anchor_comment_id=123459&is_child=false" to
+                CommentHolder("123459", Question(45)),
+            "zhihu://comment/list/answer/46?anchor_comment_id=123460&list_height_ratio=0.66&dragIconVisible=true&segment=%7B%22id%22%3A1%7D" to
+                CommentHolder("123460", Article(type = ArticleType.Answer, id = 46)),
+            "https://www.zhihu.com/appview/pin/2059710318939301395" to Pin(2059710318939301395),
+            "https://www.zhihu.com/appview/answer/2040633177593619876" to
+                Article(type = ArticleType.Answer, id = 2040633177593619876),
+            "https://www.zhihu.com/appview/p/1981671287999981270" to
+                Article(type = ArticleType.Article, id = 1981671287999981270),
+            "https://www.zhihu.com/notifications/v3/timeline/entry/system?title=%E7%B3%BB%E7%BB%9F%E6%B6%88%E6%81%AF" to
+                Notification.Entry("system", "系统消息"),
+            "https://www.zhihu.com/compose_answer_tab?default_selected_page=2&title=%E9%82%80%E8%AF%B7%E5%9B%9E%E7%AD%94" to
+                Notification.Invitations,
+            "https://www.zhihu.com/inbox/peer-token?title=%E7%9F%A5%E4%B9%8E%E5%B0%8F%E7%AE%A1%E5%AE%B6&source_type=message_list" to
+                Notification.Message("peer-token", "知乎小管家"),
+        ).forEach { (url, expected) ->
+            assertEquals(expected, resolveContent(url), url)
+        }
+    }
+
     private val json = Json {
         ignoreUnknownKeys = true
     }
@@ -36,15 +74,6 @@ class NavDestinationTest {
         )
 
         assertEquals(destination, decoded)
-    }
-
-    @Test
-    fun resolvesZhihuAnswerUrlFromCommonCode() {
-        val destination = resolveContent("https://www.zhihu.com/question/1/answer/42")
-
-        val article = assertIs<Article>(destination)
-        assertEquals(ArticleType.Answer, article.type)
-        assertEquals(42L, article.id)
     }
 
     @Test
@@ -85,125 +114,5 @@ class NavDestinationTest {
         )
         assertEquals(route, decoded)
         assertEquals(key, decoded.toString())
-    }
-
-    @Test
-    fun resolvesAnswerCommentDeepLinkWithAnchor() {
-        val destination = resolveContent(
-            "zhihu://comment/list/answer/42?anchor_comment_id=123456&is_child=false",
-        )
-
-        val holder = assertIs<CommentHolder>(destination)
-        val article = assertIs<Article>(holder.article)
-        assertEquals(ArticleType.Answer, article.type)
-        assertEquals(42L, article.id)
-        assertEquals("123456", holder.commentId)
-    }
-
-    @Test
-    fun resolvesArticleCommentDeepLinkWithAnchor() {
-        val destination = resolveContent(
-            "zhihu://comment/list/article/43?anchor_comment_id=123457&is_child=false",
-        )
-
-        val holder = assertIs<CommentHolder>(destination)
-        val article = assertIs<Article>(holder.article)
-        assertEquals(ArticleType.Article, article.type)
-        assertEquals(43L, article.id)
-        assertEquals("123457", holder.commentId)
-    }
-
-    @Test
-    fun resolvesPinCommentDeepLinkWithAnchor() {
-        val destination = resolveContent(
-            "zhihu://comment/list/pin/44?anchor_comment_id=123458&is_child=true",
-        )
-
-        val holder = assertIs<CommentHolder>(destination)
-        val pin = assertIs<Pin>(holder.article)
-        assertEquals(44L, pin.id)
-        assertEquals("123458", holder.commentId)
-    }
-
-    @Test
-    fun resolvesQuestionCommentDeepLinkWithAnchor() {
-        val destination = resolveContent(
-            "zhihu://comment/list/question/45?anchor_comment_id=123459&is_child=false",
-        )
-
-        val holder = assertIs<CommentHolder>(destination)
-        val question = assertIs<Question>(holder.article)
-        assertEquals(45L, question.questionId)
-        assertEquals("123459", holder.commentId)
-    }
-
-    @Test
-    fun resolvesCommentDeepLinkWithExtraAndroidParameters() {
-        val destination = resolveContent(
-            "zhihu://comment/list/answer/46?anchor_comment_id=123460&list_height_ratio=0.66&dragIconVisible=true&segment=%7B%22id%22%3A1%7D",
-        )
-
-        val holder = assertIs<CommentHolder>(destination)
-        val article = assertIs<Article>(holder.article)
-        assertEquals(ArticleType.Answer, article.type)
-        assertEquals(46L, article.id)
-        assertEquals("123460", holder.commentId)
-    }
-
-    @Test
-    fun resolvesZhihuAppViewPinUrlFromCommonCode() {
-        val destination = resolveContent("https://www.zhihu.com/appview/pin/2059710318939301395")
-
-        val pin = assertIs<Pin>(destination)
-        assertEquals(2059710318939301395L, pin.id)
-    }
-
-    @Test
-    fun resolvesZhihuAppViewAnswerUrlFromCommonCode() {
-        val destination = resolveContent("https://www.zhihu.com/appview/answer/2040633177593619876")
-
-        val article = assertIs<Article>(destination)
-        assertEquals(ArticleType.Answer, article.type)
-        assertEquals(2040633177593619876L, article.id)
-    }
-
-    @Test
-    fun resolvesZhihuAppViewArticleUrlFromCommonCode() {
-        val destination = resolveContent("https://www.zhihu.com/appview/p/1981671287999981270")
-
-        val article = assertIs<Article>(destination)
-        assertEquals(ArticleType.Article, article.type)
-        assertEquals(1981671287999981270L, article.id)
-    }
-
-    @Test
-    fun resolvesNotificationTimelineEntryFromOfficialMessageLink() {
-        val destination = resolveContent(
-            "https://www.zhihu.com/notifications/v3/timeline/entry/system?title=%E7%B3%BB%E7%BB%9F%E6%B6%88%E6%81%AF",
-        )
-
-        val entry = assertIs<Notification.Entry>(destination)
-        assertEquals("system", entry.entryName)
-        assertEquals("系统消息", entry.title)
-    }
-
-    @Test
-    fun resolvesInvitationAnswerPageFromOfficialMessageLink() {
-        val destination = resolveContent(
-            "https://www.zhihu.com/compose_answer_tab?default_selected_page=2&title=%E9%82%80%E8%AF%B7%E5%9B%9E%E7%AD%94",
-        )
-
-        assertEquals(Notification.Invitations, destination)
-    }
-
-    @Test
-    fun resolvesPrivateMessageFromOfficialInboxLink() {
-        val destination = resolveContent(
-            "https://www.zhihu.com/inbox/peer-token?title=%E7%9F%A5%E4%B9%8E%E5%B0%8F%E7%AE%A1%E5%AE%B6&source_type=message_list",
-        )
-
-        val message = assertIs<Notification.Message>(destination)
-        assertEquals("peer-token", message.peerId)
-        assertEquals("知乎小管家", message.name)
     }
 }

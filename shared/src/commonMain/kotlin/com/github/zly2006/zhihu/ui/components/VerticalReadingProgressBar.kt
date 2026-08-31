@@ -51,7 +51,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-internal fun calculateReadingProgress(
+private fun calculateReadingProgress(
     scrollValue: Int,
     maxValue: Int,
 ): Float {
@@ -59,7 +59,7 @@ internal fun calculateReadingProgress(
     return (scrollValue.toFloat() / maxValue.toFloat()).coerceIn(0f, 1f)
 }
 
-internal fun calculateScrollbarThumbHeightPx(
+private fun calculateScrollbarThumbHeightPx(
     viewportHeightPx: Float,
     maxScrollPx: Int,
     minThumbHeightPx: Float,
@@ -71,7 +71,7 @@ internal fun calculateScrollbarThumbHeightPx(
     return rawThumbHeight.coerceIn(minThumbHeightPx, viewportHeightPx)
 }
 
-internal fun calculateScrollbarThumbOffsetPx(
+private fun calculateScrollbarThumbOffsetPx(
     progress: Float,
     viewportHeightPx: Float,
     thumbHeightPx: Float,

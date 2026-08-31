@@ -17,7 +17,6 @@
 
 package com.github.zly2006.zhihu.util
 
-import com.github.zly2006.zhihu.util.Log
 import com.github.zly2006.zhihu.util.ZseSigner
 import com.github.zly2006.zhihu.util.raiseForStatus
 import io.ktor.client.HttpClient
@@ -79,7 +78,6 @@ object ZhihuCredentialRefresher {
 
         val timestamp = Clock.System.now().toEpochMilliseconds()
         val payloadMap = generateRefreshPayload(refreshToken, timestamp)
-        Log.d("ZhihuCredentialRefresher", "请求原始数据: $payloadMap")
 
         val formData = payloadMap.entries.joinToString("&") {
             "${it.key.encodeURLParameter(spaceToPlus = true)}=${it.value.encodeURLParameter(spaceToPlus = true)}"

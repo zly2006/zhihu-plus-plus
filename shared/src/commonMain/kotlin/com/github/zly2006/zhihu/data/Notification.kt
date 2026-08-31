@@ -250,7 +250,6 @@ data class NotificationActor(
     val name: String,
     val type: String,
     val link: String,
-    @SerialName("url_token")
     val urlToken: String? = null,
 )
 

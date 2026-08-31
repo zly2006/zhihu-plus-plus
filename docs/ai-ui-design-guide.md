@@ -65,6 +65,7 @@ URL 解析集中在 `resolveContent()`。支持知乎问题、回答、文章、
 | `useDynamicColor` | Material You 动态取色 | Android 12+ 取系统壁纸色 | 关闭后自定义主题色才明显生效 |
 | `customThemeColor` | 自定义主题色 | Material 3 主色 | 不要和动态取色同时假设生效 |
 | `backgroundColorLight`, `backgroundColorDark` | 自定义背景颜色 | 明暗模式背景 | 按当前明暗模式写入不同 key |
+| `disableBottomSheetRoundedCorners` | 禁用 popup 圆角 | `MyModalBottomSheet` 顶部改为直角 | 默认关闭，统一影响评论等复用 popup |
 | `contentFontSize`, `contentLineHeight`, `contentBlockSpacing` | 字号、行高、段间距 | 正文字号/行高、分段文本样式和 Markdown 正文块间距 | 查 `SegmentedText` 和 Markdown 渲染路径 |
 | `showFeedThumbnail` | Feed 卡片缩略图 | 信息流卡片是否显示图 | 由复用 `FeedCard` 的页面读取 |
 | `showRefreshFab` | 刷新 FAB | 首页/列表可拖动刷新按钮显示 | 123Duo3 总开关会关闭它 |
@@ -104,7 +105,7 @@ URL 解析集中在 `resolveContent()`。支持知乎问题、回答、文章、
 | --- | --- | --- | --- |
 | `recommendationMode` | 推荐算法 | Web、Android、本地、混合推荐 | 枚举在 `RecommendationMode.kt` |
 | `loginForRecommendation` | 推荐内容时登录 | 获取推荐时是否带登录凭证 | 影响服务端推荐结果 |
-| `enableQualityFilter` | 质量过滤规则 | 按赞同数、关注数等指标过滤 | 查 content filter settings/runtime |
+| `qualityFilterMode` | 质量屏蔽 | 不屏蔽、显示屏蔽规则或隐藏低质量内容 | 默认 `RULES`，旧布尔设置不迁移 |
 | `enableContentFilter` | 智能内容过滤 | 过滤重复出现但未点击内容 | 关闭时相关子统计/开关应弱化 |
 | `filterFollowedUserContent` | 过滤已关注用户内容 | 是否过滤关注用户内容 | 仅智能过滤开启时可操作 |
 | `enableKeywordBlocking` | 关键词屏蔽 | 命中关键词时过滤 | 管理入口在 Blocklist |
@@ -122,7 +123,6 @@ URL 解析集中在 `resolveContent()`。支持知乎问题、回答、文章、
 | key/store | 入口 | 主要影响 | 注意 |
 | --- | --- | --- | --- |
 | `githubToken` | GitHub Token | 更新检查 API 限速 | 不要打印或提交真实 token |
-| `autoCheckUpdates` | 自动检查更新 | 启动后后台检查 | 通过 update runtime 存取 |
 | `checkNightlyUpdates` | Nightly 更新 | 是否检查每日构建 | Android updater 和 Desktop runtime 都读 |
 | `allowTelemetry` | 遥测统计 | 匿名使用统计 | 不影响核心功能 |
 | `continuousUsageReminderIntervalMinutes` | 防沉迷提醒 | 连续使用提醒间隔 | 0 表示关闭 |

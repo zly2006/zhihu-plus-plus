@@ -91,6 +91,7 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.WritePin
+import com.github.zly2006.zhihu.navigation.requestLoginNavigation
 import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_ACTION_OPEN_ANSWER
 import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_ACTION_OPEN_ARTICLE
 import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_ACTION_OPEN_PIN
@@ -144,7 +145,7 @@ import com.github.zly2006.zhihu.ui.rememberAppVersionInfo
 import com.github.zly2006.zhihu.ui.rememberHomeIsDebuggable
 import com.github.zly2006.zhihu.ui.saveSearchHistory
 import com.github.zly2006.zhihu.ui.subscreens.SystemUpdateState
-import com.github.zly2006.zhihu.ui.subscreens.rememberSystemUpdateRuntime
+import com.github.zly2006.zhihu.ui.subscreens.rememberSystemUpdateState
 import com.github.zly2006.zhihu.util.Log
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedInteractionViewModel
@@ -226,11 +227,11 @@ fun MiuixHomeScreen(
             summary = "当前登录信息缺少必要的 Cookie d_c0，请重新登录。",
             confirmText = "重新登录",
             cancelText = "稍后",
-            onConfirm = { paginationEnvironment.requestLogin() },
+            onConfirm = { requestLoginNavigation() },
             onDismiss = {},
         )
     }
-    val updateState by rememberSystemUpdateRuntime().state.collectAsState()
+    val updateState by rememberSystemUpdateState().collectAsState()
     val updateAnnouncement = updateState as? SystemUpdateState.UpdateAvailable
     val isDebuggable = rememberHomeIsDebuggable()
     val viewModel: BaseFeedViewModel = when (currentRecommendationMode) {
@@ -561,7 +562,7 @@ fun MiuixHomeScreen(
                                                         accept.value
                                                             ?.jsonPrimitive
                                                             ?.contentOrNull
-                                                            ?.let(openExternalUrl)
+                                                            ?.let { openExternalUrl(it) }
                                                     }
                                                     HOME_NOTIFICATION_ACTION_OPEN_UPDATE_SETTINGS -> {
                                                         navigator.onNavigate(Account.SystemAndUpdateSettings())
@@ -728,7 +729,7 @@ fun MiuixHomeScreen(
             bottomPadding = innerPadding.calculateBottomPadding() + readingPlayerOverlayPadding,
             onWriteQuestion = { userMessages.showShortMessage("正在施工") },
             onWriteAnswer = { userMessages.showShortMessage("正在施工") },
-            onWritePin = { navigator.onNavigate(WritePin) },
+            onWritePin = { navigator.onNavigate(WritePin()) },
         )
 
         if (showRefreshFab) {

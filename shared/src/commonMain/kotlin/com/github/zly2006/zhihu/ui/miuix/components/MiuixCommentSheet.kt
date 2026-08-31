@@ -18,7 +18,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.navigation.NavDestination
-import com.github.zly2006.zhihu.ui.commentViewModelKey
+import com.github.zly2006.zhihu.ui.commentThreadKey
 import com.github.zly2006.zhihu.ui.miuix.MiuixCommentScreen
 import com.github.zly2006.zhihu.viewmodel.CommentItem
 import top.yukonga.miuix.kmp.window.WindowBottomSheet
@@ -35,7 +35,7 @@ fun MiuixCommentSheet(
     content: NavDestination,
 ) {
     var activeChildComment by remember { mutableStateOf<CommentItem?>(null) }
-    val contentStateKey = commentViewModelKey(content)
+    val contentStateKey = content.commentThreadKey()
     var rootListResetToken by rememberSaveable(contentStateKey) { mutableIntStateOf(0) }
     val rootListState = rememberSaveable(contentStateKey, rootListResetToken, saver = LazyListState.Saver) {
         LazyListState()

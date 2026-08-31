@@ -18,7 +18,7 @@
 package com.github.zly2006.zhihu.data
 
 import androidx.room.RoomDatabase
+import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 
-actual fun <T : RoomDatabase> RoomDatabase.Builder<T>.applyPlatformDriver(): RoomDatabase.Builder<T> {
-    TODO("Not yet implemented")
-}
+actual fun <T : RoomDatabase> RoomDatabase.Builder<T>.applyPlatformDriver(): RoomDatabase.Builder<T> =
+    setDriver(BundledSQLiteDriver())

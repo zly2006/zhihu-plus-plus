@@ -136,7 +136,7 @@ fun FeedAuthorBlockConfirmDialogContent(
     )
 }
 
-internal fun questionAnswerRatioText(stats: QuestionAuthorActivityStats): String {
+private fun questionAnswerRatioText(stats: QuestionAuthorActivityStats): String {
     val questionCount = stats.questionCount.coerceAtLeast(0)
     val answerCount = stats.answerCount.coerceAtLeast(0)
     if (answerCount == 0) return if (questionCount == 0) "—" else "∞"

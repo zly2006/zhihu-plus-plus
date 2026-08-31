@@ -22,39 +22,39 @@ import kotlin.test.assertEquals
 
 class ReadingPlayerOverlayOffsetStateTest {
     @Test
-    fun staleOwnerCannotUpdateOrClearCurrentArticleOffset() {
+    fun staleRouteCannotUpdateOrClearCurrentArticleOffset() {
         val state = ReadingPlayerOverlayOffsetState()
-        val oldArticle = Any()
-        val currentArticle = Any()
+        val oldRoute = "old"
+        val currentRoute = "current"
 
-        state.activate(oldArticle)
-        state.update(oldArticle, -80f)
-        state.activate(currentArticle)
-        state.update(currentArticle, -40f)
+        state.beginRoute(oldRoute)
+        state.update(oldRoute, -80f)
+        state.beginRoute(currentRoute)
+        state.update(currentRoute, -40f)
 
-        state.deactivate(oldArticle)
-        state.update(oldArticle, -120f)
+        state.endRoute(oldRoute)
+        state.update(oldRoute, -120f)
 
         assertEquals(-40f, state.verticalOffsetPx)
-        state.deactivate(currentArticle)
+        state.endRoute(currentRoute)
         assertEquals(0f, state.verticalOffsetPx)
     }
 
     @Test
-    fun sessionResetKeepsOwnerWhileRouteRevokeRemovesIt() {
+    fun sessionResetKeepsRouteWhileRouteClearRemovesIt() {
         val state = ReadingPlayerOverlayOffsetState()
-        val article = Any()
+        val route = "article"
 
-        state.activate(article)
-        state.update(article, -80f)
+        state.beginRoute(route)
+        state.update(route, -80f)
         state.resetOffset()
         assertEquals(0f, state.verticalOffsetPx)
 
-        state.update(article, -30f)
+        state.update(route, -30f)
         assertEquals(-30f, state.verticalOffsetPx)
 
-        state.revokeOwner()
-        state.update(article, -60f)
+        state.clearRoute()
+        state.update(route, -60f)
         assertEquals(0f, state.verticalOffsetPx)
     }
 }

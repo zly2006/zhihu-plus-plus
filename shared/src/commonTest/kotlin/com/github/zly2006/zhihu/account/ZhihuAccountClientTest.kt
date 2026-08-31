@@ -5,22 +5,14 @@
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation (version 3 only).
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package com.github.zly2006.zhihu.account
 
-import com.github.zly2006.zhihu.data.installZhihuCommonClientConfig
-import io.ktor.client.HttpClient
+import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
+import io.ktor.client.request.get
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
@@ -32,36 +24,36 @@ import kotlin.test.assertSame
 
 class ZhihuAccountClientTest {
     @Test
-    fun reusesCachedHttpClientUntilSessionChanges() {
-        val store = ClientInMemoryAccountSessionStore()
-        val createdClients = mutableListOf<HttpClient>()
-        val accountClient = ZhihuAccountClient(
-            repository = ZhihuAccountRepository(store),
-            createClient = { cookies, session, onCookieChanged, _ ->
-                testHttpClient(cookies, session, onCookieChanged).also(createdClients::add)
-            },
-        )
-
-        val firstClient = accountClient.httpClient()
-
-        assertSame(firstClient, accountClient.httpClient())
-
-        accountClient.save(
-            ZhihuAccountSession(
+    fun sameIdentitySessionRefreshKeepsTheBoundClient() = runTest {
+        withAccountEngine(emptyMockEngine()) {
+            val repository = ZhihuAccountRepository(ClientInMemoryAccountSessionStore()).apply {
+                save(
+                    ZhihuAccountSession(
+                        login = true,
+                        username = "alice",
+                        cookies = mutableMapOf("d_c0" to "old-dc0"),
+                    ),
+                )
+            }
+            val accountData = ZhihuAccountStore(repository)
+            val firstClient = accountData.client
+            val nextSession = ZhihuAccountSession(
                 login = true,
                 username = "alice",
                 cookies = mutableMapOf("d_c0" to "new-dc0"),
-            ),
-        )
-        val secondClient = accountClient.httpClient()
+            )
 
-        assertNotSame(firstClient, secondClient)
-        assertEquals(2, createdClients.size)
-        secondClient.close()
+            accountData.save(nextSession)
+
+            assertEquals(nextSession.username, accountData.session.username)
+            assertEquals(nextSession.username, accountData.client.load().username)
+            assertSame(firstClient, accountData.client)
+            accountData.close()
+        }
     }
 
     @Test
-    fun cookieChangePersistsSessionWithoutInvalidatingClient() {
+    fun cookieChangesPersistTheBoundSessionWithoutCreatingAnotherState() = runTest {
         val store = ClientInMemoryAccountSessionStore()
         val repository = ZhihuAccountRepository(store)
         repository.save(
@@ -71,56 +63,31 @@ class ZhihuAccountClientTest {
                 cookies = mutableMapOf("z_c0" to "old-token"),
             ),
         )
-        var factoryCookies: MutableMap<String, String>? = null
-        var factoryOnCookieChanged: (() -> Unit)? = null
-        val accountClient = ZhihuAccountClient(
-            repository = repository,
-            createClient = { cookies, session, onCookieChanged, _ ->
-                factoryCookies = cookies
-                factoryOnCookieChanged = onCookieChanged
-                testHttpClient(cookies, session, onCookieChanged)
+        withAccountEngine(
+            MockEngine {
+                respond(
+                    content = "{}",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.SetCookie, "z_c0=new-token; Path=/"),
+                )
             },
-        )
-        val client = accountClient.httpClient()
+        ) {
+            val accountData = ZhihuAccountStore(repository)
+            val session = accountData.session
+            val client = accountData.client
 
-        factoryCookies?.set("z_c0", "new-token")
-        factoryOnCookieChanged?.invoke()
+            client.httpClient().get("https://www.zhihu.com/")
 
-        assertEquals("new-token", repository.load().cookies["z_c0"])
-        assertSame(client, accountClient.httpClient())
-        client.close()
+            assertNotSame(session, accountData.session)
+            assertSame(client, accountData.client)
+            assertEquals("new-token", accountData.session.cookies["z_c0"])
+            assertEquals("new-token", repository.load().cookies["z_c0"])
+            accountData.close()
+        }
     }
 
     @Test
-    fun inPlaceCookieMutationInvalidatesCachedHttpClientOnSave() {
-        val store = ClientInMemoryAccountSessionStore()
-        val repository = ZhihuAccountRepository(store)
-        repository.save(
-            ZhihuAccountSession(
-                login = true,
-                username = "alice",
-                cookies = mutableMapOf("z_c0" to "old-token"),
-            ),
-        )
-        val accountClient = ZhihuAccountClient(
-            repository = repository,
-            createClient = { cookies, session, onCookieChanged, _ ->
-                testHttpClient(cookies, session, onCookieChanged)
-            },
-        )
-        val firstClient = accountClient.httpClient()
-        val session = accountClient.load()
-        session.cookies["z_c0"] = "new-token"
-
-        accountClient.save(session)
-
-        val secondClient = accountClient.httpClient()
-        assertNotSame(firstClient, secondClient)
-        secondClient.close()
-    }
-
-    @Test
-    fun profileRefreshPreservesMobileTokens() = runTest {
+    fun profileRefreshKeepsClientAndPreservesMobileTokens() = runTest {
         val repository = ZhihuAccountRepository(ClientInMemoryAccountSessionStore())
         repository.save(
             ZhihuAccountSession(
@@ -132,97 +99,254 @@ class ZhihuAccountClientTest {
                 mobileTokenExpiresAt = 1234,
             ),
         )
-        val accountClient = ZhihuAccountClient(
-            repository = repository,
-            createClient = { cookies, session, onCookieChanged, _ ->
-                HttpClient(
-                    MockEngine {
-                        respond(
-                            content = """{"id":"1","name":"alice","url_token":"alice","user_type":"people"}""",
-                            status = HttpStatusCode.OK,
-                            headers = headersOf(HttpHeaders.ContentType, "application/json"),
-                        )
-                    },
-                ) {
-                    installZhihuCommonClientConfig(cookies, session.userAgent, onCookieChanged)
-                }
+        withAccountEngine(
+            MockEngine {
+                respond(
+                    content = """{"id":"1","name":"alice","url_token":"alice","user_type":"people"}""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, "application/json"),
+                )
             },
-        )
+        ) {
+            val accountData = ZhihuAccountStore(repository)
+            val oldClient = accountData.client
 
-        val refreshed = accountClient.refreshAndSaveProfile()
+            val refreshed = accountData.client.refreshAndSaveProfile()
 
-        assertEquals("access", refreshed?.mobileAccessToken)
-        assertEquals("refresh", repository.load().mobileRefreshToken)
-        assertEquals("bearer", repository.load().mobileTokenType)
-        assertEquals(1234, repository.load().mobileTokenExpiresAt)
+            assertEquals("access", refreshed?.mobileAccessToken)
+            assertEquals("refresh", accountData.session.mobileRefreshToken)
+            assertSame(oldClient, accountData.client)
+            accountData.close()
+        }
     }
 
     @Test
-    fun mobileLoginVerifiesProfileAndSavesCookiesAndTokensTogether() = runTest {
+    fun mobileLoginVerifiesProfileAndAtomicallyReplacesSessionAndClient() = runTest {
         val store = ClientInMemoryAccountSessionStore()
         val repository = ZhihuAccountRepository(store)
-        val accountClient = ZhihuAccountClient(
-            repository = repository,
-            createClient = { cookies, session, onCookieChanged, _ ->
-                HttpClient(
-                    MockEngine { request ->
-                        assertEquals("/api/v4/me", request.url.encodedPath)
-                        respond(
-                            content = """{"id":"1","name":"alice","url_token":"alice","user_type":"people"}""",
-                            status = HttpStatusCode.OK,
-                            headers = headersOf(HttpHeaders.ContentType, "application/json"),
-                        )
-                    },
-                ) {
-                    installZhihuCommonClientConfig(cookies, session.userAgent, onCookieChanged)
-                }
+        withAccountEngine(
+            MockEngine { request ->
+                assertEquals("/api/v4/me", request.url.encodedPath)
+                respond(
+                    content = """{"id":"1","name":"alice","url_token":"alice","user_type":"people"}""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, "application/json"),
+                )
             },
-        )
+        ) {
+            val accountData = ZhihuAccountStore(repository)
+            val oldClient = accountData.client
 
-        val verified = accountClient.verifyMobileAndSave(
-            ZhihuMobileLoginToken(
-                accessToken = "mobile-access",
-                refreshToken = "mobile-refresh",
-                tokenType = "bearer",
-                expiresAt = 1_700_003_600L,
-                cookies = mapOf(
-                    "q_c0" to "q-cookie",
-                    "z_c0" to "z-cookie",
-                    "d_c0" to "device-cookie",
+            val verified = accountData.login(
+                ZhihuMobileLoginToken(
+                    accessToken = "mobile-access",
+                    refreshToken = "mobile-refresh",
+                    tokenType = "bearer",
+                    expiresAt = 1_700_003_600L,
+                    cookies = mapOf(
+                        "q_c0" to "q-cookie",
+                        "z_c0" to "z-cookie",
+                        "d_c0" to "device-cookie",
+                    ),
                 ),
-            ),
-        )
+            )
 
-        val saved = repository.load()
-        assertEquals(true, verified)
-        assertEquals(1, store.writeCount)
-        assertEquals("alice", saved.username)
-        assertEquals("z-cookie", saved.cookies["z_c0"])
-        assertEquals("device-cookie", saved.cookies["d_c0"])
-        assertEquals("mobile-access", saved.mobileAccessToken)
-        assertEquals("mobile-refresh", saved.mobileRefreshToken)
-        assertEquals("bearer", saved.mobileTokenType)
-        assertEquals(1_700_003_600L, saved.mobileTokenExpiresAt)
+            assertEquals(true, verified)
+            assertEquals(1, store.writeCount)
+            assertEquals("alice", accountData.session.username)
+            assertEquals("z-cookie", accountData.session.cookies["z_c0"])
+            assertEquals("device-cookie", accountData.session.cookies["d_c0"])
+            assertEquals("mobile-access", accountData.session.mobileAccessToken)
+            assertEquals("mobile-refresh", accountData.session.mobileRefreshToken)
+            assertNotSame(oldClient, accountData.client)
+            assertSame(accountData.session, accountData.client.load())
+            accountData.close()
+        }
     }
 
-    private fun testHttpClient(
-        cookies: MutableMap<String, String>,
-        session: ZhihuAccountSession,
-        onCookieChanged: () -> Unit,
-    ): HttpClient = HttpClient(
+    @Test
+    fun logoutDestroysTheBoundClientAndPublishesOneGuestSession() = runTest {
+        withAccountEngine(
+            MockEngine {
+                respond(
+                    content = """{"id":"bob","name":"Bob","url_token":"bob","user_type":"people"}""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, "application/json"),
+                )
+            },
+        ) {
+            val repository = ZhihuAccountRepository(ClientInMemoryAccountSessionStore()).apply {
+                save(
+                    ZhihuAccountSession(
+                        login = true,
+                        username = "alice",
+                        cookies = mutableMapOf("z_c0" to "token"),
+                    ),
+                )
+            }
+            val accountData = ZhihuAccountStore(repository)
+            val signedInClient = accountData.client
+
+            accountData.clear()
+
+            assertEquals(false, accountData.session.login)
+            assertSame(accountData.session, accountData.client.load())
+            assertNotSame(signedInClient, accountData.client)
+            accountData.close()
+        }
+    }
+
+    @Test
+    fun switchingSavedAccountsReplacesClientAndPreservesBothSessions() = runTest {
+        val alice = ZhihuAccountSession(login = true, username = "alice")
+        val bob = ZhihuAccountSession(login = true, username = "bob")
+        val repository = ZhihuAccountRepository(ClientInMemoryAccountSessionStore()).apply {
+            saveAccounts(
+                ZhihuAccounts(
+                    activeAccountId = "alice",
+                    accounts = listOf(ZhihuSavedAccount("alice", alice), ZhihuSavedAccount("bob", bob)),
+                ),
+            )
+        }
+        withAccountEngine(
+            MockEngine {
+                respond(
+                    content = """{"id":"bob","name":"Bob","url_token":"bob","user_type":"people"}""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, "application/json"),
+                )
+            },
+        ) {
+            val accountStore = ZhihuAccountStore(repository)
+            val aliceClient = accountStore.client
+
+            accountStore.switchAccount("bob")
+
+            assertEquals("bob", accountStore.session.profile?.id)
+            assertEquals(alice, accountStore.accounts.first().session)
+            assertEquals(
+                "bob",
+                accountStore.accounts
+                    .last()
+                    .session.profile
+                    ?.id,
+            )
+            assertNotSame(aliceClient, accountStore.client)
+            assertSame(accountStore.session, accountStore.client.load())
+            accountStore.close()
+        }
+    }
+
+    @Test
+    fun expiredSavedAccountDoesNotReplaceTheCurrentSessionOrClient() = runTest {
+        val alice = ZhihuAccountSession(login = true, username = "alice")
+        val bob = ZhihuAccountSession(login = true, username = "bob")
+        val repository = ZhihuAccountRepository(ClientInMemoryAccountSessionStore()).apply {
+            saveAccounts(
+                ZhihuAccounts(
+                    activeAccountId = "alice",
+                    accounts = listOf(ZhihuSavedAccount("alice", alice), ZhihuSavedAccount("bob", bob)),
+                ),
+            )
+        }
+        withAccountEngine(
+            MockEngine {
+                respond(
+                    content = "unauthorized",
+                    status = HttpStatusCode.Unauthorized,
+                    headers = headersOf(HttpHeaders.ContentType, "text/plain"),
+                )
+            },
+        ) {
+            val accountStore = ZhihuAccountStore(repository)
+            val client = accountStore.client
+
+            assertEquals(false, accountStore.switchAccount("bob"))
+            assertEquals(alice, accountStore.session)
+            assertSame(client, accountStore.client)
+            accountStore.close()
+        }
+    }
+
+    @Test
+    fun logoutCurrentSavedAccountSelectsTheNextOne() = runTest {
+        val alice = ZhihuAccountSession(login = true, username = "alice")
+        val bob = ZhihuAccountSession(login = true, username = "bob")
+        val repository = ZhihuAccountRepository(ClientInMemoryAccountSessionStore()).apply {
+            saveAccounts(
+                ZhihuAccounts(
+                    activeAccountId = "alice",
+                    accounts = listOf(ZhihuSavedAccount("alice", alice), ZhihuSavedAccount("bob", bob)),
+                ),
+            )
+        }
+        withAccountEngine(emptyMockEngine()) {
+            val accountStore = ZhihuAccountStore(repository)
+
+            accountStore.clear()
+
+            assertEquals(bob, accountStore.session)
+            assertEquals(listOf("bob"), accountStore.accounts.map { it.id })
+            accountStore.close()
+        }
+    }
+
+    @Test
+    fun loginAddsAndSelectsAnIndependentAccountWithoutOverwritingCurrent() = runTest {
+        val alice = ZhihuAccountSession(
+            login = true,
+            username = "alice",
+            profile = ZhihuAccountProfileSnapshot(id = "alice", name = "Alice"),
+        )
+        val repository = ZhihuAccountRepository(ClientInMemoryAccountSessionStore()).apply { save(alice) }
+        withAccountEngine(
+            MockEngine {
+                respond(
+                    content = """{"id":"bob","name":"Bob","url_token":"bob","user_type":"people"}""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, "application/json"),
+                )
+            },
+        ) {
+            val accountStore = ZhihuAccountStore(repository)
+
+            val loggedIn = accountStore.login(mutableMapOf("z_c0" to "bob-token"))
+
+            assertEquals(true, loggedIn)
+            assertEquals("bob", accountStore.session.profile?.id)
+            assertEquals(listOf("alice", "bob"), accountStore.accounts.map { it.id })
+            assertEquals(
+                "alice",
+                accountStore.accounts
+                    .first()
+                    .session.profile
+                    ?.id,
+            )
+            accountStore.close()
+        }
+    }
+
+    private fun emptyMockEngine(): HttpClientEngine =
         MockEngine {
             respond(
                 content = "{}",
                 status = HttpStatusCode.OK,
                 headers = headersOf(HttpHeaders.ContentType, "application/json"),
             )
-        },
-    ) {
-        installZhihuCommonClientConfig(
-            cookies = cookies,
-            userAgent = session.userAgent,
-            onCookieChanged = onCookieChanged,
-        )
+        }
+}
+
+private suspend fun <T> withAccountEngine(
+    engine: HttpClientEngine,
+    block: suspend () -> T,
+): T {
+    check(accountHttpClientEngineForTesting == null)
+    accountHttpClientEngineForTesting = engine
+    return try {
+        block()
+    } finally {
+        accountHttpClientEngineForTesting = null
+        engine.close()
     }
 }
 

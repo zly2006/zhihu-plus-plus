@@ -1,0 +1,86 @@
+/*
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
+ * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation (version 3 only).
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+package com.github.zly2006.zhihu.platform
+
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import com.github.zly2006.zhihu.ui.noopSettingsStore
+import kotlinx.cinterop.ExperimentalForeignApi
+import platform.Foundation.NSDocumentDirectory
+import platform.Foundation.NSFileManager
+import platform.Foundation.NSTemporaryDirectory
+import platform.Foundation.NSURL
+import platform.Foundation.NSUserDomainMask
+import platform.UIKit.UIApplication
+import platform.UIKit.UIPasteboard
+
+internal actual val nativeIsDesktop: Boolean = false
+
+actual val platformName: String = "iOS"
+
+actual val isAigcVoteSupported: Boolean = false
+
+@Composable
+@OptIn(ExperimentalForeignApi::class)
+actual fun rememberExternalUrlOpener(): ExternalUrlOpener = remember {
+    object : ExternalUrlOpener {
+        override fun invoke(url: String) {
+            NSURL.URLWithString(url)?.let(UIApplication.sharedApplication::openURL)
+        }
+    }
+}
+
+@Composable
+actual fun rememberImageGalleryOpener(): ImageGalleryOpener {
+    val openExternalUrl = rememberExternalUrlOpener()
+    return remember(openExternalUrl) {
+        object : ImageGalleryOpener {
+            override fun invoke(urls: List<String>, initialIndex: Int) {
+                if (urls.isNotEmpty()) {
+                    urls[initialIndex.coerceIn(0, urls.lastIndex)].let(openExternalUrl)
+                }
+            }
+        }
+    }
+}
+
+internal actual fun copyNativePlainText(text: String) {
+    UIPasteboard.generalPasteboard.string = text
+}
+
+@OptIn(ExperimentalForeignApi::class)
+internal actual fun nativeAccountFilePath(): String = "${nativeAppPrivateDirectoryPath()}/account.json"
+
+@OptIn(ExperimentalForeignApi::class)
+internal actual fun nativeAppPrivateDirectoryPath(): String {
+    val urls = NSFileManager.defaultManager.URLsForDirectory(NSDocumentDirectory, NSUserDomainMask)
+    return (urls.firstOrNull() as? NSURL)?.path ?: NSTemporaryDirectory()
+}
+
+internal actual fun nativeDownloadsDirectoryPath(): String = "${nativeAppPrivateDirectoryPath()}/Downloads"
+
+internal actual fun nativeChooseBlocklistImportFilePath(): String? = null
+
+internal actual fun nativeSettingsStore(relativePath: String): SettingsStore = noopSettingsStore()
+
+@Composable
+actual fun rememberUserMessageSink(): UserMessageSink = remember {
+    object : UserMessageSink {
+        override fun showShortMessage(message: String) = println(message)
+    }
+}

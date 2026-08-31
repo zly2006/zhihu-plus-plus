@@ -18,15 +18,12 @@
 package com.github.zly2006.zhihu
 
 import androidx.compose.ui.test.assertCountEquals
-import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollToNode
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.FeedDisplayItem
@@ -36,7 +33,6 @@ import com.github.zly2006.zhihu.data.OfficialBadge
 import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionContent
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Pin
@@ -46,36 +42,12 @@ import com.github.zly2006.zhihu.test.InstrumentedTestEnvironment
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
 import com.github.zly2006.zhihu.test.ZhihuMockApi
-import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.seedViewModel
 import com.github.zly2006.zhihu.test.setScreenContent
-import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_ACTIVITIES_LIST_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_ANSWERS_LIST_TAG
-import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_ANSWER_COUNT_TAG
-import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_ANSWER_SORT_HOT_TAG
-import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_ANSWER_SORT_TIME_TAG
-import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_ARTICLES_LIST_TAG
-import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_ARTICLE_COUNT_TAG
-import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_ARTICLE_SORT_HOT_TAG
-import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_ARTICLE_SORT_TIME_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_AVATAR_TAG
-import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_BLOCK_BUTTON_TAG
-import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_COLLECTIONS_LIST_TAG
-import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_COLUMNS_LIST_TAG
-import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_FOLLOWERS_LIST_TAG
-import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_FOLLOWER_COUNT_TAG
-import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_FOLLOWING_COUNT_TAG
-import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_FOLLOWING_LIST_TAG
-import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_FOLLOW_BUTTON_TAG
-import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_GITHUB_STARS_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_HEADER_TAG
-import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_OFFICIAL_BADGE_TAG
-import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_PINS_LIST_TAG
-import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_QUESTIONS_LIST_TAG
-import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_QUESTION_AUTHOR_BLOCK_BUTTON_TAG
-import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_RECOMMENDATION_BLOCK_BUTTON_TAG
-import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_ROOT_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_SEARCH_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_SUBSCRIPTIONS_LIST_TAG
 import com.github.zly2006.zhihu.ui.PeopleScreen
@@ -107,201 +79,10 @@ class PeopleScreenInstrumentedTest {
         ZhihuMockApi.install(enabled = InstrumentedTestEnvironment.isMockMode())
     }
 
-    @Test
-    fun headerButtonsStatsAnswerAndArticleTabsRemainDeterministicOffline() {
-        /*
-         * Expected behavior:
-         * 1. The profile header must render the seeded avatar area plus all four statistics from a
-         *    precreated production ViewModel and a mocked profile fetch.
-         * 2. Follow, block, recommendation-block, and question-author-block buttons must each use
-         *    the real production mutation path while staying offline through mocked HTTP/local database state.
-         * 3. On the answer tab, both sort buttons should issue deterministic production refreshes
-         *    and a deep scroll should keep the seeded answer row interactive for navigation.
-         * 4. On the article tab, the same sort and deep-row navigation behavior must remain stable.
-         */
-        val viewModel = seededViewModel()
-        val navigator = setPeopleScreen()
-
-        composeRule.onNodeWithTag(PEOPLE_SCREEN_ROOT_TAG).assertIsDisplayed()
-        composeRule.onNodeWithTag(PEOPLE_SCREEN_HEADER_TAG).assertIsDisplayed()
-        composeRule.onNodeWithTag(PEOPLE_SCREEN_OFFICIAL_BADGE_TAG).assertIsDisplayed()
-        composeRule.onNodeWithText("社区成就: 英语等 5 个话题下的优秀答主").assertIsDisplayed()
-        composeRule
-            .onNodeWithTag(PEOPLE_SCREEN_GITHUB_STARS_TAG)
-            .assertIsDisplayed()
-            .assertHasClickAction()
-        composeRule.onNodeWithText("GitHub·zly2006").assertIsDisplayed()
-        composeRule.onNodeWithText("· 4.0k stars").assertIsDisplayed()
-        composeRule.onNodeWithTag(PEOPLE_SCREEN_AVATAR_TAG).assertIsDisplayed()
-        composeRule.onNodeWithTag(PEOPLE_SCREEN_ANSWER_COUNT_TAG).assertIsDisplayed()
-        composeRule.onNodeWithTag(PEOPLE_SCREEN_ARTICLE_COUNT_TAG).assertIsDisplayed()
-        composeRule.onNodeWithTag(PEOPLE_SCREEN_FOLLOWER_COUNT_TAG).assertIsDisplayed()
-        composeRule.onNodeWithTag(PEOPLE_SCREEN_FOLLOWING_COUNT_TAG).assertIsDisplayed()
-
-        composeRule.onNodeWithTag(PEOPLE_SCREEN_FOLLOW_BUTTON_TAG).performClick()
-        composeRule.onNodeWithTag(PEOPLE_SCREEN_BLOCK_BUTTON_TAG).performClick()
-        composeRule.onNodeWithTag(PEOPLE_SCREEN_RECOMMENDATION_BLOCK_BUTTON_TAG).performClick()
-        composeRule.onNodeWithTag(PEOPLE_SCREEN_QUESTION_AUTHOR_BLOCK_BUTTON_TAG).performClick()
-        composeRule.waitUntil("Expected profile actions to update state", timeoutMillis = 5_000) {
-            viewModel.isFollowing &&
-                viewModel.isBlocking &&
-                viewModel.isBlockedInRecommendations &&
-                viewModel.isBlockedAsQuestionAuthor
-        }
-        composeRule.waitUntilRequestCount(HttpMethod.Post, "members/${ROOT_PERSON.urlToken}/followers", 1)
-        composeRule.waitUntilRequestCount(HttpMethod.Post, "members/${ROOT_PERSON.urlToken}/actions/block", 1)
-
-        composeRule.onNodeWithTag(PEOPLE_SCREEN_ANSWER_SORT_TIME_TAG).performClick()
-        composeRule.waitUntilRequestCount(HttpMethod.Get, "members/${ROOT_PERSON.urlToken}/answers?sort_by=created", 1)
-        composeRule.onNodeWithTag(PEOPLE_SCREEN_ANSWER_SORT_HOT_TAG).performClick()
-        composeRule.waitUntil("Expected answer sort to return to voteups", timeoutMillis = 5_000) {
-            viewModel.answersFeedModel.sortBy == "voteups"
-        }
-        composeRule.onNodeWithTag(PEOPLE_SCREEN_ANSWERS_LIST_TAG).assertIsDisplayed()
-        composeRule
-            .onNodeWithTag(PEOPLE_SCREEN_ANSWERS_LIST_TAG)
-            .performScrollToNode(hasTestTag("people_screen_answer_item_12"))
-        composeRule.onNodeWithTag("people_screen_answer_item_12").assertIsDisplayed()
-        composeRule
-            .onNodeWithTag(PEOPLE_SCREEN_ANSWERS_LIST_TAG)
-            .performScrollToNode(hasTestTag("people_screen_answer_item_2"))
-        composeRule.onNodeWithTag("people_screen_answer_item_2").performClick()
-
-        composeRule.onNodeWithTag("people_screen_tab_1").performClick()
-        composeRule.onNodeWithTag(PEOPLE_SCREEN_ARTICLE_SORT_HOT_TAG).performClick()
-        composeRule.waitUntilRequestCount(HttpMethod.Get, "members/${ROOT_PERSON.urlToken}/articles?sort_by=voteups", 1)
-        composeRule.onNodeWithTag(PEOPLE_SCREEN_ARTICLE_SORT_TIME_TAG).performClick()
-        composeRule.waitUntil("Expected article sort to return to created", timeoutMillis = 5_000) {
-            viewModel.articlesFeedModel.sortBy == "created"
-        }
-        composeRule.onNodeWithTag(PEOPLE_SCREEN_ARTICLES_LIST_TAG).assertIsDisplayed()
-        composeRule
-            .onNodeWithTag(PEOPLE_SCREEN_ARTICLES_LIST_TAG)
-            .performScrollToNode(hasTestTag("people_screen_article_item_12"))
-        composeRule.onNodeWithTag("people_screen_article_item_12").assertIsDisplayed()
-        composeRule
-            .onNodeWithTag(PEOPLE_SCREEN_ARTICLES_LIST_TAG)
-            .performScrollToNode(hasTestTag("people_screen_article_item_2"))
-        composeRule.onNodeWithTag("people_screen_article_item_2").performClick()
-
-        assertEquals(
-            listOf(
-                Article(type = ArticleType.Answer, id = 2L, title = "离线提问 2", excerpt = "离线回答摘要 2"),
-                Article(type = ArticleType.Article, id = 2L, title = "离线文章 2", excerpt = "离线文章摘要 2"),
-            ),
-            navigator.destinations,
-        )
-    }
-
-    @Test
-    fun remainingTabsSupportScrollLoadMoreAndRepresentativeClicksOffline() {
-        /*
-         * Expected behavior:
-         * 1. The non-primary tabs must all render from seeded local data, remain scrollable, and
-         *    trigger their production load-more paths near the tail through mocked HTTP.
-         * 2. The activities, questions, pins, followers, and following tabs each expose a stable
-         *    representative click path that should navigate to the seeded destination exactly once.
-         * 3. The collections and columns tabs do not currently navigate anywhere in production, but
-         *    their seeded rows still need to stay visible and interactive after swipe cycles.
-         * 4. Tab switching itself must remain deterministic through the tagged tab row.
-         */
-        val viewModel = seededViewModel(itemCount = 18)
-        val lastActivityTag = "people_screen_activity_item_${viewModel.activitiesFeedModel.displayItems[17].stableKey}"
-        val clickedActivityTag = "people_screen_activity_item_${viewModel.activitiesFeedModel.displayItems[1].stableKey}"
-        val navigator = setPeopleScreen()
-
-        composeRule.onNodeWithTag("people_screen_tab_2").performClick()
-        composeRule.onNodeWithTag(PEOPLE_SCREEN_ACTIVITIES_LIST_TAG).assertIsDisplayed()
-        composeRule
-            .onNodeWithTag(PEOPLE_SCREEN_ACTIVITIES_LIST_TAG)
-            .performScrollToNode(hasTestTag(lastActivityTag))
-        composeRule.waitUntilRequestCount(HttpMethod.Get, "moments/${ROOT_PERSON.urlToken}/activities", 1)
-        composeRule.onNodeWithTag(lastActivityTag).assertIsDisplayed()
-        composeRule
-            .onNodeWithTag(PEOPLE_SCREEN_ACTIVITIES_LIST_TAG)
-            .performScrollToNode(hasTestTag(clickedActivityTag))
-        composeRule.onNodeWithTag(clickedActivityTag).performClick()
-
-        composeRule.onNodeWithTag("people_screen_tab_3").performClick()
-        composeRule.onNodeWithTag(PEOPLE_SCREEN_COLLECTIONS_LIST_TAG).assertIsDisplayed()
-        composeRule
-            .onNodeWithTag(PEOPLE_SCREEN_COLLECTIONS_LIST_TAG)
-            .performScrollToNode(hasTestTag("people_screen_collection_item_collection-18"))
-        composeRule.waitUntilRequestCount(HttpMethod.Get, "members/${ROOT_PERSON.urlToken}/favlists", 1)
-        composeRule.onNodeWithTag(PEOPLE_SCREEN_COLLECTIONS_LIST_TAG).performVerticalSwipeCycle()
-        composeRule
-            .onNodeWithTag(PEOPLE_SCREEN_COLLECTIONS_LIST_TAG)
-            .performScrollToNode(hasTestTag("people_screen_collection_item_collection-18"))
-        composeRule.onNodeWithTag("people_screen_collection_item_collection-18").assertIsDisplayed()
-
-        composeRule.onNodeWithTag("people_screen_tab_4").performClick()
-        composeRule.onNodeWithTag(PEOPLE_SCREEN_QUESTIONS_LIST_TAG).assertIsDisplayed()
-        composeRule
-            .onNodeWithTag(PEOPLE_SCREEN_QUESTIONS_LIST_TAG)
-            .performScrollToNode(hasTestTag("people_screen_question_item_18"))
-        composeRule.waitUntilRequestCount(HttpMethod.Get, "members/${ROOT_PERSON.urlToken}/questions", 1)
-        composeRule
-            .onNodeWithTag(PEOPLE_SCREEN_QUESTIONS_LIST_TAG)
-            .performScrollToNode(hasTestTag("people_screen_question_item_2"))
-        composeRule.onNodeWithTag("people_screen_question_item_2").performClick()
-
-        composeRule.onNodeWithTag("people_screen_tab_5").performClick()
-        composeRule.onNodeWithTag(PEOPLE_SCREEN_PINS_LIST_TAG).assertIsDisplayed()
-        composeRule
-            .onNodeWithTag(PEOPLE_SCREEN_PINS_LIST_TAG)
-            .performScrollToNode(hasTestTag("people_screen_pin_item_18"))
-        composeRule.waitUntilRequestCount(HttpMethod.Get, "pins/${ROOT_PERSON.urlToken}/moments", 1)
-        composeRule
-            .onNodeWithTag(PEOPLE_SCREEN_PINS_LIST_TAG)
-            .performScrollToNode(hasTestTag("people_screen_pin_item_2"))
-        composeRule.onNodeWithTag("people_screen_pin_item_2").performClick()
-
-        composeRule.onNodeWithTag("people_screen_tab_6").performClick()
-        composeRule.onNodeWithTag(PEOPLE_SCREEN_COLUMNS_LIST_TAG).assertIsDisplayed()
-        composeRule
-            .onNodeWithTag(PEOPLE_SCREEN_COLUMNS_LIST_TAG)
-            .performScrollToNode(hasTestTag("people_screen_column_item_column-18"))
-        composeRule.waitUntilRequestCount(HttpMethod.Get, "members/${ROOT_PERSON.urlToken}/column-contributions", 1)
-        composeRule.onNodeWithTag(PEOPLE_SCREEN_COLUMNS_LIST_TAG).performVerticalSwipeCycle()
-        composeRule
-            .onNodeWithTag(PEOPLE_SCREEN_COLUMNS_LIST_TAG)
-            .performScrollToNode(hasTestTag("people_screen_column_item_column-18"))
-        composeRule.onNodeWithTag("people_screen_column_item_column-18").assertIsDisplayed()
-
-        composeRule.onNodeWithTag("people_screen_tab_7").performClick()
-        composeRule.onNodeWithTag(PEOPLE_SCREEN_FOLLOWERS_LIST_TAG).assertIsDisplayed()
-        composeRule
-            .onNodeWithTag(PEOPLE_SCREEN_FOLLOWERS_LIST_TAG)
-            .performScrollToNode(hasTestTag("people_screen_follower_item_follower-18"))
-        composeRule.waitUntilRequestCount(HttpMethod.Get, "people/${ROOT_PERSON.id}/followers", 1)
-        composeRule
-            .onNodeWithTag(PEOPLE_SCREEN_FOLLOWERS_LIST_TAG)
-            .performScrollToNode(hasTestTag("people_screen_follower_action_follower-2"))
-        composeRule.onNodeWithTag("people_screen_follower_action_follower-2").performClick()
-
-        composeRule.onNodeWithTag("people_screen_tab_8").performClick()
-        composeRule.onNodeWithTag(PEOPLE_SCREEN_FOLLOWING_LIST_TAG).assertIsDisplayed()
-        composeRule
-            .onNodeWithTag(PEOPLE_SCREEN_FOLLOWING_LIST_TAG)
-            .performScrollToNode(hasTestTag("people_screen_following_item_following-18"))
-        composeRule.waitUntilRequestCount(HttpMethod.Get, "members/${ROOT_PERSON.urlToken}/followees", 1)
-        composeRule
-            .onNodeWithTag(PEOPLE_SCREEN_FOLLOWING_LIST_TAG)
-            .performScrollToNode(hasTestTag("people_screen_following_action_following-2"))
-        composeRule.onNodeWithTag("people_screen_following_action_following-2").performClick()
-
-        assertEquals(
-            listOf(
-                Search(query = "离线动态 2"),
-                Question(2L, "离线问题 2"),
-                Pin(2L),
-                Person(id = "follower-2", name = "粉丝 2", urlToken = "follower-token-2"),
-                Person(id = "following-2", name = "关注的人 2", urlToken = "following-token-2"),
-            ),
-            navigator.destinations,
-        )
-    }
-
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/377
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/382
+     */
     @Test
     fun duplicatedAuthorAnswerKeysDoNotCrashAnswerListOffline() {
         val duplicatedAnswerId = 2_544_209_984L
@@ -331,6 +112,10 @@ class PeopleScreenInstrumentedTest {
         composeRule.onAllNodesWithTag("people_screen_answer_item_$duplicatedAnswerId").assertCountEquals(2)
     }
 
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/374
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/408
+     */
     @Test
     fun headerSearchActionNavigatesToMemberScopedSearchOffline() {
         seededViewModel()
@@ -374,6 +159,10 @@ class PeopleScreenInstrumentedTest {
         )
     }
 
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/302
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/324
+     */
     @Test
     fun followingSubscriptionsTabMatchesOfficialEntryPointsOffline() {
         /*

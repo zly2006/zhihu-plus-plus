@@ -73,7 +73,7 @@ data class ZhihuAccountProfile(
 fun <T : HttpClientEngineConfig> HttpClientConfig<T>.installZhihuCommonClientConfig(
     cookies: MutableMap<String, String>,
     userAgent: String,
-    onCookieChanged: (() -> Unit)? = null,
+    onCookieChanged: () -> Unit = {},
     enableHttpCache: Boolean = false,
 ) {
     if (enableHttpCache) {
@@ -234,7 +234,11 @@ object ZhihuJson {
     fun snakeCaseToCamelCase(json: JsonElement): JsonElement = when (json) {
         is JsonObject -> buildJsonObject {
             for ((key, value) in json) {
-                put(snakeCaseToCamelCase(key), snakeCaseToCamelCase(value))
+                // cookie/cookies 的子键是服务端签发的动态凭据名，不是模型字段，必须逐字保留。
+                put(
+                    snakeCaseToCamelCase(key),
+                    if (key == "cookie" || key == "cookies") value else snakeCaseToCamelCase(value),
+                )
             }
         }
         is JsonArray -> buildJsonArray {

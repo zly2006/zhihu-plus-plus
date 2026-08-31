@@ -18,6 +18,7 @@
 package com.github.zly2006.zhihu.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -25,7 +26,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.data.fetchHighestQualityZhihuVideoUrl
-import com.github.zly2006.zhihu.desktop.DesktopAccountStore
+import com.github.zly2006.zhihu.desktop.defaultDesktopAccountStore
 import com.github.zly2006.zhihu.desktop.openDesktopExternalUrl
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Article
@@ -45,6 +46,7 @@ import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.navigation.Video
+import com.github.zly2006.zhihu.platform.platformBottomBarItemLimit
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.ThemeManager
@@ -85,8 +87,10 @@ private val desktopMainPreferenceKeys = setOf(
 @Composable
 fun DesktopZhihuMain() {
     val navController = rememberNavController<NavDestination>(MainTabs)
-    val accountStore = remember { DesktopAccountStore() }
-    val httpClient = accountStore.httpClient()
+    val accountStore = defaultDesktopAccountStore
+    val accounts by accountStore.accountsState.collectAsState()
+    val accountSession = accounts.session
+    val httpClient = remember(accountStore, accountSession) { accountStore.client.httpClient() }
     val coroutineScope = rememberCoroutineScope()
     val userMessages = rememberUserMessageSink()
     var mainTabNavigationTarget by remember { mutableStateOf<TopLevelDestination?>(null) }
@@ -109,6 +113,11 @@ fun DesktopZhihuMain() {
 
     fun navigate(route: NavDestination) {
         when (route) {
+            History -> navController.push(route)
+            is TopLevelDestination -> {
+                mainTabNavigationTarget = route
+                navigateToMainTabs()
+            }
             is Video -> {
                 val top = navController.backStack.lastOrNull()
                 val current = top as? Article ?: top as? Question
@@ -125,7 +134,7 @@ fun DesktopZhihuMain() {
                     else -> return
                 }
                 coroutineScope.launch {
-                    val cookies = accountStore.load().cookies
+                    val cookies = accountStore.session.cookies
                     val videoUrl = withContext(Dispatchers.IO) {
                         runCatching {
                             fetchHighestQualityZhihuVideoUrl(
@@ -208,10 +217,11 @@ private fun rememberDesktopZhihuMainPreferenceState(): ZhihuMainPreferenceState 
             val selectedKeys = normalizeBottomBarSelection(
                 settings.getStringSet(
                     BOTTOM_BAR_ITEMS_PREFERENCE_KEY,
-                    defaultBottomBarSelectionKeys(duo3HomeAccount),
+                    defaultBottomBarSelectionKeys(duo3HomeAccount, platformBottomBarItemLimit),
                 ),
                 duo3HomeAccount,
                 enforceMinimumSelection = true,
+                maximumSelection = platformBottomBarItemLimit,
             )
             val orderedSelectedKeys = bottomBarItemOrderFromPreference(
                 settings.getStringOrNull(BOTTOM_BAR_ITEM_ORDER_PREFERENCE_KEY),

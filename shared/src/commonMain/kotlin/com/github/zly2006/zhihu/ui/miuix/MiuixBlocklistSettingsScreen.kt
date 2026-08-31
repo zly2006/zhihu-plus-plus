@@ -44,14 +44,13 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Person
+import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
-import com.github.zly2006.zhihu.ui.BlocklistSettingsNlpContent
-import com.github.zly2006.zhihu.ui.BlocklistSettingsTestConfig
 import com.github.zly2006.zhihu.ui.BlocklistSettingsTestTags
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import com.github.zly2006.zhihu.ui.rememberBlocklistRuleExporter
@@ -93,12 +92,12 @@ import top.yukonga.miuix.kmp.utils.overScrollVertical
  */
 @Composable
 fun MiuixBlocklistSettingsScreen(
-    nlpContent: BlocklistSettingsNlpContent? = null,
-    testConfig: BlocklistSettingsTestConfig? = null,
+    nlpContent: @Composable (onNavigateBack: () -> Unit) -> Unit = {
+        error("$platformName 暂不支持 NLP 智能屏蔽设置")
+    },
 ) {
     val navigator = LocalNavigator.current
     val userMessages = rememberUserMessageSink()
-    val requestImport = rememberBlocklistRuleImporter(userMessages)
     val exportRules = rememberBlocklistRuleExporter()
     val database = remember { getContentFilterDatabase() }
     val coroutineScope = rememberCoroutineScope()
@@ -111,10 +110,10 @@ fun MiuixBlocklistSettingsScreen(
     var loadedTopics by remember { mutableStateOf<List<BlockedTopic>>(emptyList()) }
     var loadedStats by remember { mutableStateOf<BlocklistStats?>(null) }
 
-    val keywords = testConfig?.blockedKeywords ?: loadedKeywords
-    val users = testConfig?.blockedUsers ?: loadedUsers
-    val topics = testConfig?.blockedTopics ?: loadedTopics
-    val stats = testConfig?.stats ?: loadedStats
+    val keywords = loadedKeywords
+    val users = loadedUsers
+    val topics = loadedTopics
+    val stats = loadedStats
 
     var showAddKeywordForm by remember { mutableStateOf(false) }
     var showAddUserForm by remember { mutableStateOf(false) }
@@ -138,7 +137,12 @@ fun MiuixBlocklistSettingsScreen(
         }
     }
 
-    LaunchedEffect(testConfig) { if (testConfig == null) loadData() }
+    val requestImport = rememberBlocklistRuleImporter(userMessages) { summary ->
+        userMessages.showLongMessage("导入成功：$summary")
+        loadData()
+    }
+
+    LaunchedEffect(Unit) { loadData() }
 
     val showFab = selectedTab == 0 || selectedTab == 2 || selectedTab == 3
     val settings = rememberSettingsStore()
@@ -215,15 +219,7 @@ fun MiuixBlocklistSettingsScreen(
             ) {
                 Card(
                     modifier = Modifier.weight(1f).clickable {
-                        val importAction = testConfig?.onImportRequested
-                        if (importAction != null) {
-                            importAction()
-                        } else {
-                            requestImport { summary ->
-                                userMessages.showLongMessage("导入成功：$summary")
-                                loadData()
-                            }
-                        }
+                        requestImport()
                     },
                 ) {
                     Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
@@ -232,17 +228,12 @@ fun MiuixBlocklistSettingsScreen(
                 }
                 Card(
                     modifier = Modifier.weight(1f).clickable {
-                        val exportAction = testConfig?.onExportRequested
-                        if (exportAction != null) {
-                            exportAction()
-                        } else {
-                            coroutineScope.launch {
-                                try {
-                                    userMessages.showLongMessage(exportRules())
-                                } catch (e: Exception) {
-                                    Log.e("MiuixBlocklistSettingsScreen", "导出失败", e)
-                                    userMessages.showShortMessage("导出失败: ${e.message}")
-                                }
+                        coroutineScope.launch {
+                            try {
+                                userMessages.showLongMessage(exportRules())
+                            } catch (e: Exception) {
+                                Log.e("MiuixBlocklistSettingsScreen", "导出失败", e)
+                                userMessages.showShortMessage("导出失败: ${e.message}")
                             }
                         }
                     },
@@ -272,22 +263,13 @@ fun MiuixBlocklistSettingsScreen(
                 when (selectedTab) {
                     0 -> KeywordsTab(
                         keywords = keywords,
-                        testConfig = testConfig,
                         onReload = ::loadData,
                         showAddForm = showAddKeywordForm,
                         onDismissForm = { showAddKeywordForm = false },
                     )
-                    1 -> {
-                        val actualNlpContent = testConfig?.nlpContent ?: nlpContent
-                        if (actualNlpContent != null) {
-                            actualNlpContent(navigator.onNavigateBack)
-                        } else {
-                            Text("AI features are not available on this platform.")
-                        }
-                    }
+                    1 -> nlpContent(navigator.onNavigateBack)
                     2 -> UsersTab(
                         users = users,
-                        testConfig = testConfig,
                         onReload = ::loadData,
                         onNavigate = { u -> navigator.onNavigate(Person(u.userId, u.urlToken ?: "", u.userName)) },
                         showAddForm = showAddUserForm,
@@ -295,7 +277,6 @@ fun MiuixBlocklistSettingsScreen(
                     )
                     3 -> TopicsTab(
                         topics = topics,
-                        testConfig = testConfig,
                         onReload = ::loadData,
                         showAddForm = showAddTopicForm,
                         onDismissForm = { showAddTopicForm = false },
@@ -323,7 +304,6 @@ private fun StatItem(label: String, value: String) {
 @Composable
 private fun KeywordsTab(
     keywords: List<BlockedKeyword>,
-    testConfig: BlocklistSettingsTestConfig?,
     onReload: () -> Unit,
     showAddForm: Boolean,
     onDismissForm: () -> Unit,
@@ -338,10 +318,6 @@ private fun KeywordsTab(
                 Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), horizontalArrangement = Arrangement.End) {
                     Button(
                         onClick = {
-                            testConfig?.onClearKeywords?.let {
-                                it()
-                                return@Button
-                            }
                             coroutineScope.launch {
                                 try {
                                     database.blockedKeywordDao().clearAllKeywords()
@@ -365,10 +341,6 @@ private fun KeywordsTab(
                         IconButton(
                             modifier = Modifier.testTag("blocklistSettings:keywords:delete:${kw.id}"),
                             onClick = {
-                                testConfig?.onDeleteKeyword?.let {
-                                    it(kw)
-                                    return@IconButton
-                                }
                                 coroutineScope.launch {
                                     try {
                                         database.blockedKeywordDao().deleteKeywordById(kw.id)
@@ -399,11 +371,6 @@ private fun KeywordsTab(
                 AddKeywordForm(
                     onDismiss = onDismissForm,
                     onConfirm = { kw, cs, rx ->
-                        testConfig?.onAddKeyword?.let {
-                            it(kw, cs, rx)
-                            onDismissForm()
-                            return@AddKeywordForm
-                        }
                         coroutineScope.launch {
                             try {
                                 database.blockedKeywordDao().insertKeyword(BlockedKeyword(keyword = kw.trim(), keywordType = KeywordType.EXACT_MATCH.name, caseSensitive = cs, isRegex = rx))
@@ -424,7 +391,6 @@ private fun KeywordsTab(
 @Composable
 private fun UsersTab(
     users: List<BlockedUser>,
-    testConfig: BlocklistSettingsTestConfig?,
     onReload: () -> Unit,
     onNavigate: (BlockedUser) -> Unit,
     showAddForm: Boolean,
@@ -440,10 +406,6 @@ private fun UsersTab(
                 Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), horizontalArrangement = Arrangement.End) {
                     Button(
                         onClick = {
-                            testConfig?.onClearUsers?.let {
-                                it()
-                                return@Button
-                            }
                             coroutineScope.launch {
                                 try {
                                     database.blockedUserDao().clearAllUsers()
@@ -472,10 +434,6 @@ private fun UsersTab(
                         IconButton(
                             modifier = Modifier.testTag("blocklistSettings:users:delete:${user.userId}"),
                             onClick = {
-                                testConfig?.onDeleteUser?.let {
-                                    it(user)
-                                    return@IconButton
-                                }
                                 coroutineScope.launch {
                                     try {
                                         database.blockedUserDao().deleteUserById(user.userId)
@@ -506,11 +464,6 @@ private fun UsersTab(
                 AddUserForm(
                     onDismiss = onDismissForm,
                     onConfirm = { id, name ->
-                        testConfig?.onAddUser?.let {
-                            it(id, name)
-                            onDismissForm()
-                            return@AddUserForm
-                        }
                         coroutineScope.launch {
                             try {
                                 database.blockedUserDao().insertUser(BlockedUser(userId = id, userName = name))
@@ -531,7 +484,6 @@ private fun UsersTab(
 @Composable
 private fun TopicsTab(
     topics: List<BlockedTopic>,
-    testConfig: BlocklistSettingsTestConfig?,
     onReload: () -> Unit,
     showAddForm: Boolean,
     onDismissForm: () -> Unit,
@@ -571,10 +523,6 @@ private fun TopicsTab(
                             IconButton(
                                 modifier = Modifier.testTag("blocklistSettings:topics:delete:${topic.topicId}"),
                                 onClick = {
-                                    testConfig?.onDeleteTopic?.let {
-                                        it(topic)
-                                        return@IconButton
-                                    }
                                     coroutineScope.launch {
                                         try {
                                             database.blockedTopicDao().deleteTopicById(topic.topicId)
@@ -597,11 +545,6 @@ private fun TopicsTab(
                     AddTopicForm(
                         onDismiss = onDismissForm,
                         onConfirm = { id, name ->
-                            testConfig?.onAddTopic?.let {
-                                it(id, name)
-                                onDismissForm()
-                                return@AddTopicForm
-                            }
                             coroutineScope.launch {
                                 try {
                                     database.blockedTopicDao().insertTopic(BlockedTopic(topicId = id, topicName = name))
@@ -625,11 +568,6 @@ private fun TopicsTab(
                 confirmTag = BlocklistSettingsTestTags.TOPIC_CLEAR_CONFIRM,
                 dismissTag = BlocklistSettingsTestTags.TOPIC_CLEAR_DISMISS,
                 onConfirm = {
-                    testConfig?.onClearTopics?.let {
-                        it()
-                        onShowClearConfirm(false)
-                        return@ConfirmDialog
-                    }
                     coroutineScope.launch {
                         try {
                             database.blockedTopicDao().clearAllTopics()

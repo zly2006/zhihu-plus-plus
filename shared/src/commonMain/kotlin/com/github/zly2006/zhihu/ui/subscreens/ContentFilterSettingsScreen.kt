@@ -75,6 +75,8 @@ import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
 import com.github.zly2006.zhihu.util.Log
+import com.github.zly2006.zhihu.viewmodel.QUALITY_FILTER_MODE_PREFERENCE_KEY
+import com.github.zly2006.zhihu.viewmodel.QualityFilterMode
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -233,17 +235,58 @@ fun ContentFilterSettingsScreen(
 
             val enableContentFilter = remember { mutableStateOf(settings.getBoolean("enableContentFilter", true)) }
             SettingItemGroup {
-                val enableQualityFilter = remember { mutableStateOf(settings.getBoolean("enableQualityFilter", true)) }
-                SettingItemWithSwitch(
-                    title = { Text("启用质量过滤规则") },
-                    description = { Text("根据赞同数、关注数等指标过滤低质量内容") },
-                    checked = enableQualityFilter.value,
-                    onCheckedChange = {
-                        enableQualityFilter.value = it
-                        settings.putBoolean("enableQualityFilter", it)
-                    },
-                    settingKey = "enableQualityFilter",
+                var qualityFilterModeExpanded by remember { mutableStateOf(false) }
+                val qualityFilterMode = remember {
+                    mutableStateOf(
+                        QualityFilterMode.entries.firstOrNull {
+                            it.name == settings.getString(QUALITY_FILTER_MODE_PREFERENCE_KEY, QualityFilterMode.RULES.name)
+                        } ?: QualityFilterMode.RULES,
+                    )
+                }
+                val qualityFilterModeOptions = listOf(
+                    QualityFilterMode.OFF to "不屏蔽",
+                    QualityFilterMode.RULES to "屏蔽规则",
+                    QualityFilterMode.HIDE to "隐藏",
+                )
+                SettingItem(
+                    title = { Text("质量屏蔽") },
+                    description = { Text("根据赞同数、关注数等指标处理低质量内容") },
+                    settingKey = QUALITY_FILTER_MODE_PREFERENCE_KEY,
                     highlightedKey = highlightedSetting,
+                    endAction = {
+                        ExposedDropdownMenuBox(
+                            expanded = qualityFilterModeExpanded,
+                            onExpandedChange = { qualityFilterModeExpanded = it },
+                        ) {
+                            OutlinedTextField(
+                                value = qualityFilterModeOptions.first { it.first == qualityFilterMode.value }.second,
+                                onValueChange = {},
+                                readOnly = true,
+                                trailingIcon = {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = qualityFilterModeExpanded)
+                                },
+                                modifier = Modifier
+                                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                                    .width(160.dp),
+                                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                            )
+                            ExposedDropdownMenu(
+                                expanded = qualityFilterModeExpanded,
+                                onDismissRequest = { qualityFilterModeExpanded = false },
+                            ) {
+                                qualityFilterModeOptions.forEach { (mode, label) ->
+                                    DropdownMenuItem(
+                                        text = { Text(label) },
+                                        onClick = {
+                                            qualityFilterMode.value = mode
+                                            settings.putString(QUALITY_FILTER_MODE_PREFERENCE_KEY, mode.name)
+                                            qualityFilterModeExpanded = false
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                    },
                 )
 
                 SettingItemWithSwitch(

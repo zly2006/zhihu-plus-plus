@@ -18,6 +18,7 @@
 package com.github.zly2006.zhihu.notification
 
 import com.github.zly2006.zhihu.data.ZhihuJson
+import com.github.zly2006.zhihu.platform.MapSettingsStore
 import com.github.zly2006.zhihu.platform.SettingsStore
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
@@ -147,25 +148,7 @@ class OnlineHomeNotificationTest {
         assertEquals(JsonPrimitive(3), value["count"])
     }
 
-    private fun mapBackedSettingsStore(values: MutableMap<String, Any>): SettingsStore = SettingsStore(
-        getBoolean = { key, default -> values[key] as? Boolean ?: default },
-        putBoolean = { key, value -> values[key] = value },
-        getString = { key, default -> values[key] as? String ?: default },
-        putString = { key, value -> values[key] = value },
-        getStringOrNull = { key -> values[key] as? String },
-        putStringSet = { key, value -> values[key] = value },
-        getStringSet = { key, default ->
-            @Suppress("UNCHECKED_CAST")
-            (values[key] as? Set<String> ?: default)
-        },
-        getInt = { key, default -> values[key] as? Int ?: default },
-        putInt = { key, value -> values[key] = value },
-        getLong = { key, default -> values[key] as? Long ?: default },
-        putLong = { key, value -> values[key] = value },
-        getFloat = { key, default -> values[key] as? Float ?: default },
-        putFloat = { key, value -> values[key] = value },
-        remove = values::remove,
-    )
+    private fun mapBackedSettingsStore(values: MutableMap<String, Any>): SettingsStore = MapSettingsStore(values)
 
     private fun notificationClient(notifications: List<OnlineHomeNotification>): HttpClient = HttpClient(
         MockEngine {

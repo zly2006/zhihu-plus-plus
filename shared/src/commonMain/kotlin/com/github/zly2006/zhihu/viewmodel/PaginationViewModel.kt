@@ -24,8 +24,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.github.zly2006.zhihu.account.ZhihuIdentityClient
-import com.github.zly2006.zhihu.data.AigcVoteClient
 import com.github.zly2006.zhihu.data.AigcVoteVoter
 import com.github.zly2006.zhihu.data.ContentDetailCache
 import com.github.zly2006.zhihu.data.DataHolder
@@ -41,6 +39,7 @@ import com.github.zly2006.zhihu.data.getOrFetchContentDetail
 import com.github.zly2006.zhihu.navigation.AnswerNavigator
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
 import com.github.zly2006.zhihu.ui.ArticleAnswerTransitionDirection
 import com.github.zly2006.zhihu.util.Log
@@ -116,6 +115,30 @@ abstract class PaginationViewModel<T : Any>(
         allData.addAll(data) // 保存未flatten的数据
     }
 
+    protected open fun decodePage(
+        environment: PaginationEnvironment,
+        rawData: JsonArray,
+    ): List<T> = rawData.mapNotNull {
+        if ("type" in it.jsonObject &&
+            it.jsonObject["type"]?.jsonPrimitive?.content in listOf(
+                "invited_answer",
+                "tab_list",
+                "feed_item_index_group",
+            )
+        ) {
+            return@mapNotNull null
+        }
+        try {
+            @Suppress("UNCHECKED_CAST")
+            decodeJson(serializer(dataType) as KSerializer<T>, it)
+        } catch (e: Exception) {
+            if (shouldLogDecodeFailures) {
+                environment.logDecodeFailure(this::class.simpleName, it, e)
+            }
+            null
+        }
+    }
+
     protected open suspend fun fetchFeeds(environment: PaginationEnvironment) {
         try {
             val url = resolvePageUrl()
@@ -128,36 +151,14 @@ abstract class PaginationViewModel<T : Any>(
             // 登录态失效（如 d_c0 缺失导致的 10003）还是响应结构变化。
             val jsonArray = json["data"] as? JsonArray
                 ?: throw RuntimeException("您可能已被风控，请重新登录。", Exception("cause: no \$.data, body: $json"))
-            processResponse(
-                environment,
-                jsonArray.mapNotNull {
-                    if ("type" in it.jsonObject &&
-                        it.jsonObject["type"]?.jsonPrimitive?.content in listOf(
-                            "invited_answer", // invalid
-                            "tab_list", // invalid
-                            "feed_item_index_group", // todo
-                        )
-                    ) {
-                        return@mapNotNull null
-                    }
-                    try {
-                        @Suppress("UNCHECKED_CAST")
-                        decodeJson(serializer(dataType) as KSerializer<T>, it)
-                    } catch (e: Exception) {
-                        if (shouldLogDecodeFailures) {
-                            environment.logDecodeFailure(this::class.simpleName, it, e)
-                        }
-                        null
-                    }
-                },
-                jsonArray,
-            )
+            processResponse(environment, decodePage(environment, jsonArray), jsonArray)
             if ("paging" in json) {
                 lastPaging = decodeJson(json["paging"]!!)
             }
         } catch (e: Exception) {
             if (e is kotlin.coroutines.cancellation.CancellationException) throw e
             environment.handleFetchFailure(this::class.simpleName, e)
+            errorHandle(e)
         } finally {
             isLoading = false
         }
@@ -222,6 +223,8 @@ open class ArticleAnswerSwitchData :
 
     override fun promoteForNavigation(direction: ArticleAnswerTransitionDirection) = Unit
 }
+
+val sharedArticleAnswerSwitchState = ArticleAnswerSwitchData()
 
 interface PreparedArticleExportContent
 
@@ -291,40 +294,14 @@ interface ZhihuApiEnvironment {
     }
 }
 
-interface AccountEnvironment {
-    suspend fun refreshAccountProfile() = Unit
-
-    fun requestLogin(): Boolean = false
-
-    fun clearAccountSession() = Unit
-
-    fun currentAccountId(): String = ""
-
-    fun identityClient(): ZhihuIdentityClient? = null
-
-    fun restartApplication() = Unit
-
-    suspend fun verifyLogin(cookies: Map<String, String>): Boolean = false
-
-    fun saveCookies(cookies: Map<String, String>) = Unit
-
-    fun logout() = clearAccountSession()
-
-    fun requestRelogin(): Boolean {
-        clearAccountSession()
-        return requestLogin()
-    }
-}
-
 suspend fun ZhihuApiEnvironment.fetchContentDetail(destination: NavDestination): DataHolder.Content? =
     runCatching {
         fetchZhihuContentDetail(destination) { url, include ->
             fetchJson(url, include)
         }
     }.getOrElse { error ->
-        if (error !is CancellationException) {
-            Log.e("ZhihuApiEnvironment", "Failed to fetch content detail for $destination", error)
-        }
+        if (error is CancellationException) throw error
+        Log.e("ZhihuApiEnvironment", "Failed to fetch content detail for $destination", error)
         null
     }
 
@@ -334,9 +311,8 @@ suspend fun ZhihuApiEnvironment.getOrFetchContentDetail(destination: NavDestinat
             fetchJson(url, include)
         }
     }.getOrElse { error ->
-        if (error !is CancellationException) {
-            Log.e("ZhihuApiEnvironment", "Failed to fetch content detail for $destination", error)
-        }
+        if (error is CancellationException) throw error
+        Log.e("ZhihuApiEnvironment", "Failed to fetch content detail for $destination", error)
         null
     }
 
@@ -412,12 +388,9 @@ interface MobileHomeFeedEnvironment : ZhihuApiEnvironment {
 interface FeedDisplayEnvironment {
     fun feedDisplaySettings(): FeedDisplaySettings = FeedDisplaySettings()
 
-    suspend fun applyHomeFeedFilters(items: List<FeedDisplayItem>): HomeFeedFilterResult =
-        HomeFeedFilterResult(
-            foregroundItems = items,
-            filteredItems = items,
-            reverseBlock = feedDisplaySettings().reverseBlock,
-        )
+    suspend fun applyForegroundHomeFeedFilter(items: List<FeedDisplayItem>): List<FeedDisplayItem> = items
+
+    suspend fun applyBackgroundHomeFeedFilter(items: List<FeedDisplayItem>): List<FeedDisplayItem> = items
 }
 
 interface HistoryEnvironment {
@@ -446,7 +419,13 @@ interface ContentOpenEnvironment {
 }
 
 interface AigcVoteEnvironment {
-    fun aigcVoteClient(): AigcVoteClient? = null
+    fun isAigcVoteEnabled(): Boolean = false
+
+    fun aigcVoteHttpClient(): HttpClient = error("AIGC 内容标记客户端不可用")
+
+    fun aigcVoteBaseUrl(): String = ""
+
+    fun aigcVoteClientId(): String = ""
 
     fun aigcVoteVoter(): AigcVoteVoter? = null
 }
@@ -525,16 +504,13 @@ interface ArticleExportEnvironment {
         bitmap: Any,
     ) = Unit
 
-    fun articleImageExportRenderer(loadAssetText: (String) -> String): ArticleImageExportRenderer? = null
+    fun articleImageExportRenderer(): ArticleImageExportRenderer =
+        error("$platformName 暂不支持文章图片导出")
 }
 
 interface ArticleExportContentEnvironment :
     ArticleExportEnvironment,
     ZhihuApiEnvironment
-
-interface ArticleNavigationEnvironment {
-    fun articleAnswerSwitchState(): ArticleAnswerSwitchState? = null
-}
 
 interface ContentLoadEnvironment :
     ZhihuApiEnvironment,
@@ -548,12 +524,10 @@ interface ProfileLoadEnvironment :
 
 interface ArticleLoadEnvironment :
     ZhihuApiEnvironment,
-    ContentLoadEnvironment,
-    ArticleNavigationEnvironment
+    ContentLoadEnvironment
 
 interface PaginationEnvironment :
     ZhihuApiEnvironment,
-    AccountEnvironment,
     MobileHomeFeedEnvironment,
     FeedDisplayEnvironment,
     ContentInteractionEnvironment,
@@ -564,9 +538,17 @@ interface PaginationEnvironment :
     ArticleExportContentEnvironment
 
 data class FeedDisplaySettings(
-    val enableQualityFilter: Boolean = true,
+    val qualityFilterMode: QualityFilterMode = QualityFilterMode.RULES,
     val reverseBlock: Boolean = false,
 )
+
+enum class QualityFilterMode {
+    OFF,
+    RULES,
+    HIDE,
+}
+
+const val QUALITY_FILTER_MODE_PREFERENCE_KEY = "qualityFilterMode"
 
 data class HomeFeedFilterResult(
     val foregroundItems: List<FeedDisplayItem>,

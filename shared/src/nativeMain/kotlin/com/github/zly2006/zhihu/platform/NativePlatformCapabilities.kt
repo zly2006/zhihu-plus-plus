@@ -18,76 +18,120 @@
 package com.github.zly2006.zhihu.platform
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import com.github.zly2006.zhihu.ui.noopSettingsStore
-import com.github.zly2006.zhihu.ui.openIosUrl
+import androidx.compose.ui.backhandler.BackHandler
+import com.github.zly2006.zhihu.account.ZhihuAccountStore
+import com.github.zly2006.zhihu.account.defaultNativeAccountStore
+import io.ktor.client.call.body
+import io.ktor.client.request.get
 import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.addressOf
+import kotlinx.cinterop.usePinned
+import kotlinx.coroutines.launch
 import kotlinx.io.files.Path
-import platform.Foundation.NSDocumentDirectory
+import platform.Foundation.NSData
 import platform.Foundation.NSFileManager
-import platform.Foundation.NSURL
-import platform.Foundation.NSUserDomainMask
+import platform.Foundation.dataWithBytes
+import kotlin.time.Clock
 
 @Composable
-actual fun rememberExternalUrlOpener(): (String) -> Unit = remember { ::openIosUrl }
+actual fun rememberSystemUrlOpener(): SystemUrlOpener = rememberExternalUrlOpener()
 
 @Composable
-actual fun rememberSystemUrlOpener(): (String) -> Unit = rememberExternalUrlOpener()
+actual fun rememberZhihuWebUrlOpener(): ZhihuWebUrlOpener = rememberExternalUrlOpener()
 
 @Composable
-actual fun rememberZhihuWebUrlOpener(): (String) -> Unit = rememberExternalUrlOpener()
+actual fun rememberImagePreviewOpener(): ImagePreviewOpener = rememberExternalUrlOpener()
 
 @Composable
-actual fun rememberImagePreviewOpener(): (String) -> Unit = rememberExternalUrlOpener()
-
-@Composable
-actual fun rememberImageGalleryOpener(): (List<String>, Int) -> Unit {
-    val openExternalUrl = rememberExternalUrlOpener()
-    return remember(openExternalUrl) {
-        { urls, initialIndex ->
-            urls.getOrNull(initialIndex)?.let(openExternalUrl)
+actual fun rememberImageSaver(): ImageSaver {
+    val scope = rememberCoroutineScope()
+    val userMessages = rememberUserMessageSink()
+    val accountStore = defaultNativeAccountStore
+    return remember(scope, userMessages, accountStore) {
+        object : ImageSaver {
+            override fun invoke(url: String) {
+                scope.launch {
+                    runCatching {
+                        saveNativeImageToDownloads(accountStore, url)
+                    }.onSuccess { filePath ->
+                        userMessages.showShortMessage("已保存图片: $filePath")
+                    }.onFailure { error ->
+                        userMessages.showShortMessage("保存失败: ${error.message}")
+                    }
+                }
+            }
         }
     }
 }
 
 @Composable
-actual fun rememberImageSaver(): (String) -> Unit {
+actual fun rememberImageSharer(): ImageSharer {
     val userMessages = rememberUserMessageSink()
     return remember(userMessages) {
-        { userMessages.showMessage("iOS 图片保存暂未实现") } // TODO: iOS 图片保存
+        object : ImageSharer {
+            override fun invoke(url: String) {
+                runCatching {
+                    copyNativePlainText(url)
+                    userMessages.showShortMessage("已复制图片链接")
+                }.onFailure { error ->
+                    userMessages.showShortMessage("分享失败: ${error.message}")
+                }
+            }
+        }
     }
 }
 
-@Composable
-actual fun rememberImageSharer(): (String) -> Unit {
-    val userMessages = rememberUserMessageSink()
-    return remember(userMessages) {
-        { userMessages.showMessage("iOS 图片分享暂未实现") } // TODO: iOS 图片分享
-    }
-}
-
-@Composable
-actual fun rememberPlainTextClipboard(): (label: String, text: String) -> Unit = remember {
-    { _, text ->
-        platform.UIKit.UIPasteboard.generalPasteboard.string = text
-    }
-}
-
-@Composable
-actual fun rememberDeveloperDiagnostics(): DeveloperDiagnostics = remember {
-    DeveloperDiagnostics(
-        appInfo = "iOS",
-        deviceInfo = "iOS",
-        networkStatus = "未知",
-        readClipboardText = { platform.UIKit.UIPasteboard.generalPasteboard.string },
-        exportAllSettings = { "(空)" }, // TODO: iOS 配置导出
+@OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
+private suspend fun saveNativeImageToDownloads(
+    accountStore: ZhihuAccountStore,
+    imageUrl: String,
+): String {
+    val imageBytes = accountStore.client
+        .httpClient()
+        .get(imageUrl)
+        .body<ByteArray>()
+    val extension = imageUrl
+        .substringBefore('?')
+        .substringAfterLast('/')
+        .substringAfterLast('.', "")
+        .takeIf { it.length in 2..5 } ?: "jpg"
+    val downloadsDirectory = nativeDownloadsDirectoryPath()
+    NSFileManager.defaultManager.createDirectoryAtPath(
+        downloadsDirectory,
+        withIntermediateDirectories = true,
+        attributes = null,
+        error = null,
     )
+    val filePath = "$downloadsDirectory/image_${Clock.System.now().toEpochMilliseconds()}.$extension"
+    val written = imageBytes.usePinned { pinned ->
+        NSFileManager.defaultManager.createFileAtPath(
+            filePath,
+            contents = NSData.dataWithBytes(pinned.addressOf(0), imageBytes.size.toULong()),
+            attributes = null,
+        )
+    }
+    check(written) { "无法写入 $filePath" }
+    return filePath
 }
 
 @Composable
-actual fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit) = Unit // TODO: iOS 返回手势处理
+actual fun rememberPlainTextClipboard(): PlainTextClipboard = remember {
+    object : PlainTextClipboard {
+        override fun invoke(label: String, text: String) = copyNativePlainText(text)
+    }
+}
+
+@OptIn(ExperimentalComposeUiApi::class)
+@Suppress("DEPRECATION")
+@Composable
+actual fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit) =
+    BackHandler(enabled = enabled, onBack = onBack)
 
 @Composable
 actual fun PlatformPredictiveBackHandler(
@@ -98,20 +142,24 @@ actual fun PlatformPredictiveBackHandler(
 ) = PlatformBackHandler(enabled = enabled, onBack = onBack)
 
 @Composable
-actual fun rememberSettingsStore(): SettingsStore = noopSettingsStore() // TODO: iOS 设置存储
+actual fun rememberSettingsStore(): SettingsStore = remember { nativeSettingsStore("settings.properties") }
 
 actual fun Modifier.exportTestTagsForUiAutomation(): Modifier = this
 
 @Composable
-@OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
-actual fun rememberAppPrivateDirectory(): Path = remember {
-    val urls = NSFileManager.defaultManager.URLsForDirectory(NSDocumentDirectory, NSUserDomainMask)
-    val documentsDirectory = (urls.firstOrNull() as? NSURL)?.path ?: error("iOS documents directory unavailable")
-    Path(documentsDirectory)
-}
+actual fun rememberAppPrivateDirectory(): Path = remember { Path(nativeAppPrivateDirectoryPath()) }
 
 @Composable
-actual fun rememberIsLiteVariant(): Boolean = false // TODO: iOS 变体判断
+actual fun rememberIsLiteVariant(): Boolean = false
 
-@Composable
-actual fun rememberUserMessageSink(): UserMessageSink = remember { UserMessageSink(showShortMessage = {}) } // TODO: iOS 用户消息提示
+actual val isJvm: Boolean = false
+
+actual val isNative: Boolean = true
+
+actual val isBlocklistNlpSupported: Boolean = false
+
+actual val isSentenceSimilaritySupported: Boolean = false
+
+actual val isArticleHtmlExportSupported: Boolean = false
+
+actual val isArticleImageExportSupported: Boolean = false

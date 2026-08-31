@@ -29,7 +29,9 @@ import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.util.Log
 import com.github.zly2006.zhihu.viewmodel.ContentInteractionEnvironment
+import com.github.zly2006.zhihu.viewmodel.HomeFeedFilterResult
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.QualityFilterMode
 import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
 import com.github.zly2006.zhihu.viewmodel.filter.extractTopicIds
 import com.github.zly2006.zhihu.viewmodel.postSigned
@@ -174,25 +176,39 @@ class HomeFeedViewModel :
         debugData.addAll(rawData)
 
         viewModelScope.launch {
-            val newItems = data
+            val loadedItems = data
                 .flattenFeeds()
                 .map { feed -> createDisplayItem(environment, feed) }
+            val newItems = if (environment.feedDisplaySettings().qualityFilterMode == QualityFilterMode.HIDE) {
+                loadedItems.filterNot { it.isQualityFiltered }
+            } else {
+                loadedItems
+            }
 
-            val filterResult = environment.applyHomeFeedFilters(newItems)
-            if (!filterResult.reverseBlock) {
+            val reverseBlock = environment.feedDisplaySettings().reverseBlock
+            val foregroundItems = environment.applyForegroundHomeFeedFilter(newItems)
+            if (!reverseBlock) {
                 withContext(Dispatchers.Main) {
-                    addDisplayItems(filterResult.foregroundItems)
+                    addDisplayItems(foregroundItems)
                 }
             }
 
-            if (filterResult.reverseBlock) {
-                addDisplayItems(filterResult.filteredItems)
+            val filteredItems = environment.applyBackgroundHomeFeedFilter(foregroundItems)
+            if (reverseBlock) {
+                addDisplayItems(filteredItems)
             }
+
+            val filterResult = HomeFeedFilterResult(
+                foregroundItems = foregroundItems,
+                filteredItems = filteredItems,
+                reverseBlock = reverseBlock,
+            )
 
             // 移除被过滤的条目，并更新已保留条目的 raw 内容
             withContext(Dispatchers.Main) {
                 displayItems.replaceHomeFeedItemsWithFilteredResult(filterResult)
                 latestLoadedDisplayItems.value = filterResult.filteredItems
+                completedPageCount++
             }
         }
     }

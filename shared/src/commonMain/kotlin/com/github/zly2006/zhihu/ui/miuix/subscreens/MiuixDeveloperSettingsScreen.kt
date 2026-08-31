@@ -30,11 +30,12 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.github.zly2006.zhihu.account.parseCookieAssignments
+import com.github.zly2006.zhihu.account.rememberZhihuAccountStore
 import com.github.zly2006.zhihu.data.ZHIHU_ME_URL
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.SentenceSimilarityTest
-import com.github.zly2006.zhihu.platform.rememberDeveloperDiagnostics
 import com.github.zly2006.zhihu.platform.rememberPlainTextClipboard
 import com.github.zly2006.zhihu.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
@@ -44,8 +45,8 @@ import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.TtsState
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
-import com.github.zly2006.zhihu.ui.subscreens.parseCookieString
-import com.github.zly2006.zhihu.ui.subscreens.rememberDeveloperRuntimeInfo
+import com.github.zly2006.zhihu.ui.rememberAppVersionInfo
+import com.github.zly2006.zhihu.ui.subscreens.rememberDeveloperInfo
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Button
@@ -72,8 +73,9 @@ fun MiuixDeveloperSettingsScreen() {
     val navigator = LocalNavigator.current
     val settings = rememberSettingsStore()
     val environment = rememberPaginationEnvironment(allowGuestAccess = false)
-    val runtimeInfo = rememberDeveloperRuntimeInfo()
-    val diagnostics = rememberDeveloperDiagnostics()
+    val accountStore = rememberZhihuAccountStore()
+    val runtimeInfo = rememberDeveloperInfo()
+    val appVersionInfo = rememberAppVersionInfo()
     val copyPlainText = rememberPlainTextClipboard()
     val userMessages = rememberUserMessageSink()
     val coroutineScope = rememberCoroutineScope()
@@ -161,7 +163,7 @@ fun MiuixDeveloperSettingsScreen() {
             item { SmallTitle(text = "诊断工具") }
             item {
                 Card(Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
-                    ArrowPreference(title = "App 信息", summary = diagnostics.appInfo, onClick = {})
+                    ArrowPreference(title = "App 信息", summary = appVersionInfo, onClick = {})
                     ArrowPreference(
                         title = "网络状态",
                         summary = runtimeInfo.networkStatus,
@@ -183,7 +185,7 @@ fun MiuixDeveloperSettingsScreen() {
                         title = "验证登录",
                         onClick = {
                             coroutineScope.launch {
-                                if (environment.verifyLogin(environment.authenticatedCookies())) {
+                                if (accountStore.login(environment.authenticatedCookies().toMutableMap())) {
                                     userMessages.showShortMessage("登录成功")
                                 } else {
                                     userMessages.showShortMessage("登录失败")
@@ -281,42 +283,6 @@ fun MiuixDeveloperSettingsScreen() {
                             singleLine = true,
                         )
                     }
-
-                    var showDeviceInfo by remember { mutableStateOf(false) }
-                    if (showDeviceInfo) {
-                        Card(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-                            SelectionContainer {
-                                Text(diagnostics.deviceInfo, fontSize = 12.sp, modifier = Modifier.padding(12.dp))
-                            }
-                        }
-                    }
-                    ArrowPreference(title = "设备信息", onClick = { showDeviceInfo = !showDeviceInfo })
-
-                    var showClipboardDebug by remember { mutableStateOf(false) }
-                    WindowDialog(
-                        show = showClipboardDebug,
-                        title = "剪贴板调试",
-                        summary = "当前剪贴板内容：",
-                        onDismissRequest = { showClipboardDebug = false },
-                    ) {
-                        Column {
-                            Text(diagnostics.readClipboardText() ?: "(空)", color = MiuixTheme.colorScheme.onSurface)
-                            Spacer(Modifier.height(16.dp))
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                                TextButton(text = "关闭", onClick = { showClipboardDebug = false })
-                            }
-                        }
-                    }
-                    ArrowPreference(title = "剪贴板调试", onClick = { showClipboardDebug = true })
-
-                    ArrowPreference(
-                        title = "导出所有配置",
-                        summary = "复制 SharedPreferences 到剪贴板",
-                        onClick = {
-                            copyPlainText("dev_config", diagnostics.exportAllSettings())
-                            userMessages.showShortMessage("已复制所有配置到剪贴板")
-                        },
-                    )
                 }
             }
         }
@@ -354,14 +320,13 @@ fun MiuixDeveloperSettingsScreen() {
                 )
                 Button(
                     onClick = {
-                        val cookies = parseCookieString(cookieInputText)
+                        val cookies = parseCookieAssignments(cookieInputText)
                         if (cookies.isEmpty()) {
                             userMessages.showShortMessage("未能解析有效的 Cookie 数据")
                             return@Button
                         }
-                        environment.saveCookies(cookies)
                         coroutineScope.launch {
-                            if (environment.verifyLogin(cookies)) {
+                            if (accountStore.login(cookies.toMutableMap())) {
                                 userMessages.showShortMessage("Cookie 设置成功并验证登录状态")
                             } else {
                                 userMessages.showShortMessage("Cookie 设置成功，但验证登录失败")

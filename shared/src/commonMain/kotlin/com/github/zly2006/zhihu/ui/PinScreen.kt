@@ -92,6 +92,7 @@ import com.github.zly2006.zhihu.reading.ReadingPlaybackStatus
 import com.github.zly2006.zhihu.reading.ReadingQueueSourceRegistry
 import com.github.zly2006.zhihu.reading.ReadingStartRequest
 import com.github.zly2006.zhihu.reading.hasReadableFields
+import com.github.zly2006.zhihu.reading.isReadingPlayerSupported
 import com.github.zly2006.zhihu.reading.loadReadingPlaybackSpeed
 import com.github.zly2006.zhihu.reading.loadReadingPreferences
 import com.github.zly2006.zhihu.reading.rememberReadingPlayerController
@@ -307,21 +308,23 @@ fun PinScreen(
                             if (isCurrentReadingItem) {
                                 readingPlayer.togglePlayPause()
                             } else {
-                                readingPlayer.start(
-                                    ReadingStartRequest(
-                                        queue = ReadingQueueSourceRegistry.queueStartingAt(
-                                            current = item,
+                                coroutineScope.launch {
+                                    readingPlayer.start(
+                                        ReadingStartRequest(
+                                            queue = ReadingQueueSourceRegistry.queueStartingAt(
+                                                current = item,
+                                                sourceId = pin.readingQueueSourceId,
+                                                limit = readingPreferences.queueLimit,
+                                            ),
+                                            preferences = readingPreferences,
                                             sourceId = pin.readingQueueSourceId,
-                                            limit = readingPreferences.queueLimit,
+                                            playbackSpeed = readingPlaybackSpeed,
                                         ),
-                                        preferences = readingPreferences,
-                                        sourceId = pin.readingQueueSourceId,
-                                        playbackSpeed = readingPlaybackSpeed,
-                                    ),
-                                )
+                                    )
+                                }
                             }
                         },
-                        enabled = readingPlayer.isSupported && readingItem?.hasReadableFields(readingPreferences) == true,
+                        enabled = isReadingPlayerSupported && readingItem?.hasReadableFields(readingPreferences) == true,
                         modifier = Modifier.testTag(PIN_SCREEN_READING_BUTTON_TAG),
                     ) {
                         when {
@@ -770,7 +773,14 @@ private fun PinContent(
                     "# ${topic.name}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(vertical = 4.dp),
+                    modifier = Modifier
+                        .padding(vertical = 4.dp)
+                        .clickable {
+                            navigator.onNavigate(
+                                com.github.zly2006.zhihu.navigation
+                                    .Topic(topic.id, topic.name),
+                            )
+                        },
                 )
             }
         }

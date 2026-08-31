@@ -78,6 +78,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.account.LoginScreen
 import com.github.zly2006.zhihu.filter.ContentOpenFrom
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Article
@@ -89,6 +90,7 @@ import com.github.zly2006.zhihu.navigation.History
 import com.github.zly2006.zhihu.navigation.Home
 import com.github.zly2006.zhihu.navigation.HotList
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.navigation.Login
 import com.github.zly2006.zhihu.navigation.MainTabs
 import com.github.zly2006.zhihu.navigation.MyCollections
 import com.github.zly2006.zhihu.navigation.NavDestination
@@ -101,8 +103,12 @@ import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.Search
 import com.github.zly2006.zhihu.navigation.SentenceSimilarityTest
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
+import com.github.zly2006.zhihu.navigation.Topic
 import com.github.zly2006.zhihu.navigation.WriteAnswer
 import com.github.zly2006.zhihu.navigation.WritePin
+import com.github.zly2006.zhihu.navigation.loginNavigationRequestFlow
+import com.github.zly2006.zhihu.platform.PlatformBackHandler
+import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.reading.rememberReadingPlayerController
@@ -185,6 +191,7 @@ private sealed class MainTabPage(
 }
 
 internal val LocalReadingPlayerOverlayPadding = staticCompositionLocalOf { 0.dp }
+internal val LocalArticleNavController = staticCompositionLocalOf<NavController<NavDestination>?> { null }
 
 /**
  * Zhihu++ 的共享应用主壳。
@@ -209,10 +216,15 @@ fun ZhihuMain(
     preferenceState: ZhihuMainPreferenceState,
     isDarkTheme: Boolean,
     articleContent: @Composable (Article) -> Unit,
+    showMainNavigationBar: Boolean = true,
+    showHomeTopActions: Boolean = true,
+    onCurrentMainTabDestinationChange: (TopLevelDestination) -> Unit = {},
     sentenceSimilarityContent: @Composable () -> Unit = {
-        Text("Sentence similarity test is not available on this platform.")
+        error("$platformName 暂不支持句子相似度测试")
     },
-    blocklistSettingsNlpContent: BlocklistSettingsNlpContent? = null,
+    blocklistSettingsNlpContent: @Composable (onNavigateBack: () -> Unit) -> Unit = {
+        error("$platformName 暂不支持 NLP 智能屏蔽设置")
+    },
 ) {
     val bottomPadding = ScaffoldDefaults.contentWindowInsets.asPaddingValues().calculateBottomPadding()
     val duo3HomeAccount = preferenceState.duo3HomeAccount
@@ -237,6 +249,7 @@ fun ZhihuMain(
     var readingPlayerHeightPx by remember { mutableIntStateOf(0) }
     val readingPlayerOverlayOffsetState = remember { ReadingPlayerOverlayOffsetState() }
     val density = LocalDensity.current
+    val currentOnMainTabDestinationChange by rememberUpdatedState(onCurrentMainTabDestinationChange)
 
     val isOnReadingDetail = currentTopDestination is Article ||
         currentTopDestination is Question ||
@@ -283,7 +296,7 @@ fun ZhihuMain(
     val isOnArticle = currentTopDestination is Article
     LaunchedEffect(currentTopDestination) {
         isReadingPlayerExpandedByUser = false
-        if (!isOnArticle) readingPlayerOverlayOffsetState.revokeOwner()
+        if (!isOnArticle) readingPlayerOverlayOffsetState.clearRoute()
     }
     var wasOnArticle by remember { mutableStateOf(false) }
     if (!isOnArticle && wasOnArticle) {
@@ -397,6 +410,14 @@ fun ZhihuMain(
         }
     }
 
+    LaunchedEffect(navController) {
+        loginNavigationRequestFlow.collect {
+            if (navController.backStack.lastOrNull() !is Login) {
+                navController.push(Login)
+            }
+        }
+    }
+
     LaunchedEffect(mainPagerState.currentPage, mainTabPages) {
         when (val page = currentMainTabPage()) {
             MainTabPage.FollowPage -> Unit
@@ -405,6 +426,13 @@ fun ZhihuMain(
         currentMainTabPage()?.bottomDestination?.let { destination ->
             currentMainTabDestination = destination
             setCurrentMainTabOpenFrom(destination.openFrom)
+            currentOnMainTabDestinationChange(destination)
+        }
+    }
+
+    PlatformBackHandler(currentTopDestination is MainTabs && mainPagerState.currentPage != 0) {
+        coroutineScope.launch {
+            mainPagerState.animateScrollToPage(0)
         }
     }
 
@@ -469,7 +497,7 @@ fun ZhihuMain(
             },
             floatingActionButtonPosition = FabPosition.Center,
             bottomBar = {
-                run {
+                if (showMainNavigationBar) {
                     // 页面切换时重置底部导航栏可见状态（顶栏复用此信号，一并恢复）
                     LaunchedEffect(currentTopDestination) {
                         isBottomBarVisible = true
@@ -574,6 +602,7 @@ fun ZhihuMain(
                 NavDisplayEffects(enableCornerClip = false, dimAmount = 0f, blockInputDuringTransition = false)
             }
             CompositionLocalProvider(
+                LocalArticleNavController provides navController,
                 LocalNavigator provides Navigator(
                     onNavigate = { destination ->
                         navigate(destination)
@@ -605,8 +634,17 @@ fun ZhihuMain(
                                 innerPadding = innerPadding,
                                 bottomBarBackdrop = bottomBarBackdrop,
                                 collectionDirectBrowseEnabled = collectionDirectBrowseEnabled,
+                                showHomeTopActions = showHomeTopActions,
                             )
                         }
+                    }
+                    entry<Login> {
+                        LoginScreen(
+                            onLoginComplete = { navController.pop() },
+                            onOpenTelemetrySettings = {
+                                navController.push(Account.SystemAndUpdateSettings("allowTelemetry"))
+                            },
+                        )
                     }
                     entry<Question> { question ->
                         if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
@@ -615,11 +653,14 @@ fun ZhihuMain(
                             QuestionScreen(question)
                         }
                     }
+                    entry<Topic> { topic ->
+                        TopicScreen(topic)
+                    }
                     entry<WriteAnswer> { writeAnswer ->
                         WriteAnswerScreen(writeAnswer)
                     }
-                    entry<WritePin> {
-                        WritePinScreen()
+                    entry<WritePin> { writePin ->
+                        WritePinScreen(writePin)
                     }
                     entry<Article> { article ->
                         // 同一回答链在单个 entry 内用 AnimatedContent 切换：返回键直接回到来源页，
@@ -656,7 +697,7 @@ fun ZhihuMain(
                         if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
                             MiuixCollectionScreen(data.userToken)
                         } else {
-                            CollectionScreen(data.userToken)
+                            CollectionScreen(data.userToken, contentPadding = innerPadding)
                         }
                     }
                     entry<CollectionContent> { content ->
@@ -851,6 +892,7 @@ private fun MainTabsPager(
     innerPadding: PaddingValues,
     bottomBarBackdrop: LayerBackdrop? = null,
     collectionDirectBrowseEnabled: Boolean,
+    showHomeTopActions: Boolean,
 ) {
     HorizontalPager(
         state = pagerState,
@@ -870,6 +912,7 @@ private fun MainTabsPager(
                 HomeScreen(
                     scrollToTopTrigger = scrollToTopTrigger,
                     innerPadding = innerPadding,
+                    showTopActions = showHomeTopActions,
                 )
             }
             // 上游把关注的「推荐/动态」两个 pager 页合并成一页，页内自带 tab 并接管父 pager 手势。
@@ -938,6 +981,7 @@ private fun MyCollectionsTopLevelPage(
         // 直达浏览是上游新增的收藏夹模式，miuix 尚未复刻，先共用 M3 实现。
         collectionDirectBrowseEnabled -> CollectionBrowseScreen(
             urlToken = account.urlToken,
+            contentPadding = innerPadding,
             showBackButton = false,
             scrollToTopTrigger = scrollToTopTrigger,
             isActive = isActive,
@@ -949,6 +993,7 @@ private fun MyCollectionsTopLevelPage(
         )
         else -> CollectionScreen(
             urlToken = account.urlToken,
+            contentPadding = innerPadding,
             showBackButton = false,
             isActive = isActive,
         )

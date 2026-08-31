@@ -18,6 +18,11 @@
 package com.github.zly2006.zhihu.reading
 
 import androidx.compose.runtime.Composable
+import com.github.zly2006.zhihu.platform.platformName
+
+actual val isReadingPlayerSupported: Boolean = false
 
 @Composable
-actual fun rememberReadingPlayerController(): ReadingPlayerController = UnsupportedReadingPlayerController
+internal actual fun rememberSupportedReadingPlayerController(): ReadingPlayerController {
+    error("$platformName 暂不支持内容朗读播放器")
+}

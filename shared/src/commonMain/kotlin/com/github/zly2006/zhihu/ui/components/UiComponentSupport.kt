@@ -67,6 +67,8 @@ expect suspend fun extractFeedKeywords(
     excerpt: String?,
 ): List<KeywordWithWeight>
 
+expect val feedKeywordExtractionAvailable: Boolean
+
 @Composable
 fun FeedAuthorBlockConfirmDialog(
     request: FeedAuthorBlockRequest?,

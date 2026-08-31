@@ -48,13 +48,11 @@ import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.CommentHolder
 import com.github.zly2006.zhihu.navigation.NavDestination
-import com.github.zly2006.zhihu.navigation.Pin
-import com.github.zly2006.zhihu.navigation.Question
-import com.github.zly2006.zhihu.navigation.SegmentCommentHolder
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.theme.Typography
 import com.github.zly2006.zhihu.ui.CommentScreen
-import com.github.zly2006.zhihu.ui.rememberArticleHost
+import com.github.zly2006.zhihu.ui.commentThreadKey
+import com.github.zly2006.zhihu.ui.consumePendingCommentId
 import com.github.zly2006.zhihu.viewmodel.CommentItem
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
@@ -71,15 +69,15 @@ fun CommentScreenComponent(
     isZhPlusAuthorContent: Boolean = false,
 ) {
     val settings = rememberSettingsStore()
-    val articleHost = rememberArticleHost()
+    val initialPendingCommentId = consumePendingCommentId(content)
     var pendingCommentId by remember(content) {
-        mutableStateOf(articleHost?.consumePendingCommentId(content))
+        mutableStateOf(initialPendingCommentId)
     }
     val commentsVisible = showComments || pendingCommentId != null
     var authorCommentPolicyAcknowledged by remember {
         mutableStateOf(settings.getBoolean(ZH_PLUS_AUTHOR_COMMENT_POLICY_ACKNOWLEDGED_KEY, false))
     }
-    val contentStateKey = commentContentStateKey(content)
+    val contentStateKey = content.commentThreadKey()
     var activeChildComment by rememberSaveable(contentStateKey, saver = activeChildCommentSaver) {
         mutableStateOf<CommentItem?>(null)
     }
@@ -100,7 +98,7 @@ fun CommentScreenComponent(
     val rootSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val childSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val childTarget = activeChildComment?.clickTarget
-    val childDraftKey = childTarget?.let(::commentContentStateKey)
+    val childDraftKey = childTarget?.commentThreadKey()
     var childListResetToken by rememberSaveable(contentStateKey) { mutableIntStateOf(0) }
     val childListState = rememberSaveable(
         contentStateKey,
@@ -271,12 +269,3 @@ private val activeChildCommentSaver = Saver<MutableState<CommentItem?>, List<Str
         )
     },
 )
-
-private fun commentContentStateKey(content: NavDestination): String = when (content) {
-    is Article -> "article:${content.type}:${content.id}"
-    is Question -> "question:${content.questionId}"
-    is Pin -> "pin:${content.id}"
-    is CommentHolder -> "comment:${commentContentStateKey(content.article)}:${content.commentId}"
-    is SegmentCommentHolder -> "segment:${content.contentType}:${content.contentId}:${content.segmentId}"
-    else -> content.toString()
-}

@@ -96,6 +96,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -108,7 +109,11 @@ import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.navigation.Topic
 import com.github.zly2006.zhihu.platform.PlatformBackHandler
+import com.github.zly2006.zhihu.platform.isArticleHtmlExportSupported
+import com.github.zly2006.zhihu.platform.isArticleImageExportSupported
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.ui.article.AigcFlagSheet
@@ -124,24 +129,29 @@ import com.github.zly2006.zhihu.ui.article.voteUpActiveButtonColors
 import com.github.zly2006.zhihu.ui.article.voteUpNeutralButtonColors
 import com.github.zly2006.zhihu.ui.article.voteUpNeutralContent
 import com.github.zly2006.zhihu.ui.article.voteUpNeutralContentDuo3
+import com.github.zly2006.zhihu.ui.components.ANSWER_SWITCH_SENSITIVITY_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.components.AnswerHorizontalOverscroll
 import com.github.zly2006.zhihu.ui.components.AnswerVerticalOverscroll
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.CollectionDialogComponent
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
+import com.github.zly2006.zhihu.ui.components.DEFAULT_ANSWER_SWITCH_SENSITIVITY
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.ExportDialogComponent
 import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.github.zly2006.zhihu.ui.components.VerticalReadingProgressBar
 import com.github.zly2006.zhihu.ui.components.VotersSheet
 import com.github.zly2006.zhihu.ui.components.ZhihuTwoRowsTopAppBar
+import com.github.zly2006.zhihu.ui.components.normalizedAnswerSwitchSensitivity
 import com.github.zly2006.zhihu.ui.components.rememberPreferCollapsedExitUntilCollapsedScrollBehavior
+import com.github.zly2006.zhihu.ui.subscreens.DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY
 import com.github.zly2006.zhihu.util.formatCompactCount
 import com.github.zly2006.zhihu.util.smoothGradient
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.addReadHistory
 import com.github.zly2006.zhihu.viewmodel.formatArticleDateTime
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.sharedArticleAnswerSwitchState
 import com.materialkolor.ktx.harmonize
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -177,12 +187,45 @@ fun ArticleScreen(
     val readingPlayerOverlayPadding = LocalReadingPlayerOverlayPadding.current
     val readingPlayerOverlayOffsetState = LocalReadingPlayerOverlayOffsetState.current
     val environment = rememberPaginationEnvironment(allowGuestAccess = false)
-    val articleHost = rememberArticleHost()
-    // miuix-nav 的返回栈是 SnapshotStateList，直接读栈顶即响应式（替代 currentBackStackEntryAsState）。
-    val currentTopDestination = articleHost?.articleNavController?.backStack?.lastOrNull()
+    val articleNavController = LocalArticleNavController.current
+    val currentTopDestination = articleNavController?.backStack?.lastOrNull()
 
     val scrollState = rememberScrollState()
-    val articleSettings = rememberArticleScreenSettingsState()
+    val settings = rememberSettingsStore()
+    val isTitleAutoHide by rememberObservedSetting(settings, "titleAutoHide") { getBoolean("titleAutoHide", false) }
+    val autoHideArticleBottomBar by rememberObservedSetting(settings, "autoHideArticleBottomBar") {
+        getBoolean("autoHideArticleBottomBar", false)
+    }
+    val answerSwitchMode by rememberObservedSetting(settings, "answerSwitchMode") {
+        getString("answerSwitchMode", "vertical")
+    }
+    val answerSwitchSensitivity by rememberObservedSetting(settings, ANSWER_SWITCH_SENSITIVITY_PREFERENCE_KEY) {
+        normalizedAnswerSwitchSensitivity(getFloat(ANSWER_SWITCH_SENSITIVITY_PREFERENCE_KEY, DEFAULT_ANSWER_SWITCH_SENSITIVITY))
+    }
+    val pinAnswerDate by rememberObservedSetting(settings, "pinAnswerDate") { getBoolean("pinAnswerDate", false) }
+    val useDuo3ArticleActions by rememberObservedSetting(settings, "duo3_article_actions") {
+        getBoolean("duo3_article_actions", false)
+    }
+    val buttonSkipAnswer by rememberObservedSetting(settings, "buttonSkipAnswer") { getBoolean("buttonSkipAnswer", true) }
+    val autoHideSkipAnswerButton by rememberObservedSetting(settings, "autoHideSkipAnswerButton") {
+        getBoolean("autoHideSkipAnswerButton", true)
+    }
+    var answerDoubleTapAction by rememberObservedSetting(settings, ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY) {
+        AnswerDoubleTapAction.fromPreference(
+            getString(ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY, AnswerDoubleTapAction.Ask.preferenceValue),
+        )
+    }
+    val useWebView by rememberObservedSetting(settings, ARTICLE_USE_WEBVIEW_PREFERENCE_KEY) {
+        getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false)
+    }
+    val useTiqianMarkdown by rememberObservedSetting(settings, DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY) {
+        getBoolean(DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY, false)
+    }
+
+    fun saveAnswerDoubleTapAction(action: AnswerDoubleTapAction) {
+        answerDoubleTapAction = action
+        settings.putString(ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY, action.preferenceValue)
+    }
     val userMessages = rememberUserMessageSink()
     val density = LocalDensity.current
     val readingPlayerOverlayPaddingPx = with(density) { readingPlayerOverlayPadding.roundToPx() }
@@ -206,13 +249,13 @@ fun ArticleScreen(
     var showVoters by rememberSaveable(article.type, article.id) { mutableStateOf(false) }
     val topBarState = rememberArticleTopBarState(
         scrollState = scrollState,
-        autoHide = articleSettings.isTitleAutoHide,
+        autoHide = isTitleAutoHide,
     )
     val bottomBarState = rememberArticleBottomBarState(
         scrollState = scrollState,
-        autoHide = articleSettings.autoHideArticleBottomBar,
+        autoHide = autoHideArticleBottomBar,
         scrollDeltaThreshold = with(density) { ScrollThresholdDp.toPx() },
-        showSlot = currentTopDestination is Article || articleHost == null,
+        showSlot = currentTopDestination is Article || articleNavController == null,
         navigationBarHeightPx = density.run {
             WindowInsets.navigationBars
                 .asPaddingValues()
@@ -221,11 +264,7 @@ fun ArticleScreen(
                 .coerceAtLeast(0f)
         },
     )
-    val sharedData = if (article.type == ArticleType.Answer) {
-        environment.articleAnswerSwitchState()
-    } else {
-        null
-    }
+    val sharedData = sharedArticleAnswerSwitchState.takeIf { article.type == ArticleType.Answer }
     var isImmersiveMode by remember(sharedData) {
         mutableStateOf(sharedData?.isImmersiveMode ?: false)
     }
@@ -233,26 +272,27 @@ fun ArticleScreen(
         switchState = sharedData,
         viewModel = viewModel,
         navigator = navigator,
-        navController = articleHost?.articleNavController,
-        answerSwitchMode = articleSettings.answerSwitchMode,
+        navController = articleNavController,
+        answerSwitchMode = answerSwitchMode,
         readingQueueSourceId = article.readingQueueSourceId,
     )
     val hapticFeedback = LocalHapticFeedback.current
-    val readingPlayerOverlayOwner = remember(article.type, article.id) { Any() }
-    val usesVerticalAnswerSwitch = article.type == ArticleType.Answer && articleSettings.answerSwitchMode == "vertical"
-    DisposableEffect(readingPlayerOverlayOffsetState, readingPlayerOverlayOwner, usesVerticalAnswerSwitch) {
+    val readingPlayerOverlayRouteId = article.readingQueueSourceId
+        ?: "${article.type}:${article.id}"
+    val usesVerticalAnswerSwitch = article.type == ArticleType.Answer && answerSwitchMode == "vertical"
+    DisposableEffect(readingPlayerOverlayOffsetState, readingPlayerOverlayRouteId, usesVerticalAnswerSwitch) {
         if (usesVerticalAnswerSwitch) {
-            readingPlayerOverlayOffsetState?.activate(readingPlayerOverlayOwner)
+            readingPlayerOverlayOffsetState?.beginRoute(readingPlayerOverlayRouteId)
         }
         onDispose {
             if (usesVerticalAnswerSwitch) {
-                readingPlayerOverlayOffsetState?.deactivate(readingPlayerOverlayOwner)
+                readingPlayerOverlayOffsetState?.endRoute(readingPlayerOverlayRouteId)
             }
         }
     }
-    val updateReadingPlayerOverlayOffset = remember(readingPlayerOverlayOffsetState, readingPlayerOverlayOwner) {
+    val updateReadingPlayerOverlayOffset = remember(readingPlayerOverlayOffsetState, readingPlayerOverlayRouteId) {
         { offsetPx: Float ->
-            readingPlayerOverlayOffsetState?.update(readingPlayerOverlayOwner, offsetPx)
+            readingPlayerOverlayOffsetState?.update(readingPlayerOverlayRouteId, offsetPx)
             Unit
         }
     }
@@ -293,14 +333,14 @@ fun ArticleScreen(
 
     fun handleAnswerDoubleTap() {
         if (article.type != ArticleType.Answer) return
-        performAnswerDoubleTapAction(articleSettings.answerDoubleTapAction)
+        performAnswerDoubleTapAction(answerDoubleTapAction)
     }
 
     val answerDoubleTapModifier = if (
         article.type == ArticleType.Answer &&
-        articleSettings.answerDoubleTapAction != AnswerDoubleTapAction.None
+        answerDoubleTapAction != AnswerDoubleTapAction.None
     ) {
-        Modifier.pointerInput(articleSettings.answerDoubleTapAction) {
+        Modifier.pointerInput(answerDoubleTapAction) {
             detectTapGestures(
                 onDoubleTap = { handleAnswerDoubleTap() },
             )
@@ -383,8 +423,8 @@ fun ArticleScreen(
                             navigationIcon = {
                                 IconButton(
                                     onClick = {
-                                        if (articleHost != null) {
-                                            articleHost.articleNavController.pop()
+                                        if (articleNavController != null) {
+                                            articleNavController.pop()
                                         } else {
                                             navigator.onNavigateBack()
                                         }
@@ -398,7 +438,7 @@ fun ArticleScreen(
                                 }
                             },
                             actions = {
-                                if (articleSettings.useDuo3ArticleActions) {
+                                if (useDuo3ArticleActions) {
                                     IconButton(
                                         onClick = { showActionsMenu = true },
                                     ) {
@@ -513,7 +553,7 @@ fun ArticleScreen(
                     // 操作栏内容的共享组合，按 useDuo3ArticleActions 切换两套视觉。
                     @Composable
                     fun ActionBarContent() {
-                        if (!articleSettings.useDuo3ArticleActions) {
+                        if (!useDuo3ArticleActions) {
                             // ── 主视觉：按钮式投票与操作区 ────────────────────────
                             Row(
                                 modifier = Modifier
@@ -752,14 +792,15 @@ fun ArticleScreen(
                                         )
                                     }
 
-                                    val ttsState = articleHost?.articleTtsState
-                                    AnimatedVisibility(visible = ttsState?.isSpeaking == true) {
+                                    val ttsState = rememberArticleTtsState()
+                                    val toggleArticleSpeech = rememberArticleSpeechToggler()
+                                    AnimatedVisibility(visible = ttsState.isSpeaking) {
                                         IconButton(
                                             onClick = {
-                                                articleHost?.stopArticleSpeaking()
+                                                toggleArticleSpeech("", "")
                                                 userMessages.showMessage("已停止朗读")
                                             },
-                                            enabled = ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing, null),
+                                            enabled = ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing),
                                             colors = IconButtonDefaults.iconButtonColors(
                                                 containerColor = Color(0xFF4CAF50).harmonize(MaterialTheme.colorScheme.primary),
                                                 contentColor = Color.White,
@@ -920,7 +961,22 @@ fun ArticleScreen(
                         }
 
                         if (viewModel.content.isNotEmpty() || viewModel.attachment != null) {
-                            val hasPinnedDate = articleSettings.pinAnswerDate
+                            if (article.type == ArticleType.Article && viewModel.topics.isNotEmpty()) {
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    viewModel.topics.forEach { topic ->
+                                        androidx.compose.material3.FilterChip(
+                                            selected = false,
+                                            onClick = { navigator.onNavigate(Topic(topic.id, topic.name)) },
+                                            label = { Text("# ${topic.name}") },
+                                        )
+                                    }
+                                }
+                                Spacer(Modifier.height(12.dp))
+                            }
+                            val hasPinnedDate = pinAnswerDate
                             val hasSocialCredit = viewModel.votersTotal > 0 || viewModel.aigcSupportVoterCount > 0
                             val endorsements = viewModel.endorsements
                             val hasEndorsements = endorsements.isNotEmpty()
@@ -949,7 +1005,7 @@ fun ArticleScreen(
                                 }
                                 Spacer(modifier = Modifier.height(16.dp))
                             }
-                            if (articleSettings.useWebView) {
+                            if (useWebView && isLegacyWebViewSupported) {
                                 // WebView 正文渲染已经废弃，只保留为紧急回退路径；正文外 UI 不再为它单独分支。
                                 ArticleWebViewContent(
                                     article = article,
@@ -966,7 +1022,7 @@ fun ArticleScreen(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalAlignment = Alignment.End,
                                 ) {
-                                    if (!articleSettings.pinAnswerDate) {
+                                    if (!pinAnswerDate) {
                                         DateTexts()
                                     }
                                     if (viewModel.ipInfo != null) {
@@ -981,10 +1037,13 @@ fun ArticleScreen(
                             } else {
                                 RenderMarkdown(
                                     html = viewModel.content,
-                                    modifier = Modifier.articleMarkdownSelectionWorkaround(),
+                                    modifier = Modifier
+                                        .testTag("article_content")
+                                        .articleMarkdownSelectionWorkaround(),
                                     scrollState = scrollState,
                                     selectable = true,
                                     enableScroll = false,
+                                    useTiqianRenderer = useTiqianMarkdown,
                                     header = {},
                                     footer = {
                                         ArticleVideoAttachmentContent(viewModel.attachment)
@@ -992,7 +1051,7 @@ fun ArticleScreen(
                                             modifier = Modifier.fillMaxWidth(),
                                             horizontalAlignment = Alignment.End,
                                         ) {
-                                            if (!articleSettings.pinAnswerDate) {
+                                            if (!pinAnswerDate) {
                                                 DateTexts()
                                             }
                                             if (viewModel.ipInfo != null) {
@@ -1030,10 +1089,13 @@ fun ArticleScreen(
     val progressBarBottomPadding = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding() + 96.dp
 
     Box(
-        modifier = Modifier.fillMaxSize().then(answerDoubleTapModifier),
+        modifier = Modifier
+            .fillMaxSize()
+            .testTag("article_screen_root")
+            .then(answerDoubleTapModifier),
     ) {
         // 根据模式渲染
-        if (article.type == ArticleType.Answer && articleSettings.answerSwitchMode == "vertical") {
+        if (article.type == ArticleType.Answer && answerSwitchMode == "vertical") {
             AnswerVerticalOverscroll(
                 previousAnswer = nav?.previousAnswer,
                 nextAnswer = nav?.nextAnswer,
@@ -1042,24 +1104,24 @@ fun ArticleScreen(
                 isAtTop = { scrollState.value == 0 },
                 isAtBottom = { scrollState.value >= effectiveScrollMaxValue },
                 scrollState = scrollState,
-                answerSwitchSensitivity = articleSettings.answerSwitchSensitivity,
+                answerSwitchSensitivity = answerSwitchSensitivity,
                 onOverscrollOffsetChange = updateReadingPlayerOverlayOffset,
             ) {
                 MainContent()
             }
-        } else if (article.type == ArticleType.Answer && articleSettings.answerSwitchMode == "horizontal") {
+        } else if (article.type == ArticleType.Answer && answerSwitchMode == "horizontal") {
             AnswerHorizontalOverscroll(
                 canGoPrevious = nav?.previousAnswer != null,
                 canGoNext = nav?.nextAnswer != null,
                 onNavigatePrevious = answerNavigationState::navigateToPrevious,
                 onNavigateNext = answerNavigationState::navigateToNext,
                 previousContent = nav?.previousAnswer?.let { cached ->
-                    { CachedAnswerPreview(cached) }
+                    { CachedAnswerPreview(cached, useTiqianMarkdown) }
                 },
                 nextContent = nav?.nextAnswer?.let { cached ->
-                    { CachedAnswerPreview(cached) }
+                    { CachedAnswerPreview(cached, useTiqianMarkdown) }
                 },
-                answerSwitchSensitivity = articleSettings.answerSwitchSensitivity,
+                answerSwitchSensitivity = answerSwitchSensitivity,
             ) {
                 MainContent()
             }
@@ -1079,11 +1141,11 @@ fun ArticleScreen(
         )
 
         // 跳转按钮需要压在问题区和回答区之上。
-        if (article.type == ArticleType.Answer && articleSettings.buttonSkipAnswer && !isImmersiveMode) {
+        if (article.type == ArticleType.Answer && buttonSkipAnswer && !isImmersiveMode) {
             val isAtTop by remember(scrollState) {
                 derivedStateOf { scrollState.value == 0 }
             }
-            val showSkipButton = !articleSettings.autoHideSkipAnswerButton || bottomBarState.isScrollingUp || isAtTop
+            val showSkipButton = !autoHideSkipAnswerButton || bottomBarState.isScrollingUp || isAtTop
             val skipButtonAlpha by animateFloatAsState(
                 targetValue = if (showSkipButton) 1f else 0f,
                 animationSpec = tween(200),
@@ -1232,7 +1294,7 @@ fun ArticleScreen(
                 Button(
                     onClick = {
                         showDoubleTapActionDialog = false
-                        articleSettings.saveAnswerDoubleTapAction(AnswerDoubleTapAction.None)
+                        saveAnswerDoubleTapAction(AnswerDoubleTapAction.None)
                         userMessages.showMessage("已将双击回答动作设为：${AnswerDoubleTapAction.None.label}")
                     },
                     modifier = Modifier.fillMaxWidth(),
@@ -1242,7 +1304,7 @@ fun ArticleScreen(
                 Button(
                     onClick = {
                         showDoubleTapActionDialog = false
-                        articleSettings.saveAnswerDoubleTapAction(AnswerDoubleTapAction.VoteUp)
+                        saveAnswerDoubleTapAction(AnswerDoubleTapAction.VoteUp)
                         upVoteFromDoubleTap()
                         userMessages.showMessage("已将双击回答动作设为：${AnswerDoubleTapAction.VoteUp.label}")
                     },
@@ -1253,7 +1315,7 @@ fun ArticleScreen(
                 Button(
                     onClick = {
                         showDoubleTapActionDialog = false
-                        articleSettings.saveAnswerDoubleTapAction(AnswerDoubleTapAction.OpenComments)
+                        saveAnswerDoubleTapAction(AnswerDoubleTapAction.OpenComments)
                         showComments = true
                         userMessages.showMessage("已将双击回答动作设为：${AnswerDoubleTapAction.OpenComments.label}")
                     },
@@ -1264,7 +1326,7 @@ fun ArticleScreen(
                 Button(
                     onClick = {
                         showDoubleTapActionDialog = false
-                        articleSettings.saveAnswerDoubleTapAction(AnswerDoubleTapAction.ToggleImmersive)
+                        saveAnswerDoubleTapAction(AnswerDoubleTapAction.ToggleImmersive)
                         isImmersiveMode = !isImmersiveMode
                         userMessages.showMessage("已将双击回答动作设为：${AnswerDoubleTapAction.ToggleImmersive.label}")
                     },
@@ -1278,6 +1340,8 @@ fun ArticleScreen(
     // 导出对话框
     ExportDialogComponent(
         showDialog = showExportDialog,
+        isHtmlExportSupported = isArticleHtmlExportSupported,
+        isImageExportSupported = isArticleImageExportSupported,
         onDismiss = { showExportDialog = false },
         onExportHtml = { includeAppAttribution, onComplete ->
             viewModel.exportToHtml(environment, includeAppAttribution, onComplete)

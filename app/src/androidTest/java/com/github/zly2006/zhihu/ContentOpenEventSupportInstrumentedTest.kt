@@ -31,6 +31,10 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class ContentOpenEventSupportInstrumentedTest {
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/213
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/316
+     */
     @Test
     fun getAlreadyOpenedContentIds_recognizesOpenedContentEvents() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()

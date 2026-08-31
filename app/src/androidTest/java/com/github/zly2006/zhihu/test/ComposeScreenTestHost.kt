@@ -28,6 +28,7 @@ import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
 import androidx.compose.ui.test.swipeUp
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.test.ext.junit.rules.ActivityScenarioRule
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.navigation.LocalNavigator
@@ -85,7 +86,10 @@ fun MainActivityComposeRule.setScreenContent(
     waitForIdle()
     activity.setContent {
         ZhihuTheme {
-            CompositionLocalProvider(LocalNavigator provides recordingNavigator.asNavigator()) {
+            CompositionLocalProvider(
+                LocalNavigator provides recordingNavigator.asNavigator(),
+                LocalViewModelStoreOwner provides activity,
+            ) {
                 content()
             }
         }
@@ -117,13 +121,6 @@ fun MainActivityComposeRule.setZhihuMainContent(
 fun SemanticsNodeInteraction.performVerticalSwipeCycle() {
     performTouchInput { swipeUp() }
     performTouchInput { swipeDown() }
-}
-
-fun MainActivityComposeRule.pressSystemBack() {
-    activityRule.scenario.onActivity {
-        it.onBackPressedDispatcher.onBackPressed()
-    }
-    waitForIdle()
 }
 
 fun SemanticsNodeInteraction.performHorizontalSwipeCycle() {

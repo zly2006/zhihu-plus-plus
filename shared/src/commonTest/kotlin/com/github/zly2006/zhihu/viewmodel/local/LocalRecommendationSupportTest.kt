@@ -21,17 +21,27 @@ import com.github.zly2006.zhihu.data.CommonFeed
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
+import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import com.github.zly2006.zhihu.viewmodel.local.LocalContentAffinity
 import com.github.zly2006.zhihu.viewmodel.local.LocalReasonPreference
+import io.ktor.client.HttpClient
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonArray
 import kotlin.io.path.createTempDirectory
+import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class LocalRecommendationSupportTest {
+    @AfterTest
+    fun clearTestOverrides() {
+        localRecommendationEngineForTesting = null
+        crawlingFeedArrayForTesting = null
+        crawlingNowMillisForTesting = null
+    }
+
     @Test
     fun buildFallbackRecommendationsRanksRecentResultsAndCreatesEntries() = runTest {
         val database = testLocalContentDatabase()
@@ -65,37 +75,6 @@ class LocalRecommendationSupportTest {
             entries.single().navDestination,
         )
         database.close()
-    }
-
-    @Test
-    fun createLocalFeedDisplayItemKeepsOnlyPresentationData() {
-        val item = createLocalFeedDisplayItem(
-            LocalRecommendationEntry(
-                feed = LocalFeed(
-                    id = "local_feed_answer_42",
-                    resultId = 1L,
-                    title = "回答标题",
-                    summary = "回答摘要",
-                    reasonDisplay = "热门推荐",
-                    navDestination = "answer:42",
-                ),
-                result = CrawlingResult(
-                    id = 1L,
-                    taskId = 1L,
-                    contentId = "answer:42",
-                    title = "回答标题",
-                    summary = "回答摘要",
-                    url = "https://www.zhihu.com/answer/42",
-                    reason = CrawlingReason.Trending,
-                ),
-                navDestination = Article(type = ArticleType.Answer, id = 42L, title = "回答标题"),
-            ),
-        )
-
-        assertEquals("回答标题", item.title)
-        assertEquals("回答摘要", item.summary)
-        assertEquals("热门推荐", item.details)
-        assertNotNull(item.navDestinationJson)
     }
 
     @Test
@@ -401,13 +380,14 @@ class LocalRecommendationSupportTest {
         )
         val taskId = dao.getTasksByStatus(CrawlingStatus.NotStarted).single().id
         val requestedUrls = mutableListOf<String>()
+        crawlingFeedArrayForTesting = { url ->
+            requestedUrls.add(url)
+            JsonArray(emptyList())
+        }
+        crawlingNowMillisForTesting = { 42L }
         val executor = CrawlingExecutor(
             dao = dao,
-            fetchFeedArray = { url ->
-                requestedUrls.add(url)
-                JsonArray(emptyList())
-            },
-            nowMillis = { 42L },
+            environment = NoopLocalRecommendationEnvironment,
         )
 
         executor.executeTask(
@@ -429,20 +409,26 @@ class LocalRecommendationSupportTest {
         dao: LocalContentDao,
         initializeContentIfNeeded: suspend () -> Unit = {},
         startScheduling: () -> Unit = {},
-        stopScheduling: () -> Unit = {},
         executeTask: suspend (CrawlingTask) -> Unit = {},
-    ): LocalRecommendationEngine = LocalRecommendationEngine(
-        dao = dao,
-        feedGenerator = FeedGenerator(dao),
-        userBehaviorAnalyzer = UserBehaviorAnalyzer(dao),
-        initializeContentIfNeeded = initializeContentIfNeeded,
-        startScheduling = startScheduling,
-        stopScheduling = stopScheduling,
-        executeTask = executeTask,
-    )
+    ): LocalRecommendationEngine {
+        localRecommendationEngineForTesting = LocalRecommendationEngineTestOverrides(
+            initializeContent = initializeContentIfNeeded,
+            startScheduling = startScheduling,
+            executeTask = executeTask,
+        )
+        return LocalRecommendationEngine(dao, CrawlingExecutor(dao, NoopLocalRecommendationEnvironment))
+    }
 
     private fun testLocalContentDatabase(): LocalContentDatabase =
         getLocalContentDatabase(
             createTempDirectory("local-recommendation-support-room").resolve("local-content.db").toFile(),
         )
+
+    private object NoopLocalRecommendationEnvironment : ZhihuApiEnvironment {
+        override fun httpClient(): HttpClient = error("测试不应创建 HTTP client")
+
+        override fun authenticatedCookies(): Map<String, String> = emptyMap()
+
+        override suspend fun handleFetchFailure(tag: String?, error: Exception) = Unit
+    }
 }

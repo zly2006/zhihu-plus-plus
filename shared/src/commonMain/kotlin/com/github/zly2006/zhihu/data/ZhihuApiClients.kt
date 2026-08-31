@@ -95,7 +95,7 @@ suspend fun fetchZhihuAuthenticatedJson(
 
 class ZhihuCookieStorage(
     private val cookies: MutableMap<String, String>,
-    private val onCookieChanged: (() -> Unit)? = null,
+    private val onCookieChanged: () -> Unit = {},
 ) : CookiesStorage {
     override suspend fun addCookie(requestUrl: Url, cookie: Cookie) {
         // https://github.com/zly2006/zhihu-plus-plus/issues/25#issuecomment-3311926550
@@ -104,7 +104,7 @@ class ZhihuCookieStorage(
         }
         if (cookie.domain?.endsWith("zhihu.com") != false) {
             cookies[cookie.name] = cookie.value
-            onCookieChanged?.invoke()
+            onCookieChanged()
         }
     }
 

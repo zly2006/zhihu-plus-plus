@@ -24,10 +24,9 @@ import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.FeedDisplayItem
 import com.github.zly2006.zhihu.data.navDestination
 import com.github.zly2006.zhihu.data.target
-import com.github.zly2006.zhihu.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.desktop.DesktopHistoryStorage
-import com.github.zly2006.zhihu.desktop.DesktopLoginRequests
 import com.github.zly2006.zhihu.desktop.copyDesktopPlainText
+import com.github.zly2006.zhihu.desktop.defaultDesktopAccountStore
 import com.github.zly2006.zhihu.desktop.desktopZhihuDataFile
 import com.github.zly2006.zhihu.desktop.desktopZhihuDownloadsDir
 import com.github.zly2006.zhihu.filter.ContentOpenEventSupport
@@ -38,8 +37,6 @@ import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.notification.desktopNotificationSettingsStore
 import com.github.zly2006.zhihu.platform.desktopSettingsStore
-import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
-import com.github.zly2006.zhihu.ui.homeFeedStartupCacheFileNames
 import com.github.zly2006.zhihu.util.Log
 import com.github.zly2006.zhihu.util.buildArticleExportFileName
 import com.github.zly2006.zhihu.util.buildCollectionExportZipFileName
@@ -66,7 +63,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.put
 import java.awt.image.BufferedImage
 import java.io.File
@@ -82,7 +78,6 @@ import com.github.zly2006.zhihu.util.buildOfflineArticleExportHtml as buildShare
 import io.ktor.http.ContentType as KtorContentType
 
 private val desktopContentFilterDb = getContentFilterDatabase()
-internal val desktopArticleAnswerSwitchState = ArticleAnswerSwitchData()
 private var desktopPendingContentOpenIdentity: TrackedContentIdentity? = null
 private var desktopPendingContentOpenFrom: String? = null
 
@@ -102,7 +97,7 @@ internal fun prepareDesktopPendingContentOpen(
         ?: ContentOpenEventSupport.inferOpenFrom(source, target)
 }
 
-internal fun consumeDesktopPendingContentOpenFrom(destination: NavDestination): String {
+private fun consumeDesktopPendingContentOpenFrom(destination: NavDestination): String {
     val identity = ContentOpenEventSupport.toTrackedContentIdentity(destination) ?: return ContentOpenFrom.UNKNOWN
     if (identity != desktopPendingContentOpenIdentity) {
         return ContentOpenFrom.UNKNOWN
@@ -114,77 +109,45 @@ internal fun consumeDesktopPendingContentOpenFrom(destination: NavDestination): 
 }
 
 class DesktopPaginationEnvironment(
-    private val store: DesktopAccountStore = DesktopAccountStore(),
     override val notificationSettingsStore: NotificationSettingsStore = desktopNotificationSettingsStore(),
-    private val showFetchFailureMessage: ((String) -> Unit)? = null,
 ) : PaginationEnvironment,
     CollectionContentEnvironment,
     NotificationEnvironment {
+    private val store = defaultDesktopAccountStore
     private val settingsStore = desktopSettingsStore()
     private val historyStorage = DesktopHistoryStorage()
     private val contentFilterDb = desktopContentFilterDb
-    private val localRecommendationEngine by lazy { createLocalRecommendationEngine() }
+    private val localRecommendationEngine by lazy {
+        val databaseFile = desktopZhihuDataFile("local-content.db")
+        databaseFile.parentFile?.mkdirs()
+        val dao = getLocalContentDatabase(databaseFile).contentDao()
+        buildLocalRecommendationEngine(dao, this)
+    }
 
-    override fun httpClient(): HttpClient = store.httpClient()
+    override fun httpClient(): HttpClient = store.client.httpClient()
 
-    override fun xsrfToken(): String = store.load().cookies["_xsrf"] ?: ""
+    override fun xsrfToken(): String = store.session.cookies["_xsrf"] ?: ""
 
-    override fun authenticatedCookies(): Map<String, String> = store.load().cookies
+    override fun authenticatedCookies(): Map<String, String> = store.session.cookies
 
     override suspend fun <T> withAuthenticatedClient(
         block: suspend (client: HttpClient, cookies: Map<String, String>) -> T,
-    ): T = store.withAuthenticatedClient(block)
-
-    override suspend fun refreshAccountProfile() {
-        store.refreshAndSaveProfile()
-    }
-
-    override fun requestLogin(): Boolean {
-        DesktopLoginRequests.requestLogin()
-        return true
-    }
-
-    override fun clearAccountSession() {
-        store.clear()
-    }
-
-    override fun currentAccountId(): String = store
-        .load()
-        .profile
-        ?.id
-        .orEmpty()
-
-    override suspend fun verifyLogin(cookies: Map<String, String>): Boolean =
-        store.verifyAndSave(cookies.toMutableMap())
-
-    override fun saveCookies(cookies: Map<String, String>) {
-        store.save(store.load().copy(login = true, cookies = cookies.toMutableMap()))
-    }
-
-    override fun logout() {
-        homeFeedStartupCacheFileNames().forEach { fileName ->
-            desktopZhihuDataFile(fileName).delete()
-        }
-        clearAccountSession()
-    }
+    ): T = store.client.withAuthenticatedClient(block)
 
     override suspend fun handleFetchFailure(
         tag: String?,
         error: Exception,
     ) {
         Log.e(tag ?: "PaginationViewModel", "Failed to fetch feeds", error)
-        showFetchFailureMessage?.invoke("加载失败: ${error.message}")
     }
 
     override fun feedDisplaySettings(): FeedDisplaySettings = FeedDisplaySettings(
-        enableQualityFilter = false,
+        qualityFilterMode = QualityFilterMode.OFF,
         reverseBlock = settingsStore.toFeedFilterSettings().reverseBlock,
     )
 
     override fun localHistory(): List<NavDestination> =
         historyStorage.history
-
-    override fun articleAnswerSwitchState(): ArticleAnswerSwitchState? = desktopArticleAnswerSwitchState
 
     override suspend fun postHistoryDestination(destination: NavDestination) {
         historyStorage.add(destination)
@@ -275,14 +238,18 @@ class DesktopPaginationEnvironment(
         recordContentOpenEvent(destination, questionId)
     }
 
-    override suspend fun applyHomeFeedFilters(items: List<FeedDisplayItem>): HomeFeedFilterResult {
+    override suspend fun applyForegroundHomeFeedFilter(items: List<FeedDisplayItem>): List<FeedDisplayItem> {
         val settings = settingsStore.toFeedFilterSettings()
-        val foregroundItems = ForegroundReadFilterPipeline(
+        return ForegroundReadFilterPipeline(
             settings = settings,
             contentFilterManager = ContentFilterManager(contentFilterDb.contentFilterDao()),
             blockedFeedRecordDao = contentFilterDb.blockedFeedRecordDao(),
         ).filter(items)
-        val filteredItems = FeedDisplayFilterPipeline(
+    }
+
+    override suspend fun applyBackgroundHomeFeedFilter(items: List<FeedDisplayItem>): List<FeedDisplayItem> {
+        val settings = settingsStore.toFeedFilterSettings()
+        return FeedDisplayFilterPipeline(
             settings = settings,
             contentDetailProvider = ContentDetailProvider(::getOrFetchContentDetail),
             contentFilterPipeline = FeedContentFilterPipeline(
@@ -298,12 +265,7 @@ class DesktopPaginationEnvironment(
                 ),
             ),
             blockedFeedRecordDao = contentFilterDb.blockedFeedRecordDao(),
-        ).filter(foregroundItems)
-        return HomeFeedFilterResult(
-            foregroundItems = foregroundItems,
-            filteredItems = filteredItems,
-            reverseBlock = settings.reverseBlock,
-        )
+        ).filter(items)
     }
 
     override suspend fun recordContentInteraction(feed: Feed) {
@@ -322,7 +284,7 @@ class DesktopPaginationEnvironment(
 
     override suspend fun clearAllHistory() {
         historyStorage.clearAndSave()
-        if (store.load().cookies["d_c0"] == null) return
+        if (store.session.cookies["d_c0"] == null) return
         postSigned("https://api.zhihu.com/read_history/batch_del") {
             contentType(KtorContentType.Application.Json)
             setBody(
@@ -395,7 +357,7 @@ class DesktopPaginationEnvironment(
         writeJpegImage(file, (bitmap as BufferedImage).toJpegImage())
     }
 
-    override fun articleImageExportRenderer(loadAssetText: (String) -> String): ArticleImageExportRenderer =
+    override fun articleImageExportRenderer(): ArticleImageExportRenderer =
         DesktopArticleExportRenderer()
 
     override suspend fun exportCollectionItemsToHtmlZip(
@@ -497,22 +459,6 @@ class DesktopPaginationEnvironment(
 
     override suspend fun handleCollectionExportFailure(error: Exception) {
         Log.e("CollectionContentViewModel", "Failed to export collection HTML zip", error)
-    }
-
-    private fun createLocalRecommendationEngine(): LocalRecommendationEngine {
-        val databaseFile = desktopZhihuDataFile("local-content.db")
-        databaseFile.parentFile?.mkdirs()
-        val dao = getLocalContentDatabase(databaseFile).contentDao()
-        return buildLocalRecommendationEngine(
-            dao = dao,
-            fetchFeedArray = { url ->
-                fetchJson(url, "")
-                    ?.get("data")
-                    ?.jsonArray ?: JsonArray(emptyList())
-            },
-            logWarning = { message -> Log.w("LocalRecommendationEngine", message) },
-            logError = { message, throwable -> Log.e("LocalRecommendationEngine", message, throwable) },
-        )
     }
 }
 

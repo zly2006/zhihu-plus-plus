@@ -87,9 +87,6 @@
             </intent-filter>
         </activity>
         <activity
-                android:name=".LoginActivity"
-                android:exported="false"/>
-        <activity
                 android:name=".WebviewActivity"
                 android:exported="false"/>
         <activity

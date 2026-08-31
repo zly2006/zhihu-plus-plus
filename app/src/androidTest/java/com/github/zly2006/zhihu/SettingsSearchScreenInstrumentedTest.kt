@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -51,6 +51,10 @@ class SettingsSearchScreenInstrumentedTest {
         composeRule.resetAppPreferences()
     }
 
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/262
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/455
+     */
     @Test
     fun searchScreen_filtersAppearanceResultsAndNavigatesToTargetSetting() {
         val navigator = setSearchScreenContent()
@@ -69,6 +73,10 @@ class SettingsSearchScreenInstrumentedTest {
         )
     }
 
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/262
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/455
+     */
     @Test
     fun searchScreen_matchesPageNamesConfiguredByGroupedSettings() {
         val navigator = setSearchScreenContent()
@@ -87,6 +95,10 @@ class SettingsSearchScreenInstrumentedTest {
         )
     }
 
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/262
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/455
+     */
     @Test
     fun searchScreen_canJumpToSystemAndNotificationSettingsEntries() {
         val navigator = setSearchScreenContent()
@@ -126,6 +138,10 @@ class SettingsSearchScreenInstrumentedTest {
         )
     }
 
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/262
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/455
+     */
     @Test
     fun searchScreen_onlyExposesDeveloperEntryWhenDeveloperModeIsEnabled() {
         val hiddenNavigator = setSearchScreenContent()

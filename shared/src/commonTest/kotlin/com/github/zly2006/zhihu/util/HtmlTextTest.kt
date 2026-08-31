@@ -23,19 +23,26 @@ import kotlin.test.assertEquals
 
 class HtmlTextTest {
     @Test
-    fun parseEmphasizedHtmlTextKeepsEmphasisSpan() {
-        val text = parseEmphasizedHtmlText("普通<em>高亮</em>文本", Color.Red)
+    fun parsesZhihuEmphasisWithoutDamagingLiteralTextOrEntities() {
+        val highlighted = parseEmphasizedHtmlText(
+            "为什么互联网给我一种想<em>搜</em>的东西什么都搜不到，屁用没有的信息一大堆的无力感？",
+            Color.Red,
+        )
 
-        assertEquals("普通高亮文本", text.text)
-        assertEquals(1, text.spanStyles.size)
-        val span = text.spanStyles.single()
-        assertEquals(2, span.start)
-        assertEquals(4, span.end)
-        assertEquals(Color.Red, span.item.color)
-    }
+        val highlightedSpan = highlighted.spanStyles.single()
+        assertEquals("为什么互联网给我一种想搜的东西什么都搜不到，屁用没有的信息一大堆的无力感？", highlighted.text)
+        assertEquals(1, highlighted.spanStyles.size)
+        assertEquals(Color.Red, highlightedSpan.item.color)
+        assertEquals(
+            "搜",
+            highlighted.text.substring(highlightedSpan.start, highlightedSpan.end),
+        )
 
-    @Test
-    fun parseEmphasizedHtmlTextKeepsAngleBracketText() {
+        val multiple = parseEmphasizedHtmlText("Search <em>keyword1</em> and <em>keyword2</em>", Color.Red)
+        assertEquals("Search keyword1 and keyword2", multiple.text)
+        assertEquals(2, multiple.spanStyles.size)
+        assertEquals(listOf(Color.Red, Color.Red), multiple.spanStyles.map { it.item.color })
+
         listOf(
             "为什么Deepseek在输入<think 后会匹配到疑似其他对话?",
             "vector<bool>",
@@ -45,19 +52,16 @@ class HtmlTextTest {
             assertEquals(source, text.text)
             assertEquals(0, text.spanStyles.size)
         }
-    }
 
-    @Test
-    fun parseEmphasizedHtmlTextDecodesNumericCharacterReferences() {
-        val text = parseEmphasizedHtmlText("&#37; &#x4E2D; &#X1F600;", Color.Red)
-
-        assertEquals("% 中 😀", text.text)
-    }
-
-    @Test
-    fun parseEmphasizedHtmlTextKeepsInvalidNumericCharacterReferences() {
-        val text = parseEmphasizedHtmlText("&#; &#x; &#x110000; &#xD800;", Color.Red)
-
-        assertEquals("&#; &#x; &#x110000; &#xD800;", text.text)
+        assertEquals("% 中 😀", parseEmphasizedHtmlText("&#37; &#x4E2D; &#X1F600;", Color.Red).text)
+        assertEquals(
+            "&#; &#x; &#x110000; &#xD800;",
+            parseEmphasizedHtmlText("&#; &#x; &#x110000; &#xD800;", Color.Red).text,
+        )
+        assertEquals("", parseEmphasizedHtmlText("", Color.Red).text)
+        assertEquals(
+            "Test <em>keyword</em>",
+            parseEmphasizedHtmlText("Test &lt;em&gt;<em>keyword</em>&lt;/em&gt;", Color.Red).text,
+        )
     }
 }

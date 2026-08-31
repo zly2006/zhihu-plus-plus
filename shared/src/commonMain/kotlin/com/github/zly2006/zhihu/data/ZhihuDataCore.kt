@@ -31,6 +31,7 @@ data class FeedDisplayItem(
     val authorName: String? = null,
     val authorBadgeV2: DataHolder.BadgeV2? = null,
     val isFiltered: Boolean = false,
+    val isQualityFiltered: Boolean = false,
     val content: String? = null,
     var raw: DataHolder.Content? = null,
 ) {
@@ -57,7 +58,7 @@ fun Feed.toDisplayItem(
     enableQualityFilter: Boolean = true,
     reverseBlock: Boolean = false,
 ): FeedDisplayItem = when (this) {
-    is CommonFeed, is FeedItemIndexGroup, is MomentsFeed, is HotListFeed -> toTargetDisplayItem(
+    is CommonFeed, is FeedItemIndexGroup, is MomentsFeed, is HotListFeed, is TopicFeed -> toTargetDisplayItem(
         enableQualityFilter = enableQualityFilter,
         reverseBlock = reverseBlock,
     )
@@ -111,6 +112,7 @@ private fun Feed.toTargetDisplayItem(
             details = target!!.detailsText,
             feed = this,
             isFiltered = true,
+            isQualityFiltered = true,
         )
     }
 

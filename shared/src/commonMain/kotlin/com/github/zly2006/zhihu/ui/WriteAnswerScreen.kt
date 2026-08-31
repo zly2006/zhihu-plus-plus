@@ -57,11 +57,25 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.ZhihuJson
+import com.github.zly2006.zhihu.editor.PatchDraftRequest
+import com.github.zly2006.zhihu.editor.PatchDraftSettings
+import com.github.zly2006.zhihu.editor.PublishAnswerData
+import com.github.zly2006.zhihu.editor.PublishAnswerRequest
+import com.github.zly2006.zhihu.editor.PublishContentsTables
+import com.github.zly2006.zhihu.editor.PublishDraft
+import com.github.zly2006.zhihu.editor.PublishExtraInfo
+import com.github.zly2006.zhihu.editor.PublishHybrid
+import com.github.zly2006.zhihu.editor.PublishTrace
 import com.github.zly2006.zhihu.editor.UnknownImageFormatException
 import com.github.zly2006.zhihu.editor.ZhihuImageUploadSource
+import com.github.zly2006.zhihu.editor.buildPcBusinessParams
 import com.github.zly2006.zhihu.editor.compileMdToZhihuHtml
+import com.github.zly2006.zhihu.editor.isImagePickerSupported
+import com.github.zly2006.zhihu.editor.newPublishTraceId
+import com.github.zly2006.zhihu.editor.parsePublishContentId
 import com.github.zly2006.zhihu.editor.rememberImagePickerLauncher
-import com.github.zly2006.zhihu.editor.rememberZhihuAnswerPublisher
 import com.github.zly2006.zhihu.editor.uploadZhihuImage
 import com.github.zly2006.zhihu.markdown.zhihuHtmlToMarkdown
 import com.github.zly2006.zhihu.navigation.Article
@@ -77,9 +91,19 @@ import com.github.zly2006.zhihu.ui.components.WriteContentFabColumn
 import com.github.zly2006.zhihu.ui.components.WriteContentMarkdownEditor
 import com.github.zly2006.zhihu.ui.components.WriteContentPreviewSheet
 import com.github.zly2006.zhihu.ui.components.replaceSelection
+import com.github.zly2006.zhihu.util.raiseForStatus
+import com.github.zly2006.zhihu.viewmodel.fetchContentDetail
+import com.github.zly2006.zhihu.viewmodel.postSigned
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
+import io.ktor.client.call.body
+import io.ktor.client.request.header
+import io.ktor.client.request.setBody
+import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
+import io.ktor.http.contentType
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.yield
+import kotlinx.serialization.json.JsonElement
 
 const val WRITE_ANSWER_CONTENT_TAG = "WriteAnswerContent"
 const val WRITE_ANSWER_FAB_PREVIEW_TAG = "WriteAnswerFabPreview"
@@ -93,7 +117,7 @@ fun WriteAnswerScreen(
 ) {
     val navigator = LocalNavigator.current
     val userMessages = rememberUserMessageSink()
-    val publisher = rememberZhihuAnswerPublisher()
+    val environment = rememberPaginationEnvironment(false)
     val coroutineScope = rememberCoroutineScope()
     val copyToClipboard = rememberPlainTextClipboard()
     val settings = rememberSettingsStore()
@@ -123,7 +147,19 @@ fun WriteAnswerScreen(
     suspend fun ensureAnswerId(): Long? {
         val cached = existingAnswerId
         if (cached != null) return cached
-        val answerId = publisher.findMyAnswerId(destination.questionId)
+        if (environment.authenticatedCookies()["d_c0"].isNullOrBlank()) return null
+        val element = runCatching {
+            environment.fetchJson(
+                "https://api.zhihu.com/questions/${destination.questionId}",
+                "relationship,relationship.my_answer",
+            )
+        }.getOrNull() ?: return null
+        val relationship = ZhihuJson.decodeJson(DataHolder.QuestionRelationshipApiResponse.serializer(), element)
+        val answerId = relationship.relationship
+            ?.myAnswer
+            ?.takeUnless { it.isDeleted == true }
+            ?.answerId
+            ?.toLongOrNull()
         existingAnswerId = answerId
         return answerId
     }
@@ -168,19 +204,59 @@ fun WriteAnswerScreen(
             runCatching {
                 val html = compileMdToZhihuHtml(markdown = content.text)
                 val answerId = ensureAnswerId()
-                publisher.patchDraft(
-                    questionId = destination.questionId,
-                    answerId = answerId,
-                    html = html,
-                    tocEnabled = tocEnabled,
-                )
+                val xsrf = environment.authenticatedCookies()["_xsrf"]
+                    ?: error("缺少 _xsrf Cookie，无法写入回答草稿；请先确保已登录。")
+                environment
+                    .postSigned("https://www.zhihu.com/api/v4/questions/${destination.questionId}/draft") {
+                        contentType(ContentType.Application.Json)
+                        header(
+                            HttpHeaders.Referrer,
+                            "https://www.zhihu.com/question/${destination.questionId}/answer/${answerId ?: ""}",
+                        )
+                        header("x-xsrftoken", xsrf)
+                        setBody(
+                            PatchDraftRequest(
+                                content = html,
+                                settings = PatchDraftSettings(tableOfContentsEnabled = tocEnabled),
+                            ),
+                        )
+                    }.raiseForStatus(dumpRequest = true)
                 if (publish) {
-                    publisher.publishAnswer(
-                        questionId = destination.questionId,
-                        answerId = answerId,
-                        html = html,
-                        tocEnabled = tocEnabled,
+                    val responseElement = environment
+                        .postSigned("https://www.zhihu.com/api/v4/content/publish") {
+                            contentType(ContentType.Application.Json)
+                            header("x-xsrftoken", xsrf)
+                            setBody(
+                                PublishAnswerRequest(
+                                    data = PublishAnswerData(
+                                        publish = PublishTrace(traceId = newPublishTraceId()),
+                                        draft = PublishDraft(
+                                            isPublished = answerId != null,
+                                            contentId = answerId?.toString(),
+                                        ),
+                                        extraInfo = PublishExtraInfo(
+                                            questionId = destination.questionId.toString(),
+                                            pcBusinessParams = buildPcBusinessParams(tocEnabled),
+                                        ),
+                                        hybrid = PublishHybrid(html),
+                                        contentsTables = PublishContentsTables(tocEnabled),
+                                    ),
+                                ),
+                            )
+                        }.raiseForStatus(dumpRequest = true)
+                        .body<JsonElement>()
+                    val response = ZhihuJson.decodeJson(
+                        DataHolder.ContentPublishResponse.serializer(),
+                        responseElement,
                     )
+                    if (response.message != "success") {
+                        if (response.code == 103003) {
+                            error(response.message ?: "已回答过该问题，创建回答失败")
+                        }
+                        error("发布失败: ${response.message ?: "unknown"}\n$responseElement")
+                    }
+                    parsePublishContentId(response.data?.result ?: error("发布成功但返回缺少 data.result"))
+                        ?: error("发布成功但无法解析 publish.id")
                 } else {
                     null
                 }
@@ -201,50 +277,53 @@ fun WriteAnswerScreen(
         }
     }
 
-    val environment = rememberPaginationEnvironment(false)
-    val launchImagePicker = rememberImagePickerLauncher { picked ->
-        if (isSubmitting || isUploadingImage) return@rememberImagePickerLauncher
-        isUploadingImage = true
-        coroutineScope.launch {
-            runCatching {
-                uploadZhihuImage(
-                    environment,
-                    picked.bytes,
-                    picked.mimeType,
-                    picked.fileName,
-                    ZhihuImageUploadSource.Article,
-                )
-            }.onSuccess { uploaded ->
-                val title = buildString {
-                    append("zhimg:w=").append(uploaded.rawWidth)
-                    append(";h=").append(uploaded.rawHeight)
-                    uploaded.watermark?.let { append(";wm=").append(if (it) 1 else 0) }
-                    if (uploaded.watermark == true) {
-                        uploaded.watermarkUrl?.let { append(";wmsrc=").append(it) }
+    val launchImagePicker = if (isImagePickerSupported) {
+        rememberImagePickerLauncher { picked ->
+            if (isSubmitting || isUploadingImage) return@rememberImagePickerLauncher
+            isUploadingImage = true
+            coroutineScope.launch {
+                runCatching {
+                    uploadZhihuImage(
+                        environment,
+                        picked.bytes,
+                        picked.mimeType,
+                        picked.fileName,
+                        ZhihuImageUploadSource.Article,
+                    )
+                }.onSuccess { uploaded ->
+                    val title = buildString {
+                        append("zhimg:w=").append(uploaded.rawWidth)
+                        append(";h=").append(uploaded.rawHeight)
+                        uploaded.watermark?.let { append(";wm=").append(if (it) 1 else 0) }
+                        if (uploaded.watermark == true) {
+                            uploaded.watermarkUrl?.let { append(";wmsrc=").append(it) }
+                        }
+                    }
+                    val alt = picked.fileName
+                        ?.substringBeforeLast('.')
+                        ?.takeIf { it.isNotBlank() }
+                        .orEmpty()
+                    val snippet = "![$alt](${uploaded.url} \"$title\")"
+                    content = content.replaceSelection(snippet, cursorOffsetInInsert = snippet.length)
+                    userMessages.showShortMessage("图片已插入")
+                }.onFailure { e ->
+                    if (e is UnknownImageFormatException) {
+                        userMessages.showShortMessage(e.message ?: "无法识别图片格式，已取消上传")
+                    } else {
+                        errorDialogMessage = buildWriteOperationErrorMessage("插入图片失败", e)
                     }
                 }
-                val alt = picked.fileName
-                    ?.substringBeforeLast('.')
-                    ?.takeIf { it.isNotBlank() }
-                    .orEmpty()
-                val snippet = "![$alt](${uploaded.url} \"$title\")"
-                content = content.replaceSelection(snippet, cursorOffsetInInsert = snippet.length)
-                userMessages.showShortMessage("图片已插入")
-            }.onFailure { e ->
-                if (e is UnknownImageFormatException) {
-                    userMessages.showShortMessage(e.message ?: "无法识别图片格式，已取消上传")
-                } else {
-                    errorDialogMessage = buildWriteOperationErrorMessage("插入图片失败", e)
-                }
+                isUploadingImage = false
             }
-            isUploadingImage = false
         }
+    } else {
+        null
     }
 
     LaunchedEffect(destination.questionId) {
         isDetecting = true
         existingAnswerId = runCatching {
-            publisher.findMyAnswerId(destination.questionId)
+            ensureAnswerId()
         }.onFailure { e ->
             errorDialogMessage = buildWriteOperationErrorMessage("检测已有回答失败", e)
         }.getOrNull()
@@ -254,11 +333,13 @@ fun WriteAnswerScreen(
         if (content.text.isNotBlank()) return@LaunchedEffect
         isLoadingExistingAnswer = true
         runCatching {
-            publisher.fetchAnswerForEditing(answerId)
-        }.onSuccess { editing ->
-            if (editing != null && content.text.isBlank()) {
-                tocEnabled = editing.tocEnabled
-                content = TextFieldValue(zhihuHtmlToMarkdown(editing.html))
+            environment.fetchContentDetail(
+                Article(type = ArticleType.Answer, id = answerId),
+            ) as? DataHolder.Answer
+        }.onSuccess { answer ->
+            if (answer != null && content.text.isBlank()) {
+                tocEnabled = answer.settings?.tableOfContents?.enabled ?: false
+                content = TextFieldValue(zhihuHtmlToMarkdown(answer.editableContent ?: answer.content))
             }
         }.onFailure { e ->
             errorDialogMessage = buildWriteOperationErrorMessage("加载已有回答失败", e)
@@ -315,15 +396,15 @@ fun WriteAnswerScreen(
             ) {
                 WriteContentFabColumn(
                     previewEnabled = !isSubmitting && content.text.isNotBlank(),
-                    imageEnabled = launchImagePicker != null && !isSubmitting && !isUploadingImage,
+                    imageEnabled = isImagePickerSupported && !isSubmitting && !isUploadingImage,
                     saveEnabled = !isSubmitting,
-                    showImageButton = launchImagePicker != null,
+                    showImageButton = isImagePickerSupported,
                     isUploadingImage = isUploadingImage,
                     previewTag = WRITE_ANSWER_FAB_PREVIEW_TAG,
                     imageTag = WRITE_ANSWER_FAB_IMAGE_TAG,
                     saveTag = WRITE_ANSWER_FAB_SAVE_TAG,
                     onPreview = ::showPreview,
-                    onImage = { launchImagePicker?.invoke() },
+                    onImage = { launchImagePicker?.launch() },
                     onSave = { submitAnswer(publish = false) },
                 )
             }

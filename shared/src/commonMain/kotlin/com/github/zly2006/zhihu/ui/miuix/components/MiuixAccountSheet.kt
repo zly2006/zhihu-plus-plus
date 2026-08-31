@@ -27,7 +27,6 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -37,23 +36,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.github.zly2006.zhihu.account.rememberZhihuAccountStore
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Collections
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.navigation.Person
+import com.github.zly2006.zhihu.navigation.requestLoginNavigation
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.AppTokens
 import com.github.zly2006.zhihu.ui.AccountSettingsAccountState
-import com.github.zly2006.zhihu.ui.rememberAccountQrLoginRequester
 import com.github.zly2006.zhihu.ui.rememberAccountSettingsAccountState
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.preference.ArrowPreference
@@ -75,7 +74,7 @@ fun MiuixAccountSheet(
 
     val navigator = LocalNavigator.current
     val environment = rememberPaginationEnvironment(allowGuestAccess = false)
-    val requestQrLoginScan = rememberAccountQrLoginRequester()
+    val accountStore = rememberZhihuAccountStore()
     val userMessages = rememberUserMessageSink()
     val settings = rememberSettingsStore()
     val accountState by rememberAccountSettingsAccountState()
@@ -108,10 +107,6 @@ fun MiuixAccountSheet(
                             AsyncImage(data.avatarUrl, "头像", modifier = Modifier.size(56.dp).clip(CircleShape))
                             Spacer(Modifier.width(12.dp))
                             Text(data.username, style = AppTokens.text.titleMedium, modifier = Modifier.weight(1f))
-                            // 扫码登录：协助电脑端登录，扫到知乎登录二维码后打开 WebView 确认（与 M3 账号页一致）
-                            IconButton(onClick = { requestQrLoginScan() }) {
-                                Icon(Icons.Default.QrCodeScanner, contentDescription = "扫码登录", tint = MiuixTheme.colorScheme.onSurface)
-                            }
                         }
                     }
                 }
@@ -126,9 +121,7 @@ fun MiuixAccountSheet(
                             title = "登录知乎",
                             onClick = {
                                 onDismiss()
-                                if (!environment.requestLogin()) {
-                                    userMessages.showShortMessage("当前平台暂不支持登录")
-                                }
+                                requestLoginNavigation()
                             },
                             startAction = { Icon(Icons.AutoMirrored.Filled.Login, null) },
                         )
@@ -220,7 +213,7 @@ fun MiuixAccountSheet(
                             title = "退出登录",
                             onClick = {
                                 onDismiss()
-                                environment.logout()
+                                accountStore.clear()
                             },
                             startAction = { Icon(Icons.AutoMirrored.Filled.Logout, null, tint = MiuixTheme.colorScheme.error) },
                         )

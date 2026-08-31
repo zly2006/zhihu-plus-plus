@@ -32,6 +32,9 @@ inline fun ComponentActivity.enableEdgeToEdgeCompat() {
         navigationBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT),
     )
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        // Android 16 can add a dark protection scrim over transparent status bars
+        // when contrast enforcement remains enabled, changing the app surface color.
+        window.isStatusBarContrastEnforced = false
         // Fix for three-button nav not properly going edge-to-edge.
         // TODO: https://issuetracker.google.com/issues/298296168
         window.isNavigationBarContrastEnforced = false

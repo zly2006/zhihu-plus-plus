@@ -41,14 +41,14 @@ fun MiuixSearchFilterSheet(
 ) {
     WindowBottomSheet(show = show, onDismissRequest = onDismiss, title = "筛选搜索结果") {
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-            FilterSection("排序", SearchSortOption.entries, { it.label }, viewModel.sortOption) {
-                viewModel.updateSortOption(environment, it)
+            FilterSection("排序", SearchSortOption.entries, { it.label }, viewModel.filters.sort) {
+                viewModel.updateFilters(environment, viewModel.filters.copy(sort = it))
             }
-            FilterSection("内容类型", SearchContentType.entries, { it.label }, viewModel.contentType) {
-                viewModel.updateContentType(environment, it)
+            FilterSection("内容类型", SearchContentType.entries, { it.label }, viewModel.filters.contentType) {
+                viewModel.updateFilters(environment, viewModel.filters.copy(contentType = it))
             }
-            FilterSection("时间范围", SearchTimeRange.entries, { it.label }, viewModel.timeRange) {
-                viewModel.updateTimeRange(environment, it)
+            FilterSection("时间范围", SearchTimeRange.entries, { it.label }, viewModel.filters.timeRange) {
+                viewModel.updateFilters(environment, viewModel.filters.copy(timeRange = it))
             }
             Spacer(Modifier.height(8.dp))
         }
@@ -57,7 +57,8 @@ fun MiuixSearchFilterSheet(
 
 /** 当前筛选状态的简要文字，用于内联搜索结果上方的筛选入口。 */
 fun searchFilterSummary(viewModel: SearchViewModel): String =
-    listOf(viewModel.sortOption.label, viewModel.contentType.label, viewModel.timeRange.label).joinToString(" · ")
+    listOf(viewModel.filters.sort.label, viewModel.filters.contentType.label, viewModel.filters.timeRange.label)
+        .joinToString(" · ")
 
 /** 筛选分组：标题 + 一组单选项，选中项右侧打勾。 */
 @Composable

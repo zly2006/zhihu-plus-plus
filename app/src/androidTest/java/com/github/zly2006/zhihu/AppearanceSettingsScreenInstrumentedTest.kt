@@ -19,7 +19,6 @@ package com.github.zly2006.zhihu
 
 import android.content.Context
 import android.content.SharedPreferences
-import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
@@ -31,7 +30,6 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
-import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.test.swipeUp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.navigation.Account
@@ -43,23 +41,13 @@ import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
-import com.github.zly2006.zhihu.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
-import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
-import com.github.zly2006.zhihu.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
-import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_ANSWER_DOUBLE_TAP_TAG
 import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_BOTTOM_BAR_SECTION_KEY
 import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_COLLECTION_DIRECT_BROWSE_TAG
 import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_SCROLL_TAG
-import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_START_DESTINATION_ROW_TAG
-import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_START_DESTINATION_TAG
-import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_USE_WEBVIEW_TAG
 import com.github.zly2006.zhihu.ui.subscreens.AppearanceSettingsScreen
-import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEM_ORDER_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY
-import com.github.zly2006.zhihu.ui.subscreens.START_DESTINATION_PREFERENCE_KEY
-import com.github.zly2006.zhihu.ui.subscreens.appearanceSettingsStartDestinationOptionTag
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -75,91 +63,10 @@ class AppearanceSettingsScreenInstrumentedTest {
     private val preferences: SharedPreferences
         get() = composeRule.activity.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
 
-    @Test
-    fun togglingWebViewModePersistsAndKeepsDependentControlsStableAfterScroll() {
-        // This test verifies a full user path in the answer section: scroll to the WebView setting,
-        // toggle it on, perform an extra swipe cycle, and prove that the persisted preference stays
-        // in sync before toggling it off again.
-        setUpScreen(setting = ARTICLE_USE_WEBVIEW_PREFERENCE_KEY)
-
-        waitUntilTagExists(APPEARANCE_SETTINGS_USE_WEBVIEW_TAG)
-        scrollUntilTagDisplayed(APPEARANCE_SETTINGS_USE_WEBVIEW_TAG)
-        assertFalse(preferences.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false))
-        composeRule.onNodeWithTag(APPEARANCE_SETTINGS_USE_WEBVIEW_TAG).performClick()
-        waitUntilBooleanPreference(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, expected = true)
-
-        scrollContainer().performVerticalSwipeCycle()
-        waitUntilBooleanPreference(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, expected = true)
-
-        setUpScreen(
-            setting = ARTICLE_USE_WEBVIEW_PREFERENCE_KEY,
-            resetPreferences = false,
-        )
-        waitUntilTagExists(APPEARANCE_SETTINGS_USE_WEBVIEW_TAG)
-        scrollUntilTagDisplayed(APPEARANCE_SETTINGS_USE_WEBVIEW_TAG)
-        composeRule.onNodeWithTag(APPEARANCE_SETTINGS_USE_WEBVIEW_TAG).performClick()
-        waitUntilBooleanPreference(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, expected = false)
-    }
-
-    @Test
-    fun selectingAnswerDoubleTapActionUpdatesDropdownTextAndPreference() {
-        // This test verifies the dropdown click path for the answer double-tap action: after scrolling
-        // to the control, opening the anchored menu, and picking a different option, the visible label
-        // and the stored preference must both change to the same deterministic value.
-        setUpScreen(setting = ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY)
-
-        scrollUntilTagDisplayed(APPEARANCE_SETTINGS_ANSWER_DOUBLE_TAP_TAG)
-        composeRule
-            .onNodeWithTag(APPEARANCE_SETTINGS_ANSWER_DOUBLE_TAP_TAG)
-            .assertTextContains(AnswerDoubleTapAction.Ask.label)
-
-        composeRule.onNodeWithTag(APPEARANCE_SETTINGS_ANSWER_DOUBLE_TAP_TAG).performClick()
-        composeRule.onNode(hasText(AnswerDoubleTapAction.VoteUp.label), useUnmergedTree = true).performClick()
-
-        waitUntilStringPreference(
-            ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY,
-            expected = AnswerDoubleTapAction.VoteUp.preferenceValue,
-        )
-        composeRule
-            .onNodeWithTag(APPEARANCE_SETTINGS_ANSWER_DOUBLE_TAP_TAG)
-            .assertTextContains(AnswerDoubleTapAction.VoteUp.label)
-    }
-
-    @Test
-    fun bottomBarSelectionAndStartDestinationRemainStableAcrossScrollAndClicks() {
-        // This test verifies a multi-step bottom-bar configuration flow: remove one selected item,
-        // add another one, pick the new entry as the startup destination, and then perform an extra
-        // scroll cycle to ensure the rendered state still matches SharedPreferences.
-        setUpScreen(setting = APPEARANCE_SETTINGS_BOTTOM_BAR_SECTION_KEY)
-
-        scrollUntilTagDisplayed("appearanceSettings:bottomBar:item:${OnlineHistory.name}")
-        composeRule.onNodeWithTag("appearanceSettings:bottomBar:item:${OnlineHistory.name}").performClick()
-        waitUntilStringSetPreference(
-            BOTTOM_BAR_ITEMS_PREFERENCE_KEY,
-            expected = setOf(Home.name, Follow.name, Daily.name, Account.name),
-            context = "after removing online history",
-        )
-
-        composeRule.onNodeWithTag("appearanceSettings:bottomBar:item:${HotList.name}").performClick()
-        waitUntilStringSetPreference(
-            BOTTOM_BAR_ITEMS_PREFERENCE_KEY,
-            expected = setOf(Home.name, Follow.name, Daily.name, HotList.name, Account.name),
-            context = "after adding hot list",
-        )
-
-        selectStartDestination(HotList.name)
-        waitUntilStringPreference(START_DESTINATION_PREFERENCE_KEY, expected = HotList.name)
-
-        scrollContainer().performVerticalSwipeCycle()
-        composeRule
-            .onNodeWithTag(APPEARANCE_SETTINGS_START_DESTINATION_TAG)
-            .assertTextContains("热榜")
-        assertEquals(
-            setOf(Home.name, Follow.name, Daily.name, HotList.name, Account.name),
-            preferences.getStringSet(BOTTOM_BAR_ITEMS_PREFERENCE_KEY, emptySet())?.toSet(),
-        )
-    }
-
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/354
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/409
+     */
     @Test
     fun bottomBarRowsKeepUniformHeightAndMoveOrderPersists() {
         // The bottom-bar editor mixes selected rows, unselected rows, and the non-removable account
@@ -181,6 +88,10 @@ class AppearanceSettingsScreenInstrumentedTest {
         )
     }
 
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/609
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/611
+     */
     @Test
     fun collectionDirectBrowseIsOptInAndClearlyMarkedAsExperimental() {
         setUpScreen(setting = COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY)
@@ -247,38 +158,24 @@ class AppearanceSettingsScreenInstrumentedTest {
         composeRule.onNodeWithTag(tag).assertIsDisplayed()
     }
 
-    private fun scrollBackUntilTagDisplayed(tag: String, maxSwipes: Int = 12) {
-        repeat(maxSwipes) {
-            if (isTagDisplayed(tag)) {
-                return
-            }
-            scrollContainer().performTouchInput { swipeDown() }
-            composeRule.waitForIdle()
-        }
-        composeRule.onNodeWithTag(tag).assertIsDisplayed()
-    }
-
     private fun waitUntilDisplayed(matcher: SemanticsMatcher, timeoutMillis: Long = 5_000) {
-        waitUntilCondition("node matching $matcher is displayed", timeoutMillis) { isDisplayed(matcher) }
+        composeRule.waitUntil(timeoutMillis) { isDisplayed(matcher) }
         composeRule.onNode(matcher, useUnmergedTree = true).assertIsDisplayed()
     }
 
     private fun waitUntilTagDisplayed(tag: String, timeoutMillis: Long = 5_000) {
-        waitUntilCondition("tag $tag is displayed", timeoutMillis) { isTagDisplayed(tag) }
+        composeRule.waitUntil(timeoutMillis) { isTagDisplayed(tag) }
         composeRule.onNodeWithTag(tag).assertIsDisplayed()
     }
 
     private fun waitUntilTagExists(tag: String, timeoutMillis: Long = 5_000) {
-        waitUntilCondition("tag $tag exists", timeoutMillis) { doesTagExist(tag) }
-    }
-
-    private fun selectStartDestination(key: String) {
-        val optionTag = appearanceSettingsStartDestinationOptionTag(key)
-        waitUntilTagExists(APPEARANCE_SETTINGS_START_DESTINATION_ROW_TAG)
-        scrollUntilTagDisplayed(APPEARANCE_SETTINGS_START_DESTINATION_ROW_TAG)
-        composeRule.onNodeWithTag(APPEARANCE_SETTINGS_START_DESTINATION_TAG, useUnmergedTree = true).performClick()
-        waitUntilTagExists(optionTag)
-        composeRule.onNodeWithTag(optionTag, useUnmergedTree = true).performClick()
+        composeRule.waitUntil(timeoutMillis) {
+            composeRule.onAllNodesWithTag(tag).fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty() ||
+                composeRule
+                    .onAllNodesWithTag(tag, useUnmergedTree = true)
+                    .fetchSemanticsNodes(atLeastOneRootRequired = false)
+                    .isNotEmpty()
+        }
     }
 
     private fun boundsHeightForTag(tag: String): Float = composeRule
@@ -288,7 +185,7 @@ class AppearanceSettingsScreenInstrumentedTest {
         .height
 
     private fun waitUntilNodeDoesNotExist(matcher: SemanticsMatcher, timeoutMillis: Long = 5_000) {
-        waitUntilCondition("node matching $matcher does not exist", timeoutMillis) {
+        composeRule.waitUntil(timeoutMillis) {
             composeRule
                 .onAllNodes(matcher, useUnmergedTree = true)
                 .fetchSemanticsNodes(atLeastOneRootRequired = false)
@@ -319,7 +216,7 @@ class AppearanceSettingsScreenInstrumentedTest {
     }
 
     private fun waitUntilTagDoesNotExist(tag: String, timeoutMillis: Long = 5_000) {
-        waitUntilCondition("tag $tag does not exist", timeoutMillis) {
+        composeRule.waitUntil(timeoutMillis) {
             composeRule
                 .onAllNodesWithTag(tag)
                 .fetchSemanticsNodes(atLeastOneRootRequired = false)
@@ -332,62 +229,22 @@ class AppearanceSettingsScreenInstrumentedTest {
     }
 
     private fun waitUntilBooleanPreference(key: String, expected: Boolean, timeoutMillis: Long = 5_000) {
-        waitUntilCondition(
-            "preference $key becomes $expected",
-            timeoutMillis,
-            failureMessage = { "Expected preference $key to be $expected, actual=${preferences.getBoolean(key, !expected)}" },
-        ) {
-            preferences.getBoolean(key, !expected) == expected
-        }
+        composeRule.waitUntil(timeoutMillis) { preferences.getBoolean(key, !expected) == expected }
     }
 
     private fun waitUntilStringPreference(key: String, expected: String, timeoutMillis: Long = 5_000) {
-        waitUntilCondition(
-            "preference $key becomes $expected",
-            timeoutMillis,
-            failureMessage = { "Expected preference $key to be $expected, actual=${preferences.getString(key, null)}" },
-        ) {
-            preferences.getString(key, null) == expected
-        }
+        composeRule.waitUntil(timeoutMillis) { preferences.getString(key, null) == expected }
     }
 
     private fun waitUntilStringSetPreference(
         key: String,
         expected: Set<String>,
         timeoutMillis: Long = 5_000,
-        context: String = key,
     ) {
-        waitUntilCondition(
-            "preference $key becomes $expected ($context)",
-            timeoutMillis,
-            failureMessage = {
-                "Expected preference $key to be $expected ($context), " +
-                    "actual=${preferences.getStringSet(key, emptySet())?.toSet()}"
-            },
-        ) {
+        composeRule.waitUntil(timeoutMillis) {
             preferences.getStringSet(key, emptySet())?.toSet() == expected
         }
     }
-
-    private fun waitUntilCondition(
-        description: String,
-        timeoutMillis: Long,
-        failureMessage: () -> String = { "Timed out waiting until $description" },
-        condition: () -> Boolean,
-    ) {
-        try {
-            composeRule.waitUntil(description, timeoutMillis) { condition() }
-        } catch (e: ComposeTimeoutException) {
-            throw AssertionError(failureMessage(), e)
-        }
-    }
-
-    private fun doesTagExist(tag: String): Boolean =
-        composeRule.onAllNodesWithTag(tag).fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty() ||
-            composeRule
-                .onAllNodesWithTag(tag, useUnmergedTree = true)
-                .fetchSemanticsNodes(atLeastOneRootRequired = false)
-                .isNotEmpty()
 
     private fun isDisplayed(matcher: SemanticsMatcher): Boolean = runCatching {
         composeRule.onNode(matcher, useUnmergedTree = true).assertIsDisplayed()

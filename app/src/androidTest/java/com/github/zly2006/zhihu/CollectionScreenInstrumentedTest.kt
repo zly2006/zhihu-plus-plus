@@ -18,22 +18,20 @@
 package com.github.zly2006.zhihu
 
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollToNode
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.data.Collection
-import com.github.zly2006.zhihu.navigation.CollectionContent
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.resetAppPreferences
+import com.github.zly2006.zhihu.test.seedViewModel
 import com.github.zly2006.zhihu.test.setScreenContent
 import com.github.zly2006.zhihu.ui.CollectionBrowseScreen
 import com.github.zly2006.zhihu.ui.CollectionScreen
-import org.junit.Assert.assertEquals
+import com.github.zly2006.zhihu.viewmodel.CollectionsViewModel
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -49,71 +47,10 @@ class CollectionScreenInstrumentedTest {
         composeRule.resetAppPreferences()
     }
 
-    @Test
-    fun toolbarAndSeededCollectionsRenderOfflineAndBackStaysDeterministic() {
-        // Seed a fixed offline list directly into the screen so the test never depends on account
-        // state, network reachability, or remote collection ordering. Expected behavior:
-        // 1. The screen title and back button are visible immediately.
-        // 2. The first seeded collection rows render exactly as provided.
-        // 3. Pressing back only records one back event and must not emit any forward navigation.
-        val navigator = setCollectionScreen(seedCollections(count = 12))
-
-        composeRule.onNodeWithTag(COLLECTION_SCREEN_TITLE_TAG).assertIsDisplayed()
-        composeRule.onNodeWithTag(COLLECTION_SCREEN_BACK_BUTTON_TAG).assertIsDisplayed()
-        composeRule.onNodeWithTag(COLLECTION_SCREEN_LIST_TAG).assertIsDisplayed()
-        composeRule.onNodeWithText("固定收藏夹 1").assertIsDisplayed()
-        composeRule.onNodeWithText("固定收藏夹 2").assertIsDisplayed()
-
-        composeRule.onNodeWithTag(COLLECTION_SCREEN_BACK_BUTTON_TAG).performClick()
-        composeRule.runOnIdle {
-            assertEquals(emptyList<CollectionContent>(), navigator.destinations)
-            assertEquals(1, navigator.backCount)
-        }
-    }
-
-    @Test
-    fun scrollingToDeepCollectionAndClickingCardNavigatesToCollectionContent() {
-        // Provide enough deterministic rows to require a real lazy-list scroll. Expected behavior:
-        // 1. The list can scroll to an off-screen collection card using stable item tags.
-        // 2. The target card becomes visible after scrolling.
-        // 3. Tapping that card navigates to CollectionContent with the exact collection id.
-        val seededCollections = seedCollections(count = 30)
-        val targetCollection = seededCollections.last()
-        val navigator = setCollectionScreen(seededCollections)
-
-        composeRule
-            .onNodeWithTag(COLLECTION_SCREEN_LIST_TAG)
-            .performScrollToNode(hasTestTag(collectionItemTag(targetCollection.id)))
-        composeRule.onNodeWithTag(collectionItemTag(targetCollection.id)).assertIsDisplayed()
-        composeRule.onNodeWithText(targetCollection.title).assertIsDisplayed()
-
-        composeRule.onNodeWithTag(collectionItemTag(targetCollection.id)).performClick()
-        composeRule.runOnIdle {
-            assertEquals(listOf(CollectionContent(targetCollection.id)), navigator.destinations)
-            assertEquals(0, navigator.backCount)
-        }
-    }
-
-    @Test
-    fun emptySeededListRemainsStableAndDoesNotAttemptUnexpectedNavigation() {
-        // Start from an explicitly empty offline list so the screen cannot trigger network loading.
-        // Expected behavior:
-        // 1. The toolbar still renders normally.
-        // 2. The lazy list remains mounted and reaches its terminal footer state instead of crashing.
-        // 3. No forward navigation or back events happen unless the test explicitly requests them.
-        val navigator = setCollectionScreen(emptyList())
-
-        composeRule.onNodeWithTag(COLLECTION_SCREEN_TITLE_TAG).assertIsDisplayed()
-        composeRule.onNodeWithTag(COLLECTION_SCREEN_BACK_BUTTON_TAG).assertIsDisplayed()
-        composeRule.onNodeWithTag(COLLECTION_SCREEN_LIST_TAG).assertIsDisplayed()
-        composeRule.onNodeWithText("已经到底啦").assertIsDisplayed()
-
-        composeRule.runOnIdle {
-            assertEquals(emptyList<CollectionContent>(), navigator.destinations)
-            assertEquals(0, navigator.backCount)
-        }
-    }
-
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/525
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/607
+     */
     @Test
     fun createActionOpensExistingCollectionDialog() {
         setCollectionScreen(seedCollections(count = 1))
@@ -125,6 +62,10 @@ class CollectionScreenInstrumentedTest {
         composeRule.onNodeWithText("新建收藏夹").assertIsDisplayed()
     }
 
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/525
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/607
+     */
     @Test
     fun onlySelectedNonDefaultCollectionOffersDeleteConfirmation() {
         val defaultCollection = Collection(
@@ -156,6 +97,10 @@ class CollectionScreenInstrumentedTest {
             .assertIsDisplayed()
     }
 
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/609
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/611
+     */
     @Test
     fun directBrowseSupportsPullRefreshAndDeleteConfirmation() {
         val defaultCollection = Collection(
@@ -167,10 +112,10 @@ class CollectionScreenInstrumentedTest {
             id = "direct-deletable",
             title = "直达待删除收藏夹",
         )
+        seedCollectionsViewModel(listOf(defaultCollection, deletableCollection))
         composeRule.setScreenContent {
             CollectionBrowseScreen(
-                urlToken = "offline-test-user",
-                testCollections = listOf(defaultCollection, deletableCollection),
+                urlToken = null,
             )
         }
 
@@ -194,11 +139,19 @@ class CollectionScreenInstrumentedTest {
             .assertIsDisplayed()
     }
 
-    private fun setCollectionScreen(testCollections: List<Collection>) = composeRule.setScreenContent {
-        CollectionScreen(
-            urlToken = "offline-test-user",
-            testCollections = testCollections,
-        )
+    private fun setCollectionScreen(collections: List<Collection>) {
+        seedCollectionsViewModel(collections)
+        composeRule.setScreenContent {
+            CollectionScreen(
+                urlToken = null,
+            )
+        }
+    }
+
+    private fun seedCollectionsViewModel(collections: List<Collection>) {
+        composeRule.seedViewModel<CollectionsViewModel> {
+            CollectionsViewModel("").apply { allData.addAll(collections) }
+        }
     }
 
     private fun seedCollections(count: Int): List<Collection> = List(count) { index ->

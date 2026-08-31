@@ -70,7 +70,7 @@ class CollectionBrowseSelectionTest {
         assertTrue(
             shouldRefreshCollectionDataOnActivation(
                 isActive = true,
-                useTestCollections = false,
+                useLocalCollections = false,
                 refreshOnNextActivation = true,
             ),
         )
@@ -81,7 +81,7 @@ class CollectionBrowseSelectionTest {
         assertFalse(
             shouldRefreshCollectionDataOnActivation(
                 isActive = true,
-                useTestCollections = false,
+                useLocalCollections = false,
                 refreshOnNextActivation = false,
             ),
         )
@@ -92,14 +92,14 @@ class CollectionBrowseSelectionTest {
         assertFalse(
             shouldRefreshCollectionDataOnActivation(
                 isActive = false,
-                useTestCollections = false,
+                useLocalCollections = false,
                 refreshOnNextActivation = true,
             ),
         )
         assertFalse(
             shouldRefreshCollectionDataOnActivation(
                 isActive = true,
-                useTestCollections = true,
+                useLocalCollections = true,
                 refreshOnNextActivation = true,
             ),
         )

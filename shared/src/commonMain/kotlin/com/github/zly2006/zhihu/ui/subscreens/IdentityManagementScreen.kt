@@ -32,7 +32,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SwitchAccount
@@ -51,6 +53,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -63,13 +66,32 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.github.zly2006.zhihu.account.SwitchAccountRequest
+import com.github.zly2006.zhihu.account.ZhihuAccountProfileSnapshot
+import com.github.zly2006.zhihu.account.ZhihuAccountStore
 import com.github.zly2006.zhihu.account.ZhihuIdentityAccount
+import com.github.zly2006.zhihu.account.ZhihuIdentityAccountListResponse
+import com.github.zly2006.zhihu.account.ZhihuIdentityChangeResult
+import com.github.zly2006.zhihu.account.ZhihuIdentityProfile
+import com.github.zly2006.zhihu.account.ZhihuIdentityToken
+import com.github.zly2006.zhihu.account.ZhihuSavedAccount
+import com.github.zly2006.zhihu.account.applyIdentityHeaders
+import com.github.zly2006.zhihu.account.identitySuccessBody
+import com.github.zly2006.zhihu.account.rememberZhihuAccountStore
+import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.navigation.requestLoginNavigation
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
-import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
+import io.ktor.client.request.get
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.http.ContentType
+import io.ktor.http.contentType
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.jsonObject
 
 const val IDENTITY_MANAGEMENT_SCREEN_TAG = "identityManagement.screen"
 const val IDENTITY_MANAGEMENT_CREATE_TAG = "identityManagement.create"
@@ -77,7 +99,6 @@ const val IDENTITY_MANAGEMENT_RETRY_TAG = "identityManagement.retry"
 const val IDENTITY_MANAGEMENT_CREATE_CONFIRM_TAG = "identityManagement.createConfirm"
 
 data class IdentityManagementState(
-    val supported: Boolean = true,
     val accounts: List<ZhihuIdentityAccount> = emptyList(),
     val currentAccountId: String = "",
     val loading: Boolean = false,
@@ -96,28 +117,90 @@ data class IdentityManagementState(
             }
 }
 
+private suspend fun completeIdentityChange(
+    accountStore: ZhihuAccountStore,
+    body: String,
+    expectedAccountId: String? = null,
+): ZhihuIdentityChangeResult {
+    val token = ZhihuJson.decodeJson<ZhihuIdentityToken>(ZhihuJson.json.parseToJsonElement(body))
+    check(token.accessToken.isNotBlank()) { "服务器未返回新账号凭证" }
+    check(token.cookie["z_c0"].isNullOrBlank().not()) { "服务器未返回新账号 Cookie" }
+    val oldSession = accountStore.session
+    val newCookies = oldSession.cookies.toMutableMap().apply { putAll(token.cookie) }
+    val client = accountStore.client.temporaryHttpClient(newCookies)
+    return try {
+        val response = client.get("https://api.zhihu.com/people/self") {
+            applyIdentityHeaders(
+                oldSession.copy(
+                    mobileAccessToken = token.accessToken,
+                    mobileTokenType = token.tokenType,
+                ),
+            )
+        }
+        val rawProfile = ZhihuJson.json
+            .parseToJsonElement(
+                response.identitySuccessBody("初始化新账号"),
+            ).jsonObject
+        val profile = ZhihuJson.decodeJson<ZhihuIdentityProfile>(rawProfile)
+        check(profile.id.isNotBlank() && profile.name.isNotBlank()) { "服务器返回的账号资料不完整" }
+        check(expectedAccountId == null || profile.id == expectedAccountId) { "服务器返回的账号与目标账号不一致" }
+        val nextSession = oldSession.copy(
+            login = true,
+            username = profile.name,
+            cookies = newCookies,
+            profile = ZhihuAccountProfileSnapshot(
+                id = profile.id,
+                name = profile.name,
+                urlToken = profile.urlToken,
+                userType = profile.userType,
+                avatarUrl = profile.avatarUrl,
+            ),
+            self = ZhihuJson.snakeCaseToCamelCase(rawProfile),
+            mobileAccessToken = token.accessToken,
+            mobileRefreshToken = token.refreshToken,
+            mobileTokenType = token.tokenType,
+            mobileTokenExpiresAt = token.expiresAt,
+        )
+        accountStore.replaceSession(nextSession)
+        ZhihuIdentityChangeResult(
+            account = ZhihuIdentityAccount(
+                id = profile.id,
+                urlToken = profile.urlToken,
+                name = profile.name,
+                avatarUrl = profile.avatarUrl,
+                isActive = true,
+                canCreateSubAccount = profile.canCreateSubAccount,
+                accountType = profile.accountType,
+                subAccountControlStatus = profile.subAccountControlStatus,
+            ),
+            session = nextSession,
+        )
+    } finally {
+        client.close()
+    }
+}
+
 /**
  * “身份管理”页面。
  *
- * 账号列表来自 `/people/account/list`。切换和创建都会签发一套新的会话凭证，保存凭证后重建主壳，确保推荐流、
- * 历史、通知和个人资料不会继续复用旧账号缓存。
+ * 账号列表来自 `/people/account/list`。切换和创建都会签发一套新的会话凭证，并由账户 store 原子替换当前会话和
+ * 与它绑定的客户端。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun IdentityManagementScreen() {
     val navigator = LocalNavigator.current
-    val environment = rememberPaginationEnvironment(allowGuestAccess = false)
-    val identityClient = remember(environment) { environment.identityClient() }
+    val accountStore = rememberZhihuAccountStore()
     val userMessages = rememberUserMessageSink()
     val coroutineScope = rememberCoroutineScope()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-    var state by remember(identityClient) {
+    var state by remember(accountStore) {
         mutableStateOf(
             IdentityManagementState(
-                supported = identityClient != null,
-                currentAccountId = environment.currentAccountId(),
-                loading = identityClient != null,
-                errorMessage = if (identityClient == null) "请在 Android 客户端使用身份管理" else null,
+                currentAccountId = accountStore.session.profile
+                    ?.id
+                    .orEmpty(),
+                loading = true,
             ),
         )
     }
@@ -125,15 +208,28 @@ fun IdentityManagementScreen() {
     var switchTarget by remember { mutableStateOf<ZhihuIdentityAccount?>(null) }
     var showCreateDialog by remember { mutableStateOf(false) }
     var acceptedCreateRules by remember { mutableStateOf(false) }
+    var switchLoginAccount by remember { mutableStateOf<ZhihuSavedAccount?>(null) }
+    var removeLoginAccount by remember { mutableStateOf<ZhihuSavedAccount?>(null) }
+    val savedAccounts by accountStore.accountsState.collectAsState()
 
     suspend fun refresh() {
-        val client = identityClient ?: return
         if (state.switchingToAccountId != null || state.creating) return
         state = state.copy(loading = true, errorMessage = null)
         state = try {
             state.copy(
-                accounts = client.listAccounts(),
-                currentAccountId = environment.currentAccountId(),
+                accounts = ZhihuJson
+                    .decodeJson<ZhihuIdentityAccountListResponse>(
+                        ZhihuJson.json.parseToJsonElement(
+                            accountStore.client
+                                .httpClient()
+                                .get("https://api.zhihu.com/people/account/list") {
+                                    applyIdentityHeaders(accountStore.session)
+                                }.identitySuccessBody("获取身份列表"),
+                        ),
+                    ).data,
+                currentAccountId = accountStore.session.profile
+                    ?.id
+                    .orEmpty(),
                 loading = false,
             )
         } catch (e: Exception) {
@@ -141,7 +237,7 @@ fun IdentityManagementScreen() {
         }
     }
 
-    LaunchedEffect(identityClient) {
+    LaunchedEffect(accountStore) {
         refresh()
     }
 
@@ -180,17 +276,6 @@ fun IdentityManagementScreen() {
                 .padding(innerPadding)
                 .padding(vertical = 16.dp),
         ) {
-            if (!state.supported) {
-                SettingItemGroup {
-                    SettingItem(
-                        title = { Text("当前平台暂不支持身份管理") },
-                        description = { Text(state.errorMessage ?: "请在 Android 客户端使用此功能") },
-                        icon = { Icon(Icons.Default.ErrorOutline, null) },
-                    )
-                }
-                return@Column
-            }
-
             if (state.loading && state.accounts.isEmpty()) {
                 Box(
                     modifier = Modifier
@@ -223,9 +308,6 @@ fun IdentityManagementScreen() {
             if (state.accounts.isNotEmpty()) {
                 SettingItemGroup(
                     title = "当前手机号下的账号",
-                    footer = {
-                        Text("两个账号共用当前手机号，但昵称、主页、内容、推荐和互动数据相互独立。")
-                    },
                 ) {
                     state.accounts.forEachIndexed { index, account ->
                         val isCurrent = account.id == state.currentAccountId
@@ -282,6 +364,30 @@ fun IdentityManagementScreen() {
             }
 
             if (state.accounts.isNotEmpty()) {
+                val otherAccounts = savedAccounts.accounts.filterNot { it.id == savedAccounts.activeAccountId }
+                SettingItemGroup(
+                    title = "其他登录账号",
+                ) {
+                    otherAccounts.forEach { account ->
+                        SettingItem(
+                            title = { Text(account.session.profile?.name ?: account.session.username) },
+                            description = { Text("切换到这个登录账号") },
+                            icon = { Icon(Icons.Default.SwitchAccount, null) },
+                            endAction = {
+                                IconButton(onClick = { removeLoginAccount = account }) {
+                                    Icon(Icons.Default.DeleteOutline, contentDescription = "移除登录账号")
+                                }
+                            },
+                            onClick = { switchLoginAccount = account },
+                        )
+                    }
+                    SettingItem(
+                        title = { Text("添加其他手机号登录账号") },
+                        icon = { Icon(Icons.AutoMirrored.Filled.Login, null) },
+                        onClick = ::requestLoginNavigation,
+                    )
+                }
+
                 SettingItemGroup(
                     title = "新账号",
                     footer = {
@@ -298,7 +404,6 @@ fun IdentityManagementScreen() {
                 ) {
                     SettingItem(
                         title = { Text("创建新账号") },
-                        description = { Text("共用当前手机号，数据相互独立") },
                         icon = { Icon(Icons.Default.Add, null) },
                         modifier = Modifier.testTag(IDENTITY_MANAGEMENT_CREATE_TAG),
                         enabled = state.canCreateSubAccount && !state.busy,
@@ -324,7 +429,7 @@ fun IdentityManagementScreen() {
             },
             title = { Text("切换账号") },
             text = {
-                Text("将切换到“${account.name}”并重新加载应用。之后的推荐、内容和互动行为都属于该账号。")
+                Text("将切换到“${account.name}”。之后的推荐、内容和互动行为都属于该账号。")
             },
             confirmButton = {
                 TextButton(
@@ -333,11 +438,22 @@ fun IdentityManagementScreen() {
                         switchTarget = null
                         coroutineScope.launch {
                             runCatching {
-                                val client = checkNotNull(identityClient)
                                 check(!state.busy) { "另一个账号操作正在进行" }
                                 state = state.copy(switchingToAccountId = account.id, errorMessage = null)
                                 try {
-                                    val result = client.switchAccount(account.id)
+                                    require(account.id.isNotBlank()) { "目标账号不能为空" }
+                                    val response = accountStore.client.httpClient().post(
+                                        "https://api.zhihu.com/account/switch",
+                                    ) {
+                                        applyIdentityHeaders(accountStore.session)
+                                        contentType(ContentType.Application.Json)
+                                        setBody(SwitchAccountRequest(account.id))
+                                    }
+                                    val result = completeIdentityChange(
+                                        accountStore,
+                                        response.identitySuccessBody("切换账号"),
+                                        account.id,
+                                    )
                                     state = state.copy(
                                         currentAccountId = result.account.id,
                                         switchingToAccountId = null,
@@ -351,7 +467,7 @@ fun IdentityManagementScreen() {
                                 }
                             }.onSuccess {
                                 userMessages.showShortMessage("已切换到 ${account.name}")
-                                environment.restartApplication()
+                                navigator.onNavigateBack()
                             }.onFailure {
                                 userMessages.showLongMessage(it.message ?: "切换账号失败")
                             }
@@ -410,12 +526,19 @@ fun IdentityManagementScreen() {
                         showCreateDialog = false
                         coroutineScope.launch {
                             runCatching {
-                                val client = checkNotNull(identityClient)
                                 check(!state.busy) { "另一个账号操作正在进行" }
                                 check(state.canCreateSubAccount) { "当前账号暂不能创建新账号" }
                                 state = state.copy(creating = true, errorMessage = null)
                                 try {
-                                    val result = client.createSubAccount()
+                                    val response = accountStore.client.httpClient().post(
+                                        "https://api.zhihu.com/account/sub/register",
+                                    ) {
+                                        applyIdentityHeaders(accountStore.session)
+                                    }
+                                    val result = completeIdentityChange(
+                                        accountStore,
+                                        response.identitySuccessBody("创建新账号"),
+                                    )
                                     state = state.copy(
                                         accounts = state.accounts + result.account,
                                         currentAccountId = result.account.id,
@@ -430,7 +553,7 @@ fun IdentityManagementScreen() {
                                 }
                             }.onSuccess {
                                 userMessages.showLongMessage("新账号已创建并初始化，正在重新加载")
-                                environment.restartApplication()
+                                navigator.onNavigateBack()
                             }.onFailure {
                                 userMessages.showLongMessage(it.message ?: "创建新账号失败")
                             }
@@ -445,6 +568,62 @@ fun IdentityManagementScreen() {
                     enabled = !state.busy,
                     onClick = { showCreateDialog = false },
                 ) {
+                    Text("取消")
+                }
+            },
+        )
+    }
+
+    switchLoginAccount?.let { account ->
+        AlertDialog(
+            onDismissRequest = { switchLoginAccount = null },
+            title = { Text("切换登录账号") },
+            text = { Text("将切换到“${account.session.profile?.name ?: account.session.username}”。") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        switchLoginAccount = null
+                        coroutineScope.launch {
+                            try {
+                                if (!accountStore.switchAccount(account.id)) {
+                                    userMessages.showLongMessage("登录凭据已失效，请重新添加这个账号")
+                                }
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                userMessages.showLongMessage(e.message ?: "切换登录账号失败")
+                            }
+                        }
+                    },
+                ) {
+                    Text("切换")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { switchLoginAccount = null }) {
+                    Text("取消")
+                }
+            },
+        )
+    }
+
+    removeLoginAccount?.let { account ->
+        AlertDialog(
+            onDismissRequest = { removeLoginAccount = null },
+            title = { Text("移除登录账号") },
+            text = { Text("将从本机删除“${account.session.profile?.name ?: account.session.username}”的登录凭据，不会注销知乎账号。") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        accountStore.removeAccount(account.id)
+                        removeLoginAccount = null
+                    },
+                ) {
+                    Text("移除")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { removeLoginAccount = null }) {
                     Text("取消")
                 }
             },

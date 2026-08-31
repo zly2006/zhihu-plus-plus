@@ -78,6 +78,7 @@ import com.github.zly2006.zhihu.ui.components.SegmentActionSheet
 import com.github.zly2006.zhihu.ui.components.SegmentActionSheetState
 import com.github.zly2006.zhihu.ui.components.SegmentHighlightInteractionHost
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixCommentSheet
+import com.github.zly2006.zhihu.ui.subscreens.DUO3_TIQIAN_MATH_FONT_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.PREF_BLOCK_SPACING
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
@@ -265,16 +266,19 @@ fun RenderMarkdown(
     enableScroll: Boolean = true,
     header: (@Composable () -> Unit)? = null,
     footer: (@Composable () -> Unit)? = null,
+    useTiqianRenderer: Boolean = false,
 ) {
     val document = remember(html) { htmlToMdAst(html) }
     RenderMarkdownDocument(
         document = document,
+        sourceMarkdown = null,
         modifier = modifier,
         scrollState = scrollState,
         selectable = selectable,
         enableScroll = enableScroll,
         header = header,
         footer = footer,
+        useTiqianRenderer = useTiqianRenderer,
     )
 }
 
@@ -287,63 +291,41 @@ fun RenderMarkdownText(
     enableScroll: Boolean = true,
     header: (@Composable () -> Unit)? = null,
     footer: (@Composable () -> Unit)? = null,
+    useTiqianRenderer: Boolean = false,
 ) {
     val document = remember(markdown) { markdownToMdAst(markdown) }
     RenderMarkdownDocument(
         document = document,
+        sourceMarkdown = markdown,
         modifier = modifier,
         scrollState = scrollState,
         selectable = selectable,
         enableScroll = enableScroll,
         header = header,
         footer = footer,
+        useTiqianRenderer = useTiqianRenderer,
     )
 }
 
 @Composable
 private fun RenderMarkdownDocument(
     document: Document,
+    sourceMarkdown: String?,
     modifier: Modifier,
     scrollState: ScrollState,
     selectable: Boolean,
     enableScroll: Boolean,
     header: (@Composable () -> Unit)?,
     footer: (@Composable () -> Unit)?,
+    useTiqianRenderer: Boolean,
 ) {
     val previewImageUrls = remember(document) { document.previewImageUrls() }
     val navigator = LocalNavigator.current
-    val mathFont = rememberMarkdownMathFont()
     val openExternalUrl = rememberExternalUrlOpener()
     val settings = rememberSettingsStore()
     val fontSize = settings.getInt(PREF_FONT_SIZE, 100)
     val lineHeight = settings.getInt(PREF_LINE_HEIGHT, 160)
     val blockSpacing = settings.getInt(PREF_BLOCK_SPACING, 100)
-    val defaultTheme = MarkdownTheme.material3()
-
-    // MarkdownTheme.material3() 的各色取自 MaterialTheme.colorScheme，但 miuix 主题下它未初始化，
-    // 深色模式正文/标题/链接都会反色。用主题自适应的 AppTokens（miuix→miuix 色，M3→不变）覆盖。
-    val mdTextColor = AppTokens.colors.onSurface
-    val theme = defaultTheme.copy(
-        bodyStyle = defaultTheme.bodyStyle.copy(
-            color = mdTextColor,
-            fontSize = 16.sp * fontSize / 100,
-            lineHeight = 16.sp * fontSize / 100 * lineHeight / 100,
-        ),
-        headingStyles = defaultTheme.headingStyles.map { it.copy(color = mdTextColor) },
-        linkColor = AppTokens.colors.primary,
-        blockQuoteTextColor = AppTokens.colors.onSurfaceVariant,
-        // 删除线/插入(下划线)/行内代码/代码块/列表/公式 等文字色同样取自 M3，miuix 深色下反色，一并覆盖。
-        strikethroughStyle = defaultTheme.strikethroughStyle.copy(color = mdTextColor),
-        insertedTextStyle = defaultTheme.insertedTextStyle.copy(color = mdTextColor),
-        inlineCodeStyle = defaultTheme.inlineCodeStyle.copy(color = mdTextColor),
-        codeBlockStyle = defaultTheme.codeBlockStyle.copy(color = mdTextColor),
-        listBulletColor = mdTextColor,
-        mathColor = mdTextColor,
-        dividerColor = AppTokens.colors.outlineVariant,
-        blockSpacing = defaultTheme.blockSpacing * (blockSpacing / 100f),
-        mathFontSize = 18f * fontSize / 100,
-        mathFont = mathFont ?: defaultTheme.mathFont,
-    )
     var segmentCommentTarget by remember { mutableStateOf<SegmentCommentHolder?>(null) }
     var segmentActionSheetState by remember { mutableStateOf<SegmentActionSheetState?>(null) }
     CompositionLocalProvider(
@@ -352,29 +334,77 @@ private fun RenderMarkdownDocument(
         },
         LocalSegmentActionSheetHost provides { state -> segmentActionSheetState = state },
     ) {
-        SegmentHighlightInteractionHost {
+        SegmentHighlightInteractionHost(document) {
             Box(modifier = modifier) {
                 NoDoubleClickSelectionScope {
-                    Markdown(
-                        document = document,
-                        imageContent = { data, imageModifier ->
-                            RenderImage(
-                                data = data,
-                                modifier = imageModifier,
-                                imageUrls = previewImageUrls,
-                            )
-                        },
-                        scrollState = scrollState,
-                        enableScroll = enableScroll,
-                        enableSelection = selectable,
-                        onLinkClick = { url ->
-                            resolveContent(url)?.let { navigator.onNavigate(it) }
-                                ?: openExternalUrl(url)
-                        },
-                        header = header,
-                        footer = footer,
-                        theme = theme,
-                    )
+                    val onLinkClick: (String) -> Unit = { url ->
+                        resolveContent(url)?.let { navigator.onNavigate(it) }
+                            ?: openExternalUrl(url)
+                    }
+                    if (useTiqianRenderer && isTiqianMarkdownRendererAvailable) {
+                        PlatformTiqianMarkdown(
+                            document = document,
+                            sourceMarkdown = sourceMarkdown,
+                            imageUrls = previewImageUrls,
+                            scrollState = scrollState,
+                            selectable = selectable,
+                            enableScroll = enableScroll,
+                            fontSizeScale = fontSize / 100f,
+                            lineHeightFromFontSize = lineHeight / 100f,
+                            blockSpacingScale = blockSpacing / 100f,
+                            mathFontFamilyId = settings
+                                .getString(DUO3_TIQIAN_MATH_FONT_PREFERENCE_KEY, "lete")
+                                .takeIf { it == "stix" },
+                            onLinkClick = onLinkClick,
+                            header = header,
+                            footer = footer,
+                        )
+                    } else {
+                        val mathFont = rememberMarkdownMathFont()
+                        val defaultTheme = MarkdownTheme.material3()
+                        val scaledFontSize = 16.sp * fontSize / 100
+                        // MarkdownTheme.material3() 的各色取自 MaterialTheme.colorScheme，但 miuix 主题下它未初始化，
+                        // 深色模式正文/标题/链接都会反色。用主题自适应的 AppTokens（miuix→miuix 色，M3→不变）覆盖。
+                        val mdTextColor = AppTokens.colors.onSurface
+                        val theme = defaultTheme.copy(
+                            bodyStyle = defaultTheme.bodyStyle.copy(
+                                color = mdTextColor,
+                                fontSize = scaledFontSize,
+                                lineHeight = scaledFontSize * lineHeight / 100,
+                            ),
+                            headingStyles = defaultTheme.headingStyles.map { it.copy(color = mdTextColor) },
+                            linkColor = AppTokens.colors.primary,
+                            blockQuoteTextColor = AppTokens.colors.onSurfaceVariant,
+                            // 删除线/插入(下划线)/行内代码/代码块/列表/公式 等文字色同样取自 M3，miuix 深色下反色，一并覆盖。
+                            strikethroughStyle = defaultTheme.strikethroughStyle.copy(color = mdTextColor),
+                            insertedTextStyle = defaultTheme.insertedTextStyle.copy(color = mdTextColor),
+                            inlineCodeStyle = defaultTheme.inlineCodeStyle.copy(color = mdTextColor),
+                            codeBlockStyle = defaultTheme.codeBlockStyle.copy(color = mdTextColor),
+                            listBulletColor = mdTextColor,
+                            mathColor = mdTextColor,
+                            dividerColor = AppTokens.colors.outlineVariant,
+                            blockSpacing = defaultTheme.blockSpacing * (blockSpacing / 100f),
+                            mathFontSize = 18f * fontSize / 100,
+                            mathFont = mathFont ?: defaultTheme.mathFont,
+                        )
+                        Markdown(
+                            document = document,
+                            imageContent = { data, imageModifier ->
+                                RenderImage(
+                                    data = data,
+                                    modifier = imageModifier,
+                                    imageUrls = previewImageUrls,
+                                )
+                            },
+                            scrollState = scrollState,
+                            enableScroll = enableScroll,
+                            enableSelection = selectable,
+                            onLinkClick = onLinkClick,
+                            header = header,
+                            footer = footer,
+                            theme = theme,
+                        )
+                    }
                 }
             }
         }

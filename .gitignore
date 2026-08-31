@@ -65,3 +65,6 @@ bin/
 # Local replay corpus contains complete third-party Zhihu responses.
 shared/src/jvmTest/resources/zhihu-formula-corpus/raw/
 tools/zhihu-formula-corpus/
+
+# Local Maven publications are build inputs, never source dependencies.
+third_party/native-maven/

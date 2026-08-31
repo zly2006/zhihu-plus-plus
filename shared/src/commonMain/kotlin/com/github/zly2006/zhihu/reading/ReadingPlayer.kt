@@ -27,12 +27,15 @@ import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.FeedDisplayItem
 import com.github.zly2006.zhihu.data.navDestination
 import com.github.zly2006.zhihu.data.target
+import com.github.zly2006.zhihu.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.platform.SettingsStore
+import com.github.zly2006.zhihu.viewmodel.filter.ContentType
+import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.number
 import kotlinx.datetime.toLocalDateTime
@@ -268,7 +271,6 @@ data class ReadingStartRequest(
 
 interface ReadingPlayerController {
     val state: State<ReadingPlayerState>
-    val isSupported: Boolean
 
     fun start(request: ReadingStartRequest)
 
@@ -287,7 +289,6 @@ interface ReadingPlayerController {
 
 internal object UnsupportedReadingPlayerController : ReadingPlayerController {
     override val state: State<ReadingPlayerState> = mutableStateOf(ReadingPlayerState())
-    override val isSupported: Boolean = false
 
     override fun start(request: ReadingStartRequest) = Unit
 
@@ -305,7 +306,13 @@ internal object UnsupportedReadingPlayerController : ReadingPlayerController {
 }
 
 @Composable
-expect fun rememberReadingPlayerController(): ReadingPlayerController
+fun rememberReadingPlayerController(): ReadingPlayerController =
+    if (isReadingPlayerSupported) rememberSupportedReadingPlayerController() else UnsupportedReadingPlayerController
+
+expect val isReadingPlayerSupported: Boolean
+
+@Composable
+internal expect fun rememberSupportedReadingPlayerController(): ReadingPlayerController
 
 private val readingPreferencesJson = Json {
     ignoreUnknownKeys = true
@@ -583,6 +590,16 @@ fun splitReadingSpeechIntoChunks(
 object ReadingQueueSourceRegistry {
     private val sources = LinkedHashMap<String, List<ReadingQueueItem>>()
 
+    private suspend fun lookupOpenedAnswerIds(answerIds: List<Long>): Set<Long> {
+        if (answerIds.isEmpty()) return emptySet()
+        return ContentOpenEventSupport
+            .getAlreadyOpenedContentIds(
+                database = getContentFilterDatabase(),
+                content = answerIds.map { answerId -> ContentType.ANSWER to answerId.toString() },
+            ).mapNotNull { key -> key.substringAfter(':', "").toLongOrNull() }
+            .toSet()
+    }
+
     fun register(
         sourceId: String,
         items: List<ReadingQueueItem>,
@@ -604,39 +621,65 @@ object ReadingQueueSourceRegistry {
         }
     }
 
-    fun queueStartingAt(
+    suspend fun queueStartingAt(
         current: ReadingQueueItem,
         sourceId: String?,
         limit: Int,
         fallbackAfterCurrent: List<ReadingQueueItem> = emptyList(),
+        openedAnswerIdsProvider: suspend (List<Long>) -> Set<Long> = ::lookupOpenedAnswerIds,
     ): List<ReadingQueueItem> {
         val safeLimit = limit.coerceIn(1, MAX_READING_QUEUE_SIZE)
         val source = sourceId?.let(sources::get)
         val currentIndex = source?.indexOfFirst { it.key == current.key } ?: -1
+        val sourceQueue = if (source == null || currentIndex < 0) {
+            listOf(current)
+        } else {
+            source
+                .drop(currentIndex)
+                // Read past the requested window so skipping opened answers can still fill it.
+                .take(MAX_READING_QUEUE_SIZE)
+                .map { item -> if (item.key == current.key) current else item }
+        }
+
+        val candidateAnswerIds = buildList {
+            addAll(sourceQueue.drop(1))
+            addAll(fallbackAfterCurrent)
+        }.asSequence()
+            .filter { it.contentType == ReadingContentType.Answer }
+            .map(ReadingQueueItem::id)
+            .distinct()
+            .toList()
+        val openedAnswerIds = openedAnswerIdsProvider(candidateAnswerIds)
+
+        val filteredSourceQueue = sourceQueue.filter { item ->
+            item.key == current.key ||
+                item.contentType != ReadingContentType.Answer ||
+                item.id !in openedAnswerIds
+        }
+        if (fallbackAfterCurrent.isEmpty()) {
+            return filteredSourceQueue.take(safeLimit)
+        }
+
+        val filteredFallbackQueue = fallbackAfterCurrent
+            .asSequence()
+            .distinctBy(ReadingQueueItem::key)
+            .filter { item ->
+                item.contentType != ReadingContentType.Answer || item.id !in openedAnswerIds
+            }.toList()
         if (source == null || currentIndex < 0) {
-            return (listOf(current) + fallbackAfterCurrent)
+            return (filteredSourceQueue + filteredFallbackQueue)
                 .distinctBy(ReadingQueueItem::key)
                 .take(safeLimit)
         }
-
-        val sourceQueue = source
-            .drop(currentIndex)
-            .take(safeLimit)
-            .map { item -> if (item.key == current.key) current else item }
-        if (fallbackAfterCurrent.isEmpty()) return sourceQueue
-
-        val sourceContinuationKeys = sourceQueue.drop(1).map(ReadingQueueItem::key)
-        val fallbackKeys = fallbackAfterCurrent
-            .distinctBy(ReadingQueueItem::key)
-            .map(ReadingQueueItem::key)
+        val sourceContinuationKeys = filteredSourceQueue.drop(1).map(ReadingQueueItem::key)
         if (
             sourceContinuationKeys.isNotEmpty() &&
-            fallbackKeys.take(sourceContinuationKeys.size) != sourceContinuationKeys
+            filteredFallbackQueue.take(sourceContinuationKeys.size).map(ReadingQueueItem::key) != sourceContinuationKeys
         ) {
-            return sourceQueue
+            return filteredSourceQueue.take(safeLimit)
         }
 
-        return (sourceQueue + fallbackAfterCurrent)
+        return (filteredSourceQueue + filteredFallbackQueue)
             .distinctBy(ReadingQueueItem::key)
             .take(safeLimit)
     }
@@ -651,17 +694,15 @@ fun RegisterReadingQueueSource(
     sourceId: String,
     items: List<FeedDisplayItem>,
 ) {
-    val queueItems = items.toReadingQueueSourceItems()
+    val queueItems = items
+        .asSequence()
+        .filterNot { it.isFiltered }
+        .mapNotNull(FeedDisplayItem::toReadingQueueItem)
+        .toList()
     SideEffect {
         ReadingQueueSourceRegistry.register(sourceId, queueItems)
     }
 }
-
-internal fun List<FeedDisplayItem>.toReadingQueueSourceItems(): List<ReadingQueueItem> =
-    asSequence()
-        .filterNot { it.isFiltered }
-        .mapNotNull(FeedDisplayItem::toReadingQueueItem)
-        .toList()
 
 fun FeedDisplayItem.toReadingQueueItem(): ReadingQueueItem? {
     val destination = navDestination ?: return null

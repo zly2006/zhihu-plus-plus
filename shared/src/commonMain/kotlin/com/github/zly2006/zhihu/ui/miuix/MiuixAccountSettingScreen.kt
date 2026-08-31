@@ -31,7 +31,6 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SwitchAccount
@@ -44,26 +43,26 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.github.zly2006.zhihu.account.rememberZhihuAccountStore
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Collections
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.navigation.Person
+import com.github.zly2006.zhihu.navigation.requestLoginNavigation
 import com.github.zly2006.zhihu.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.reading.rememberReadingPlayerController
+import com.github.zly2006.zhihu.reading.isReadingPlayerSupported
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.AccountSettingsAccountState
-import com.github.zly2006.zhihu.ui.rememberAccountQrLoginRequester
 import com.github.zly2006.zhihu.ui.rememberAccountSettingsAccountState
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.SmallTitle
@@ -83,8 +82,8 @@ fun MiuixAccountSettingScreen(
 ) {
     val navigator = LocalNavigator.current
     val environment = rememberPaginationEnvironment(allowGuestAccess = false)
-    val readingPlayerSupported = rememberReadingPlayerController().isSupported
-    val requestQrLoginScan = rememberAccountQrLoginRequester()
+    val readingPlayerSupported = isReadingPlayerSupported
+    val accountStore = rememberZhihuAccountStore()
     val settings = rememberSettingsStore()
     val accountState by rememberAccountSettingsAccountState()
     val data = testAccountData ?: accountState
@@ -97,7 +96,7 @@ fun MiuixAccountSettingScreen(
     LaunchedEffect(data.login) {
         if (testAccountData == null && data.login) {
             try {
-                environment.refreshAccountProfile()
+                accountStore.client.refreshAndSaveProfile()
             } catch (e: Exception) {
                 userMessages.showShortMessage("获取用户信息失败")
             }
@@ -146,10 +145,6 @@ fun MiuixAccountSettingScreen(
                             AsyncImage(data.avatarUrl, "头像", modifier = Modifier.size(56.dp).clip(CircleShape))
                             Spacer(Modifier.width(12.dp))
                             Text(data.username, style = MiuixTheme.textStyles.title3, modifier = Modifier.weight(1f))
-                            // 扫码登录：协助电脑端登录，扫到知乎登录二维码后打开 WebView 确认（与 M3 账号页一致）
-                            IconButton(onClick = { requestQrLoginScan() }) {
-                                Icon(Icons.Default.QrCodeScanner, contentDescription = "扫码登录", tint = MiuixTheme.colorScheme.onSurface)
-                            }
                         }
                     } else {
                         ArrowPreference(
@@ -157,9 +152,7 @@ fun MiuixAccountSettingScreen(
                             summary = "登录后体验完整功能",
                             startAction = { Icon(Icons.AutoMirrored.Filled.Login, null, tint = MiuixTheme.colorScheme.primary) },
                             onClick = {
-                                if (!environment.requestLogin()) {
-                                    userMessages.showShortMessage("当前平台暂不支持登录")
-                                }
+                                requestLoginNavigation()
                             },
                         )
                     }
@@ -215,7 +208,7 @@ fun MiuixAccountSettingScreen(
                 Card(
                     modifier = Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp),
                 ) {
-                    if (data.login && data.identityManagementSupported) {
+                    if (data.login) {
                         ArrowPreference(
                             title = "身份管理",
                             summary = "创建马甲号或切换当前账号",
@@ -288,7 +281,7 @@ fun MiuixAccountSettingScreen(
                     ) {
                         ArrowPreference(
                             title = "退出登录",
-                            onClick = { environment.logout() },
+                            onClick = { accountStore.clear() },
                             startAction = { Icon(Icons.AutoMirrored.Filled.Logout, null, tint = MiuixTheme.colorScheme.error) },
                         )
                     }

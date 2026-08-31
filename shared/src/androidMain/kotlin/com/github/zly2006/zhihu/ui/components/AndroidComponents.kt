@@ -35,10 +35,11 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.graphics.drawable.toDrawable
 import androidx.core.net.toUri
+import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.nlp.KeywordAnalyzerCore
 import com.github.zly2006.zhihu.nlp.KeywordWithWeight
 import com.github.zly2006.zhihu.platform.androidUserMessageSink
-import com.github.zly2006.zhihu.ui.articleHost
+import com.github.zly2006.zhihu.ui.AndroidArticleNavigationHandoff
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import com.github.zly2006.zhihu.viewmodel.filter.androidKeywordWeightExtractor
@@ -118,27 +119,31 @@ actual suspend fun extractFeedKeywords(
     extractor = androidKeywordWeightExtractor,
 )
 
+actual val feedKeywordExtractionAvailable: Boolean = true
+
 @Composable
 actual fun rememberShareActionExecutor(): ShareActionExecutor {
     val context = LocalContext.current
     return remember(context) {
-        { action, content, shareText ->
-            if (action == ShareAction.CopyLink) {
-                context.articleHost()?.clipboardDestination = content
-                context.clipboardManager.setPrimaryClip(ClipData.newPlainText("Link", shareText))
-                androidUserMessageSink(context).showShortMessage("已复制链接")
-            } else {
-                val shareIntent = Intent().apply {
-                    this.action = Intent.ACTION_SEND
-                    type = "text/plain"
-                    putExtra(Intent.EXTRA_TEXT, shareText)
-                    if (action == ShareAction.DirectShare) {
-                        putExtra(Intent.EXTRA_TITLE, getShareTitle(content))
+        object : ShareActionExecutor {
+            override fun invoke(action: ShareAction, content: NavDestination, shareText: String) {
+                if (action == ShareAction.CopyLink) {
+                    AndroidArticleNavigationHandoff.markClipboardDestination(content)
+                    context.clipboardManager.setPrimaryClip(ClipData.newPlainText("Link", shareText))
+                    androidUserMessageSink(context).showShortMessage("已复制链接")
+                } else {
+                    val shareIntent = Intent().apply {
+                        this.action = Intent.ACTION_SEND
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TEXT, shareText)
+                        if (action == ShareAction.DirectShare) {
+                            putExtra(Intent.EXTRA_TITLE, getShareTitle(content))
+                        }
                     }
+                    context.startActivity(
+                        Intent.createChooser(shareIntent, "分享到").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                    )
                 }
-                context.startActivity(
-                    Intent.createChooser(shareIntent, "分享到").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-                )
             }
         }
     }
