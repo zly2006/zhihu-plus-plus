@@ -102,6 +102,8 @@ import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_REFRESH_INTERVAL_
 import com.github.zly2006.zhihu.notification.OnlineHomeNotification
 import com.github.zly2006.zhihu.notification.OnlineHomeNotificationRepository
 import com.github.zly2006.zhihu.notification.rememberNotificationSettingsStore
+import com.github.zly2006.zhihu.platform.UserMessageDuration
+import com.github.zly2006.zhihu.platform.rememberAppPrivateDirectory
 import com.github.zly2006.zhihu.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.platform.rememberSettingString
@@ -110,6 +112,7 @@ import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
+import com.github.zly2006.zhihu.ui.AUTO_REFRESH_HOME_ON_STARTUP_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.HOME_CREATE_FAB_TAG
 import com.github.zly2006.zhihu.ui.HOME_CREATE_MENU_TAG
 import com.github.zly2006.zhihu.ui.HOME_REFRESH_BUTTON_TAG
@@ -126,6 +129,9 @@ import com.github.zly2006.zhihu.ui.components.FeedAuthorBlockConfirmDialog
 import com.github.zly2006.zhihu.ui.components.FeedAuthorBlockRequest
 import com.github.zly2006.zhihu.ui.components.FeedAuthorBlockType
 import com.github.zly2006.zhihu.ui.components.PaginatedList
+import com.github.zly2006.zhihu.ui.decodeHomeFeedStartupSnapshot
+import com.github.zly2006.zhihu.ui.encodeHomeFeedStartupSnapshot
+import com.github.zly2006.zhihu.ui.homeFeedStartupCacheFileName
 import com.github.zly2006.zhihu.ui.homeOnlineNotificationTag
 import com.github.zly2006.zhihu.ui.loadSearchHistory
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixAccountSheet
@@ -147,6 +153,8 @@ import com.github.zly2006.zhihu.ui.saveSearchHistory
 import com.github.zly2006.zhihu.ui.subscreens.SystemUpdateState
 import com.github.zly2006.zhihu.ui.subscreens.rememberSystemUpdateState
 import com.github.zly2006.zhihu.util.Log
+import com.github.zly2006.zhihu.viewmodel.QUALITY_FILTER_MODE_PREFERENCE_KEY
+import com.github.zly2006.zhihu.viewmodel.QualityFilterMode
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedInteractionViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
@@ -156,8 +164,15 @@ import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.za.AndroidHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.za.MixedHomeFeedViewModel
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.io.buffered
+import kotlinx.io.files.Path
+import kotlinx.io.files.SystemFileSystem
+import kotlinx.io.readString
+import kotlinx.io.writeString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
@@ -218,6 +233,11 @@ fun MiuixHomeScreen(
     val currentRecommendationMode = RecommendationMode.entries.find {
         it.key == recommendationModeKey
     } ?: RecommendationMode.MIXED
+    val appPrivateDirectory = rememberAppPrivateDirectory()
+    val startupCacheFile = remember(appPrivateDirectory, currentRecommendationMode) {
+        Path(appPrivateDirectory, homeFeedStartupCacheFileName(currentRecommendationMode))
+    }
+    val autoRefreshOnStartup = rememberSettingBoolean(AUTO_REFRESH_HOME_ON_STARTUP_PREFERENCE_KEY, true, settings)
     val account = rememberAccountSettingsAccountState().value
     // 登录态缺 d_c0 时给出明确提示，否则用户只会看到一直刷不出来的空列表（对标 M3 HomeScreen）。
     if (account.login && !account.hasRequiredCookie) {
@@ -259,14 +279,70 @@ fun MiuixHomeScreen(
     val onlineNotificationRepository = remember(settings) { OnlineHomeNotificationRepository(settings) }
     var onlineNotifications by remember { mutableStateOf(emptyList<OnlineHomeNotification>()) }
 
+    // 加载失败时把错误抛给用户，否则只能看到一个不解释原因的空列表（对标 M3 HomeScreen）。
+    LaunchedEffect(viewModel.errorMessage) {
+        viewModel.errorMessage?.let {
+            userMessages.showMessage(it, UserMessageDuration.Long)
+        }
+    }
+
     // 屏蔽相关 state（沿用 HomeScreen 逻辑）
     var feedAuthorBlockRequest by remember { mutableStateOf<FeedAuthorBlockRequest?>(null) }
     var showBlockByKeywordsDialog by remember { mutableStateOf(false) }
     var feedToBlockByKeywords by remember { mutableStateOf<Pair<String, String?>?>(null) }
 
-    LaunchedEffect(currentRecommendationMode, account.login) {
-        if (viewModel.displayItems.isEmpty()) {
-            viewModel.refresh(paginationEnvironment)
+    // 把上一批首页推荐写进启动快照，供下次冷启动秒开（与 M3 HomeScreen 共用同一份文件）。
+    val latestLoadedDisplayItems = viewModel.latestLoadedDisplayItems.value
+    LaunchedEffect(latestLoadedDisplayItems) {
+        if (latestLoadedDisplayItems.isNotEmpty()) {
+            encodeHomeFeedStartupSnapshot(latestLoadedDisplayItems)?.let { serialized ->
+                withContext(Dispatchers.Default) {
+                    runCatching {
+                        SystemFileSystem.sink(startupCacheFile).buffered().use { it.writeString(serialized) }
+                    }
+                }
+            }
+        }
+    }
+
+    // 「质量屏蔽 = 隐藏」时整页可能被过滤光，列表会停在空白。这里自动续拉下一页，否则首页看起来加载不出来。
+    val completedPageCount = viewModel.completedPageCount
+    LaunchedEffect(completedPageCount) {
+        if (completedPageCount > 0 &&
+            currentRecommendationMode == RecommendationMode.WEB &&
+            settings.getString(QUALITY_FILTER_MODE_PREFERENCE_KEY, QualityFilterMode.RULES.name) == QualityFilterMode.HIDE.name &&
+            viewModel.displayItems.isEmpty() &&
+            !viewModel.isEnd
+        ) {
+            viewModel.loadMore(paginationEnvironment)
+        }
+    }
+
+    LaunchedEffect(currentRecommendationMode, account.login, autoRefreshOnStartup) {
+        if (!account.login && settings.getBoolean("loginForRecommendation", true)) {
+            requestLoginNavigation()
+        } else if (viewModel.displayItems.isEmpty()) {
+            val cachedItems = if (autoRefreshOnStartup) {
+                emptyList()
+            } else {
+                withContext(Dispatchers.Default) {
+                    runCatching {
+                        if (SystemFileSystem.exists(startupCacheFile)) {
+                            SystemFileSystem.source(startupCacheFile).buffered().use { source ->
+                                decodeHomeFeedStartupSnapshot(source.readString())
+                            }
+                        } else {
+                            emptyList()
+                        }
+                    }.getOrDefault(emptyList())
+                }
+            }
+            if (viewModel.displayItems.isEmpty() && cachedItems.isNotEmpty()) {
+                viewModel.addDisplayItems(cachedItems)
+            } else if (viewModel.displayItems.isEmpty()) {
+                // 只在第一次加载时刷新，这样可以避免在返回时刷新
+                viewModel.refresh(paginationEnvironment)
+            }
         }
     }
 
