@@ -85,6 +85,7 @@ fun MiuixAccountSheet(
         show = true,
         onDismissRequest = onDismiss,
         title = "账号设置",
+        insideMargin = MiuixSheetInsideMargin,
     ) {
         LazyColumn(
             modifier = Modifier

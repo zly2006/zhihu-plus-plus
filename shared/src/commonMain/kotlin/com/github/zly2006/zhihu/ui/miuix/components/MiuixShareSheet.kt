@@ -18,7 +18,6 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
@@ -44,7 +43,7 @@ fun MiuixShareSheet(
         cornerRadius = miuixSheetCornerRadius(),
         show = showDialog,
         title = "分享",
-        insideMargin = DpSize(16.dp, 0.dp),
+        insideMargin = MiuixSheetInsideMargin,
         onDismissRequest = onDismissRequest,
     ) {
         Column(

@@ -25,7 +25,6 @@ import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.util.SegmentHighlightSpan
 import top.yukonga.miuix.kmp.basic.Button
@@ -56,7 +55,7 @@ fun MiuixSegmentActionSheet(
         cornerRadius = miuixSheetCornerRadius(),
         show = true,
         title = "划线片段",
-        insideMargin = DpSize(16.dp, 0.dp),
+        insideMargin = MiuixSheetInsideMargin,
         onDismissRequest = onDismiss,
     ) {
         Column(

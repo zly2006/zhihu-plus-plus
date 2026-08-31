@@ -62,12 +62,13 @@ fun MiuixColorPickerSheet(
         show = show.value,
         onDismissRequest = { show.value = false },
         title = title,
+        insideMargin = MiuixSheetInsideMargin,
     ) {
         Column(
             modifier = Modifier
                 .miuixSheetBottomInsets()
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 12.dp),
+                .padding(vertical = 12.dp),
         ) {
             HsvColorPicker(
                 color = selectedColor,

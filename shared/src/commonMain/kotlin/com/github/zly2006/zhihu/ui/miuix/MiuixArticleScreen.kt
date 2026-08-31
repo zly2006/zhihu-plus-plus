@@ -119,6 +119,7 @@ import com.github.zly2006.zhihu.ui.miuix.components.MiuixCommentSheet
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixExportSheet
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixSheetActionRow
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixSheetInsideMargin
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixVotersSheet
 import com.github.zly2006.zhihu.ui.miuix.components.miuixSheetBottomInsets
 import com.github.zly2006.zhihu.ui.miuix.components.miuixSheetCornerRadius
@@ -771,9 +772,10 @@ fun MiuixArticleScreen(
         show = showCollections.value,
         onDismissRequest = { showCollections.value = false },
         title = "收藏到收藏夹",
+        insideMargin = MiuixSheetInsideMargin,
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().miuixSheetBottomInsets().padding(horizontal = 16.dp),
+            modifier = Modifier.fillMaxWidth().miuixSheetBottomInsets(),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             // 新建收藏夹（对齐 M3 的 onCreateCollection）。
@@ -834,48 +836,50 @@ fun MiuixArticleScreen(
         show = showActionsMenu,
         onDismissRequest = { showActionsMenu = false },
         title = "更多操作",
+        insideMargin = MiuixSheetInsideMargin,
     ) {
         val speaking = ttsState.isSpeaking
         val ttsEnabled = ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)
         Column(
-            modifier = Modifier.fillMaxWidth().miuixSheetBottomInsets().padding(horizontal = 16.dp),
+            modifier = Modifier.fillMaxWidth().miuixSheetBottomInsets(),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            MiuixActionMenuRow(
-                if (speaking) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
-                if (speaking) "停止朗读" else "开始朗读",
+            MiuixSheetActionRow(
+                text = if (speaking) "停止朗读" else "开始朗读",
+                icon = if (speaking) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
                 enabled = ttsEnabled,
-            ) {
-                showActionsMenu = false
-                toggleSpeech(viewModel.title, viewModel.content)
-            }
-            MiuixActionMenuRow(Icons.Default.Summarize, "总结本文") {
+                onClick = {
+                    showActionsMenu = false
+                    toggleSpeech(viewModel.title, viewModel.content)
+                },
+            )
+            MiuixSheetActionRow(text = "总结本文", icon = Icons.Default.Summarize, onClick = {
                 showActionsMenu = false
                 showSummarySheet = true
                 viewModel.requestAiSummary(environment)
-            }
-            MiuixActionMenuRow(Icons.Default.Flag, "标记疑似 AIGC") {
+            })
+            MiuixSheetActionRow(text = "标记疑似 AIGC", icon = Icons.Default.Flag, onClick = {
                 showActionsMenu = false
                 showAigcSheet = true
                 viewModel.loadAigcFlagStatus(environment)
-            }
-            MiuixActionMenuRow(Icons.Default.ContentCopy, "复制链接") {
+            })
+            MiuixSheetActionRow(text = "复制链接", icon = Icons.Default.ContentCopy, onClick = {
                 showActionsMenu = false
                 executeShareAction(ShareAction.CopyLink, article, articleActionText(article, viewModel.questionId, viewModel.title, viewModel.authorName))
-            }
-            MiuixActionMenuRow(Icons.Default.GetApp, "导出文章 (Markdown、图片、HTML、PDF)") {
+            })
+            MiuixSheetActionRow(text = "导出文章 (Markdown、图片、HTML、PDF)", icon = Icons.Default.GetApp, onClick = {
                 showActionsMenu = false
                 showExportDialog = true
-            }
-            MiuixActionMenuRow(Icons.Default.DesktopWindows, "在电脑中打开") {
+            })
+            MiuixSheetActionRow(text = "在电脑中打开", icon = Icons.Default.DesktopWindows, onClick = {
                 showActionsMenu = false
                 openArticleInBrowser(article)
-            }
-            MiuixActionMenuRow(Icons.Default.FilterCenterFocus, "沉浸式阅读") {
+            })
+            MiuixSheetActionRow(text = "沉浸式阅读", icon = Icons.Default.FilterCenterFocus, onClick = {
                 showActionsMenu = false
                 toggleImmersive()
                 userMessages.showMessage("已进入沉浸式，按返回键即可退出")
-            }
+            })
             Spacer(Modifier.height(8.dp))
         }
     }
@@ -889,12 +893,12 @@ fun MiuixArticleScreen(
             viewModel.cancelAiSummary()
         },
         title = "总结本文",
+        insideMargin = MiuixSheetInsideMargin,
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .miuixSheetBottomInsets()
-                .padding(horizontal = 16.dp)
                 .verticalScroll(rememberScrollState()),
         ) {
             if (viewModel.aiSummaryLoading && viewModel.aiSummaryText.isBlank()) {
@@ -927,6 +931,7 @@ fun MiuixArticleScreen(
         show = showAigcSheet,
         onDismissRequest = { showAigcSheet = false },
         title = "标记疑似 AIGC",
+        insideMargin = MiuixSheetInsideMargin,
     ) {
         val canSubmitAigc = viewModel.aigcVoteAvailable &&
             !viewModel.aigcVoteLoading &&
@@ -937,7 +942,6 @@ fun MiuixArticleScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .miuixSheetBottomInsets()
-                .padding(horizontal = 16.dp)
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
@@ -1007,9 +1011,10 @@ fun MiuixArticleScreen(
         show = showDoubleTapActionDialog,
         onDismissRequest = { showDoubleTapActionDialog = false },
         title = "设置双击回答动作",
+        insideMargin = MiuixSheetInsideMargin,
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().miuixSheetBottomInsets().padding(horizontal = 16.dp),
+            modifier = Modifier.fillMaxWidth().miuixSheetBottomInsets(),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
@@ -1073,17 +1078,6 @@ private fun Modifier.miuixArticleBottomAction(onClick: () -> Unit): Modifier {
         indication = indication,
         onClick = onClick,
     )
-}
-
-/** 更多操作菜单的单行（图标 + 文字，整行可点）。 */
-@Composable
-private fun MiuixActionMenuRow(
-    icon: ImageVector,
-    text: String,
-    enabled: Boolean = true,
-    onClick: () -> Unit,
-) {
-    MiuixSheetActionRow(text = text, icon = icon, enabled = enabled, onClick = onClick)
 }
 
 /** 横向滑动切换时的全屏预览（miuix 样式），渲染缓存的上/下一答内容。 */

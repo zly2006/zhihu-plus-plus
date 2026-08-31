@@ -43,6 +43,7 @@ import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.AUTO_REFRESH_HOME_ON_STARTUP_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixSheetInsideMargin
 import com.github.zly2006.zhihu.ui.miuix.components.miuixSheetBottomInsets
 import com.github.zly2006.zhihu.ui.miuix.components.miuixSheetCornerRadius
 import com.github.zly2006.zhihu.viewmodel.QUALITY_FILTER_MODE_PREFERENCE_KEY
@@ -330,8 +331,9 @@ fun MiuixContentFilterSettingsScreen(
         show = showStatsSheet.value,
         onDismissRequest = { showStatsSheet.value = false },
         title = "过滤统计详情",
+        insideMargin = MiuixSheetInsideMargin,
     ) {
-        Column(modifier = Modifier.miuixSheetBottomInsets().padding(horizontal = 12.dp).padding(bottom = 16.dp)) {
+        Column(modifier = Modifier.miuixSheetBottomInsets().padding(bottom = 16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -378,9 +380,10 @@ fun MiuixContentFilterSettingsScreen(
         show = showThresholdSheet.value,
         onDismissRequest = { showThresholdSheet.value = false },
         title = "设置主题屏蔽阈值",
+        insideMargin = MiuixSheetInsideMargin,
     ) {
         var inputValue by remember(showThresholdSheet.value) { mutableStateOf(topicThreshold.toString()) }
-        Column(modifier = Modifier.miuixSheetBottomInsets().padding(horizontal = 24.dp).padding(bottom = 16.dp)) {
+        Column(modifier = Modifier.miuixSheetBottomInsets().padding(bottom = 16.dp)) {
             Text(
                 "当内容包含的被屏蔽主题数量达到或超过此阈值时，该内容将被屏蔽。",
                 color = MiuixTheme.colorScheme.onSurfaceSecondary,

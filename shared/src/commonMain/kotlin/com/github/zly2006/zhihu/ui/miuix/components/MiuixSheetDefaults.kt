@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.ui.components.DISABLE_BOTTOM_SHEET_ROUNDED_CORNERS_PREFERENCE_KEY
@@ -48,3 +49,15 @@ fun miuixSheetCornerRadius(): Dp =
 @Composable
 fun Modifier.miuixSheetBottomInsets(): Modifier =
     windowInsetsPadding(WindowInsets.navigationBars.exclude(WindowInsets.ime))
+
+/**
+ * miuix 弹层的横向内边距。
+ *
+ * 横向留白只能有一个来源：`WindowBottomSheet` 默认就带 24dp 的 `insideMargin`，内容再自己写
+ * `padding(horizontal = ...)` 会直接叠加，行和卡片会被挤成中间一条。所以内容不加横向 padding，
+ * 一律由这个值决定。
+ *
+ * 例外是整幅列表（评论、赞同者名单等）：那里传 `DpSize(0.dp, 0.dp)`，把横向留白交给
+ * `LazyColumn` 的 `contentPadding`，这样滚动条和点击涟漪才能铺满弹层宽度。
+ */
+val MiuixSheetInsideMargin = DpSize(16.dp, 0.dp)

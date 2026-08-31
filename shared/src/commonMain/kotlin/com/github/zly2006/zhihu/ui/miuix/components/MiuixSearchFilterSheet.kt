@@ -39,8 +39,14 @@ fun MiuixSearchFilterSheet(
     viewModel: SearchViewModel,
     environment: PaginationEnvironment,
 ) {
-    WindowBottomSheet(cornerRadius = miuixSheetCornerRadius(), show = show, onDismissRequest = onDismiss, title = "筛选搜索结果") {
-        Column(modifier = Modifier.fillMaxWidth().miuixSheetBottomInsets().padding(horizontal = 16.dp)) {
+    WindowBottomSheet(
+        cornerRadius = miuixSheetCornerRadius(),
+        show = show,
+        onDismissRequest = onDismiss,
+        title = "筛选搜索结果",
+        insideMargin = MiuixSheetInsideMargin,
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().miuixSheetBottomInsets()) {
             FilterSection("排序", SearchSortOption.entries, { it.label }, viewModel.filters.sort) {
                 viewModel.updateFilters(environment, viewModel.filters.copy(sort = it))
             }
