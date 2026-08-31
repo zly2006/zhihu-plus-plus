@@ -20,6 +20,7 @@
 package com.github.zly2006.zhihu.macos
 
 import androidx.compose.ui.window.Window
+import com.github.zly2006.zhihu.platform.isMacosQuitOnWindowCloseEnabled
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.MacosZhihuMain
 import kotlinx.cinterop.autoreleasepool
@@ -93,6 +94,10 @@ private class MacosApplicationDelegate(
     }
 
     override fun windowShouldClose(sender: NSWindow): Boolean {
+        if (isMacosQuitOnWindowCloseEnabled()) {
+            application.terminate(null)
+            return false
+        }
         sender.orderOut(null)
         return false
     }

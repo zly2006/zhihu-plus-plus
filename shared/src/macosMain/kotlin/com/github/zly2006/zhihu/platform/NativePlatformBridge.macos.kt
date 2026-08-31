@@ -21,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import com.github.zly2006.zhihu.data.macosAppDataDirectoryPath
 import com.github.zly2006.zhihu.data.macosBackgroundUiDebugDataDirectoryPath
+import com.github.zly2006.zhihu.ui.subscreens.MACOS_QUIT_ON_WINDOW_CLOSE_PREFERENCE_KEY
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.channels.Channel
 import platform.AppKit.NSModalResponseOK
@@ -34,6 +35,9 @@ import platform.Foundation.NSURL
 internal actual val nativeIsDesktop: Boolean = true
 
 actual val platformName: String = "macOS"
+
+fun isMacosQuitOnWindowCloseEnabled(): Boolean =
+    nativeSettingsStore("settings.properties").getBoolean(MACOS_QUIT_ON_WINDOW_CLOSE_PREFERENCE_KEY, false)
 
 actual val isAigcVoteSupported: Boolean = false
 
