@@ -54,13 +54,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.FeedDisplayItem
 import com.github.zly2006.zhihu.data.navDestination
 import com.github.zly2006.zhihu.data.officialBadge
 import com.github.zly2006.zhihu.data.sourceLabel
+import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Navigator
+import com.github.zly2006.zhihu.navigation.withReadingQueueSource
 import com.github.zly2006.zhihu.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.platform.rememberIsLiteVariant
 import com.github.zly2006.zhihu.platform.rememberSettingBoolean
@@ -71,6 +75,8 @@ import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.AppTokens
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.subscreens.DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
+import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
 import com.github.zly2006.zhihu.util.parseEmphasizedHtmlTextWithTheme
 import com.github.zly2006.zhihu.viewmodel.QUALITY_FILTER_MODE_PREFERENCE_KEY
 import top.yukonga.miuix.kmp.basic.Card
@@ -96,10 +102,18 @@ fun MiuixFeedCard(
     onLike: ((FeedDisplayItem) -> Unit)? = null,
     onDislike: ((FeedDisplayItem) -> Unit)? = null,
     onBlockUser: ((FeedDisplayItem) -> Unit)? = null,
+    onBlockQuestionAuthor: ((FeedDisplayItem) -> Unit)? = null,
     onBlockByKeywords: ((FeedDisplayItem) -> Unit)? = null,
     onBlockTopic: ((topicId: String, topicName: String) -> Unit)? = null,
     showSourceLabel: Boolean = false,
-    onClick: (FeedDisplayItem.() -> Unit)? = null,
+    /** 追加到"更多"菜单末尾的页面专属操作，如历史页的"删除该条历史记录"。 */
+    extraMenuItems: List<Pair<String, () -> Unit>> = emptyList(),
+    /** 朗读队列来源；跟着目的地一起带进正文页，正文读完才能自动接着读同一列表的下一篇。 */
+    readingQueueSourceId: String? = null,
+    /**
+     * 默认点击行为：优先跳转到信息流条目的详情页；如果只能识别为外链则打开外链，否则提示暂不支持。
+     */
+    onClick: ((item: FeedDisplayItem, destination: NavDestination?) -> Unit)? = null,
 ) {
     val density = LocalDensity.current
     val navigator = LocalNavigator.current
@@ -119,18 +133,23 @@ fun MiuixFeedCard(
     val duo3CardAppearance = rememberSettingBoolean("duo3_card_appearance", false, settings)
     val duo3CardLayout = rememberSettingBoolean("duo3_card_layout", false, settings)
     val duo3CardLargeTitle = rememberSettingBoolean(DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY, true, settings)
-    val fontSizePercent = rememberSettingInt("contentFontSize", 100, settings)
+    val fontSizePercent = rememberSettingInt(PREF_FONT_SIZE, 100, settings)
+    val lineHeightPercent = rememberSettingInt(PREF_LINE_HEIGHT, 160, settings)
     val titleFontSize = (15.sp * fontSizePercent / 100)
 
-    val resolvedOnClick: FeedDisplayItem.() -> Unit = onClick ?: {
-        val self = this
-        val content = self.content
-        self.navDestination?.let { navigator.onNavigate(it) }
-            ?: if (content?.startsWith("http") == true) {
-                openUrl(content)
-            } else {
-                userMessages.showShortMessage("暂不支持打开该内容")
-            }
+    val performClick: (FeedDisplayItem) -> Unit = { clickedItem ->
+        val destination = clickedItem.navDestination?.withReadingQueueSource(readingQueueSourceId)
+        if (onClick != null) {
+            onClick(clickedItem, destination)
+        } else {
+            val content = clickedItem.content
+            destination?.let(navigator.onNavigate)
+                ?: if (content?.startsWith("http") == true) {
+                    openUrl(content)
+                } else {
+                    userMessages.showShortMessage("暂不支持打开该内容")
+                }
+        }
     }
 
     val animatedOffsetX by animateFloatAsState(
@@ -155,7 +174,7 @@ fun MiuixFeedCard(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { resolvedOnClick(item) }
+                    .clickable { performClick(item) }
                     .padding(horizontal = horizontalPadding, vertical = 12.dp),
             ) {
                 MiuixFeedCardContent(
@@ -166,11 +185,15 @@ fun MiuixFeedCard(
                     duo3CardLargeTitle,
                     titleFontSize,
                     titleMaxLines,
+                    fontSizePercent,
+                    lineHeightPercent,
                     showMenu,
                     { showMenu = it },
                     onBlockUser,
+                    onBlockQuestionAuthor,
                     onBlockByKeywords,
                     onBlockTopic,
+                    extraMenuItems,
                     showSourceLabel,
                     navigator,
                 )
@@ -188,7 +211,7 @@ fun MiuixFeedCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
-                    .clickable { resolvedOnClick(item) }
+                    .clickable { performClick(item) }
                     .alpha(1 - kotlin.math.min(actionAlpha, 0.5f))
                     .offset(x = with(density) { animatedOffsetX.toDp() })
                     .let { mod ->
@@ -231,11 +254,15 @@ fun MiuixFeedCard(
                         duo3CardLargeTitle,
                         titleFontSize,
                         titleMaxLines,
+                        fontSizePercent,
+                        lineHeightPercent,
                         showMenu,
                         { showMenu = it },
                         onBlockUser,
+                        onBlockQuestionAuthor,
                         onBlockByKeywords,
                         onBlockTopic,
+                        extraMenuItems,
                         showSourceLabel,
                         navigator,
                     )
@@ -291,11 +318,15 @@ private fun MiuixFeedCardContent(
     duo3CardLargeTitle: Boolean,
     titleFontSize: androidx.compose.ui.unit.TextUnit,
     titleMaxLines: Int,
+    fontSizePercent: Int,
+    lineHeightPercent: Int,
     showMenu: Boolean,
     onShowMenuChange: (Boolean) -> Unit,
     onBlockUser: ((FeedDisplayItem) -> Unit)?,
+    onBlockQuestionAuthor: ((FeedDisplayItem) -> Unit)?,
     onBlockByKeywords: ((FeedDisplayItem) -> Unit)?,
     onBlockTopic: ((topicId: String, topicName: String) -> Unit)?,
+    extraMenuItems: List<Pair<String, () -> Unit>>,
     showSourceLabel: Boolean,
     navigator: Navigator,
 ) {
@@ -320,7 +351,7 @@ private fun MiuixFeedCardContent(
             } else {
                 Spacer(Modifier.weight(1f))
             }
-            MiuixFeedCardMenuBox(item, showMenu, onShowMenuChange, onBlockUser, onBlockByKeywords, onBlockTopic, navigator)
+            MiuixFeedCardMenuBox(item, showMenu, onShowMenuChange, onBlockUser, onBlockQuestionAuthor, onBlockByKeywords, onBlockTopic, extraMenuItems, navigator)
         }
     }
 
@@ -347,6 +378,8 @@ private fun MiuixFeedCardContent(
                         Text(
                             text = parseEmphasizedHtmlTextWithTheme(summaryText),
                             style = text.bodyMedium,
+                            fontSize = text.bodyMedium.fontSize * fontSizePercent / 100,
+                            lineHeight = text.bodyMedium.fontSize * fontSizePercent / 100 * lineHeightPercent / 100,
                             color = colors.onSurfaceVariant,
                             maxLines = 4,
                             overflow = TextOverflow.Ellipsis,
@@ -385,7 +418,7 @@ private fun MiuixFeedCardContent(
                 } else {
                     Spacer(Modifier.weight(1f))
                 }
-                MiuixFeedCardMenuBox(item, showMenu, onShowMenuChange, onBlockUser, onBlockByKeywords, onBlockTopic, navigator)
+                MiuixFeedCardMenuBox(item, showMenu, onShowMenuChange, onBlockUser, onBlockQuestionAuthor, onBlockByKeywords, onBlockTopic, extraMenuItems, navigator)
             }
         }
     } else {
@@ -413,7 +446,8 @@ private fun MiuixFeedCardContent(
                 if (summaryText != null) {
                     Text(
                         parseEmphasizedHtmlTextWithTheme(summaryText),
-                        fontSize = 13.sp,
+                        fontSize = 13.sp * fontSizePercent / 100,
+                        lineHeight = 13.sp * fontSizePercent / 100 * lineHeightPercent / 100,
                         maxLines = 3,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.padding(top = if (item.isFiltered) 0.dp else 3.dp),
@@ -448,8 +482,10 @@ private fun MiuixFeedCardMenuBox(
     showMenu: Boolean,
     onShowMenuChange: (Boolean) -> Unit,
     onBlockUser: ((FeedDisplayItem) -> Unit)?,
+    onBlockQuestionAuthor: ((FeedDisplayItem) -> Unit)?,
     onBlockByKeywords: ((FeedDisplayItem) -> Unit)?,
     onBlockTopic: ((topicId: String, topicName: String) -> Unit)?,
+    extraMenuItems: List<Pair<String, () -> Unit>>,
     navigator: Navigator,
 ) {
     // 菜单项 (标题, 动作)，与 M3 FeedCardMenuBox 完全对齐
@@ -469,7 +505,16 @@ private fun MiuixFeedCardMenuBox(
             add("按关键词屏蔽" to { onBlockByKeywords(item) })
         }
         add("屏蔽用户" to { onBlockUser?.invoke(item) })
+        // 只有回答/问题才有"提问者"这个角色（对齐 M3 HomeScreen 菜单）。
+        val canBlockQuestionAuthor = when (item.feed?.target) {
+            is Feed.AnswerTarget, is Feed.QuestionTarget -> true
+            else -> item.raw is DataHolder.Answer || item.raw is DataHolder.Question
+        }
+        if (onBlockQuestionAuthor != null && canBlockQuestionAuthor) {
+            add("屏蔽提问者" to { onBlockQuestionAuthor(item) })
+        }
         topics.forEach { topic -> add("屏蔽「${topic.name}」" to { onBlockTopic!!(topic.id, topic.name) }) }
+        addAll(extraMenuItems)
         add("外观设置" to { navigator.onNavigate(Account.AppearanceSettings()) })
         if (item.isFiltered) {
             add(

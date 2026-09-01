@@ -57,6 +57,7 @@ import com.github.zly2006.zhihu.platform.UserMessageDuration
 import com.github.zly2006.zhihu.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.reading.RegisterReadingQueueSource
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
@@ -283,6 +284,13 @@ fun MiuixFollowRecommendScreen(
     contentTopPadding: Dp = 0.dp,
 ) {
     val viewModel: FollowRecommendViewModel = viewModel { FollowRecommendViewModel() }
+    val readingQueueSourceId = "follow:recommend"
+    if (isActive) {
+        RegisterReadingQueueSource(
+            sourceId = readingQueueSourceId,
+            items = viewModel.displayItems,
+        )
+    }
     val environment = rememberPaginationEnvironment(allowGuestAccess = viewModel.allowGuestAccess)
     val settings = rememberSettingsStore()
     val userMessages = rememberUserMessageSink()
@@ -345,6 +353,7 @@ fun MiuixFollowRecommendScreen(
                     MiuixFeedCard(
                         item = item,
                         modifier = Modifier.testTag("follow_recommend_item_${item.stableKey}"),
+                        readingQueueSourceId = readingQueueSourceId,
                         onBlockUser = { feedItem ->
                             viewModel.handleBlockUser(environment, userMessages, feedItem) { authorInfo ->
                                 feedAuthorBlockRequest = FeedAuthorBlockRequest(
@@ -397,6 +406,13 @@ fun MiuixFollowDynamicScreen(
     contentTopPadding: Dp = 0.dp,
 ) {
     val viewModel: FollowViewModel = viewModel { FollowViewModel() }
+    val readingQueueSourceId = "follow:dynamic"
+    if (isActive) {
+        RegisterReadingQueueSource(
+            sourceId = readingQueueSourceId,
+            items = viewModel.displayItems,
+        )
+    }
     val environment = rememberPaginationEnvironment(allowGuestAccess = viewModel.allowGuestAccess)
     val settings = rememberSettingsStore()
     val userMessages = rememberUserMessageSink()
@@ -459,6 +475,7 @@ fun MiuixFollowDynamicScreen(
                     MiuixFeedCard(
                         item = item,
                         modifier = Modifier.testTag("follow_dynamic_item_${item.stableKey}"),
+                        readingQueueSourceId = readingQueueSourceId,
                         showSourceLabel = true,
                         onLike = { userMessages.showShortMessage("收到喜欢，功能正在优化") },
                         onDislike = { userMessages.showShortMessage("收到反馈，功能正在优化") },

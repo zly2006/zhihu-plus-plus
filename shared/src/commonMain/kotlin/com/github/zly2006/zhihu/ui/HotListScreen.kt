@@ -147,11 +147,17 @@ fun HotListScreen(
                             .scrollEndHaptic()
                             .then(if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier)
                             .testTag(HOT_LIST_LIST_TAG),
-                        contentPadding = PaddingValues(top = contentTopPadding + 6.dp),
+                        // 底部走 contentPadding 而非 Modifier.padding：miuix 底栏是 layerBackdrop 磨砂层，
+                        // 内容必须能滚到它下面，只靠内边距把最后一条顶出遮挡范围。
+                        contentPadding = PaddingValues(
+                            top = contentTopPadding + 6.dp,
+                            bottom = innerPadding.calculateBottomPadding(),
+                        ),
                         isEnd = { viewModel.isEnd },
                     ) { item ->
                         com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard(
                             item = item,
+                            readingQueueSourceId = readingQueueSourceId.takeIf { isActive },
                             thumbnailUrl = (item.feed as? HotListFeed)?.children?.firstOrNull()?.thumbnail,
                             // 热榜标题即正文，放宽到 4 行；同时抬高 maxHeight 给多行标题留空间，避免卡片裁掉底部。
                             titleMaxLines = 4,

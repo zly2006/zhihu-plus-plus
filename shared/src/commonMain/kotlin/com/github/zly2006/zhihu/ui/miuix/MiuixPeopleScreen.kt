@@ -39,6 +39,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -48,24 +49,30 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.FeedDisplayItem
-import com.github.zly2006.zhihu.data.navDestination
 import com.github.zly2006.zhihu.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionContent
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Person
+import com.github.zly2006.zhihu.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.platform.rememberZhihuWebUrlOpener
+import com.github.zly2006.zhihu.reading.RegisterReadingQueueSource
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.FollowedQuestion
 import com.github.zly2006.zhihu.ui.FollowedTopic
+import com.github.zly2006.zhihu.ui.OfficialBadgeDetails
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_SUBSCRIPTION_TITLES
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_TITLES
+import com.github.zly2006.zhihu.ui.PeopleAnswersViewModel
+import com.github.zly2006.zhihu.ui.PeopleArticlesViewModel
 import com.github.zly2006.zhihu.ui.PersonViewModel
+import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import com.github.zly2006.zhihu.ui.peopleScreenInitialPage
@@ -75,6 +82,7 @@ import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -104,6 +112,8 @@ fun MiuixPeopleScreen(
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
     val viewModel = viewModel { PersonViewModel(person) }
     val coroutineScope = rememberCoroutineScope()
+    val userMessages = rememberUserMessageSink()
+    val openExternalUrl = rememberExternalUrlOpener()
     val settings = rememberSettingsStore()
     val blurEnabled = rememberSettingBoolean("blurEnabled", true, settings)
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
@@ -167,6 +177,14 @@ fun MiuixPeopleScreen(
                 viewModel.subFeedModels.getOrNull(page)
             }
             if (subModel != null) {
+                // 朗读队列来源：只注册当前页，避免 pager 预组合的相邻页把队列顶掉（对齐 M3 PeopleScreen）。
+                val readingQueueSourceId = when (page) {
+                    0 -> "people:${person.userTokenOrId}:answers:${viewModel.answersFeedModel.sortBy}"
+                    1 -> "people:${person.userTokenOrId}:articles:${viewModel.articlesFeedModel.sortBy}"
+                    2 -> "people:${person.userTokenOrId}:activities"
+                    5 -> "people:${person.userTokenOrId}:pins"
+                    else -> null
+                }
                 LaunchedEffect(page, subModel) {
                     if (page == 2) {
                         val vm = subModel as BaseFeedViewModel
@@ -179,6 +197,12 @@ fun MiuixPeopleScreen(
                     (subModel as BaseFeedViewModel).displayItems.takeIf { it.isNotEmpty() } ?: emptyList()
                 } else {
                     subModel.allData
+                }
+                if (readingQueueSourceId != null && pagerState.currentPage == page) {
+                    RegisterReadingQueueSource(
+                        sourceId = readingQueueSourceId,
+                        items = items.map(::coerceToFeedItem),
+                    )
                 }
                 Box(
                     modifier = if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier,
@@ -203,9 +227,52 @@ fun MiuixPeopleScreen(
                                         AsyncImage(model = viewModel.avatar, contentDescription = null, modifier = Modifier.size(48.dp).clip(CircleShape))
                                         Spacer(Modifier.width(12.dp))
                                         Column(modifier = Modifier.weight(1f)) {
-                                            Text(viewModel.name, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Text(
+                                                    viewModel.name,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 18.sp,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis,
+                                                    modifier = Modifier.weight(1f, fill = false),
+                                                )
+                                                viewModel.officialBadge?.let { badge ->
+                                                    AuthorBadge(badge, modifier = Modifier.padding(start = 6.dp))
+                                                }
+                                            }
                                             if (viewModel.headline.isNotEmpty()) {
                                                 Text(viewModel.headline, fontSize = 14.sp, color = MiuixTheme.colorScheme.onSurfaceSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                            }
+                                            OfficialBadgeDetails(
+                                                badges = viewModel.officialBadgeDetails,
+                                                modifier = Modifier.padding(top = 6.dp),
+                                            )
+                                            viewModel.githubSocial?.let { githubSocial ->
+                                                Row(
+                                                    modifier = Modifier
+                                                        .padding(top = 4.dp)
+                                                        .clickable { openExternalUrl(githubSocial.profileUrl) },
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                                ) {
+                                                    githubSocial.iconUrl?.let { iconUrl ->
+                                                        AsyncImage(model = iconUrl, contentDescription = null, modifier = Modifier.size(16.dp))
+                                                    }
+                                                    Text(
+                                                        githubSocial.title,
+                                                        fontSize = 12.sp,
+                                                        color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis,
+                                                        modifier = Modifier.weight(1f, fill = false),
+                                                    )
+                                                    Text(
+                                                        "· ${githubSocial.starCount} stars",
+                                                        fontSize = 12.sp,
+                                                        color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                                                        maxLines = 1,
+                                                    )
+                                                }
                                             }
                                         }
                                     }
@@ -241,31 +308,98 @@ fun MiuixPeopleScreen(
                                                 }
                                             }
                                         }
-                                        val followText = if (viewModel.isFollowing) "已关注" else "关注"
-                                        Card(
-                                            modifier = Modifier.weight(1f).clickable {
-                                                coroutineScope.launch {
-                                                    try {
-                                                        viewModel.toggleFollow(paginationEnvironment)
-                                                    } catch (_: Exception) {
-                                                    }
-                                                }
-                                            },
+                                        MiuixPeopleActionCard(
+                                            text = if (viewModel.isFollowing) "已关注" else "关注",
+                                            modifier = Modifier.weight(1f),
                                         ) {
-                                            Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) { Text(followText, fontSize = 14.sp, color = MiuixTheme.colorScheme.primary) }
+                                            coroutineScope.launch {
+                                                try {
+                                                    viewModel.toggleFollow(paginationEnvironment)
+                                                } catch (e: Exception) {
+                                                    userMessages.showShortMessage("操作失败: ${e.message}")
+                                                }
+                                            }
                                         }
-                                        val blockText = if (viewModel.isBlocking) "已屏蔽" else "屏蔽"
-                                        Card(
-                                            modifier = Modifier.weight(1f).clickable {
-                                                coroutineScope.launch {
-                                                    try {
-                                                        viewModel.toggleBlock(paginationEnvironment)
-                                                    } catch (_: Exception) {
-                                                    }
-                                                }
-                                            },
+                                        MiuixPeopleActionCard(
+                                            text = if (viewModel.isBlocking) "已屏蔽" else "屏蔽",
+                                            modifier = Modifier.weight(1f),
+                                            contentColor = MiuixTheme.colorScheme.error,
                                         ) {
-                                            Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) { Text(blockText, fontSize = 14.sp, color = MiuixTheme.colorScheme.error) }
+                                            coroutineScope.launch {
+                                                try {
+                                                    viewModel.toggleBlock(paginationEnvironment)
+                                                } catch (e: Exception) {
+                                                    userMessages.showShortMessage("操作失败: ${e.message}")
+                                                }
+                                            }
+                                        }
+                                    }
+                                    Spacer(Modifier.height(8.dp))
+                                    // 本地过滤开关，与知乎的「拉黑」是两回事：只影响推荐流与提问者过滤（对齐 M3 PeopleScreen）。
+                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        MiuixPeopleActionCard(
+                                            text = if (viewModel.isBlockedInRecommendations) "取消屏蔽推荐" else "屏蔽推荐",
+                                            modifier = Modifier.weight(1f),
+                                        ) {
+                                            coroutineScope.launch {
+                                                try {
+                                                    viewModel.toggleRecommendationBlock(paginationEnvironment)
+                                                    userMessages.showShortMessage(
+                                                        if (viewModel.isBlockedInRecommendations) "已屏蔽推荐" else "已取消屏蔽推荐",
+                                                    )
+                                                } catch (e: Exception) {
+                                                    userMessages.showShortMessage("操作失败: ${e.message}")
+                                                }
+                                            }
+                                        }
+                                        MiuixPeopleActionCard(
+                                            text = if (viewModel.isBlockedAsQuestionAuthor) "取消屏蔽其提问" else "屏蔽其提问",
+                                            modifier = Modifier.weight(1f),
+                                        ) {
+                                            coroutineScope.launch {
+                                                try {
+                                                    viewModel.toggleQuestionAuthorBlock(paginationEnvironment)
+                                                    userMessages.showShortMessage(
+                                                        if (viewModel.isBlockedAsQuestionAuthor) "已屏蔽其提问" else "已取消屏蔽其提问",
+                                                    )
+                                                } catch (e: Exception) {
+                                                    userMessages.showShortMessage("操作失败: ${e.message}")
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // 回答按热度/时间、文章同理；只有这两个 tab 支持排序（对齐 M3 PeopleScreen 的 SortBar）。
+                        val sortModel = when (page) {
+                            0 -> viewModel.answersFeedModel
+                            1 -> viewModel.articlesFeedModel
+                            else -> null
+                        }
+                        if (sortModel != null) {
+                            item(key = "sortBar") {
+                                val currentSort = when (sortModel) {
+                                    is PeopleAnswersViewModel -> sortModel.sortBy
+                                    is PeopleArticlesViewModel -> sortModel.sortBy
+                                    else -> ""
+                                }
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(bottom = 8.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    listOf("voteups" to "按热度", "created" to "按时间").forEach { (key, label) ->
+                                        MiuixPeopleActionCard(
+                                            text = label,
+                                            modifier = Modifier.weight(1f),
+                                            selected = currentSort == key,
+                                        ) {
+                                            when (sortModel) {
+                                                is PeopleAnswersViewModel -> sortModel.changeSortBy(key, paginationEnvironment)
+                                                is PeopleArticlesViewModel -> sortModel.changeSortBy(key, paginationEnvironment)
+                                                else -> Unit
+                                            }
                                         }
                                     }
                                 }
@@ -303,10 +437,7 @@ fun MiuixPeopleScreen(
                                     is FollowedTopic -> MiuixTopicRow(item)
                                     else -> {
                                         val feedItem = coerceToFeedItem(item)
-                                        MiuixFeedCard(
-                                            item = feedItem,
-                                            onClick = { feedItem.navDestination?.let { navigator.onNavigate(it) } },
-                                        )
+                                        MiuixFeedCard(item = feedItem, readingQueueSourceId = readingQueueSourceId)
                                     }
                                 }
                             }
@@ -483,6 +614,35 @@ private fun MiuixTopicRow(topic: FollowedTopic) {
             )
             Spacer(Modifier.width(12.dp))
             Text(topic.displayName, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        }
+    }
+}
+
+/** 个人页上成排的 miuix 操作按钮：统一用 Card + 居中文字，[selected] 时用主色底表示当前选中的排序。 */
+@Composable
+private fun MiuixPeopleActionCard(
+    text: String,
+    modifier: Modifier = Modifier,
+    selected: Boolean = false,
+    contentColor: Color? = null,
+    onClick: () -> Unit,
+) {
+    Card(
+        modifier = modifier.clickable(onClick = onClick),
+        colors = CardDefaults.defaultColors(
+            color = if (selected) MiuixTheme.colorScheme.primaryVariant else MiuixTheme.colorScheme.surface,
+        ),
+    ) {
+        Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
+            Text(
+                text,
+                fontSize = 14.sp,
+                color = when {
+                    selected -> MiuixTheme.colorScheme.onPrimaryVariant
+                    contentColor != null -> contentColor
+                    else -> MiuixTheme.colorScheme.primary
+                },
+            )
         }
     }
 }

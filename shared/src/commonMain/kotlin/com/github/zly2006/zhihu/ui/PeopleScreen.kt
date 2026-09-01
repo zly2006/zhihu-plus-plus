@@ -1489,7 +1489,7 @@ private fun StatItem(label: String, value: Int, onClick: () -> Unit = {}, tag: S
 }
 
 @Composable
-private fun OfficialBadgeDetails(
+internal fun OfficialBadgeDetails(
     badges: List<OfficialBadge>,
     modifier: Modifier = Modifier,
 ) {

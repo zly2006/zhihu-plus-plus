@@ -38,6 +38,7 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -66,7 +67,9 @@ import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
+import com.github.zly2006.zhihu.ui.TopLevelReselectAction
 import com.github.zly2006.zhihu.ui.components.AutoHideTopBar
+import com.github.zly2006.zhihu.ui.topLevelReselectAction
 import com.github.zly2006.zhihu.util.formatDailyDate
 import com.github.zly2006.zhihu.viewmodel.DailyViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
@@ -97,7 +100,10 @@ import kotlin.time.ExperimentalTime
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalTime::class)
 @Composable
-fun MiuixDailyScreen() {
+fun MiuixDailyScreen(
+    scrollToTopTrigger: Int = 0,
+    isActive: Boolean = true,
+) {
     val navigator = LocalNavigator.current
     val httpClient = rememberPaginationEnvironment(allowGuestAccess = false).httpClient()
     val uriHandler = LocalUriHandler.current
@@ -126,6 +132,27 @@ fun MiuixDailyScreen() {
         if (viewModel.sections.isEmpty()) {
             viewModel.loadLatest(httpClient)
         }
+    }
+
+    var cachedScrollToTopTrigger by remember { mutableIntStateOf(scrollToTopTrigger) }
+    LaunchedEffect(scrollToTopTrigger, isActive) {
+        val action = topLevelReselectAction(
+            triggerDelta = scrollToTopTrigger - cachedScrollToTopTrigger,
+            isAtTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0,
+        )
+        if (isActive) {
+            when (action) {
+                TopLevelReselectAction.Refresh -> {
+                    isRefreshing = true
+                    viewModel.loadLatest(httpClient)
+                    listState.scrollToItem(0)
+                    isRefreshing = false
+                }
+                TopLevelReselectAction.ScrollToTop -> listState.animateScrollToItem(0)
+                null -> {}
+            }
+        }
+        cachedScrollToTopTrigger = scrollToTopTrigger
     }
 
     if (showDatePicker) {

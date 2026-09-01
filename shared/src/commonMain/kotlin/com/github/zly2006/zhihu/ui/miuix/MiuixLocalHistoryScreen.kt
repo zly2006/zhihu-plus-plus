@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.reading.RegisterReadingQueueSource
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
@@ -47,6 +48,11 @@ fun MiuixLocalHistoryScreen(
     innerPadding: PaddingValues,
 ) {
     val viewModel: HistoryViewModel = viewModel()
+    val readingQueueSourceId = "history:local"
+    RegisterReadingQueueSource(
+        sourceId = readingQueueSourceId,
+        items = viewModel.displayItems,
+    )
     val environment = rememberPaginationEnvironment(allowGuestAccess = viewModel.allowGuestAccess)
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
@@ -96,6 +102,7 @@ fun MiuixLocalHistoryScreen(
                     items(viewModel.displayItems.size, key = { viewModel.displayItems[it].stableKey }) { index ->
                         MiuixFeedCard(
                             item = viewModel.displayItems[index],
+                            readingQueueSourceId = readingQueueSourceId,
                         )
                     }
                 }

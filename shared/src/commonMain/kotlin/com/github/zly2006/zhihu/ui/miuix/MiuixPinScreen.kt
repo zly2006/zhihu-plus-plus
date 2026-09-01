@@ -368,11 +368,12 @@ private fun MiuixPinContent(
                         modifier = Modifier.clickable(onClick = onSocialCreditClick),
                     )
                 }
-                Spacer(Modifier.height(12.dp))
-
-                // 正文
-                PinHtmlContent(pin.contentHtml)
             }
+        }
+
+        // 正文平铺，不再包卡片（与回答页一致：只有作者/话题这类元信息留卡片）
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 12.dp)) {
+            PinHtmlContent(pin.contentHtml)
         }
 
         // 关联内容卡片

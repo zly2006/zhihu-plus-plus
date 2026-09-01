@@ -41,6 +41,7 @@ import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.material.icons.automirrored.outlined.Comment
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.runtime.Composable
@@ -84,6 +85,7 @@ import com.github.zly2006.zhihu.ui.commentSelectionWorkaround
 import com.github.zly2006.zhihu.ui.commentThreadKey
 import com.github.zly2006.zhihu.ui.dfsSimple
 import com.github.zly2006.zhihu.ui.formatCommentTime
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixConfirmDialog
 import com.github.zly2006.zhihu.ui.miuix.components.miuixSheetBottomInsets
 import com.github.zly2006.zhihu.ui.rememberCommentEmojiInlineContent
 import com.github.zly2006.zhihu.viewmodel.CommentItem
@@ -123,6 +125,9 @@ fun MiuixCommentScreen(
     var commentInput by remember { mutableStateOf("") }
     var isSending by remember { mutableStateOf(false) }
     var replyToComment by remember { mutableStateOf<CommentItem?>(null) }
+    var commentPendingDeletion by remember { mutableStateOf<CommentItem?>(null) }
+    var isDeletingComment by remember { mutableStateOf(false) }
+    var deleteCommentError by remember { mutableStateOf<String?>(null) }
     val resolvedContent = content()
     val viewModelKey = resolvedContent.commentThreadKey()
 
@@ -174,7 +179,7 @@ fun MiuixCommentScreen(
     val sheetHeight = with(LocalDensity.current) { (windowInfo.containerSize.height * 0.82f).toDp() }
 
     @Composable
-    fun CommentBlock(commentItem: CommentItem, modifier: Modifier = Modifier) {
+    fun CommentBlock(commentItem: CommentItem, modifier: Modifier = Modifier, allowDelete: Boolean = true) {
         var isLiked by remember { mutableStateOf(commentItem.item.liked) }
         var likeCount by remember { mutableIntStateOf(commentItem.item.likeCount) }
 
@@ -190,6 +195,11 @@ fun MiuixCommentScreen(
                         commentItem.item.liked = isLiked
                         commentItem.item.likeCount = likeCount
                     }
+                },
+                onDelete = if (allowDelete && commentItem.item.canDelete) {
+                    { commentPendingDeletion = commentItem }
+                } else {
+                    null
                 },
                 onChildCommentClick = onChildCommentClick,
             )
@@ -215,6 +225,11 @@ fun MiuixCommentScreen(
                                     childCommentItem.item.liked = liked
                                     childCommentItem.item.likeCount = childLikeCount
                                 }
+                            },
+                            onDelete = if (childComment.canDelete) {
+                                { commentPendingDeletion = childCommentItem }
+                            } else {
+                                null
                             },
                             onChildCommentClick = onChildCommentClick,
                         )
@@ -260,7 +275,7 @@ fun MiuixCommentScreen(
                     if (activeCommentItem != null) {
                         item(key = "active_${activeCommentItem.item.id}") {
                             Column {
-                                CommentBlock(activeCommentItem)
+                                CommentBlock(activeCommentItem, allowDelete = false)
                                 HorizontalDivider(Modifier.padding(top = 12.dp))
                                 if (viewModel.allData.isEmpty()) {
                                     Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
@@ -389,6 +404,37 @@ fun MiuixCommentScreen(
             }
         }
     }
+
+    commentPendingDeletion?.let { target ->
+        MiuixConfirmDialog(
+            show = true,
+            title = "删除评论",
+            summary = deleteCommentError ?: "删除后无法恢复，确认删除这条评论吗？",
+            confirmText = if (isDeletingComment) "删除中…" else "删除",
+            onConfirm = {
+                isDeletingComment = true
+                deleteCommentError = null
+                viewModel.deleteComment(
+                    commentData = target.item,
+                    environment = environment,
+                    onSuccess = {
+                        isDeletingComment = false
+                        commentPendingDeletion = null
+                    },
+                    onFailure = { message ->
+                        isDeletingComment = false
+                        deleteCommentError = message
+                    },
+                )
+            },
+            onDismiss = {
+                if (!isDeletingComment) {
+                    commentPendingDeletion = null
+                    deleteCommentError = null
+                }
+            },
+        )
+    }
 }
 
 @Composable
@@ -412,6 +458,7 @@ private fun MiuixCommentRow(
     isLiked: Boolean = false,
     likeCount: Int = 0,
     toggleLike: () -> Unit = {},
+    onDelete: (() -> Unit)? = null,
     onChildCommentClick: (CommentItem) -> Unit,
 ) {
     val navigator = LocalNavigator.current
@@ -511,6 +558,19 @@ private fun MiuixCommentRow(
 
             Spacer(Modifier.weight(1f))
 
+            if (onDelete != null) {
+                Icon(
+                    Icons.Default.Delete,
+                    "删除",
+                    modifier = Modifier
+                        .testTag(commentDeleteButtonTag(commentData.id))
+                        .size(16.dp)
+                        .clickable { onDelete() },
+                    tint = secondary,
+                )
+                Spacer(Modifier.width(16.dp))
+            }
+
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.testTag(commentReplyButtonTag(commentData.id)).clickable { onChildCommentClick(comment) },
@@ -557,6 +617,8 @@ private fun commentAuthorTag(commentId: String) = "comment_author_$commentId"
 private fun commentReplyToAuthorTag(commentId: String) = "comment_reply_to_author_$commentId"
 
 private fun commentReplyButtonTag(commentId: String) = "comment_reply_button_$commentId"
+
+private fun commentDeleteButtonTag(commentId: String) = "comment_delete_button_$commentId"
 
 private fun commentReplyCountTag(commentId: String) = "comment_reply_count_$commentId"
 

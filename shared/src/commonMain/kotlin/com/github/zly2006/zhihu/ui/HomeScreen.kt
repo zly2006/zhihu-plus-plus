@@ -194,7 +194,7 @@ const val HOME_FEED_LIST_TAG = "home_feed_list"
 const val HOME_REFRESH_BUTTON_TAG = "home_refresh_button"
 const val HOME_AUTHOR_POLL_ANNOUNCEMENT_TAG = "home_author_poll_announcement"
 const val HOME_ONLINE_NOTIFICATION_TAG = "home_online_notification"
-private const val MAX_HOME_PIN_ANNOUNCEMENTS = 3
+internal const val MAX_HOME_PIN_ANNOUNCEMENTS = 3
 
 fun homeAuthorPollAnnouncementTag(pinId: Long): String = "$HOME_AUTHOR_POLL_ANNOUNCEMENT_TAG:$pinId"
 

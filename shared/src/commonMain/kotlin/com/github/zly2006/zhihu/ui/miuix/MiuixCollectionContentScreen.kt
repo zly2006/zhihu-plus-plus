@@ -38,7 +38,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastJoinToString
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.github.zly2006.zhihu.data.navDestination
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionAnswerNavigator
@@ -46,6 +45,7 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.platform.PlatformBackHandler
 import com.github.zly2006.zhihu.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.reading.RegisterReadingQueueSource
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
@@ -95,6 +95,11 @@ fun MiuixCollectionContentScreen(
         screenViewModel.exportAllToHtmlZip(environment = collectionEnvironment, includeImages = includeImages)
     }
     val sharedData = sharedArticleAnswerSwitchState
+    val readingQueueSourceId = "collection:$collectionId:contents"
+    RegisterReadingQueueSource(
+        sourceId = readingQueueSourceId,
+        items = screenViewModel.displayItems,
+    )
     val settings = rememberSettingsStore()
     val blurEnabled = rememberSettingBoolean("blurEnabled", true, settings)
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
@@ -265,8 +270,10 @@ fun MiuixCollectionContentScreen(
                     }
                 },
             ) { item ->
-                MiuixFeedCard(item = item) {
-                    val dest = navDestination
+                MiuixFeedCard(
+                    item = item,
+                    readingQueueSourceId = readingQueueSourceId,
+                ) { _, dest ->
                     if (dest is Article && dest.type == ArticleType.Answer && sharedData != null) {
                         val idx = screenViewModel.displayItems.indexOf(item)
                         val nextItems = if (idx >= 0) screenViewModel.allData.drop(idx + 1) else emptyList()

@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -39,16 +40,20 @@ import com.github.zly2006.zhihu.platform.PlatformBackHandler
 import com.github.zly2006.zhihu.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.reading.RegisterReadingQueueSource
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
+import com.github.zly2006.zhihu.ui.TopLevelReselectAction
 import com.github.zly2006.zhihu.ui.components.AutoHideTopBar
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixConfirmDialog
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixListLoadingIndicator
+import com.github.zly2006.zhihu.ui.topLevelReselectAction
 import com.github.zly2006.zhihu.viewmodel.feed.OnlineHistoryViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -67,9 +72,20 @@ import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 import top.yukonga.miuix.kmp.window.WindowListPopup
 
 @Composable
-fun MiuixOnlineHistoryScreen(showBackButton: Boolean = false) {
+fun MiuixOnlineHistoryScreen(
+    showBackButton: Boolean = false,
+    scrollToTopTrigger: Int = 0,
+    isActive: Boolean = true,
+) {
     val navigator = LocalNavigator.current
     val viewModel: OnlineHistoryViewModel = viewModel()
+    val readingQueueSourceId = "history:online"
+    if (isActive) {
+        RegisterReadingQueueSource(
+            sourceId = readingQueueSourceId,
+            items = viewModel.displayItems,
+        )
+    }
     val environment = rememberPaginationEnvironment(allowGuestAccess = false)
     val userMessages = rememberUserMessageSink()
     val coroutineScope = rememberCoroutineScope()
@@ -80,10 +96,27 @@ fun MiuixOnlineHistoryScreen(showBackButton: Boolean = false) {
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
 
+    var cachedScrollToTopTrigger by remember { mutableIntStateOf(scrollToTopTrigger) }
+
     LaunchedEffect(Unit) {
         if (viewModel.displayItems.isEmpty()) {
             viewModel.refresh(environment)
         }
+    }
+
+    LaunchedEffect(scrollToTopTrigger, isActive) {
+        val action = topLevelReselectAction(
+            triggerDelta = scrollToTopTrigger - cachedScrollToTopTrigger,
+            isAtTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0,
+        )
+        if (isActive) {
+            when (action) {
+                TopLevelReselectAction.Refresh -> viewModel.refresh(environment)
+                TopLevelReselectAction.ScrollToTop -> listState.animateScrollToItem(0)
+                null -> {}
+            }
+        }
+        cachedScrollToTopTrigger = scrollToTopTrigger
     }
 
     PlatformBackHandler(enabled = showClearHistoryDialog) {
@@ -209,8 +242,25 @@ fun MiuixOnlineHistoryScreen(showBackButton: Boolean = false) {
                     ),
                 ) {
                     items(viewModel.displayItems.size, key = { viewModel.displayItems[it].stableKey }) { index ->
+                        val item = viewModel.displayItems[index]
                         MiuixFeedCard(
-                            item = viewModel.displayItems[index],
+                            item = item,
+                            readingQueueSourceId = readingQueueSourceId.takeIf { isActive },
+                            extraMenuItems = listOf(
+                                "删除该条历史记录" to {
+                                    coroutineScope.launch {
+                                        try {
+                                            viewModel.deleteItem(environment, item)
+                                            userMessages.showShortMessage("已删除")
+                                        } catch (error: CancellationException) {
+                                            throw error
+                                        } catch (_: Exception) {
+                                            userMessages.showShortMessage("操作失败")
+                                        }
+                                    }
+                                    Unit
+                                },
+                            ),
                         )
                     }
                 }

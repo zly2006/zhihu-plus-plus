@@ -25,6 +25,8 @@ import top.yukonga.miuix.kmp.basic.TopAppBar
 @Composable
 fun MiuixHotListScreen(
     innerPadding: PaddingValues = PaddingValues(0.dp),
+    scrollToTopTrigger: Int = 0,
+    isActive: Boolean = true,
 ) {
     val settings = rememberSettingsStore()
     val blurEnabled = rememberSettingBoolean("blurEnabled", true, settings)
@@ -44,7 +46,9 @@ fun MiuixHotListScreen(
         },
     ) { padding ->
         HotListScreen(
-            innerPadding = PaddingValues(0.dp),
+            innerPadding = innerPadding,
+            scrollToTopTrigger = scrollToTopTrigger,
+            isActive = isActive,
             backdrop = backdrop,
             scrollBehavior = scrollBehavior,
             contentTopPadding = padding.calculateTopPadding(),

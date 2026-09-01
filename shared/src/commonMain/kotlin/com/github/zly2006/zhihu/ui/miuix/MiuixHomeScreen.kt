@@ -45,6 +45,7 @@ import androidx.compose.material.icons.filled.ArrowCircleUp
 import androidx.compose.material.icons.filled.CopyAll
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.MarkUnreadChatAlt
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
@@ -83,7 +84,6 @@ import com.github.zly2006.zhihu.data.RecommendationMode
 import com.github.zly2006.zhihu.data.ZHIHU_ME_URL
 import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.data.ZhihuMeNotifications
-import com.github.zly2006.zhihu.data.navDestination
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
@@ -109,6 +109,7 @@ import com.github.zly2006.zhihu.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.platform.rememberSettingString
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.reading.RegisterReadingQueueSource
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
@@ -119,8 +120,12 @@ import com.github.zly2006.zhihu.ui.HOME_REFRESH_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.HOME_WRITE_ANSWER_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.HOME_WRITE_PIN_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.HOME_WRITE_QUESTION_BUTTON_TAG
+import com.github.zly2006.zhihu.ui.HomePinAnnouncement
+import com.github.zly2006.zhihu.ui.HomePinAnnouncementKind
 import com.github.zly2006.zhihu.ui.LocalReadingPlayerOverlayPadding
+import com.github.zly2006.zhihu.ui.MAX_HOME_PIN_ANNOUNCEMENTS
 import com.github.zly2006.zhihu.ui.SEARCH_HISTORY_MAX_SIZE
+import com.github.zly2006.zhihu.ui.ZHIHU_PLUS_AUTHOR_PINS_URL
 import com.github.zly2006.zhihu.ui.components.AnnouncementCard
 import com.github.zly2006.zhihu.ui.components.AnnouncementCardDefaults
 import com.github.zly2006.zhihu.ui.components.AutoHideTopBar
@@ -130,9 +135,12 @@ import com.github.zly2006.zhihu.ui.components.FeedAuthorBlockRequest
 import com.github.zly2006.zhihu.ui.components.FeedAuthorBlockType
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.decodeHomeFeedStartupSnapshot
+import com.github.zly2006.zhihu.ui.decodeHomePinAnnouncements
 import com.github.zly2006.zhihu.ui.encodeHomeFeedStartupSnapshot
+import com.github.zly2006.zhihu.ui.homeAuthorPollAnnouncementTag
 import com.github.zly2006.zhihu.ui.homeFeedStartupCacheFileName
 import com.github.zly2006.zhihu.ui.homeOnlineNotificationTag
+import com.github.zly2006.zhihu.ui.homePinAnnouncementReadKey
 import com.github.zly2006.zhihu.ui.loadSearchHistory
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixAccountSheet
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixConfirmDialog
@@ -261,6 +269,11 @@ fun MiuixHomeScreen(
         RecommendationMode.MIXED -> viewModel { MixedHomeFeedViewModel() }
     }
     val localHomeViewModel = viewModel as? LocalHomeFeedViewModel
+    val readingQueueSourceId = "home:${currentRecommendationMode.name}"
+    RegisterReadingQueueSource(
+        sourceId = readingQueueSourceId,
+        items = viewModel.displayItems,
+    )
 
     val listState = rememberLazyListState()
     // 跨导航完整保留搜索浮层状态（展开/折叠、查询词、假框位置 offsetY）：点搜索结果进入文章/回答详情后，
@@ -278,6 +291,7 @@ fun MiuixHomeScreen(
     val versionName = rememberAppVersionInfo().substringBefore(' ').takeIf { it.firstOrNull()?.isDigit() == true }
     val onlineNotificationRepository = remember(settings) { OnlineHomeNotificationRepository(settings) }
     var onlineNotifications by remember { mutableStateOf(emptyList<OnlineHomeNotification>()) }
+    var authorPinAnnouncements by remember { mutableStateOf(emptyList<HomePinAnnouncement>()) }
 
     // 加载失败时把错误抛给用户，否则只能看到一个不解释原因的空列表（对标 M3 HomeScreen）。
     LaunchedEffect(viewModel.errorMessage) {
@@ -342,6 +356,27 @@ fun MiuixHomeScreen(
             } else if (viewModel.displayItems.isEmpty()) {
                 // 只在第一次加载时刷新，这样可以避免在返回时刷新
                 viewModel.refresh(paginationEnvironment)
+            }
+        }
+    }
+
+    // 作者动态/投票公告（对齐 M3 HomeScreen）：已确认过的按 pinId 过滤掉，最多展示 MAX_HOME_PIN_ANNOUNCEMENTS 条。
+    LaunchedEffect(lifecycleOwner, scrollToTopTrigger) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            val loadedAnnouncements = try {
+                paginationEnvironment
+                    .fetchJson(ZHIHU_PLUS_AUTHOR_PINS_URL, "")
+                    ?.let(::decodeHomePinAnnouncements)
+                    ?.filterNot { settings.getBoolean(homePinAnnouncementReadKey(it.pinId), false) }
+                    ?.take(MAX_HOME_PIN_ANNOUNCEMENTS)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e("MiuixHomeScreen", "Failed to load home pin announcements", e)
+                null
+            }
+            if (loadedAnnouncements != null) {
+                authorPinAnnouncements = loadedAnnouncements
             }
         }
     }
@@ -681,6 +716,54 @@ fun MiuixHomeScreen(
                                         )
                                     }
                                 }
+                                authorPinAnnouncements.forEach { announcement ->
+                                    val markAnnouncementRead = {
+                                        settings.putBoolean(homePinAnnouncementReadKey(announcement.pinId), true)
+                                        authorPinAnnouncements = authorPinAnnouncements.filterNot {
+                                            it.pinId == announcement.pinId
+                                        }
+                                    }
+                                    item(announcement.pinId) {
+                                        AnnouncementCard(
+                                            modifier = Modifier.testTag(homeAuthorPollAnnouncementTag(announcement.pinId)),
+                                            visible = true,
+                                            title = if (announcement.kind == HomePinAnnouncementKind.Poll) {
+                                                "请给未来的知乎++提出建议"
+                                            } else {
+                                                "知乎++新动态"
+                                            },
+                                            leadingIcon = {
+                                                androidx.compose.material3.Icon(Icons.Default.Flag, contentDescription = null)
+                                            },
+                                            content = buildString {
+                                                append(announcement.title)
+                                                val details = buildList {
+                                                    if (announcement.optionCount > 0) {
+                                                        add("${announcement.optionCount} 个选项")
+                                                    }
+                                                    if (announcement.memberCount > 0) {
+                                                        add("${announcement.memberCount} 人已参与")
+                                                    }
+                                                }
+                                                if (details.isNotEmpty()) {
+                                                    append("\n")
+                                                    append(details.joinToString(" · "))
+                                                }
+                                            },
+                                            accept = {
+                                                androidx.compose.material3.Text(
+                                                    if (announcement.kind == HomePinAnnouncementKind.Poll) "去投票" else "查看",
+                                                )
+                                            },
+                                            onAccept = {
+                                                markAnnouncementRead()
+                                                navigator.onNavigate(Pin(announcement.pinId))
+                                            },
+                                            dismiss = { androidx.compose.material3.Text("关闭") },
+                                            onDismiss = markAnnouncementRead,
+                                        )
+                                    }
+                                }
                             },
                         ) { item ->
                             MiuixFeedCard(
@@ -696,6 +779,15 @@ fun MiuixHomeScreen(
                                         )
                                     }
                                 },
+                                onBlockQuestionAuthor = { feedItem ->
+                                    viewModel.handleBlockQuestionAuthor(paginationEnvironment, userMessages, feedItem) { authorInfo ->
+                                        feedAuthorBlockRequest = FeedAuthorBlockRequest(
+                                            type = FeedAuthorBlockType.QUESTION_AUTHOR,
+                                            userId = authorInfo.first,
+                                            userName = authorInfo.second,
+                                        )
+                                    }
+                                },
                                 onBlockByKeywords = { feedItem ->
                                     viewModel.handleBlockByKeywords(paginationEnvironment, userMessages, feedItem) { (_, contentInfo) ->
                                         feedToBlockByKeywords = contentInfo.first to contentInfo.second
@@ -705,16 +797,17 @@ fun MiuixHomeScreen(
                                 onBlockTopic = { topicId, topicName ->
                                     viewModel.handleBlockTopic(userMessages, topicId, topicName)
                                 },
-                                onClick = {
+                                readingQueueSourceId = readingQueueSourceId,
+                                onClick = { clickedItem, destination ->
                                     // 默认跳转逻辑：本地内容回调 + navDestination
-                                    val feed = this.feed
+                                    val feed = clickedItem.feed
                                     if (feed != null) {
-                                        (viewModel as HomeFeedInteractionViewModel)
-                                            .onUiContentClick(paginationEnvironment, feed, this)
+                                        (viewModel as? HomeFeedInteractionViewModel)
+                                            ?.onUiContentClick(paginationEnvironment, feed, clickedItem)
                                     } else {
-                                        localHomeViewModel?.onLocalItemOpened(this)
+                                        localHomeViewModel?.onLocalItemOpened(clickedItem)
                                     }
-                                    this.navDestination?.let { navigator.onNavigate(it) }
+                                    destination?.let(navigator.onNavigate)
                                 },
                             )
                         }
@@ -786,12 +879,7 @@ fun MiuixHomeScreen(
                             }
                         },
                     ) { item ->
-                        MiuixFeedCard(
-                            item = item,
-                            onClick = {
-                                this.navDestination?.let { navigator.onNavigate(it) }
-                            },
-                        )
+                        MiuixFeedCard(item = item)
                     }
                 }
             },

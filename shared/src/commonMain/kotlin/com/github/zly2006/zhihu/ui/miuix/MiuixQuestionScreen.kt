@@ -55,6 +55,7 @@ import com.github.zly2006.zhihu.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.platform.rememberZhihuWebUrlOpener
+import com.github.zly2006.zhihu.reading.RegisterReadingQueueSource
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
@@ -84,6 +85,7 @@ import com.github.zly2006.zhihu.viewmodel.ContentLoadEnvironment
 import com.github.zly2006.zhihu.viewmodel.addReadHistory
 import com.github.zly2006.zhihu.viewmodel.feed.QuestionFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.sharedArticleAnswerSwitchState
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
@@ -135,6 +137,13 @@ fun MiuixQuestionScreen(
     val blurEnabled = rememberSettingBoolean("blurEnabled", true, settings)
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = rememberPreferCollapsedExitUntilCollapsedScrollBehavior()
+
+    val answerSwitchState = sharedArticleAnswerSwitchState
+    val answerReadingQueueSourceId = "question:${question.questionId}:answers:${viewModel.sortOrder}"
+    RegisterReadingQueueSource(
+        sourceId = answerReadingQueueSourceId,
+        items = viewModel.displayItems,
+    )
 
     LaunchedEffect(question.questionId) {
         if (viewModel.displayItems.isEmpty()) launch { viewModel.refresh(paginationEnvironment) }
@@ -210,47 +219,45 @@ fun MiuixQuestionScreen(
                         // 问题详情（可展开/收起）；标题由 TopAppBar 大字标题展示，不在此重复
                         item(1) {
                             if (questionContent.isNotEmpty()) {
-                                Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)) {
-                                    Column(modifier = Modifier.padding(16.dp)) {
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween,
-                                            verticalAlignment = Alignment.CenterVertically,
-                                        ) {
-                                            Text("问题详情", style = MiuixTheme.textStyles.title3)
-                                            TextButton(
-                                                text = if (isQuestionDetailExpanded) "收起详情" else "展开详情",
-                                                onClick = { isQuestionDetailExpanded = !isQuestionDetailExpanded },
-                                                modifier = Modifier.testTag(QUESTION_DETAIL_TOGGLE_TAG),
+                                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Text("问题详情", style = MiuixTheme.textStyles.title3)
+                                        TextButton(
+                                            text = if (isQuestionDetailExpanded) "收起详情" else "展开详情",
+                                            onClick = { isQuestionDetailExpanded = !isQuestionDetailExpanded },
+                                            modifier = Modifier.testTag(QUESTION_DETAIL_TOGGLE_TAG),
+                                        )
+                                    }
+                                    AnimatedVisibility(
+                                        visible = isQuestionDetailExpanded,
+                                        enter = fadeIn() + expandVertically(expandFrom = Alignment.Top),
+                                        exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Top),
+                                    ) {
+                                        Column {
+                                            Spacer(Modifier.height(10.dp))
+                                            QuestionDetailContent(
+                                                questionId = question.questionId,
+                                                html = questionContent,
                                             )
                                         }
-                                        AnimatedVisibility(
-                                            visible = isQuestionDetailExpanded,
-                                            enter = fadeIn() + expandVertically(expandFrom = Alignment.Top),
-                                            exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Top),
-                                        ) {
-                                            Column {
-                                                Spacer(Modifier.height(10.dp))
-                                                QuestionDetailContent(
-                                                    questionId = question.questionId,
-                                                    html = questionContent,
-                                                )
-                                            }
-                                        }
-                                        AnimatedVisibility(
-                                            visible = !isQuestionDetailExpanded && questionContentPreview.isNotEmpty(),
-                                            enter = fadeIn() + expandVertically(expandFrom = Alignment.Top),
-                                            exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Top),
-                                        ) {
-                                            Text(
-                                                text = questionContentPreview,
-                                                modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
-                                                style = MiuixTheme.textStyles.body2,
-                                                color = MiuixTheme.colorScheme.onSurfaceSecondary,
-                                                maxLines = 3,
-                                                overflow = TextOverflow.Ellipsis,
-                                            )
-                                        }
+                                    }
+                                    AnimatedVisibility(
+                                        visible = !isQuestionDetailExpanded && questionContentPreview.isNotEmpty(),
+                                        enter = fadeIn() + expandVertically(expandFrom = Alignment.Top),
+                                        exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Top),
+                                    ) {
+                                        Text(
+                                            text = questionContentPreview,
+                                            modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+                                            style = MiuixTheme.textStyles.body2,
+                                            color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                                            maxLines = 3,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
                                     }
                                 }
                             }
@@ -348,7 +355,17 @@ fun MiuixQuestionScreen(
                     },
                 ) { item ->
                     // horizontalPadding=12 与问题详情卡片（horizontal=12）对齐；vertical 走外层 modifier
-                    MiuixFeedCard(item = item, modifier = Modifier.padding(vertical = 4.dp), horizontalPadding = 12.dp)
+                    MiuixFeedCard(
+                        item = item,
+                        modifier = Modifier.padding(vertical = 4.dp),
+                        horizontalPadding = 12.dp,
+                        readingQueueSourceId = answerReadingQueueSourceId,
+                    ) { clicked, destination ->
+                        // 装上本问题的回答导航器，正文页才能上下/左右切到同问题的其他回答。
+                        answerSwitchState.pendingNavigator =
+                            viewModel.createAnswerNavigatorFor(clicked, paginationEnvironment)
+                        destination?.let(navigator.onNavigate)
+                    }
                 }
             }
         }
