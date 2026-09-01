@@ -97,6 +97,11 @@ import com.github.zly2006.zhihu.platform.PlatformBackHandler
 import com.github.zly2006.zhihu.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.reading.hasReadableFields
+import com.github.zly2006.zhihu.reading.isReadingPlayerSupported
+import com.github.zly2006.zhihu.reading.loadReadingPlaybackSpeed
+import com.github.zly2006.zhihu.reading.loadReadingPreferences
+import com.github.zly2006.zhihu.reading.rememberReadingPlayerController
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
@@ -110,6 +115,8 @@ import com.github.zly2006.zhihu.ui.LocalReadingPlayerOverlayOffsetState
 import com.github.zly2006.zhihu.ui.LocalReadingPlayerOverlayPadding
 import com.github.zly2006.zhihu.ui.TtsState
 import com.github.zly2006.zhihu.ui.article.ArticleVideoAttachmentContent
+import com.github.zly2006.zhihu.ui.article.articleReadingQueueItem
+import com.github.zly2006.zhihu.ui.article.startArticleReading
 import com.github.zly2006.zhihu.ui.article.voteUpNeutralContent
 import com.github.zly2006.zhihu.ui.articleActionText
 import com.github.zly2006.zhihu.ui.components.ANSWER_SWITCH_SENSITIVITY_PREFERENCE_KEY
@@ -184,9 +191,12 @@ fun MiuixArticleScreen(
     val environment = rememberPaginationEnvironment(allowGuestAccess = false)
     val ttsState = rememberArticleTtsState()
     val toggleSpeech = rememberArticleSpeechToggler()
+    val readingPlayer = rememberReadingPlayerController()
+    val readingPlayerState by readingPlayer.state
     val openArticleInBrowser = rememberArticleBrowserOpener()
     val executeShareAction = rememberShareActionExecutor()
     val settings = rememberSettingsStore()
+    val readingPreferences = loadReadingPreferences(settings)
     val blurEnabled = rememberSettingBoolean("blurEnabled", true, settings)
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = rememberPreferCollapsedExitUntilCollapsedScrollBehavior()
@@ -921,17 +931,47 @@ fun MiuixArticleScreen(
     ) {
         val speaking = ttsState.isSpeaking
         val ttsEnabled = ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)
+        // 支持连续朗读的平台走播放器（带队列、倍速和悬浮控制条），其余平台仍用单篇 TTS（对齐 M3）。
+        val hasReadingSession = readingPlayerState.hasSession
+        val readingItem = articleReadingQueueItem(article, viewModel)
         Column(
             modifier = Modifier.fillMaxWidth().miuixSheetBottomInsets(),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             MiuixSheetActionRow(
-                text = if (speaking) "停止朗读" else "开始朗读",
-                icon = if (speaking) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
-                enabled = ttsEnabled,
+                text = when {
+                    isReadingPlayerSupported -> if (hasReadingSession) "停止朗读" else "开始连续朗读"
+                    speaking -> "停止朗读"
+                    else -> "开始朗读"
+                },
+                icon = if (hasReadingSession || (!isReadingPlayerSupported && speaking)) {
+                    Icons.AutoMirrored.Filled.VolumeOff
+                } else {
+                    Icons.AutoMirrored.Filled.VolumeUp
+                },
+                enabled = if (isReadingPlayerSupported) {
+                    hasReadingSession || readingItem.hasReadableFields(readingPreferences)
+                } else {
+                    ttsEnabled
+                },
                 onClick = {
                     showActionsMenu = false
-                    toggleSpeech(viewModel.title, viewModel.content)
+                    when {
+                        !isReadingPlayerSupported -> toggleSpeech(viewModel.title, viewModel.content)
+                        hasReadingSession -> readingPlayer.stop()
+                        else -> coroutineScope.launch {
+                            startArticleReading(
+                                article = article,
+                                viewModel = viewModel,
+                                preferences = readingPreferences,
+                                playbackSpeed = loadReadingPlaybackSpeed(settings),
+                                player = readingPlayer,
+                                answerQueueFallbackProvider = sharedData?.navigator?.let { answerNavigator ->
+                                    { limit -> answerNavigator.remainingAnswersSnapshot(article.id, limit) }
+                                },
+                            )
+                        }
+                    }
                 },
             )
             MiuixSheetActionRow(text = "总结本文", icon = Icons.Default.Summarize, onClick = {

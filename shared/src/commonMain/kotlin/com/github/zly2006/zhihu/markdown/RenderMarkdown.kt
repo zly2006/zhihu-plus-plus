@@ -362,6 +362,7 @@ private fun RenderMarkdownDocument(
                         )
                     } else {
                         val mathFont = rememberMarkdownMathFont()
+                        val contentFont = rememberMarkdownContentFont()
                         val defaultTheme = MarkdownTheme.material3()
                         val scaledFontSize = 16.sp * fontSize / 100
                         // MarkdownTheme.material3() 的各色取自 MaterialTheme.colorScheme，但 miuix 主题下它未初始化，
@@ -372,8 +373,12 @@ private fun RenderMarkdownDocument(
                                 color = mdTextColor,
                                 fontSize = scaledFontSize,
                                 lineHeight = scaledFontSize * lineHeight / 100,
+                                // 自选正文字体只覆盖正文和标题；行内代码/代码块保持等宽字体。
+                                fontFamily = contentFont ?: defaultTheme.bodyStyle.fontFamily,
                             ),
-                            headingStyles = defaultTheme.headingStyles.map { it.copy(color = mdTextColor) },
+                            headingStyles = defaultTheme.headingStyles.map {
+                                it.copy(color = mdTextColor, fontFamily = contentFont ?: it.fontFamily)
+                            },
                             linkColor = AppTokens.colors.primary,
                             blockQuoteTextColor = AppTokens.colors.onSurfaceVariant,
                             // 删除线/插入(下划线)/行内代码/代码块/列表/公式 等文字色同样取自 M3，miuix 深色下反色，一并覆盖。

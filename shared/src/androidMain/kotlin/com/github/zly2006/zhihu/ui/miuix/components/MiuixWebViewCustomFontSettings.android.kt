@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.markdown.CUSTOM_CONTENT_FONT_FILE_NAME
 import com.github.zly2006.zhihu.platform.androidUserMessageSink
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Icon
@@ -37,7 +38,7 @@ actual fun MiuixWebViewCustomFontSettings(
     ) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         val name = uri.lastPathSegment?.substringAfterLast('/') ?: uri.toString()
-        val destFile = File(context.filesDir, "custom_font")
+        val destFile = File(context.filesDir, CUSTOM_CONTENT_FONT_FILE_NAME)
         context.contentResolver.openInputStream(uri)?.use { input ->
             destFile.outputStream().use { output -> input.copyTo(output) }
         }
@@ -61,7 +62,7 @@ actual fun MiuixWebViewCustomFontSettings(
         if (customFontName != null) {
             Button(
                 onClick = {
-                    File(context.filesDir, "custom_font").delete()
+                    File(context.filesDir, CUSTOM_CONTENT_FONT_FILE_NAME).delete()
                     onCustomFontNameChange(null)
                     userMessages.showShortMessage("已清除自定义字体")
                 },

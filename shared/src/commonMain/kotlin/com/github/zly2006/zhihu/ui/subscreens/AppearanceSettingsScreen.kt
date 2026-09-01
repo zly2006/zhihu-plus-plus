@@ -127,6 +127,9 @@ const val DUO3_TIQIAN_MATH_FONT_PREFERENCE_KEY = "duo3_tiqian_math_font"
 const val PREF_FONT_SIZE = "contentFontSize"
 const val PREF_LINE_HEIGHT = "contentLineHeight"
 const val PREF_BLOCK_SPACING = "contentBlockSpacing"
+
+/** 用户自选的正文字体文件名；键沿用 WebView 时代的名字，避免已设置的用户丢失字体。 */
+const val PREF_CUSTOM_CONTENT_FONT_NAME = "webviewCustomFontName"
 const val PREF_FAB_OPACITY = "fabOpacity"
 const val DEFAULT_FAB_OPACITY = 100
 const val APPEARANCE_SETTINGS_SCROLL_TAG = "appearanceSettings.scroll"
@@ -140,7 +143,7 @@ const val APPEARANCE_SETTINGS_ANSWER_DOUBLE_TAP_TAG = "appearanceSettings.answer
 const val APPEARANCE_SETTINGS_ANSWER_SWITCH_SENSITIVITY_TAG = "appearanceSettings.answerSwitchSensitivity"
 const val APPEARANCE_SETTINGS_USE_WEBVIEW_TAG = "appearanceSettings.useWebView"
 const val APPEARANCE_SETTINGS_TIQIAN_MARKDOWN_TAG = "appearanceSettings.tiqianMarkdown"
-const val APPEARANCE_SETTINGS_WEBVIEW_FONT_TAG = "appearanceSettings.webViewFont"
+const val APPEARANCE_SETTINGS_CONTENT_FONT_TAG = "appearanceSettings.contentFont"
 const val APPEARANCE_SETTINGS_WEBVIEW_OPTIONS_TAG = "appearanceSettings.webViewOptions"
 const val APPEARANCE_SETTINGS_BOTTOM_BAR_SECTION_KEY = "appearanceSettings.bottomBarSection"
 const val APPEARANCE_SETTINGS_COLLECTION_DIRECT_BROWSE_TAG = "appearanceSettings.collectionDirectBrowse"
@@ -805,40 +808,35 @@ fun AppearanceSettingsScreen(
                     bringIntoViewRequester = requesterFor(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY),
                 )
 
-                if (articleUseWebview.value && isLegacyWebViewSupported) {
+                if (isWebViewCustomFontSupported) {
                     var customFontName by remember {
-                        mutableStateOf(settings.getStringOrNull("webviewCustomFontName"))
+                        mutableStateOf(settings.getStringOrNull(PREF_CUSTOM_CONTENT_FONT_NAME))
                     }
+                    SettingItem(
+                        modifier = Modifier.testTag(APPEARANCE_SETTINGS_CONTENT_FONT_TAG),
+                        title = { Text("正文自定义字体") },
+                        description = { Text(customFontName ?: "未设置") },
+                        bottomAction = {
+                            WebViewCustomFontSettings(
+                                customFontName = customFontName,
+                                onCustomFontNameChange = { name ->
+                                    if (name == null) {
+                                        settings.remove(PREF_CUSTOM_CONTENT_FONT_NAME)
+                                    } else {
+                                        settings.putString(PREF_CUSTOM_CONTENT_FONT_NAME, name)
+                                    }
+                                    customFontName = name
+                                },
+                            )
+                        },
+                    )
+                }
+
+                if (articleUseWebview.value && isLegacyWebViewSupported) {
                     Column(
                         modifier = Modifier.testTag(APPEARANCE_SETTINGS_WEBVIEW_OPTIONS_TAG),
                         verticalArrangement = Arrangement.spacedBy(2.dp),
                     ) {
-                        if (isWebViewCustomFontSupported) {
-                            SettingItem(
-                                modifier = Modifier.testTag(APPEARANCE_SETTINGS_WEBVIEW_FONT_TAG),
-                                title = {
-                                    Text(
-                                        "WebView 自定义字体",
-                                        modifier = Modifier.testTag(APPEARANCE_SETTINGS_WEBVIEW_FONT_TAG),
-                                    )
-                                },
-                                description = { Text(customFontName ?: "未设置") },
-                                bottomAction = {
-                                    WebViewCustomFontSettings(
-                                        customFontName = customFontName,
-                                        onCustomFontNameChange = { name ->
-                                            if (name == null) {
-                                                settings.remove("webviewCustomFontName")
-                                            } else {
-                                                settings.putString("webviewCustomFontName", name)
-                                            }
-                                            customFontName = name
-                                        },
-                                    )
-                                },
-                            )
-                        }
-
                         val useHardwareAcceleration = remember { mutableStateOf(settings.getBoolean("webviewHardwareAcceleration", true)) }
                         SettingItemWithSwitch(
                             title = { Text("WebView 硬件加速") },

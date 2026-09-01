@@ -54,12 +54,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.reading.ReadingContentType
-import com.github.zly2006.zhihu.reading.ReadingQueueItem
-import com.github.zly2006.zhihu.reading.ReadingQueueSourceRegistry
-import com.github.zly2006.zhihu.reading.ReadingStartRequest
 import com.github.zly2006.zhihu.reading.hasReadableFields
 import com.github.zly2006.zhihu.reading.isReadingPlayerSupported
 import com.github.zly2006.zhihu.reading.loadReadingPlaybackSpeed
@@ -75,10 +70,8 @@ import com.github.zly2006.zhihu.ui.components.rememberShareActionExecutor
 import com.github.zly2006.zhihu.ui.rememberArticleBrowserOpener
 import com.github.zly2006.zhihu.ui.rememberArticleSpeechToggler
 import com.github.zly2006.zhihu.ui.rememberArticleTtsState
-import com.github.zly2006.zhihu.util.Log
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.materialkolor.ktx.harmonize
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -129,21 +122,7 @@ fun ArticleActionsMenu(
     val openArticleInBrowser = rememberArticleBrowserOpener()
     val executeShareAction = rememberShareActionExecutor()
     val coroutineScope = rememberCoroutineScope()
-    val readingItem = ReadingQueueItem(
-        contentType = when (article.type) {
-            ArticleType.Answer -> ReadingContentType.Answer
-            ArticleType.Article -> ReadingContentType.Article
-        },
-        id = article.id,
-        title = viewModel.title,
-        author = viewModel.authorName,
-        questionId = viewModel.questionId.takeIf { it > 0 },
-        bodyHtml = viewModel.content.takeIf(String::isNotBlank),
-        publishedAt = viewModel.createdAt,
-        updatedAt = viewModel.updatedAt,
-        voteUpCount = viewModel.voteUpCount,
-        commentCount = viewModel.commentCount,
-    )
+    val readingItem = articleReadingQueueItem(article, viewModel)
     val readingPreferences = loadReadingPreferences(readingSettings)
     val readingPlaybackSpeed = loadReadingPlaybackSpeed(readingSettings)
     val hasReadingSession = readingPlayerState.hasSession
@@ -257,65 +236,13 @@ fun ArticleActionsMenu(
                         readingPlayer.stop()
                     } else {
                         coroutineScope.launch {
-                            // Home feed mixes unrelated content; the question navigator owns answer order.
-                            val useQuestionAnswerOrder = article.type == ArticleType.Answer &&
-                                article.readingQueueSourceId?.startsWith("home:") == true
-                            val originQueue = ReadingQueueSourceRegistry.queueStartingAt(
-                                current = readingItem,
-                                sourceId = article.readingQueueSourceId.takeUnless { useQuestionAnswerOrder },
-                                limit = readingPreferences.queueLimit,
-                            )
-                            val queue = if (
-                                article.type == ArticleType.Answer &&
-                                (useQuestionAnswerOrder || originQueue.size < readingPreferences.queueLimit) &&
-                                readingPreferences.queueLimit > 1
-                            ) {
-                                val fallbackAfterCurrent = try {
-                                    val fallbackArticles = answerQueueFallbackProvider
-                                        ?.invoke(readingPreferences.queueLimit - 1)
-                                        ?: viewModel.answerNextIds.map { answerId ->
-                                            Article(
-                                                type = ArticleType.Answer,
-                                                id = answerId,
-                                                title = viewModel.title,
-                                            )
-                                        }
-                                    fallbackArticles.map { fallback ->
-                                        ReadingQueueItem(
-                                            contentType = ReadingContentType.Answer,
-                                            id = fallback.id,
-                                            title = fallback.title
-                                                .takeUnless { it == "loading..." }
-                                                .orEmpty()
-                                                .ifBlank { viewModel.title },
-                                            author = fallback.authorName
-                                                .takeUnless { it == "loading..." }
-                                                .orEmpty(),
-                                            questionId = viewModel.questionId.takeIf { it > 0 },
-                                        )
-                                    }
-                                } catch (error: CancellationException) {
-                                    throw error
-                                } catch (error: Exception) {
-                                    Log.w("ArticleActionsMenu", "Failed to load the remaining reading queue", error)
-                                    emptyList()
-                                }
-                                ReadingQueueSourceRegistry.queueStartingAt(
-                                    current = readingItem,
-                                    sourceId = article.readingQueueSourceId.takeUnless { useQuestionAnswerOrder },
-                                    limit = readingPreferences.queueLimit,
-                                    fallbackAfterCurrent = fallbackAfterCurrent,
-                                )
-                            } else {
-                                originQueue
-                            }
-                            readingPlayer.start(
-                                ReadingStartRequest(
-                                    queue = queue,
-                                    preferences = readingPreferences,
-                                    sourceId = article.readingQueueSourceId,
-                                    playbackSpeed = readingPlaybackSpeed,
-                                ),
+                            startArticleReading(
+                                article = article,
+                                viewModel = viewModel,
+                                preferences = readingPreferences,
+                                playbackSpeed = readingPlaybackSpeed,
+                                player = readingPlayer,
+                                answerQueueFallbackProvider = answerQueueFallbackProvider,
                             )
                         }
                     }

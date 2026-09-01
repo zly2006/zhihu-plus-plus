@@ -84,6 +84,7 @@ import com.github.zly2006.zhihu.ui.subscreens.DUO3_CARD_LARGE_TITLE_PREFERENCE_K
 import com.github.zly2006.zhihu.ui.subscreens.DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.DUO3_TIQIAN_MATH_FONT_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.PREF_BLOCK_SPACING
+import com.github.zly2006.zhihu.ui.subscreens.PREF_CUSTOM_CONTENT_FONT_NAME
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FAB_OPACITY
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
@@ -91,6 +92,7 @@ import com.github.zly2006.zhihu.ui.subscreens.START_DESTINATION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.bottomBarItemOrderFromPreference
 import com.github.zly2006.zhihu.ui.subscreens.bottomBarItemOrderPreferenceValue
 import com.github.zly2006.zhihu.ui.subscreens.defaultBottomBarSelectionKeys
+import com.github.zly2006.zhihu.ui.subscreens.isWebViewCustomFontSupported
 import com.github.zly2006.zhihu.ui.subscreens.normalizeBottomBarItemOrder
 import com.github.zly2006.zhihu.ui.subscreens.normalizeBottomBarSelection
 import com.github.zly2006.zhihu.ui.subscreens.resolveValidStartDestinationKey
@@ -168,7 +170,7 @@ fun MiuixAppearanceSettingsScreen(
 
     // 回答页
     val articleUseWebview = remember { mutableStateOf(settings.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false)) }
-    val customWebViewFontName = remember { mutableStateOf(settings.getStringOrNull("webviewCustomFontName")) }
+    val customWebViewFontName = remember { mutableStateOf(settings.getStringOrNull(PREF_CUSTOM_CONTENT_FONT_NAME)) }
     val webViewHardwareAcceleration = remember { mutableStateOf(settings.getBoolean("webviewHardwareAcceleration", true)) }
     val titleAutoHide = remember { mutableStateOf(settings.getBoolean("titleAutoHide", false)) }
     val autoHideBottomBar = remember { mutableStateOf(settings.getBoolean("autoHideArticleBottomBar", false)) }
@@ -474,9 +476,9 @@ fun MiuixAppearanceSettingsScreen(
                         title = "使用 WebView 显示文章",
                         summary = "关闭后使用 Compose 渲染，支持代码高亮",
                     )
-                    if (articleUseWebview.value) {
+                    if (isWebViewCustomFontSupported) {
                         MiuixExpandableArrowPreference(
-                            title = "WebView 自定义字体",
+                            title = "正文自定义字体",
                             summary = customWebViewFontName.value ?: "未设置",
                             expanded = showWebViewFontSettings.value,
                             onExpandedChange = { showWebViewFontSettings.value = !showWebViewFontSettings.value },
@@ -486,15 +488,17 @@ fun MiuixAppearanceSettingsScreen(
                                     customFontName = customWebViewFontName.value,
                                     onCustomFontNameChange = { name ->
                                         if (name == null) {
-                                            settings.remove("webviewCustomFontName")
+                                            settings.remove(PREF_CUSTOM_CONTENT_FONT_NAME)
                                         } else {
-                                            settings.putString("webviewCustomFontName", name)
+                                            settings.putString(PREF_CUSTOM_CONTENT_FONT_NAME, name)
                                         }
                                         customWebViewFontName.value = name
                                     },
                                 )
                             }
                         }
+                    }
+                    if (articleUseWebview.value) {
                         SwitchPreference(
                             checked = webViewHardwareAcceleration.value,
                             onCheckedChange = {
