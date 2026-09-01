@@ -57,6 +57,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -64,8 +65,10 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -76,6 +79,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -102,17 +106,22 @@ import com.github.zly2006.zhihu.ui.ArticleAnswerTransitionDirection
 import com.github.zly2006.zhihu.ui.ArticleImmersiveModeEffect
 import com.github.zly2006.zhihu.ui.LocalArticleAnswerSwitcher
 import com.github.zly2006.zhihu.ui.LocalArticleNavController
+import com.github.zly2006.zhihu.ui.LocalReadingPlayerOverlayOffsetState
+import com.github.zly2006.zhihu.ui.LocalReadingPlayerOverlayPadding
 import com.github.zly2006.zhihu.ui.TtsState
 import com.github.zly2006.zhihu.ui.article.ArticleVideoAttachmentContent
 import com.github.zly2006.zhihu.ui.article.voteUpNeutralContent
 import com.github.zly2006.zhihu.ui.articleActionText
+import com.github.zly2006.zhihu.ui.components.ANSWER_SWITCH_SENSITIVITY_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.components.AnswerHorizontalOverscroll
 import com.github.zly2006.zhihu.ui.components.AnswerVerticalOverscroll
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
+import com.github.zly2006.zhihu.ui.components.DEFAULT_ANSWER_SWITCH_SENSITIVITY
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.ShareAction
 import com.github.zly2006.zhihu.ui.components.VerticalReadingProgressBar
 import com.github.zly2006.zhihu.ui.components.ZhihuTwoRowsTopAppBar
+import com.github.zly2006.zhihu.ui.components.normalizedAnswerSwitchSensitivity
 import com.github.zly2006.zhihu.ui.components.rememberPreferCollapsedExitUntilCollapsedScrollBehavior
 import com.github.zly2006.zhihu.ui.components.rememberShareActionExecutor
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixCommentSheet
@@ -130,10 +139,12 @@ import com.github.zly2006.zhihu.ui.rememberObservedSetting
 import com.github.zly2006.zhihu.util.formatCompactCount
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
+import com.github.zly2006.zhihu.viewmodel.addReadHistory
 import com.github.zly2006.zhihu.viewmodel.formatArticleDateTime
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.sharedArticleAnswerSwitchState
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
@@ -189,6 +200,9 @@ fun MiuixArticleScreen(
     val answerSwitchMode by rememberObservedSetting(settings, "answerSwitchMode") {
         getString("answerSwitchMode", "vertical")
     }
+    val answerSwitchSensitivity by rememberObservedSetting(settings, ANSWER_SWITCH_SENSITIVITY_PREFERENCE_KEY) {
+        normalizedAnswerSwitchSensitivity(getFloat(ANSWER_SWITCH_SENSITIVITY_PREFERENCE_KEY, DEFAULT_ANSWER_SWITCH_SENSITIVITY))
+    }
     val pinAnswerDate by rememberObservedSetting(settings, "pinAnswerDate") { getBoolean("pinAnswerDate", false) }
     val buttonSkipAnswer by rememberObservedSetting(settings, "buttonSkipAnswer") { getBoolean("buttonSkipAnswer", true) }
     val autoHideSkipAnswerButton by rememberObservedSetting(settings, "autoHideSkipAnswerButton") {
@@ -211,6 +225,39 @@ fun MiuixArticleScreen(
     val toggleImmersive: () -> Unit = { isImmersiveMode = !isImmersiveMode }
     val userMessages = rememberUserMessageSink()
     val haptic = LocalHapticFeedback.current
+    val density = LocalDensity.current
+    val readingPlayerOverlayPadding = LocalReadingPlayerOverlayPadding.current
+    val readingPlayerOverlayOffsetState = LocalReadingPlayerOverlayOffsetState.current
+    val readingPlayerOverlayPaddingPx = with(density) { readingPlayerOverlayPadding.roundToPx() }
+    // 朗读悬浮球压住正文底部一段高度，"读到底"判定要减掉它，否则上滑切下一答永远差最后一屏。
+    val effectiveScrollMaxValue by remember(readingPlayerOverlayPaddingPx) {
+        derivedStateOf {
+            if (scrollState.maxValue == Int.MAX_VALUE) {
+                Int.MAX_VALUE
+            } else {
+                (scrollState.maxValue - readingPlayerOverlayPaddingPx).coerceAtLeast(0)
+            }
+        }
+    }
+    val latestEffectiveScrollMaxValue by rememberUpdatedState(effectiveScrollMaxValue)
+    val readingPlayerOverlayRouteId = article.readingQueueSourceId ?: "${article.type}:${article.id}"
+    val usesVerticalAnswerSwitch = article.type == ArticleType.Answer && answerSwitchMode == "vertical"
+    DisposableEffect(readingPlayerOverlayOffsetState, readingPlayerOverlayRouteId, usesVerticalAnswerSwitch) {
+        if (usesVerticalAnswerSwitch) {
+            readingPlayerOverlayOffsetState?.beginRoute(readingPlayerOverlayRouteId)
+        }
+        onDispose {
+            if (usesVerticalAnswerSwitch) {
+                readingPlayerOverlayOffsetState?.endRoute(readingPlayerOverlayRouteId)
+            }
+        }
+    }
+    val updateReadingPlayerOverlayOffset = remember(readingPlayerOverlayOffsetState, readingPlayerOverlayRouteId) {
+        { offsetPx: Float ->
+            readingPlayerOverlayOffsetState?.update(readingPlayerOverlayRouteId, offsetPx)
+            Unit
+        }
+    }
     var showComments by rememberSaveable(article.type, article.id) { mutableStateOf(false) }
     var showVoters by rememberSaveable(article.type, article.id) { mutableStateOf(false) }
     val showCollections = remember { mutableStateOf(false) }
@@ -294,6 +341,38 @@ fun MiuixArticleScreen(
     }
     ArticleImmersiveModeEffect(isImmersiveMode)
 
+    // 上报知乎在线浏览历史（对齐 M3 ArticleScreen / MiuixPinScreen / MiuixQuestionScreen）。
+    LaunchedEffect(Unit) {
+        environment.addReadHistory(
+            contentToken = article.id.toString(),
+            contentTypeName = article.type.name.lowercase(),
+        )
+    }
+
+    // AIGC 阅读进度与投票积分同步（对齐 M3）：滚动、正文就绪后 15 秒、可视高度变化各触发一次，
+    // 缺任何一条弹层里的"进度 x/20"都不会增长。
+    LaunchedEffect(scrollState) {
+        snapshotFlow { scrollState.value }.collectLatest { currentScroll ->
+            viewModel.updateAigcReadProgress(currentScroll, effectiveScrollMaxValue)
+            viewModel.syncAigcReadEventIfEligible(environment)
+        }
+    }
+    LaunchedEffect(article.type, article.id, viewModel.content) {
+        if (viewModel.content.isNotBlank()) {
+            viewModel.updateAigcReadProgress(scrollState.value, latestEffectiveScrollMaxValue)
+            delay(15_000)
+            viewModel.updateAigcReadProgress(scrollState.value, latestEffectiveScrollMaxValue)
+            viewModel.syncAigcReadEventIfEligible(environment)
+        }
+    }
+    LaunchedEffect(scrollState, viewModel.content) {
+        snapshotFlow { effectiveScrollMaxValue }.collectLatest { maxValue ->
+            if (viewModel.content.isNotBlank()) {
+                viewModel.updateAigcReadProgress(scrollState.value, maxValue)
+            }
+        }
+    }
+
     LaunchedEffect(article.id) {
         // 答案切换时用 pendingInitialContent 预填充，消除空白帧（逻辑同 M3 ArticleScreen）。
         if (sharedData != null) {
@@ -313,6 +392,7 @@ fun MiuixArticleScreen(
         }
         viewModel.loadArticle(environment)
         viewModel.loadCollections(environment)
+        viewModel.loadAigcFlagStatus(environment)
     }
 
     val nav = sharedData?.navigator
@@ -598,78 +678,76 @@ fun MiuixArticleScreen(
                         Spacer(Modifier.height(8.dp))
                     }
 
-                    // 正文内容卡
-                    Card(modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            // 置顶日期：置顶模式下日期放在内容顶部
-                            if (pinAnswerDate && viewModel.createdAt > 0) {
+                    // 正文：平铺不包卡片，卡片只留给作者、操作栏这类元信息
+                    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 8.dp)) {
+                        // 置顶日期：置顶模式下日期放在内容顶部
+                        if (pinAnswerDate && viewModel.createdAt > 0) {
+                            Text(
+                                "发布于 " + formatArticleDateTime(viewModel.createdAt),
+                                style = MiuixTheme.textStyles.footnote2,
+                                color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                            )
+                            if (viewModel.createdAt != viewModel.updatedAt) {
                                 Text(
-                                    "发布于 " + formatArticleDateTime(viewModel.createdAt),
-                                    style = MiuixTheme.textStyles.footnote2,
-                                    color = MiuixTheme.colorScheme.onSurfaceSecondary,
-                                )
-                                if (viewModel.createdAt != viewModel.updatedAt) {
-                                    Text(
-                                        "编辑于 " + formatArticleDateTime(viewModel.updatedAt),
-                                        style = MiuixTheme.textStyles.footnote2,
-                                        color = MiuixTheme.colorScheme.onSurfaceSecondary,
-                                    )
-                                }
-                                Spacer(Modifier.height(8.dp))
-                            }
-                            if (article.type == ArticleType.Answer && viewModel.votersTotal > 0) {
-                                val socialCreditText = viewModel.votersSocialText.ifBlank {
-                                    "${formatCompactCount(viewModel.votersTotal)} 人赞同了该回答"
-                                }
-                                Text(
-                                    socialCreditText,
-                                    style = MiuixTheme.textStyles.footnote1,
-                                    color = MiuixTheme.colorScheme.onSurfaceSecondary,
-                                    modifier = Modifier
-                                        .padding(bottom = 8.dp)
-                                        .clickable {
-                                            showVoters = true
-                                            if (viewModel.voters.isEmpty()) {
-                                                viewModel.loadMoreVoters(environment, reset = true)
-                                            }
-                                        },
-                                )
-                            }
-                            if (viewModel.content.isEmpty()) {
-                                Box(Modifier.fillMaxWidth().padding(24.dp), Alignment.Center) {
-                                    CircularProgressIndicator()
-                                }
-                            } else {
-                                Box(modifier = answerDoubleTapModifier) {
-                                    RenderMarkdown(html = viewModel.content, selectable = true, enableScroll = false)
-                                }
-                            }
-                            // 视频附件（type=video）入口，对齐 M3
-                            ArticleVideoAttachmentContent(viewModel.attachment)
-                            // 非置顶日期 + IP属地 放在内容底部
-                            if (!pinAnswerDate && viewModel.createdAt > 0) {
-                                Spacer(Modifier.height(8.dp))
-                                Text(
-                                    "发布于 " + formatArticleDateTime(viewModel.createdAt),
-                                    style = MiuixTheme.textStyles.footnote2,
-                                    color = MiuixTheme.colorScheme.onSurfaceSecondary,
-                                )
-                                if (viewModel.createdAt != viewModel.updatedAt) {
-                                    Text(
-                                        "编辑于 " + formatArticleDateTime(viewModel.updatedAt),
-                                        style = MiuixTheme.textStyles.footnote2,
-                                        color = MiuixTheme.colorScheme.onSurfaceSecondary,
-                                    )
-                                }
-                            }
-                            if (viewModel.ipInfo != null) {
-                                Spacer(Modifier.height(8.dp))
-                                Text(
-                                    "IP属地：${viewModel.ipInfo}",
+                                    "编辑于 " + formatArticleDateTime(viewModel.updatedAt),
                                     style = MiuixTheme.textStyles.footnote2,
                                     color = MiuixTheme.colorScheme.onSurfaceSecondary,
                                 )
                             }
+                            Spacer(Modifier.height(8.dp))
+                        }
+                        if (article.type == ArticleType.Answer && viewModel.votersTotal > 0) {
+                            val socialCreditText = viewModel.votersSocialText.ifBlank {
+                                "${formatCompactCount(viewModel.votersTotal)} 人赞同了该回答"
+                            }
+                            Text(
+                                socialCreditText,
+                                style = MiuixTheme.textStyles.footnote1,
+                                color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                                modifier = Modifier
+                                    .padding(bottom = 8.dp)
+                                    .clickable {
+                                        showVoters = true
+                                        if (viewModel.voters.isEmpty()) {
+                                            viewModel.loadMoreVoters(environment, reset = true)
+                                        }
+                                    },
+                            )
+                        }
+                        if (viewModel.content.isEmpty()) {
+                            Box(Modifier.fillMaxWidth().padding(24.dp), Alignment.Center) {
+                                CircularProgressIndicator()
+                            }
+                        } else {
+                            Box(modifier = answerDoubleTapModifier) {
+                                RenderMarkdown(html = viewModel.content, selectable = true, enableScroll = false)
+                            }
+                        }
+                        // 视频附件（type=video）入口，对齐 M3
+                        ArticleVideoAttachmentContent(viewModel.attachment)
+                        // 非置顶日期 + IP属地 放在内容底部
+                        if (!pinAnswerDate && viewModel.createdAt > 0) {
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                "发布于 " + formatArticleDateTime(viewModel.createdAt),
+                                style = MiuixTheme.textStyles.footnote2,
+                                color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                            )
+                            if (viewModel.createdAt != viewModel.updatedAt) {
+                                Text(
+                                    "编辑于 " + formatArticleDateTime(viewModel.updatedAt),
+                                    style = MiuixTheme.textStyles.footnote2,
+                                    color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                                )
+                            }
+                        }
+                        if (viewModel.ipInfo != null) {
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                "IP属地：${viewModel.ipInfo}",
+                                style = MiuixTheme.textStyles.footnote2,
+                                color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                            )
                         }
                     }
                     Spacer(Modifier.height(16.dp))
@@ -697,8 +775,10 @@ fun MiuixArticleScreen(
                     onNavigatePrevious = navigateToPrevious,
                     onNavigateNext = navigateToNext,
                     isAtTop = { scrollState.value == 0 },
-                    isAtBottom = { scrollState.value >= scrollState.maxValue },
+                    isAtBottom = { scrollState.value >= effectiveScrollMaxValue },
                     scrollState = scrollState,
+                    answerSwitchSensitivity = answerSwitchSensitivity,
+                    onOverscrollOffsetChange = updateReadingPlayerOverlayOffset,
                     previewCard = { authorName, excerpt, avatarUrl, label, icon, isTriggered, progress, reverseLayout, modifier ->
                         MiuixAnswerPreviewCard(authorName, excerpt, avatarUrl, label, icon, isTriggered, progress, reverseLayout, modifier)
                     },
@@ -712,6 +792,7 @@ fun MiuixArticleScreen(
                     onNavigateNext = navigateToNext,
                     previousContent = nav?.previousAnswer?.let { cached -> { MiuixCachedAnswerPreview(cached) } },
                     nextContent = nav?.nextAnswer?.let { cached -> { MiuixCachedAnswerPreview(cached) } },
+                    answerSwitchSensitivity = answerSwitchSensitivity,
                 ) { articleScaffold() }
 
             else -> articleScaffold()
@@ -1191,15 +1272,13 @@ private fun MiuixCachedAnswerPreview(cached: CachedAnswerContent) {
                 }
                 Spacer(Modifier.height(8.dp))
             }
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    if (cached.content.isEmpty()) {
-                        Box(Modifier.fillMaxWidth().padding(24.dp), Alignment.Center) {
-                            CircularProgressIndicator()
-                        }
-                    } else {
-                        RenderMarkdown(html = cached.content, selectable = false, enableScroll = false)
+            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 8.dp)) {
+                if (cached.content.isEmpty()) {
+                    Box(Modifier.fillMaxWidth().padding(24.dp), Alignment.Center) {
+                        CircularProgressIndicator()
                     }
+                } else {
+                    RenderMarkdown(html = cached.content, selectable = false, enableScroll = false)
                 }
             }
             Spacer(Modifier.height(16.dp))
