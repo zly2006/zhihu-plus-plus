@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.account
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -143,6 +144,7 @@ fun LoginScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
@@ -343,6 +345,9 @@ private fun LoginNoticeScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            // 不透明背景兜底：NavDisplay 会保留被覆盖层，登录页不自己铺底就会透出下面的首页信息流。
+            // miuix 分支由 MiuixScaffold 铺底，M3 分支是裸 Column，必须显式补上（同 ArticleAnswerSlot）。
+            .background(MaterialTheme.colorScheme.background)
             .testTag(stepTag),
     ) {
         Column(

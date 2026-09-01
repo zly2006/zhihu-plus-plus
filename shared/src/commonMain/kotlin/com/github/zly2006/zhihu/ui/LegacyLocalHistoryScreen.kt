@@ -17,8 +17,11 @@
 
 package com.github.zly2006.zhihu.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
@@ -50,7 +53,11 @@ fun LegacyLocalHistoryScreen(
 
     FeedPullToRefresh(viewModel, environment) {
         PaginatedList(
-            modifier = Modifier.padding(innerPadding),
+            // 不透明背景兜底：同 LoginScreen，NavDisplay 保留被覆盖层，本页不铺底会透出下面的首页。
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .padding(innerPadding),
             items = viewModel.displayItems,
             onLoadMore = { /* 不需要加载更多 */ },
             isEnd = { true }, // 始终为 true，因为没有更多数据需要加载。
