@@ -27,9 +27,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -47,6 +44,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.data.ZHIHU_ME_URL
 import com.github.zly2006.zhihu.data.ZhihuJson
+import com.github.zly2006.zhihu.theme.AppCircularProgressIndicator
+import com.github.zly2006.zhihu.theme.AppSecondaryButton
+import com.github.zly2006.zhihu.theme.AppTokens
 import com.github.zly2006.zhihu.util.ZHIHU_WEB_ZSE93
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
@@ -457,11 +457,13 @@ fun SharedQrLoginPane(
         ) {
             Text(
                 text = riskControlMessage ?: "请先完成知乎的网络环境验证",
-                style = MaterialTheme.typography.bodyLarge,
+                style = AppTokens.text.bodyLarge,
+                color = AppTokens.colors.onSurface,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(),
             )
-            OutlinedButton(
+            AppSecondaryButton(
+                text = "完成验证后继续扫码",
                 onClick = {
                     riskControlUrl = null
                     riskControlMessage = null
@@ -470,9 +472,7 @@ fun SharedQrLoginPane(
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("qr_risk_control_continue"),
-            ) {
-                Text("完成验证后继续扫码")
-            }
+            )
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -489,6 +489,7 @@ fun SharedQrLoginPane(
                 } else {
                     Text(
                         text = "当前被知乎风控，请过几个小时再试",
+                        color = AppTokens.colors.onSurface,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(16.dp),
@@ -517,7 +518,7 @@ fun SharedQrLoginPane(
             )
             Spacer(modifier = Modifier.size(16.dp))
         } else if (isWorking) {
-            CircularProgressIndicator(
+            AppCircularProgressIndicator(
                 modifier = Modifier.testTag("qr_login_loading"),
             )
             Spacer(modifier = Modifier.size(16.dp))
@@ -525,7 +526,8 @@ fun SharedQrLoginPane(
 
         Text(
             text = statusText,
-            style = MaterialTheme.typography.bodyLarge,
+            style = AppTokens.text.bodyLarge,
+            color = AppTokens.colors.onSurface,
             textAlign = TextAlign.Center,
             modifier = Modifier
                 .fillMaxWidth()
@@ -537,7 +539,8 @@ fun SharedQrLoginPane(
             Spacer(modifier = Modifier.size(12.dp))
             Text(
                 text = riskControlMessage.orEmpty(),
-                style = MaterialTheme.typography.bodyMedium,
+                style = AppTokens.text.bodyMedium,
+                color = AppTokens.colors.onSurfaceVariant,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -548,7 +551,8 @@ fun SharedQrLoginPane(
         Row(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            OutlinedButton(
+            AppSecondaryButton(
+                text = "刷新二维码",
                 onClick = {
                     qrBitmap = null
                     statusText = "正在刷新二维码"
@@ -558,9 +562,7 @@ fun SharedQrLoginPane(
                     refreshKey += 1
                 },
                 modifier = Modifier.testTag("qr_login_retry"),
-            ) {
-                Text("刷新二维码")
-            }
+            )
         }
     }
 }

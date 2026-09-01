@@ -26,17 +26,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -55,6 +48,11 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.theme.AppCheckbox
+import com.github.zly2006.zhihu.theme.AppPrimaryButton
+import com.github.zly2006.zhihu.theme.AppSecondaryButton
+import com.github.zly2006.zhihu.theme.AppTextField
+import com.github.zly2006.zhihu.theme.AppTokens
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
@@ -150,15 +148,16 @@ fun PhoneLoginPane(onLoginSuccess: (String) -> Unit) {
     ) {
         Text(
             text = "手机号登录",
-            style = MaterialTheme.typography.headlineSmall,
+            style = AppTokens.text.headlineSmall,
+            color = AppTokens.colors.onSurface,
         )
         Text(
             text = "使用知乎官方 Android 登录协议。是否需要图形验证码由知乎风控实时决定。",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = AppTokens.text.bodyMedium,
+            color = AppTokens.colors.onSurfaceVariant,
         )
 
-        OutlinedTextField(
+        AppTextField(
             value = phoneNumber,
             onValueChange = { value ->
                 val nextPhoneNumber = value.filter(Char::isDigit).take(11)
@@ -171,9 +170,8 @@ fun PhoneLoginPane(onLoginSuccess: (String) -> Unit) {
                     captchaInput = ""
                 }
             },
-            label = { Text("手机号") },
-            leadingIcon = { Text("+86") },
-            singleLine = true,
+            label = "手机号",
+            leadingText = "+86",
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Phone,
                 imeAction = ImeAction.Next,
@@ -198,11 +196,10 @@ fun PhoneLoginPane(onLoginSuccess: (String) -> Unit) {
                         .testTag("phone_login_captcha_image"),
                 )
             }
-            OutlinedTextField(
+            AppTextField(
                 value = captchaInput,
                 onValueChange = { captchaInput = it },
-                label = { Text("图形验证码") },
-                singleLine = true,
+                label = "图形验证码",
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(
                     onDone = {
@@ -219,7 +216,8 @@ fun PhoneLoginPane(onLoginSuccess: (String) -> Unit) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                OutlinedButton(
+                AppSecondaryButton(
+                    text = "换一张",
                     onClick = {
                         scope.launch {
                             isSendingDigits = true
@@ -240,20 +238,15 @@ fun PhoneLoginPane(onLoginSuccess: (String) -> Unit) {
                     },
                     enabled = !isSendingDigits,
                     modifier = Modifier.weight(1f),
-                ) {
-                    Text("换一张")
-                }
-                Button(
-                    onClick = {
-                        scope.launch { verifyCaptchaAndSend() }
-                    },
+                )
+                AppPrimaryButton(
+                    text = "验证并发送",
+                    onClick = { scope.launch { verifyCaptchaAndSend() } },
                     enabled = captchaInput.isNotBlank() && !isSendingDigits,
                     modifier = Modifier
                         .weight(1f)
                         .testTag("phone_login_verify_captcha"),
-                ) {
-                    Text("验证并发送")
-                }
+                )
             }
         }
 
@@ -262,13 +255,12 @@ fun PhoneLoginPane(onLoginSuccess: (String) -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            OutlinedTextField(
+            AppTextField(
                 value = digits,
                 onValueChange = { value ->
                     digits = value.filter(Char::isDigit).take(6)
                 },
-                label = { Text("短信验证码") },
-                singleLine = true,
+                label = "短信验证码",
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Number,
                     imeAction = ImeAction.Done,
@@ -277,30 +269,17 @@ fun PhoneLoginPane(onLoginSuccess: (String) -> Unit) {
                     .weight(1f)
                     .testTag("phone_login_digits"),
             )
-            Button(
+            AppPrimaryButton(
+                text = if (resendSeconds > 0) "${resendSeconds}s" else "发送验证码",
                 onClick = { scope.launch { sendDigits() } },
+                loading = isSendingDigits,
                 enabled = agreementAccepted &&
                     phoneNumber.length == 11 &&
                     resendSeconds == 0 &&
                     !isSendingDigits &&
                     !isLoggingIn,
                 modifier = Modifier.testTag("phone_login_send_digits"),
-            ) {
-                if (isSendingDigits) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp,
-                    )
-                } else {
-                    Text(
-                        if (resendSeconds > 0) {
-                            "${resendSeconds}s"
-                        } else {
-                            "发送验证码"
-                        },
-                    )
-                }
-            }
+            )
         }
 
         Row(
@@ -310,18 +289,20 @@ fun PhoneLoginPane(onLoginSuccess: (String) -> Unit) {
                 .testTag("phone_login_agreement"),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Checkbox(
+            AppCheckbox(
                 checked = agreementAccepted,
                 onCheckedChange = { agreementAccepted = it },
             )
             Text(
                 text = "我已阅读并同意《知乎协议》《个人信息保护指引》",
-                style = MaterialTheme.typography.bodySmall,
+                style = AppTokens.text.bodySmall,
+                color = AppTokens.colors.onSurface,
                 modifier = Modifier.weight(1f),
             )
         }
 
-        Button(
+        AppPrimaryButton(
+            text = "登录",
             onClick = {
                 scope.launch {
                     isLoggingIn = true
@@ -342,6 +323,7 @@ fun PhoneLoginPane(onLoginSuccess: (String) -> Unit) {
                     }
                 }
             },
+            loading = isLoggingIn,
             enabled = agreementAccepted &&
                 hasRequestedDigits &&
                 phoneNumber.length == 11 &&
@@ -351,22 +333,13 @@ fun PhoneLoginPane(onLoginSuccess: (String) -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .testTag("phone_login_submit"),
-        ) {
-            if (isLoggingIn) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(20.dp),
-                    strokeWidth = 2.dp,
-                )
-            } else {
-                Text("登录")
-            }
-        }
+        )
 
         errorMessage?.let { message ->
             Text(
                 text = message,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodyMedium,
+                color = AppTokens.colors.error,
+                style = AppTokens.text.bodyMedium,
                 modifier = Modifier.testTag("phone_login_error"),
             )
         }

@@ -135,9 +135,11 @@ import com.github.zly2006.zhihu.ui.miuix.MiuixHomeScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixHotListScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixLocalHistoryScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixNotificationScreen
+import com.github.zly2006.zhihu.ui.miuix.MiuixNotificationTimelineScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixOnlineHistoryScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixPeopleScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixPinScreen
+import com.github.zly2006.zhihu.ui.miuix.MiuixPrivateMessageScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixQuestionScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixSearchScreen
 import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixAboutScreen
@@ -746,13 +748,25 @@ fun ZhihuMain(
                         }
                     }
                     entry<Notification.Entry> { args ->
-                        NotificationTimelineScreen(args.entryName, args.title)
+                        if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                            MiuixNotificationTimelineScreen(args.entryName, args.title)
+                        } else {
+                            NotificationTimelineScreen(args.entryName, args.title)
+                        }
                     }
                     entry<Notification.Invitations> {
-                        NotificationTimelineScreen("invite", "邀请回答")
+                        if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                            MiuixNotificationTimelineScreen("invite", "邀请回答")
+                        } else {
+                            NotificationTimelineScreen("invite", "邀请回答")
+                        }
                     }
                     entry<Notification.Message> { args ->
-                        PrivateMessageScreen(args)
+                        if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                            MiuixPrivateMessageScreen(args)
+                        } else {
+                            PrivateMessageScreen(args)
+                        }
                     }
                     entry<Notification.NotificationSettings> {
                         if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
@@ -944,7 +958,11 @@ private fun MainTabsPager(
                 )
             }
             MainTabPage.HotListPage -> if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
-                MiuixHotListScreen(innerPadding)
+                MiuixHotListScreen(
+                    innerPadding = innerPadding,
+                    scrollToTopTrigger = scrollToTopTrigger,
+                    isActive = pagerState.currentPage == pageIndex,
+                )
             } else {
                 HotListScreen(
                     innerPadding = innerPadding,
@@ -953,7 +971,10 @@ private fun MainTabsPager(
                 )
             }
             MainTabPage.DailyPage -> if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
-                MiuixDailyScreen()
+                MiuixDailyScreen(
+                    scrollToTopTrigger = scrollToTopTrigger,
+                    isActive = pagerState.currentPage == pageIndex,
+                )
             } else {
                 DailyScreen(
                     scrollToTopTrigger = scrollToTopTrigger,
@@ -961,7 +982,10 @@ private fun MainTabsPager(
                 )
             }
             MainTabPage.OnlineHistoryPage -> if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
-                MiuixOnlineHistoryScreen()
+                MiuixOnlineHistoryScreen(
+                    scrollToTopTrigger = scrollToTopTrigger,
+                    isActive = pagerState.currentPage == pageIndex,
+                )
             } else {
                 OnlineHistoryScreen(
                     scrollToTopTrigger = scrollToTopTrigger,
