@@ -17,12 +17,15 @@
 
 package com.github.zly2006.zhihu
 
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.data.DataHolder
@@ -47,7 +50,11 @@ import com.github.zly2006.zhihu.test.seedViewModel
 import com.github.zly2006.zhihu.test.setScreenContent
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_ANSWERS_LIST_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_AVATAR_TAG
+import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_BLOCK_BUTTON_TAG
+import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_FOLLOW_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_HEADER_TAG
+import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_QUESTION_AUTHOR_BLOCK_BUTTON_TAG
+import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_RECOMMENDATION_BLOCK_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_SEARCH_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_SUBSCRIPTIONS_LIST_TAG
 import com.github.zly2006.zhihu.ui.PeopleScreen
@@ -61,6 +68,8 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.io.File
+import java.io.FileOutputStream
 
 @RunWith(AndroidJUnit4::class)
 class PeopleScreenInstrumentedTest {
@@ -157,6 +166,38 @@ class PeopleScreenInstrumentedTest {
             ),
             navigator.destinations,
         )
+    }
+
+    /** Regression: https://github.com/zly2006/zhihu-plus-plus/issues/718 */
+    @Test
+    fun denseProfileBadgesKeepHeaderActionsVisibleOffline() {
+        val viewModel = seededViewModel(itemCount = 1)
+        composeRule.activity.runOnUiThread {
+            viewModel.officialBadgeDetails = listOf(
+                OfficialBadge("社区成就", "社区成就说明"),
+                OfficialBadge("身份认证", "身份认证说明"),
+                OfficialBadge("优秀答主", "优秀答主说明"),
+                OfficialBadge("新知答主", "新知答主说明"),
+            )
+        }
+        setPeopleScreen()
+
+        composeRule.onNodeWithTag(PEOPLE_SCREEN_FOLLOW_BUTTON_TAG).assertIsDisplayed()
+        composeRule.onNodeWithTag(PEOPLE_SCREEN_BLOCK_BUTTON_TAG).assertIsDisplayed()
+        composeRule.onNodeWithTag(PEOPLE_SCREEN_RECOMMENDATION_BLOCK_BUTTON_TAG).assertIsDisplayed()
+        composeRule.onNodeWithTag(PEOPLE_SCREEN_QUESTION_AUTHOR_BLOCK_BUTTON_TAG).assertIsDisplayed()
+        val screenshot = File(
+            requireNotNull(composeRule.activity.getExternalFilesDir(null)),
+            "issue-718-dense-profile.png",
+        )
+        FileOutputStream(screenshot).use { output ->
+            composeRule.onRoot().captureToImage().asAndroidBitmap().compress(
+                android.graphics.Bitmap.CompressFormat.PNG,
+                100,
+                output,
+            )
+        }
+        assertTrue(screenshot.exists() && screenshot.length() > 0)
     }
 
     /**

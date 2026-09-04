@@ -78,7 +78,10 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.lerp
+import kotlin.math.roundToInt
+import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.lifecycle.ViewModel
 import coil3.compose.AsyncImage
 import com.fleeksoft.ksoup.Ksoup
@@ -717,12 +720,13 @@ fun PeopleScreen(
     }
 
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
-    val density = LocalDensity.current
-    LaunchedEffect(density) {
-        scrollBehavior.state.heightOffsetLimit = -with(density) { 240.dp.toPx() }
+    var expandedHeaderHeightPx by remember { mutableIntStateOf(0) }
+    LaunchedEffect(expandedHeaderHeightPx) {
+        if (expandedHeaderHeightPx > 0) {
+            scrollBehavior.state.heightOffsetLimit = -expandedHeaderHeightPx.toFloat()
+        }
     }
     val collapsedFraction = scrollBehavior.state.collapsedFraction
-    val headerHeight = lerp(240.dp, 0.dp, collapsedFraction)
 
     Scaffold(
         modifier = Modifier
@@ -734,13 +738,15 @@ fun PeopleScreen(
                 modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars),
             ) {
                 Column {
-                    Box(modifier = Modifier.height(headerHeight)) {
+                    CollapsibleHeader(
+                        collapsedFraction = collapsedFraction,
+                        onExpandedHeightChanged = { expandedHeaderHeightPx = it },
+                    ) {
                         UserInfoHeader(
                             viewModel = viewModel,
                             pagerState = pagerState,
                             modifier = Modifier
                                 .padding(horizontal = 8.dp)
-                                .fillMaxSize()
                                 .testTag(PEOPLE_SCREEN_HEADER_TAG),
                             onFollowToggle = {
                                 coroutineScope.launch {
@@ -1589,6 +1595,27 @@ private fun SortBar(
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
 @Composable
+private fun CollapsibleHeader(
+    collapsedFraction: Float,
+    onExpandedHeightChanged: (Int) -> Unit,
+    content: @Composable () -> Unit,
+) {
+    SubcomposeLayout { constraints ->
+        val placeable = subcompose("header", content).single().measure(
+            constraints.copy(minHeight = 0, maxHeight = Constraints.Infinity),
+        )
+        if (placeable.height > 0) {
+            onExpandedHeightChanged(placeable.height)
+        }
+        val height = (placeable.height * (1f - collapsedFraction)).roundToInt()
+        layout(constraints.maxWidth, height) {
+            placeable.place(0, 0)
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
+@Composable
 private fun UserInfoHeader(
     viewModel: PersonViewModel,
     pagerState: PagerState,
@@ -1683,33 +1710,6 @@ private fun UserInfoHeader(
                 }
             }
         }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 16.dp),
-            horizontalArrangement = Arrangement.SpaceAround,
-        ) {
-            StatItem("回答", viewModel.answerCount, onClick = {
-                coroutineScope.launch {
-                    pagerState.animateScrollToPage(0)
-                }
-            }, tag = PEOPLE_SCREEN_ANSWER_COUNT_TAG)
-            StatItem("文章", viewModel.articleCount, onClick = {
-                coroutineScope.launch {
-                    pagerState.animateScrollToPage(1)
-                }
-            }, tag = PEOPLE_SCREEN_ARTICLE_COUNT_TAG)
-            StatItem("粉丝", viewModel.followerCount, onClick = {
-                coroutineScope.launch {
-                    pagerState.animateScrollToPage(7)
-                }
-            }, tag = PEOPLE_SCREEN_FOLLOWER_COUNT_TAG)
-            StatItem("关注", viewModel.followingCount, onClick = {
-                coroutineScope.launch {
-                    pagerState.animateScrollToPage(8)
-                }
-            }, tag = PEOPLE_SCREEN_FOLLOWING_COUNT_TAG)
-        }
         FlowRow(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1742,5 +1742,33 @@ private fun UserInfoHeader(
                 Text(if (viewModel.isBlockedAsQuestionAuthor) "取消屏蔽其提问" else "屏蔽其提问")
             }
         }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 16.dp),
+            horizontalArrangement = Arrangement.SpaceAround,
+        ) {
+            StatItem("回答", viewModel.answerCount, onClick = {
+                coroutineScope.launch {
+                    pagerState.animateScrollToPage(0)
+                }
+            }, tag = PEOPLE_SCREEN_ANSWER_COUNT_TAG)
+            StatItem("文章", viewModel.articleCount, onClick = {
+                coroutineScope.launch {
+                    pagerState.animateScrollToPage(1)
+                }
+            }, tag = PEOPLE_SCREEN_ARTICLE_COUNT_TAG)
+            StatItem("粉丝", viewModel.followerCount, onClick = {
+                coroutineScope.launch {
+                    pagerState.animateScrollToPage(7)
+                }
+            }, tag = PEOPLE_SCREEN_FOLLOWER_COUNT_TAG)
+            StatItem("关注", viewModel.followingCount, onClick = {
+                coroutineScope.launch {
+                    pagerState.animateScrollToPage(8)
+                }
+            }, tag = PEOPLE_SCREEN_FOLLOWING_COUNT_TAG)
+        }
+
     }
 }
