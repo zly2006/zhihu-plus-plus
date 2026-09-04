@@ -232,22 +232,10 @@ class PeopleScreenInstrumentedTest {
 
         val expandedScreenshot = captureScreenshot("issue-718-expanded.png")
         val listNode = composeRule.onNodeWithTag(PEOPLE_SCREEN_ANSWERS_LIST_TAG)
-        composeRule.onNodeWithTag(PEOPLE_SCREEN_ANSWERS_LIST_TAG).performTouchInput {
-            swipeUp(
-                startY = 1000f,
-                endY = 700f,
-                durationMillis = 1000,
-            )
-        }
+        listNode.performTouchInput { swipeUp(250f) }
         composeRule.waitForIdle()
         val intermediateScreenshot = captureScreenshot("issue-718-intermediate.png")
-        listNode.performTouchInput {
-            swipeUp(
-                startY = 1000f,
-                endY = 0f,
-                durationMillis = 1000,
-            )
-        }
+        listNode.performTouchInput { swipeUp(800f) }
         composeRule.waitForIdle()
         val collapsedTabBounds = composeRule
             .onNodeWithTag(PEOPLE_SCREEN_TAB_ROW_TAG)
