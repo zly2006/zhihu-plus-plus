@@ -50,6 +50,8 @@ fun AndroidZhihuMain(navController: NavHostController) {
         navController = navController,
         mainTabNavigationTarget = activity.mainTabNavigationTarget,
         navigate = activity::navigate,
+        navigateContent = activity::navigateIn,
+        enableLandscapeListDetail = true,
         setCurrentMainTabOpenFrom = activity::setCurrentMainTabOpenFrom,
         consumeMainTabNavigationTarget = activity::consumeMainTabNavigationTarget,
         preferenceState = rememberAndroidZhihuMainPreferenceState(),
