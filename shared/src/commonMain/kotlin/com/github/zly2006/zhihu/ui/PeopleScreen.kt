@@ -74,14 +74,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
-import kotlin.math.roundToInt
-import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.lifecycle.ViewModel
 import coil3.compose.AsyncImage
 import com.fleeksoft.ksoup.Ksoup
@@ -130,6 +128,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import org.jetbrains.compose.resources.painterResource
 import zhihu.shared.generated.resources.Res
 import zhihu.shared.generated.resources.ic_zh_plus_author_badge
+import kotlin.math.roundToInt
 import kotlin.reflect.typeOf
 import androidx.lifecycle.viewmodel.compose.viewModel as composeViewModel
 import com.github.zly2006.zhihu.navigation.Search as SearchDestination
@@ -1769,6 +1768,5 @@ private fun UserInfoHeader(
                 }
             }, tag = PEOPLE_SCREEN_FOLLOWING_COUNT_TAG)
         }
-
     }
 }

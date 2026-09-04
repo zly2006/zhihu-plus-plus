@@ -172,6 +172,7 @@ class PeopleScreenInstrumentedTest {
     @Test
     fun denseProfileBadgesKeepHeaderActionsVisibleOffline() {
         val viewModel = seededViewModel(itemCount = 1)
+        setPeopleScreen()
         composeRule.activity.runOnUiThread {
             viewModel.officialBadgeDetails = listOf(
                 OfficialBadge("社区成就", "社区成就说明"),
@@ -180,7 +181,7 @@ class PeopleScreenInstrumentedTest {
                 OfficialBadge("新知答主", "新知答主说明"),
             )
         }
-        setPeopleScreen()
+        composeRule.waitForIdle()
 
         composeRule.onNodeWithTag(PEOPLE_SCREEN_FOLLOW_BUTTON_TAG).assertIsDisplayed()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_BLOCK_BUTTON_TAG).assertIsDisplayed()
