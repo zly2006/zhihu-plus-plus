@@ -46,6 +46,7 @@ import coil3.request.crossfade
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.HistoryStorage
 import com.github.zly2006.zhihu.filter.ContentOpenEventSupport
+import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionContent
@@ -333,19 +334,31 @@ class MainActivity : ComponentActivity() {
     }
 
     fun navigate(route: NavDestination, popup: Boolean = false) {
+        navigate(route, navController, popup)
+    }
+
+    fun navigateIn(route: NavDestination, targetController: NavHostController) {
+        navigate(route, targetController, popup = false)
+    }
+
+    private fun navigate(
+        route: NavDestination,
+        targetController: NavHostController,
+        popup: Boolean,
+    ) {
         if (route is CommentHolder) {
             AndroidArticleNavigationHandoff.prepareComment(route)
-            navigate(route.article, popup)
+            navigate(route.article, targetController, popup)
             return
         }
         AndroidArticleNavigationHandoff.clearCommentUnless(route)
-        preparePendingContentOpen(route)
+        preparePendingContentOpen(route, targetController)
         history.add(route)
         if (route is Video) {
             val current = runCatching {
-                navController.currentBackStackEntry?.toRoute<Article>()
+                targetController.currentBackStackEntry?.toRoute<Article>()
             }.getOrNull() ?: runCatching {
-                navController.currentBackStackEntry?.toRoute<Question>()
+                targetController.currentBackStackEntry?.toRoute<Question>()
             }.getOrNull()
             if (current == null) {
                 androidUserMessageSink(this).showShortMessage("无法打开视频：未知的内容类型")
@@ -378,14 +391,24 @@ class MainActivity : ComponentActivity() {
             }
             return
         }
+        if (route == Account) {
+            // Account is a main-pager tab. Keeping it as a standalone route leaves the
+            // previous landscape list pane mounted while the account page is pushed.
+            mainTabNavigationTarget = Account
+            navigateToMainTabs()
+            return
+        }
         if (route == MainTabs) {
             mainTabNavigationTarget = Home
             navigateToMainTabs()
             return
         }
-        navController.navigate(route) {
+        targetController.navigate(route) {
+            // A secondary NavHost scopes content ViewModels by back-stack entry. Reusing
+            // the same Article destination here keeps the old entry-scoped article alive
+            // when a different feed item is selected.
+            launchSingleTop = popup
             if (popup) {
-                launchSingleTop = true
                 popUpTo(MainTabs) {
                     // clear the back stack and viewModels
                     saveState = true
@@ -394,7 +417,10 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun preparePendingContentOpen(target: NavDestination) {
+    private fun preparePendingContentOpen(
+        target: NavDestination,
+        sourceController: NavHostController,
+    ) {
         val openFrom = if (
             runCatching { navController.currentBackStackEntry?.toRoute<MainTabs>() }.getOrNull() != null
         ) {
@@ -402,7 +428,7 @@ class MainActivity : ComponentActivity() {
         } else {
             null
         }
-            ?: ContentOpenEventSupport.inferOpenFrom(currentContentOpenSource(), target)
+            ?: ContentOpenEventSupport.inferOpenFrom(currentContentOpenSource(sourceController), target)
         AndroidArticleNavigationHandoff.prepareContentOpen(target, openFrom)
     }
 
@@ -426,8 +452,8 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun currentContentOpenSource(): NavDestination? {
-        val currentEntry = navController.currentBackStackEntry
+    private fun currentContentOpenSource(controller: NavHostController = navController): NavDestination? {
+        val currentEntry = controller.currentBackStackEntry
         return runCatching {
             currentEntry?.toRoute<Article>()
         }.getOrNull() ?: runCatching {

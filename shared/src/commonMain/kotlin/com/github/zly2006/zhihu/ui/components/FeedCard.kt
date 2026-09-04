@@ -60,6 +60,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -81,6 +83,7 @@ import com.github.zly2006.zhihu.navigation.withReadingQueueSource
 import com.github.zly2006.zhihu.platform.UserMessageDuration
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.ui.LocalSelectedContentDestination
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
 import com.github.zly2006.zhihu.util.parseEmphasizedHtmlTextWithTheme
@@ -115,6 +118,7 @@ fun FeedCard(
     val uriHandler = LocalUriHandler.current
     val userMessages = rememberUserMessageSink()
     val settings = rememberSettingsStore()
+    val selectedDestination = LocalSelectedContentDestination.current
     var showMenu by remember { mutableStateOf(false) }
     val showFeedThumbnail = remember {
         settings.getBoolean("showFeedThumbnail", true)
@@ -130,6 +134,8 @@ fun FeedCard(
         ?.filterIsInstance<DataHolder.Pin.ContentImage>()
         .orEmpty()
     val showPinImages = showFeedThumbnail && pinImages.isNotEmpty() && !item.isFiltered
+    val isSelected = item.navDestination != null && item.navDestination == selectedDestination
+    val selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f)
     val performClick: (FeedDisplayItem) -> Unit = { clickedItem ->
         val destination = clickedItem.navDestination?.withReadingQueueSource(readingQueueSourceId)
         if (onClick != null) {
@@ -148,6 +154,8 @@ fun FeedCard(
         Column(
             modifier = modifier
                 .fillMaxWidth()
+                .semantics { selected = isSelected }
+                .then(if (isSelected) Modifier.background(selectedContainerColor) else Modifier)
                 .then(if (showPinImages || duo3CardLayout) Modifier else Modifier.heightIn(max = maxHeight)),
         ) {
             Column(
@@ -175,11 +183,14 @@ fun FeedCard(
         Box(
             modifier = modifier
                 .fillMaxWidth()
+                .semantics { selected = isSelected }
                 .then(if (showPinImages || duo3CardLayout) Modifier else Modifier.heightIn(max = maxHeight))
                 .padding(horizontal = horizontalPadding, vertical = 8.dp),
         ) {
             Card(
-                colors = if (duo3CardAppearance) {
+                colors = if (isSelected) {
+                    CardDefaults.cardColors(containerColor = selectedContainerColor)
+                } else if (duo3CardAppearance) {
                     CardDefaults.cardColors().copy(
                         containerColor = MaterialTheme.colorScheme.surfaceBright,
                     )

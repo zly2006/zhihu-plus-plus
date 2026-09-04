@@ -33,11 +33,17 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
@@ -63,6 +69,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -70,6 +77,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.compositeOver
@@ -91,6 +99,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.github.zly2006.zhihu.account.LoginScreen
 import com.github.zly2006.zhihu.filter.ContentOpenFrom
@@ -101,6 +110,7 @@ import com.github.zly2006.zhihu.navigation.ArticleTypeNavType
 import com.github.zly2006.zhihu.navigation.CollectionContent
 import com.github.zly2006.zhihu.navigation.Collections
 import com.github.zly2006.zhihu.navigation.Daily
+import com.github.zly2006.zhihu.navigation.EmptyDetail
 import com.github.zly2006.zhihu.navigation.Follow
 import com.github.zly2006.zhihu.navigation.History
 import com.github.zly2006.zhihu.navigation.Home
@@ -187,6 +197,8 @@ fun ZhihuMain(
     navController: NavHostController,
     mainTabNavigationTarget: TopLevelDestination?,
     navigate: (NavDestination) -> Unit,
+    navigateContent: (NavDestination, NavHostController) -> Unit = { destination, _ -> navigate(destination) },
+    enableLandscapeListDetail: Boolean = false,
     setCurrentMainTabOpenFrom: (String?) -> Unit,
     consumeMainTabNavigationTarget: (TopLevelDestination) -> Unit,
     preferenceState: ZhihuMainPreferenceState,
@@ -215,6 +227,11 @@ fun ZhihuMain(
     val readingPlayer = rememberReadingPlayerController()
     val readingPlayerState by readingPlayer.state
     val settings = rememberSettingsStore()
+    val detailNavController = rememberNavController()
+    val detailEntry by detailNavController.currentBackStackEntryAsState()
+    val selectedContentDestination = detailEntry.readingDestinationOrNull()
+    val hasOpenDetail = selectedContentDestination != null
+    val hasOpenSecondaryDetail = detailEntry?.destination?.hasRoute<EmptyDetail>() == false
     var showReadingQueue by remember { mutableStateOf(false) }
     var isReadingPlayerExpandedByUser by remember { mutableStateOf(false) }
     var readingPlayerHeightPx by remember { mutableIntStateOf(0) }
@@ -224,10 +241,8 @@ fun ZhihuMain(
 
     val navEntry by navController.currentBackStackEntryAsState()
     val showMainNavigation = navEntry?.destination?.hasRoute<MainTabs>() == true
-    PlatformBackHandler(enabled = navEntry != null && !showMainNavigation) {
-        navController.popBackStack()
-    }
-    val isOnReadingDetail = navEntry?.destination?.hasRoute<Article>() == true ||
+    val isOnReadingDetail = hasOpenDetail ||
+        navEntry?.destination?.hasRoute<Article>() == true ||
         navEntry?.destination?.hasRoute<Question>() == true ||
         navEntry?.destination?.hasRoute<Pin>() == true
     val isReadingPlayerExpanded = readingPlayerState.hasSession &&
@@ -257,6 +272,15 @@ fun ZhihuMain(
         previousReadingItemKey = currentItemKey
         if (itemChanged && currentItem != null) {
             val currentDestination = when {
+                detailEntry?.destination?.hasRoute<Article>() == true -> runCatching {
+                    detailEntry?.toRoute<Article>()
+                }.getOrNull()
+                detailEntry?.destination?.hasRoute<Pin>() == true -> runCatching {
+                    detailEntry?.toRoute<Pin>()
+                }.getOrNull()
+                detailEntry?.destination?.hasRoute<Question>() == true -> runCatching {
+                    detailEntry?.toRoute<Question>()
+                }.getOrNull()
                 navEntry?.destination?.hasRoute<Article>() == true -> runCatching {
                     navEntry?.toRoute<Article>()
                 }.getOrNull()
@@ -270,14 +294,20 @@ fun ZhihuMain(
             }
             val destination = currentItem.toDestination(readingPlayerState.sourceId)
             if (currentDestination != null && currentDestination != destination) {
-                navController.popBackStack()
-                navigate(destination)
+                if (hasOpenDetail) {
+                    detailNavController.popBackStack()
+                    navigateContent(destination, detailNavController)
+                } else {
+                    navController.popBackStack()
+                    navigate(destination)
+                }
             }
         }
     }
 
     // 离开文章页时恢复系统状态栏（只在实际切换时触发）
-    val isOnArticle = navEntry?.destination?.hasRoute<Article>() == true
+    val isOnArticle = detailEntry?.destination?.hasRoute<Article>() == true ||
+        navEntry?.destination?.hasRoute<Article>() == true
     LaunchedEffect(navEntry) {
         isReadingPlayerExpandedByUser = false
         if (!isOnArticle) readingPlayerOverlayOffsetState.clearRoute()
@@ -348,8 +378,24 @@ fun ZhihuMain(
     val coroutineScope = rememberCoroutineScope()
 
     var currentMainTabDestination by remember { mutableStateOf(startDestination) }
+    val isListPaneContext = navEntry.isListPaneDestination()
+    val isAccountSurface = currentMainTabDestination == Account ||
+        navEntry?.destination?.hasRoute<Account>() == true
+
+    PlatformBackHandler(enabled = navEntry != null && !showMainNavigation && !hasOpenSecondaryDetail) {
+        navController.popBackStack()
+    }
+    PlatformBackHandler(enabled = hasOpenSecondaryDetail && isListPaneContext) {
+        detailNavController.popBackStack()
+    }
 
     fun navigateTopLevel(destination: TopLevelDestination) {
+        if (destination == Account && hasOpenDetail) {
+            detailNavController.popBackStack(
+                detailNavController.graph.startDestinationId,
+                inclusive = false,
+            )
+        }
         val targetPage = pageIndexForDestination(destination)
         coroutineScope.launch {
             mainPagerState.animateScrollToPage(targetPage)
@@ -372,7 +418,22 @@ fun ZhihuMain(
         }
     }
 
-    PlatformBackHandler(showMainNavigation && mainPagerState.currentPage != 0) {
+    LaunchedEffect(currentMainTabDestination, navEntry) {
+        if (isAccountSurface && hasOpenDetail) {
+            // A reading detail belongs to the feed that opened it. Do not carry it into
+            // the account split pane when the user switches tabs.
+            detailNavController.popBackStack(
+                detailNavController.graph.startDestinationId,
+                inclusive = false,
+            )
+        }
+    }
+
+    PlatformBackHandler(
+        showMainNavigation &&
+            mainPagerState.currentPage != 0 &&
+            !(hasOpenSecondaryDetail && isListPaneContext),
+    ) {
         coroutineScope.launch {
             mainPagerState.animateScrollToPage(0)
         }
@@ -404,10 +465,146 @@ fun ZhihuMain(
         }
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
+    var listPaneRatio by remember {
+        mutableFloatStateOf(
+            settings.getFloat(LANDSCAPE_LIST_PANE_RATIO_KEY, DEFAULT_LIST_PANE_RATIO),
+        )
+    }
+
+    fun openListDetail(destination: NavDestination) {
+        if (hasOpenSecondaryDetail) {
+            detailNavController.popBackStack(
+                detailNavController.graph.startDestinationId,
+                inclusive = false,
+            )
+        }
+        navigateContent(destination, detailNavController)
+    }
+
+    @Composable
+    fun DetailPane(modifier: Modifier) {
+        CompositionLocalProvider(
+            LocalArticleNavController provides detailNavController,
+            LocalNavigator provides Navigator(
+                onNavigate = { destination ->
+                    if (
+                        destination.isReadingDestination() ||
+                        (currentMainTabDestination == Account && destination.isAccountDetailDestination())
+                    ) {
+                        openListDetail(destination)
+                    } else {
+                        navigate(destination)
+                    }
+                },
+                onNavigateBack = detailNavController::popBackStack,
+                onNavigateTopLevel = ::navigateTopLevel,
+            ),
+            LocalSelectedContentDestination provides selectedContentDestination,
+            LocalReadingPlayerOverlayPadding provides readingPlayerOverlayPadding,
+            LocalReadingPlayerOverlayOffsetState provides readingPlayerOverlayOffsetState,
+        ) {
+            NavHost(
+                navController = detailNavController,
+                startDestination = EmptyDetail,
+                modifier = modifier.testTag("detail_pane"),
+                enterTransition = { slideInHorizontally(tween(300)) { it } },
+                exitTransition = { ExitTransition.None },
+                popEnterTransition = { EnterTransition.None },
+                popExitTransition = { slideOutHorizontally(tween(300)) { it } + fadeOut(tween(300)) },
+            ) {
+                composable<EmptyDetail> {
+                    EmptyDetailPane()
+                }
+                composable<Question> { entry ->
+                    QuestionScreen(entry.toRoute())
+                }
+                composable<Article>(
+                    typeMap = mapOf(typeOf<ArticleType>() to ArticleTypeNavType),
+                    enterTransition = articleEnterTransition,
+                    exitTransition = articleExitTransition,
+                ) { entry ->
+                    articleContent(entry.toRoute(), entry)
+                }
+                composable<Pin> { entry ->
+                    PinScreen(entry.toRoute())
+                }
+                composable<Account.RecommendSettings.Blocklist> {
+                    BlocklistSettingsScreen(blocklistSettingsNlpContent)
+                }
+                composable<Account.RecommendSettings.BlockedFeedHistory> {
+                    BlockedFeedHistoryScreen()
+                }
+                composable<Account.AppearanceSettings> { entry ->
+                    val args = entry.toRoute<Account.AppearanceSettings>()
+                    AppearanceSettingsScreen(
+                        setting = args.setting,
+                        onExit = reloadBottomBarPreferences,
+                    )
+                }
+                composable<Account.RecommendSettings> { entry ->
+                    val args = entry.toRoute<Account.RecommendSettings>()
+                    ContentFilterSettingsScreen(args.setting)
+                }
+                composable<Account.IdentityManagement> {
+                    IdentityManagementScreen()
+                }
+                composable<Account.SystemAndUpdateSettings> { entry ->
+                    SystemAndUpdateSettingsScreen(
+                        setting = entry.toRoute<Account.SystemAndUpdateSettings>().setting,
+                    )
+                }
+                composable<Account.ReadingSettings> {
+                    ReadingSettingsScreen()
+                }
+                composable<Account.SettingsSearch> {
+                    SettingsSearchScreen()
+                }
+                composable<Account.OpenSourceLicenses> {
+                    OpenSourceLicensesScreen()
+                }
+                composable<Account.DeveloperSettings> {
+                    DeveloperSettingsScreen()
+                }
+                composable<Account.DeveloperSettings.ColorScheme> {
+                    ColorSchemeScreen()
+                }
+            }
+        }
+    }
+
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        val containerWidth = maxWidth
+        val isLargeLandscape = enableLandscapeListDetail &&
+            containerWidth >= 840.dp &&
+            containerWidth > maxHeight
+        val showListDetail = isLargeLandscape && isListPaneContext
+        val showDetailPane = hasOpenSecondaryDetail && isListPaneContext
+        val useSecondaryContentNavigation = isListPaneContext && (isLargeLandscape || hasOpenSecondaryDetail)
+        val listPaneWidth = if (showListDetail) {
+            normalizedListPaneWidth(containerWidth, listPaneRatio)
+        } else {
+            containerWidth
+        }
+        val listPaneModifier = if (showListDetail) {
+            Modifier.width(listPaneWidth).fillMaxHeight().align(Alignment.CenterStart)
+        } else {
+            Modifier.fillMaxSize()
+        }
+        LaunchedEffect(navEntry, isLargeLandscape, hasOpenSecondaryDetail, isListPaneContext) {
+            val directReadingDestination = navEntry.readingDestinationOrNull()
+            if ((isLargeLandscape || (hasOpenDetail && isListPaneContext)) && directReadingDestination != null) {
+                val needsDefaultList =
+                    !navController.previousBackStackEntry.isListPaneDestination()
+                detailNavController.navigate(directReadingDestination) {
+                    launchSingleTop = false
+                }
+                navController.popBackStack()
+                if (isLargeLandscape && needsDefaultList) navigate(MainTabs)
+            }
+        }
         Scaffold(
-            modifier = Modifier
-                .fillMaxSize()
+            modifier = listPaneModifier
+                .testTag("list_pane")
                 .nestedScroll(bottomBarScrollConnection),
             floatingActionButton = {
                 AnimatedVisibility(
@@ -504,13 +701,24 @@ fun ZhihuMain(
                 LocalArticleNavController provides navController,
                 LocalNavigator provides Navigator(
                     onNavigate = { destination ->
-                        navigate(destination)
+                        if (
+                            useSecondaryContentNavigation &&
+                            (
+                                destination.isReadingDestination() ||
+                                    (currentMainTabDestination == Account && destination.isAccountDetailDestination())
+                            )
+                        ) {
+                            openListDetail(destination)
+                        } else {
+                            navigate(destination)
+                        }
                     },
                     onNavigateBack = navController::popBackStack,
                     onNavigateTopLevel = ::navigateTopLevel,
                 ),
                 LocalReadingPlayerOverlayPadding provides readingPlayerOverlayPadding,
                 LocalReadingPlayerOverlayOffsetState provides readingPlayerOverlayOffsetState,
+                LocalSelectedContentDestination provides selectedContentDestination,
             ) {
                 NavHost(
                     navController,
@@ -724,6 +932,36 @@ fun ZhihuMain(
             }
         }
 
+        when {
+            showListDetail -> Row(Modifier.fillMaxSize()) {
+                Spacer(Modifier.width(listPaneWidth))
+                ListDetailDivider(
+                    onDrag = { deltaPx ->
+                        val usableWidthPx = with(density) {
+                            (containerWidth - LIST_DETAIL_DIVIDER_WIDTH).toPx()
+                        }
+                        if (usableWidthPx > 0f) {
+                            listPaneRatio = (listPaneRatio + deltaPx / usableWidthPx).coerceIn(0f, 1f)
+                        }
+                    },
+                    onAdjustBy = { ratioDelta ->
+                        listPaneRatio = (listPaneRatio + ratioDelta).coerceIn(0f, 1f)
+                    },
+                    onDragStopped = {
+                        val normalizedWidth = normalizedListPaneWidth(containerWidth, listPaneRatio)
+                        listPaneRatio = normalizedWidth.value /
+                            (containerWidth - LIST_DETAIL_DIVIDER_WIDTH).value
+                        settings.putFloat(LANDSCAPE_LIST_PANE_RATIO_KEY, listPaneRatio)
+                    },
+                )
+                DetailPane(Modifier.weight(1f).fillMaxSize())
+            }
+            showDetailPane -> DetailPane(Modifier.fillMaxSize())
+            !hasOpenDetail -> Box(Modifier.size(0.dp)) {
+                DetailPane(Modifier.fillMaxSize())
+            }
+        }
+
         AnimatedVisibility(
             visible = readingPlayerState.hasSession && !isReadingPlayerExpanded,
             enter = fadeIn(tween(220)),
@@ -753,6 +991,15 @@ fun ZhihuMain(
                 showReadingQueue = false
                 val destination = item.toDestination(readingPlayerState.sourceId)
                 val currentDestination = when {
+                    detailEntry?.destination?.hasRoute<Article>() == true -> runCatching {
+                        detailEntry?.toRoute<Article>()
+                    }.getOrNull()
+                    detailEntry?.destination?.hasRoute<Pin>() == true -> runCatching {
+                        detailEntry?.toRoute<Pin>()
+                    }.getOrNull()
+                    detailEntry?.destination?.hasRoute<Question>() == true -> runCatching {
+                        detailEntry?.toRoute<Question>()
+                    }.getOrNull()
                     navEntry?.destination?.hasRoute<Article>() == true -> runCatching {
                         navEntry?.toRoute<Article>()
                     }.getOrNull()
@@ -765,10 +1012,13 @@ fun ZhihuMain(
                     else -> null
                 }
                 if (currentDestination != destination) {
-                    if (currentDestination != null) {
-                        navController.popBackStack()
+                    if (hasOpenDetail) {
+                        if (currentDestination != null) detailNavController.popBackStack()
+                        navigateContent(destination, detailNavController)
+                    } else {
+                        if (currentDestination != null) navController.popBackStack()
+                        navigate(destination)
                     }
-                    navigate(destination)
                 }
             },
             onOpenSettings = {
@@ -874,4 +1124,44 @@ private val TopLevelDestination.openFrom: String?
 internal fun NavBackStackEntry?.hasRoute(cls: KClass<out NavDestination>): Boolean {
     val dest = this?.destination ?: return false
     return dest.hierarchy.any { it.hasRoute(cls) }
+}
+
+private fun NavBackStackEntry?.readingDestinationOrNull(): NavDestination? = when {
+    this?.destination?.hasRoute<Article>() == true -> runCatching { toRoute<Article>() }.getOrNull()
+    this?.destination?.hasRoute<Question>() == true -> runCatching { toRoute<Question>() }.getOrNull()
+    this?.destination?.hasRoute<Pin>() == true -> runCatching { toRoute<Pin>() }.getOrNull()
+    else -> null
+}
+
+private fun NavDestination.isAccountDetailDestination(): Boolean = when (this) {
+    is Account.AppearanceSettings,
+    Account.ReadingSettings,
+    is Account.RecommendSettings,
+    Account.RecommendSettings.Blocklist,
+    Account.RecommendSettings.BlockedFeedHistory,
+    Account.IdentityManagement,
+    is Account.SystemAndUpdateSettings,
+    Account.SettingsSearch,
+    Account.OpenSourceLicenses,
+    Account.DeveloperSettings,
+    Account.DeveloperSettings.ColorScheme,
+    -> true
+    else -> false
+}
+
+private fun NavBackStackEntry?.isListPaneDestination(): Boolean = when {
+    this == null -> false
+    destination.hasRoute<MainTabs>() -> true
+    destination.hasRoute<Account>() -> true
+    destination.hasRoute<Search>() -> true
+    destination.hasRoute<History>() -> true
+    destination.hasRoute<Collections>() -> true
+    destination.hasRoute<CollectionContent>() -> true
+    destination.hasRoute<Person>() -> true
+    destination.hasRoute<Topic>() -> true
+    destination.hasRoute<Notification>() -> true
+    destination.hasRoute<Notification.Entry>() -> true
+    destination.hasRoute<Notification.Invitations>() -> true
+    destination.hasRoute<Account.RecommendSettings.BlockedFeedHistory>() -> true
+    else -> false
 }
