@@ -17,35 +17,31 @@
 
 package com.github.zly2006.zhihu.ui
 
-import androidx.activity.compose.LocalActivity
-import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavHostController
 import com.github.zly2006.zhihu.MainActivity
+import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.platform.androidUserMessageSink
+import com.github.zly2006.zhihu.theme.ThemeManager
+import com.github.zly2006.zhihu.theme.ThemeStyle
+import com.github.zly2006.zhihu.ui.miuix.MiuixArticleScreen
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
-import com.github.zly2006.zhihu.viewmodel.sharedArticleAnswerSwitchState
+import top.yukonga.miuix.kmp.nav.core.NavController
 
 /**
  * Android 平台的 Zhihu++ 主界面入口。
  *
- * 这里把 [MainActivity] 持有的导航、偏好设置、文章页 ViewModel、回答切换转场和 NLP 页面适配到共享 [ZhihuMain]。
+ * 这里把 [MainActivity] 持有的导航、偏好设置、文章页 ViewModel 和 NLP 页面适配到共享 [ZhihuMain]。
+ * 回答切换转场不在这里，由 common 的 ArticleAnswerSlot 在单个导航 entry 内部处理。
  * UI 结构仍由 common 主壳负责，Android 只提供生命周期、Activity、ViewModel 和平台专属页面实现。
  */
 @Composable
-fun AndroidZhihuMain(navController: NavHostController) {
-    val activity = LocalActivity.current as MainActivity
+fun AndroidZhihuMain(navController: NavController<NavDestination>) {
+    val activity = rememberAndroidZhihuMainActivity()
     ZhihuMain(
         navController = navController,
         mainTabNavigationTarget = activity.mainTabNavigationTarget,
@@ -53,44 +49,24 @@ fun AndroidZhihuMain(navController: NavHostController) {
         setCurrentMainTabOpenFrom = activity::setCurrentMainTabOpenFrom,
         consumeMainTabNavigationTarget = activity::consumeMainTabNavigationTarget,
         preferenceState = rememberAndroidZhihuMainPreferenceState(),
-        isDarkTheme = com.github.zly2006.zhihu.theme.ThemeManager.isDarkTheme,
-        articleEnterTransition = {
-            when (sharedArticleAnswerSwitchState.answerTransitionDirection) {
-                ArticleAnswerTransitionDirection.VERTICAL_NEXT ->
-                    slideInVertically(tween(300)) { it } + fadeIn(tween(300))
-                ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS ->
-                    slideInVertically(tween(300)) { -it } + fadeIn(tween(300))
-                ArticleAnswerTransitionDirection.HORIZONTAL_NEXT ->
-                    slideInHorizontally(tween(300)) { it } + fadeIn(tween(300))
-                ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS ->
-                    slideInHorizontally(tween(300)) { -it } + fadeIn(tween(300))
-                else -> slideInHorizontally(tween(300)) { it }
-            }
-        },
-        articleExitTransition = {
-            when (sharedArticleAnswerSwitchState.answerTransitionDirection) {
-                ArticleAnswerTransitionDirection.VERTICAL_NEXT ->
-                    slideOutVertically(tween(300)) { -it } + fadeOut(tween(300))
-                ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS ->
-                    slideOutVertically(tween(300)) { it } + fadeOut(tween(300))
-                ArticleAnswerTransitionDirection.HORIZONTAL_NEXT ->
-                    slideOutHorizontally(tween(300)) { -it } + fadeOut(tween(300))
-                ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS ->
-                    slideOutHorizontally(tween(300)) { it } + fadeOut(tween(300))
-                else -> ExitTransition.None
-            }
-        },
-        articleContent = { article, navEntry ->
-            val viewModel: ArticleViewModel = viewModel(navEntry) {
+        isDarkTheme = ThemeManager.isDarkTheme,
+        articleContent = { article ->
+            val lifecycleOwner = LocalLifecycleOwner.current
+            // 同一回答链共用一个导航 entry 的 store，故按回答 id 区分 ViewModel（见 ArticleAnswerSlot）。
+            val viewModel: ArticleViewModel = viewModel(key = "article-${article.id}") {
                 ArticleViewModel(article, activity.httpClient, androidUserMessageSink(activity)) { onPause ->
-                    navEntry.lifecycle.addObserver(object : DefaultLifecycleObserver {
+                    lifecycleOwner.lifecycle.addObserver(object : DefaultLifecycleObserver {
                         override fun onPause(owner: LifecycleOwner) {
                             onPause()
                         }
                     })
                 }
             }
-            ArticleScreen(article, viewModel)
+            if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                MiuixArticleScreen(article, viewModel)
+            } else {
+                ArticleScreen(article, viewModel)
+            }
         },
         sentenceSimilarityContent = {
             SentenceSimilarityTestScreen()

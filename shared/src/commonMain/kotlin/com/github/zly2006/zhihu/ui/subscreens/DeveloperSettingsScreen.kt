@@ -61,6 +61,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.account.parseCookieAssignments
 import com.github.zly2006.zhihu.account.rememberZhihuAccountStore
 import com.github.zly2006.zhihu.data.ZHIHU_ME_URL
 import com.github.zly2006.zhihu.navigation.Account
@@ -297,7 +298,7 @@ fun DeveloperSettingsScreen() {
             text = {
                 Column {
                     Text(
-                        "请输入完整的Cookie字符串，格式类似于document.cookie，使用 \"; \" 分割各个cookie项",
+                        "请输入完整的Cookie字符串，格式类似于document.cookie，使用 \";\" 分割各个cookie项",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = 16.dp),
@@ -326,19 +327,12 @@ fun DeveloperSettingsScreen() {
                     onClick = {
                         if (cookieInputText.isNotBlank()) {
                             try {
-                                // 解析cookie字符串
-                                val cookies = mutableMapOf<String, String>()
-                                cookieInputText.split("; ").forEach { cookieItem ->
-                                    val parts = cookieItem.split("=", limit = 2)
-                                    if (parts.size == 2) {
-                                        cookies[parts[0].trim()] = parts[1].trim()
-                                    }
-                                }
+                                val cookies = parseCookieAssignments(cookieInputText)
 
                                 if (cookies.isNotEmpty()) {
                                     coroutineScope.launch {
                                         try {
-                                            if (accountStore.login(cookies)) {
+                                            if (accountStore.login(cookies.toMutableMap())) {
                                                 userMessages.showShortMessage("Cookie设置成功并验证登录状态")
                                             } else {
                                                 userMessages.showShortMessage("Cookie设置成功，但验证登录失败，请检查Cookie是否有效")

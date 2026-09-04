@@ -551,7 +551,7 @@ private fun DataHolder.Pin.toPeoplePinDisplayItem(): FeedDisplayItem? {
     )
 }
 
-private val PEOPLE_SCREEN_TITLES = listOf(
+internal val PEOPLE_SCREEN_TITLES = listOf(
     "回答",
     "文章",
     "动态",
@@ -564,7 +564,7 @@ private val PEOPLE_SCREEN_TITLES = listOf(
     "关注订阅",
 )
 
-private val PEOPLE_SCREEN_SUBSCRIPTION_TITLES = listOf(
+internal val PEOPLE_SCREEN_SUBSCRIPTION_TITLES = listOf(
     "我订阅的专栏",
     "关注的话题",
     "关注的问题",
@@ -603,7 +603,7 @@ const val PEOPLE_SCREEN_ARTICLE_SORT_HOT_TAG = "people_screen_article_sort_voteu
 const val PEOPLE_SCREEN_ARTICLE_SORT_TIME_TAG = "people_screen_article_sort_created"
 const val PEOPLE_SCREEN_OFFICIAL_BADGE_TAG = "people_screen_official_badge"
 
-private fun peopleScreenInitialPage(person: Person): Int {
+internal fun peopleScreenInitialPage(person: Person): Int {
     val jumpToIndex = PEOPLE_SCREEN_TITLES.indexOf(person.jumpTo)
     return if (jumpToIndex >= 0) jumpToIndex else 0
 }
@@ -1382,7 +1382,7 @@ private fun FollowedTopicListItem(topic: FollowedTopic) {
     }
 }
 
-private fun DataHolder.Column.webUrl(): String = when {
+internal fun DataHolder.Column.webUrl(): String = when {
     url.contains("/api/v4/columns/") ->
         url
             .replace("http://", "https://")
@@ -1495,7 +1495,7 @@ private fun StatItem(label: String, value: Int, onClick: () -> Unit = {}, tag: S
 }
 
 @Composable
-private fun OfficialBadgeDetails(
+internal fun OfficialBadgeDetails(
     badges: List<OfficialBadge>,
     modifier: Modifier = Modifier,
 ) {

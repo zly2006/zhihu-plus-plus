@@ -19,9 +19,11 @@
 
 package com.github.zly2006.zhihu.ui
 
+import androidx.activity.compose.LocalActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
+import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Daily
 import com.github.zly2006.zhihu.navigation.Follow
@@ -41,6 +43,17 @@ import com.github.zly2006.zhihu.ui.subscreens.navDestinationFromName
 import com.github.zly2006.zhihu.ui.subscreens.normalizeBottomBarSelection
 import com.github.zly2006.zhihu.ui.subscreens.resolveValidStartDestinationKey
 
+private val mainPreferenceKeys = setOf(
+    "duo3_home_account",
+    BOTTOM_BAR_ITEMS_PREFERENCE_KEY,
+    BOTTOM_BAR_ITEM_ORDER_PREFERENCE_KEY,
+    "bottomBarTapScrollToTop",
+    "autoHideBottomBar",
+    "autoHideTopBar",
+    COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY,
+    START_DESTINATION_PREFERENCE_KEY,
+)
+
 /**
  * 读取 Android SharedPreferences 中会影响主壳的设置快照。
  *
@@ -56,33 +69,41 @@ fun rememberAndroidZhihuMainPreferenceState(): ZhihuMainPreferenceState {
     val allBottomBarItemKeys = remember {
         listOf(Home.name, Follow.name, HotList.name, Daily.name, OnlineHistory.name, MyCollections.name, Account.name)
     }
-    return rememberZhihuMainPreferenceState {
-        val duo3HomeAccount = settings.getBoolean("duo3_home_account", false)
-        val selectedKeys = normalizeBottomBarSelection(
-            settings.getStringSet(
-                BOTTOM_BAR_ITEMS_PREFERENCE_KEY,
-                defaultBottomBarSelectionKeys(duo3HomeAccount, platformBottomBarItemLimit),
-            ),
-            duo3HomeAccount,
-            enforceMinimumSelection = true,
-            maximumSelection = platformBottomBarItemLimit,
-        )
-        val orderedSelectedKeys = bottomBarItemOrderFromPreference(
-            settings.getStringOrNull(BOTTOM_BAR_ITEM_ORDER_PREFERENCE_KEY),
-            selectedKeys,
-        )
-        ZhihuMainPreferenceSnapshot(
-            duo3HomeAccount = duo3HomeAccount,
-            tapToScrollToTopEnabled = settings.getBoolean("bottomBarTapScrollToTop", true),
-            autoHideBottomBar = settings.getBoolean("autoHideBottomBar", false),
-            collectionDirectBrowseEnabled = settings.getBoolean(COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY, false),
-            selectedBottomBarItemKeys = orderedSelectedKeys,
-            startDestination = navDestinationFromName(
-                resolveValidStartDestinationKey(
-                    settings.getString(START_DESTINATION_PREFERENCE_KEY, Home.name),
-                    orderedSelectedKeys.ifEmpty { allBottomBarItemKeys.filter { it in selectedKeys } },
+    return rememberZhihuMainPreferenceState(
+        settings = settings,
+        observedKeys = mainPreferenceKeys,
+        readSnapshot = {
+            val duo3HomeAccount = settings.getBoolean("duo3_home_account", false)
+            val selectedKeys = normalizeBottomBarSelection(
+                settings.getStringSet(
+                    BOTTOM_BAR_ITEMS_PREFERENCE_KEY,
+                    defaultBottomBarSelectionKeys(duo3HomeAccount, platformBottomBarItemLimit),
                 ),
-            ),
-        )
-    }
+                duo3HomeAccount,
+                enforceMinimumSelection = true,
+                maximumSelection = platformBottomBarItemLimit,
+            )
+            val orderedSelectedKeys = bottomBarItemOrderFromPreference(
+                settings.getStringOrNull(BOTTOM_BAR_ITEM_ORDER_PREFERENCE_KEY),
+                selectedKeys,
+            )
+            ZhihuMainPreferenceSnapshot(
+                duo3HomeAccount = duo3HomeAccount,
+                tapToScrollToTopEnabled = settings.getBoolean("bottomBarTapScrollToTop", true),
+                autoHideBottomBar = settings.getBoolean("autoHideBottomBar", false),
+                autoHideTopBar = settings.getBoolean("autoHideTopBar", false),
+                collectionDirectBrowseEnabled = settings.getBoolean(COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY, false),
+                selectedBottomBarItemKeys = orderedSelectedKeys,
+                startDestination = navDestinationFromName(
+                    resolveValidStartDestinationKey(
+                        settings.getString(START_DESTINATION_PREFERENCE_KEY, Home.name),
+                        orderedSelectedKeys.ifEmpty { allBottomBarItemKeys.filter { it in selectedKeys } },
+                    ),
+                ),
+            )
+        },
+    )
 }
+
+@Composable
+fun rememberAndroidZhihuMainActivity(): MainActivity = LocalActivity.current as MainActivity

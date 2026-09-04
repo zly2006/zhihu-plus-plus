@@ -25,26 +25,25 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.navigation.NavHostController
-import androidx.navigation.toRoute
 import com.github.zly2006.zhihu.navigation.AnswerNavigator
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
+import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Navigator
 import com.github.zly2006.zhihu.navigation.withReadingQueueSource
 import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
 import com.github.zly2006.zhihu.ui.ArticleAnswerTransitionDirection
-import com.github.zly2006.zhihu.ui.hasRoute
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import top.yukonga.miuix.kmp.nav.core.NavController
 
 @Stable
 internal class ArticleAnswerNavigationState(
     private val switchState: ArticleAnswerSwitchState?,
     private val viewModel: ArticleViewModel,
     private val navigator: Navigator,
-    private val navController: NavHostController?,
+    private val navController: NavController<NavDestination>?,
     private val coroutineScope: CoroutineScope,
     private val readingQueueSourceId: String?,
     answerSwitchMode: String,
@@ -138,10 +137,10 @@ internal class ArticleAnswerNavigationState(
     }
 
     private fun navigate(article: Article) {
-        if (navController?.currentBackStackEntry?.hasRoute(Article::class) == true &&
-            navController.currentBackStackEntry?.toRoute<Article>()?.type == ArticleType.Answer
-        ) {
-            navController.popBackStack()
+        // 已经站在某个回答页时先出栈再入栈，否则连续切换回答会把返回栈堆成一长串回答。
+        val current = navController?.backStack?.lastOrNull()
+        if (current is Article && current.type == ArticleType.Answer) {
+            navController.pop()
         }
         navigator.onNavigate(article.withReadingQueueSource(readingQueueSourceId))
     }
@@ -152,7 +151,7 @@ internal fun rememberArticleAnswerNavigationState(
     switchState: ArticleAnswerSwitchState?,
     viewModel: ArticleViewModel,
     navigator: Navigator,
-    navController: NavHostController?,
+    navController: NavController<NavDestination>?,
     answerSwitchMode: String,
     readingQueueSourceId: String?,
 ): ArticleAnswerNavigationState {

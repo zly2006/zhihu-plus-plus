@@ -172,3 +172,7 @@ internal fun openDesktopExternalUrl(url: String): Boolean = runCatching {
 
 internal fun copyDesktopPlainText(text: String) =
     Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(text), null)
+
+private fun readDesktopRiskControlCookies(
+    @Suppress("UNUSED_PARAMETER") url: String?,
+): Map<String, String> = emptyMap()

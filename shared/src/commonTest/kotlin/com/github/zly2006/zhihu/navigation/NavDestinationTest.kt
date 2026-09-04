@@ -20,6 +20,7 @@ package com.github.zly2006.zhihu.navigation
 import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 
 class NavDestinationTest {
     @Test
@@ -73,5 +74,45 @@ class NavDestinationTest {
         )
 
         assertEquals(destination, decoded)
+    }
+
+    @Test
+    fun articleNavigationIdentityIgnoresMutableDisplayFields() {
+        val article = Article(type = ArticleType.Answer, id = 42L, title = "loading...")
+        val hash = article.hashCode()
+        val key = article.toString()
+
+        article.title = "loaded title"
+        article.authorName = "loaded author"
+        article.avatarSrc = "https://example.invalid/avatar.png"
+
+        assertEquals(Article(type = ArticleType.Answer, id = 42L), article)
+        assertEquals(hash, article.hashCode())
+        assertEquals(key, article.toString())
+    }
+
+    @Test
+    fun personNavigationIdentitySurvivesProfileBackfillAndSerialization() {
+        val route = Person(
+            id = Person.EMPTY_ID,
+            urlToken = "initial-token",
+            name = "loading...",
+        )
+        val hash = route.hashCode()
+        val key = route.toString()
+
+        route.id = "loaded-id"
+        route.urlToken = "loaded-token"
+
+        assertEquals(hash, route.hashCode())
+        assertEquals(key, route.toString())
+
+        val decoded = assertIs<Person>(
+            json.decodeFromString<NavDestination>(
+                json.encodeToString<NavDestination>(route),
+            ),
+        )
+        assertEquals(route, decoded)
+        assertEquals(key, decoded.toString())
     }
 }

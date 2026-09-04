@@ -147,8 +147,10 @@ abstract class PaginationViewModel<T : Any>(
             val json = environment.fetchJson(url.replace("http://", "https://"), include)
                 ?: throw RuntimeException("您可能已被风控，请重新登录。", Exception("cause: not json object."))
 
+            // cause 里带上原始响应：release 下这类失败只剩一句风控提示时，无法区分是真风控、
+            // 登录态失效（如 d_c0 缺失导致的 10003）还是响应结构变化。
             val jsonArray = json["data"] as? JsonArray
-                ?: throw RuntimeException("您可能已被风控，请重新登录。", Exception("cause: no $.data"))
+                ?: throw RuntimeException("您可能已被风控，请重新登录。", Exception("cause: no \$.data, body: $json"))
             processResponse(environment, decodePage(environment, jsonArray), jsonArray)
             if ("paging" in json) {
                 lastPaging = decodeJson(json["paging"]!!)

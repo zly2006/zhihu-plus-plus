@@ -66,32 +66,19 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.account.SwitchAccountRequest
-import com.github.zly2006.zhihu.account.ZhihuAccountProfileSnapshot
-import com.github.zly2006.zhihu.account.ZhihuAccountStore
 import com.github.zly2006.zhihu.account.ZhihuIdentityAccount
-import com.github.zly2006.zhihu.account.ZhihuIdentityAccountListResponse
-import com.github.zly2006.zhihu.account.ZhihuIdentityChangeResult
-import com.github.zly2006.zhihu.account.ZhihuIdentityProfile
-import com.github.zly2006.zhihu.account.ZhihuIdentityToken
 import com.github.zly2006.zhihu.account.ZhihuSavedAccount
-import com.github.zly2006.zhihu.account.applyIdentityHeaders
-import com.github.zly2006.zhihu.account.identitySuccessBody
+import com.github.zly2006.zhihu.account.createSubIdentityAccount
+import com.github.zly2006.zhihu.account.fetchIdentityAccounts
 import com.github.zly2006.zhihu.account.rememberZhihuAccountStore
-import com.github.zly2006.zhihu.data.ZhihuJson
+import com.github.zly2006.zhihu.account.switchIdentityAccount
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.requestLoginNavigation
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
-import io.ktor.client.request.get
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
-import io.ktor.http.ContentType
-import io.ktor.http.contentType
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.jsonObject
 
 const val IDENTITY_MANAGEMENT_SCREEN_TAG = "identityManagement.screen"
 const val IDENTITY_MANAGEMENT_CREATE_TAG = "identityManagement.create"
@@ -115,69 +102,6 @@ data class IdentityManagementState(
                 it.canCreateSubAccount &&
                     it.subAccountControlStatus == 0
             }
-}
-
-private suspend fun completeIdentityChange(
-    accountStore: ZhihuAccountStore,
-    body: String,
-    expectedAccountId: String? = null,
-): ZhihuIdentityChangeResult {
-    val token = ZhihuJson.decodeJson<ZhihuIdentityToken>(ZhihuJson.json.parseToJsonElement(body))
-    check(token.accessToken.isNotBlank()) { "服务器未返回新账号凭证" }
-    check(token.cookie["z_c0"].isNullOrBlank().not()) { "服务器未返回新账号 Cookie" }
-    val oldSession = accountStore.session
-    val newCookies = oldSession.cookies.toMutableMap().apply { putAll(token.cookie) }
-    val client = accountStore.client.temporaryHttpClient(newCookies)
-    return try {
-        val response = client.get("https://api.zhihu.com/people/self") {
-            applyIdentityHeaders(
-                oldSession.copy(
-                    mobileAccessToken = token.accessToken,
-                    mobileTokenType = token.tokenType,
-                ),
-            )
-        }
-        val rawProfile = ZhihuJson.json
-            .parseToJsonElement(
-                response.identitySuccessBody("初始化新账号"),
-            ).jsonObject
-        val profile = ZhihuJson.decodeJson<ZhihuIdentityProfile>(rawProfile)
-        check(profile.id.isNotBlank() && profile.name.isNotBlank()) { "服务器返回的账号资料不完整" }
-        check(expectedAccountId == null || profile.id == expectedAccountId) { "服务器返回的账号与目标账号不一致" }
-        val nextSession = oldSession.copy(
-            login = true,
-            username = profile.name,
-            cookies = newCookies,
-            profile = ZhihuAccountProfileSnapshot(
-                id = profile.id,
-                name = profile.name,
-                urlToken = profile.urlToken,
-                userType = profile.userType,
-                avatarUrl = profile.avatarUrl,
-            ),
-            self = ZhihuJson.snakeCaseToCamelCase(rawProfile),
-            mobileAccessToken = token.accessToken,
-            mobileRefreshToken = token.refreshToken,
-            mobileTokenType = token.tokenType,
-            mobileTokenExpiresAt = token.expiresAt,
-        )
-        accountStore.replaceSession(nextSession)
-        ZhihuIdentityChangeResult(
-            account = ZhihuIdentityAccount(
-                id = profile.id,
-                urlToken = profile.urlToken,
-                name = profile.name,
-                avatarUrl = profile.avatarUrl,
-                isActive = true,
-                canCreateSubAccount = profile.canCreateSubAccount,
-                accountType = profile.accountType,
-                subAccountControlStatus = profile.subAccountControlStatus,
-            ),
-            session = nextSession,
-        )
-    } finally {
-        client.close()
-    }
 }
 
 /**
@@ -217,16 +141,7 @@ fun IdentityManagementScreen() {
         state = state.copy(loading = true, errorMessage = null)
         state = try {
             state.copy(
-                accounts = ZhihuJson
-                    .decodeJson<ZhihuIdentityAccountListResponse>(
-                        ZhihuJson.json.parseToJsonElement(
-                            accountStore.client
-                                .httpClient()
-                                .get("https://api.zhihu.com/people/account/list") {
-                                    applyIdentityHeaders(accountStore.session)
-                                }.identitySuccessBody("获取身份列表"),
-                        ),
-                    ).data,
+                accounts = accountStore.fetchIdentityAccounts(),
                 currentAccountId = accountStore.session.profile
                     ?.id
                     .orEmpty(),
@@ -441,19 +356,7 @@ fun IdentityManagementScreen() {
                                 check(!state.busy) { "另一个账号操作正在进行" }
                                 state = state.copy(switchingToAccountId = account.id, errorMessage = null)
                                 try {
-                                    require(account.id.isNotBlank()) { "目标账号不能为空" }
-                                    val response = accountStore.client.httpClient().post(
-                                        "https://api.zhihu.com/account/switch",
-                                    ) {
-                                        applyIdentityHeaders(accountStore.session)
-                                        contentType(ContentType.Application.Json)
-                                        setBody(SwitchAccountRequest(account.id))
-                                    }
-                                    val result = completeIdentityChange(
-                                        accountStore,
-                                        response.identitySuccessBody("切换账号"),
-                                        account.id,
-                                    )
+                                    val result = accountStore.switchIdentityAccount(account.id)
                                     state = state.copy(
                                         currentAccountId = result.account.id,
                                         switchingToAccountId = null,
@@ -530,15 +433,7 @@ fun IdentityManagementScreen() {
                                 check(state.canCreateSubAccount) { "当前账号暂不能创建新账号" }
                                 state = state.copy(creating = true, errorMessage = null)
                                 try {
-                                    val response = accountStore.client.httpClient().post(
-                                        "https://api.zhihu.com/account/sub/register",
-                                    ) {
-                                        applyIdentityHeaders(accountStore.session)
-                                    }
-                                    val result = completeIdentityChange(
-                                        accountStore,
-                                        response.identitySuccessBody("创建新账号"),
-                                    )
+                                    val result = accountStore.createSubIdentityAccount()
                                     state = state.copy(
                                         accounts = state.accounts + result.account,
                                         currentAccountId = result.account.id,

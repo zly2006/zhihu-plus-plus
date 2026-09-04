@@ -100,6 +100,7 @@ import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.ThemeMode
+import com.github.zly2006.zhihu.theme.ThemeStyle
 import com.github.zly2006.zhihu.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.AnswerDoubleTapAction
@@ -129,7 +130,12 @@ const val PREF_BLOCK_SPACING = "contentBlockSpacing"
 const val PREF_FAB_OPACITY = "fabOpacity"
 const val DEFAULT_FAB_OPACITY = 100
 const val APPEARANCE_SETTINGS_SCROLL_TAG = "appearanceSettings.scroll"
+const val APPEARANCE_SETTINGS_START_DESTINATION_ROW_TAG = "appearanceSettings.startDestinationRow"
 const val APPEARANCE_SETTINGS_START_DESTINATION_TAG = "appearanceSettings.startDestination"
+
+/** 启动页下拉里每个选项的 testTag；生产与插桩测试共用，避免两边各写一份字符串后漂移。 */
+fun appearanceSettingsStartDestinationOptionTag(key: String) = "appearanceSettings:startDestination:option:$key"
+
 const val APPEARANCE_SETTINGS_ANSWER_DOUBLE_TAP_TAG = "appearanceSettings.answerDoubleTap"
 const val APPEARANCE_SETTINGS_ANSWER_SWITCH_SENSITIVITY_TAG = "appearanceSettings.answerSwitchSensitivity"
 const val APPEARANCE_SETTINGS_USE_WEBVIEW_TAG = "appearanceSettings.useWebView"
@@ -259,7 +265,7 @@ internal fun normalizeBottomBarItemOrder(
     return orderedKeys
 }
 
-private fun bottomBarItemOrderPreferenceValue(keys: List<String>): String =
+internal fun bottomBarItemOrderPreferenceValue(keys: List<String>): String =
     keys.joinToString(BOTTOM_BAR_ITEM_ORDER_SEPARATOR)
 
 internal fun bottomBarItemOrderFromPreference(
@@ -379,6 +385,7 @@ fun AppearanceSettingsScreen(
         ) {
             val useDynamicColor = ThemeManager.getUseDynamicColor()
             val currentThemeMode = ThemeManager.getThemeMode()
+            val currentThemeStyle = ThemeManager.getThemeStyle()
 
             // ── 主题 ────────────────────────────────────────────────────────────
 
@@ -428,6 +435,24 @@ fun AppearanceSettingsScreen(
                             }
                         }
                     },
+                )
+
+                SettingItemWithSwitch(
+                    title = { Text("使用 miuix 风格界面") },
+                    description = { Text("切换为类 HyperOS 视觉风格。可随时切回 Material 3。\n切换后整个应用立即生效，不需要重启。") },
+                    checked = currentThemeStyle == ThemeStyle.Miuix,
+                    onCheckedChange = { useMiuix ->
+                        // ThemeManager 的 setter 只改内存态，持久化必须由调用方补上。
+                        val style = if (useMiuix) ThemeStyle.Miuix else ThemeStyle.Material3
+                        ThemeManager.setThemeStyle(style)
+                        settings.putString("themeStyle", style.name)
+                        userMessages.showShortMessage(
+                            "已切换到${if (useMiuix) "miuix" else "Material 3"}风格",
+                        )
+                    },
+                    settingKey = "themeStyle",
+                    highlightedKey = settingKey,
+                    bringIntoViewRequester = requesterFor("themeStyle"),
                 )
 
                 SettingItemWithSwitch(
@@ -1114,6 +1139,7 @@ fun AppearanceSettingsScreen(
                 } + allBottomBarItems.filter { it.first !in selectedBottomBarItemKeySet }
 
                 SettingItem(
+                    modifier = Modifier.testTag(APPEARANCE_SETTINGS_START_DESTINATION_ROW_TAG),
                     title = { Text("应用启动默认页面") },
                     description = { Text("仅可选择已在底部导航栏中显示的页面。") },
                     endAction = {
@@ -1143,7 +1169,7 @@ fun AppearanceSettingsScreen(
                             ) {
                                 startDestinationItems.forEach { (key, label) ->
                                     DropdownMenuItem(
-                                        modifier = Modifier.testTag("appearanceSettings:startDestination:option:$key"),
+                                        modifier = Modifier.testTag(appearanceSettingsStartDestinationOptionTag(key)),
                                         text = { Text(label) },
                                         onClick = {
                                             startDestinationKey = key
@@ -1292,6 +1318,17 @@ fun AppearanceSettingsScreen(
                     onCheckedChange = {
                         tapToRefresh.value = it
                         settings.putBoolean("bottomBarTapScrollToTop", it)
+                    },
+                )
+
+                val autoHideTopBar = remember { mutableStateOf(settings.getBoolean("autoHideTopBar", false)) }
+                SettingItemWithSwitch(
+                    title = { Text("滚动时自动隐藏顶栏") },
+                    description = { Text("浏览首页及关注、热榜、日报、历史时，上划隐藏顶栏，下划重新显示。") },
+                    checked = autoHideTopBar.value,
+                    onCheckedChange = {
+                        autoHideTopBar.value = it
+                        settings.putBoolean("autoHideTopBar", it)
                     },
                 )
 
@@ -1453,6 +1490,7 @@ fun AppearanceSettingsScreen(
                 settings.putBoolean("duo3_home_account", true)
                 settings.putBoolean("duo3_card_appearance", true)
                 settings.putBoolean("duo3_card_layout", true)
+                settings.putBoolean(DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY, true)
                 settings.putBoolean("duo3_article_bar", true)
                 settings.putBoolean("duo3_article_actions", true)
                 settings.putBoolean("showRefreshFab", false)
@@ -1460,13 +1498,14 @@ fun AppearanceSettingsScreen(
                 duo3HomeAccount.value = true
                 duo3CardAppearance.value = true
                 duo3CardLayout.value = true
+                duo3CardLargeTitle.value = true
                 duo3ArticleBar.value = true
                 duo3ArticleActions.value = true
                 // 123duo3 改动中会移除 FAB。
                 showRefreshFab.value = false
                 buttonSkipAnswer.value = false
                 val updatedSelection = if (Home.name !in selectedBottomBarItemKeys.value) {
-                    selectedBottomBarItemKeys.value + Account.name
+                    selectedBottomBarItemKeys.value + Home.name
                 } else {
                     selectedBottomBarItemKeys.value
                 }
@@ -1481,11 +1520,13 @@ fun AppearanceSettingsScreen(
                 settings.putBoolean("duo3_home_account", false)
                 settings.putBoolean("duo3_card_appearance", false)
                 settings.putBoolean("duo3_card_layout", false)
+                settings.putBoolean(DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY, false)
                 settings.putBoolean("duo3_article_bar", false)
                 settings.putBoolean("duo3_article_actions", false)
                 duo3HomeAccount.value = false
                 duo3CardAppearance.value = false
                 duo3CardLayout.value = false
+                duo3CardLargeTitle.value = false
                 duo3ArticleBar.value = false
                 duo3ArticleActions.value = false
                 persistBottomBarSelection(selectedBottomBarItemKeys.value, duo3HomeAccountEnabled = false)
@@ -1568,7 +1609,7 @@ fun AppearanceSettingsScreen(
                         duo3HomeAccount.value = it
                         settings.putBoolean("duo3_home_account", it)
                         val updatedSelection = if (it && Home.name !in selectedBottomBarItemKeys.value) {
-                            selectedBottomBarItemKeys.value + Account.name
+                            selectedBottomBarItemKeys.value + Home.name
                         } else {
                             selectedBottomBarItemKeys.value
                         }

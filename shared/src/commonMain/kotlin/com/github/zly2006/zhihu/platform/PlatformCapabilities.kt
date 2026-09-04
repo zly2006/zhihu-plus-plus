@@ -19,6 +19,7 @@ package com.github.zly2006.zhihu.platform
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import com.github.zly2006.zhihu.ui.rememberObservedSetting
 import kotlinx.io.files.Path
 
 internal expect val platformBottomBarItemLimit: Int?
@@ -135,6 +136,32 @@ expect fun Modifier.exportTestTagsForUiAutomation(): Modifier
 
 @Composable
 expect fun rememberAppPrivateDirectory(): Path
+
+/*
+ * 按类型包装 rememberObservedSetting：调用点只写一次 key 和默认值，且直接拿到值而不是 MutableState。
+ * 观察机制本身只有 rememberObservedSetting 一份实现。
+ */
+
+@Composable
+fun rememberSettingBoolean(
+    key: String,
+    defaultValue: Boolean,
+    settings: SettingsStore = rememberSettingsStore(),
+): Boolean = rememberObservedSetting(settings, key) { getBoolean(key, defaultValue) }.value
+
+@Composable
+fun rememberSettingString(
+    key: String,
+    defaultValue: String,
+    settings: SettingsStore = rememberSettingsStore(),
+): String = rememberObservedSetting(settings, key) { getString(key, defaultValue) }.value
+
+@Composable
+fun rememberSettingInt(
+    key: String,
+    defaultValue: Int,
+    settings: SettingsStore = rememberSettingsStore(),
+): Int = rememberObservedSetting(settings, key) { getInt(key, defaultValue) }.value
 
 @Composable
 expect fun rememberExternalUrlOpener(): ExternalUrlOpener

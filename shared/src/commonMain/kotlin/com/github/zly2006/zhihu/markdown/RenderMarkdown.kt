@@ -68,12 +68,17 @@ import com.github.zly2006.zhihu.platform.rememberImageGalleryOpener
 import com.github.zly2006.zhihu.platform.rememberImageSaver
 import com.github.zly2006.zhihu.platform.rememberImageSharer
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.theme.AppTokens
+import com.github.zly2006.zhihu.theme.ThemeManager
+import com.github.zly2006.zhihu.theme.ThemeStyle
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.LocalSegmentActionSheetHost
 import com.github.zly2006.zhihu.ui.components.LocalSegmentCommentHost
 import com.github.zly2006.zhihu.ui.components.SegmentActionSheet
 import com.github.zly2006.zhihu.ui.components.SegmentActionSheetState
 import com.github.zly2006.zhihu.ui.components.SegmentHighlightInteractionHost
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixCommentSheet
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixSegmentActionSheet
 import com.github.zly2006.zhihu.ui.subscreens.DUO3_TIQIAN_MATH_FONT_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.PREF_BLOCK_SPACING
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
@@ -359,11 +364,26 @@ private fun RenderMarkdownDocument(
                         val mathFont = rememberMarkdownMathFont()
                         val defaultTheme = MarkdownTheme.material3()
                         val scaledFontSize = 16.sp * fontSize / 100
+                        // MarkdownTheme.material3() 的各色取自 MaterialTheme.colorScheme，但 miuix 主题下它未初始化，
+                        // 深色模式正文/标题/链接都会反色。用主题自适应的 AppTokens（miuix→miuix 色，M3→不变）覆盖。
+                        val mdTextColor = AppTokens.colors.onSurface
                         val theme = defaultTheme.copy(
                             bodyStyle = defaultTheme.bodyStyle.copy(
+                                color = mdTextColor,
                                 fontSize = scaledFontSize,
                                 lineHeight = scaledFontSize * lineHeight / 100,
                             ),
+                            headingStyles = defaultTheme.headingStyles.map { it.copy(color = mdTextColor) },
+                            linkColor = AppTokens.colors.primary,
+                            blockQuoteTextColor = AppTokens.colors.onSurfaceVariant,
+                            // 删除线/插入(下划线)/行内代码/代码块/列表/公式 等文字色同样取自 M3，miuix 深色下反色，一并覆盖。
+                            strikethroughStyle = defaultTheme.strikethroughStyle.copy(color = mdTextColor),
+                            insertedTextStyle = defaultTheme.insertedTextStyle.copy(color = mdTextColor),
+                            inlineCodeStyle = defaultTheme.inlineCodeStyle.copy(color = mdTextColor),
+                            codeBlockStyle = defaultTheme.codeBlockStyle.copy(color = mdTextColor),
+                            listBulletColor = mdTextColor,
+                            mathColor = mdTextColor,
+                            dividerColor = AppTokens.colors.outlineVariant,
                             blockSpacing = defaultTheme.blockSpacing * (blockSpacing / 100f),
                             mathFontSize = 18f * fontSize / 100,
                             mathFont = mathFont ?: defaultTheme.mathFont,
@@ -390,12 +410,33 @@ private fun RenderMarkdownDocument(
             }
         }
     }
-    CommentScreenComponent(
-        showComments = segmentCommentTarget != null,
-        onDismiss = { segmentCommentTarget = null },
-        content = segmentCommentTarget ?: SegmentCommentHolder("dummy", "dummy", "dummy", "", "", 0, 0),
-    )
+    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+        // miuix 弹层没有「常驻 + showComments 控制」的退场动画需求，按需挂载即可。
+        segmentCommentTarget?.let { target ->
+            MiuixCommentSheet(
+                showComments = true,
+                onDismiss = { segmentCommentTarget = null },
+                content = target,
+            )
+        }
+    } else {
+        CommentScreenComponent(
+            showComments = segmentCommentTarget != null,
+            onDismiss = { segmentCommentTarget = null },
+            content = segmentCommentTarget ?: SegmentCommentHolder("dummy", "dummy", "dummy", "", "", 0, 0),
+        )
+    }
     segmentActionSheetState?.let { state ->
-        SegmentActionSheet(state)
+        if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+            MiuixSegmentActionSheet(
+                highlight = state.highlight,
+                onDismiss = state.onDismiss,
+                onLikeClick = state.onLikeClick,
+                onCommentClick = state.onCommentClick,
+                onCopyClick = state.onCopyClick,
+            )
+        } else {
+            SegmentActionSheet(state)
+        }
     }
 }

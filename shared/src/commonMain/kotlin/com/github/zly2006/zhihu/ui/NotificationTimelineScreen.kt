@@ -319,7 +319,7 @@ private fun InvitationAnswerItem(
 }
 
 @OptIn(ExperimentalTime::class)
-private fun MobileNotificationTimelineItem.invitationTime(): String {
+internal fun MobileNotificationTimelineItem.invitationTime(): String {
     if (created <= 0) return ""
     val timeZone = TimeZone.currentSystemDefault()
     val dateTime = Instant.fromEpochSeconds(created).toLocalDateTime(timeZone)
@@ -335,4 +335,4 @@ private fun MobileNotificationTimelineItem.invitationTime(): String {
     }
 }
 
-private const val INVITATION_ENTRY_NAME = "invite"
+internal const val INVITATION_ENTRY_NAME = "invite"

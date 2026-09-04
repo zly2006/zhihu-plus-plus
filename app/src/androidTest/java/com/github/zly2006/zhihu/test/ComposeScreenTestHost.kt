@@ -29,16 +29,17 @@ import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
 import androidx.compose.ui.test.swipeUp
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
-import androidx.navigation.NavHostController
-import androidx.navigation.compose.rememberNavController
 import androidx.test.ext.junit.rules.ActivityScenarioRule
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.navigation.MainTabs
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Navigator
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.AndroidZhihuMain
+import top.yukonga.miuix.kmp.nav.core.NavController
+import top.yukonga.miuix.kmp.nav.core.rememberNavController
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -98,15 +99,17 @@ fun MainActivityComposeRule.setScreenContent(
 }
 
 fun MainActivityComposeRule.setZhihuMainContent(
-    onNavControllerReady: (NavHostController) -> Unit = {},
+    onNavControllerReady: (NavController<NavDestination>) -> Unit = {},
 ) {
     activity.setContent { }
     waitForIdle()
     activity.setContent {
         ZhihuTheme {
-            val navController = rememberNavController()
+            // 与生产一致：activity.navController 必须是 AndroidZhihuMain 实际渲染的同一实例，
+            // 否则 activity.navigate() 操作的是 onCreate 旧栈，openFrom 等基于 backStack 的判定会出错。
+            val navController = rememberNavController<NavDestination>(MainTabs)
+            activity.navController = navController
             LaunchedEffect(navController) {
-                activity.navController = navController
                 onNavControllerReady(navController)
             }
             AndroidZhihuMain(navController = navController)

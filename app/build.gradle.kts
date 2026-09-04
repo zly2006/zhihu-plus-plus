@@ -149,6 +149,11 @@ android {
 //                    "META-INF/*.kotlin_module",
                 )
         }
+        dex {
+            // minSdk ≥ 28 时 AGP 默认不压缩 dex（设备上可 mmap，但 APK 体积翻倍）。
+            // 本应用走 Telegram 侧载分发，下载体积优先 → 强制压缩 dex（APK 减半，仅首次安装略慢）。
+            useLegacyPackaging = true
+        }
     }
 
     androidComponents {
@@ -266,4 +271,12 @@ dependencies {
     androidTestImplementation("androidx.test.ext:junit:1.3.0")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
     androidTestImplementation("io.ktor:ktor-client-mock:$ktor")
+
+    // ===== miuix 0.9.3 =====
+    val miuixVersion = "0.9.3"
+    implementation("top.yukonga.miuix.kmp:miuix-core-android:$miuixVersion")
+    implementation("top.yukonga.miuix.kmp:miuix-ui-android:$miuixVersion")
+    implementation("top.yukonga.miuix.kmp:miuix-preference-android:$miuixVersion")
+    implementation("top.yukonga.miuix.kmp:miuix-icons-android:$miuixVersion")
+    implementation("top.yukonga.miuix.kmp:miuix-blur:$miuixVersion")
 }

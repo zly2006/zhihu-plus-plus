@@ -31,12 +31,12 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipe
 import androidx.core.content.edit
-import androidx.navigation.NavHostController
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.Home
+import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Search
 import com.github.zly2006.zhihu.reading.AndroidReadingPlayerBridge
 import com.github.zly2006.zhihu.reading.ContentReadingService
@@ -66,6 +66,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import top.yukonga.miuix.kmp.nav.core.NavController
 
 @RunWith(AndroidJUnit4::class)
 class ReadingPlayerUiInstrumentedTest {
@@ -150,16 +151,16 @@ class ReadingPlayerUiInstrumentedTest {
      */
     @Test
     fun leavingDetailCompactsTheExpandedPlayer() {
-        lateinit var navController: NavHostController
+        lateinit var navController: NavController<NavDestination>
         composeRule.setZhihuMainContent { navController = it }
         composeRule.runOnIdle {
-            navController.navigate(Article(type = ArticleType.Answer, id = 987654L))
+            navController.push(Article(type = ArticleType.Answer, id = 987654L))
         }
 
         composeRule.waitForTag(READING_PLAYER_BAR_TAG)
         composeRule.onNodeWithTag(READING_PLAYER_COMPACT_TAG).assertDoesNotExist()
 
-        composeRule.runOnIdle { assertTrue(navController.popBackStack()) }
+        composeRule.runOnIdle { assertTrue(navController.pop()) }
 
         composeRule.waitForTag(READING_PLAYER_COMPACT_TAG)
         composeRule.onNodeWithTag(READING_PLAYER_BAR_TAG).assertDoesNotExist()
@@ -171,10 +172,10 @@ class ReadingPlayerUiInstrumentedTest {
      */
     @Test
     fun changingThePlayingItemReplacesTheVisibleReadingDetail() {
-        lateinit var navController: NavHostController
+        lateinit var navController: NavController<NavDestination>
         composeRule.setZhihuMainContent { navController = it }
         composeRule.runOnIdle {
-            navController.navigate(Article(type = ArticleType.Answer, id = PLAYER_STATE.queue.first().id))
+            navController.push(Article(type = ArticleType.Answer, id = PLAYER_STATE.queue.first().id))
         }
         composeRule.waitForTag(READING_PLAYER_BAR_TAG)
 
