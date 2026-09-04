@@ -17,13 +17,18 @@
 
 package com.github.zly2006.zhihu
 
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeUp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.FeedDisplayItem
@@ -47,9 +52,14 @@ import com.github.zly2006.zhihu.test.seedViewModel
 import com.github.zly2006.zhihu.test.setScreenContent
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_ANSWERS_LIST_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_AVATAR_TAG
+import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_BLOCK_BUTTON_TAG
+import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_FOLLOW_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_HEADER_TAG
+import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_QUESTION_AUTHOR_BLOCK_BUTTON_TAG
+import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_RECOMMENDATION_BLOCK_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_SEARCH_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_SUBSCRIPTIONS_LIST_TAG
+import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_TAB_ROW_TAG
 import com.github.zly2006.zhihu.ui.PeopleScreen
 import com.github.zly2006.zhihu.ui.PersonViewModel
 import io.ktor.http.HttpMethod
@@ -61,6 +71,9 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.io.File
+import java.io.FileOutputStream
+import java.security.MessageDigest
 
 @RunWith(AndroidJUnit4::class)
 class PeopleScreenInstrumentedTest {
@@ -156,6 +169,95 @@ class PeopleScreenInstrumentedTest {
                 ),
             ),
             navigator.destinations,
+        )
+    }
+
+    /** Regression: https://github.com/zly2006/zhihu-plus-plus/issues/718 */
+    @Test
+    fun denseProfileBadgesKeepHeaderActionsVisibleOffline() {
+        val viewModel = seededViewModel(itemCount = 1)
+        setPeopleScreen()
+        composeRule.activity.runOnUiThread {
+            viewModel.officialBadgeDetails = listOf(
+                OfficialBadge("社区成就", "社区成就说明"),
+                OfficialBadge("身份认证", "身份认证说明"),
+                OfficialBadge("优秀答主", "优秀答主说明"),
+                OfficialBadge("新知答主", "新知答主说明"),
+            )
+        }
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag(PEOPLE_SCREEN_FOLLOW_BUTTON_TAG).assertIsDisplayed()
+        composeRule.onNodeWithTag(PEOPLE_SCREEN_BLOCK_BUTTON_TAG).assertIsDisplayed()
+        composeRule.onNodeWithTag(PEOPLE_SCREEN_RECOMMENDATION_BLOCK_BUTTON_TAG).assertIsDisplayed()
+        composeRule.onNodeWithTag(PEOPLE_SCREEN_QUESTION_AUTHOR_BLOCK_BUTTON_TAG).assertIsDisplayed()
+        val expandedTabTop = composeRule
+            .onNodeWithTag(PEOPLE_SCREEN_TAB_ROW_TAG)
+            .fetchSemanticsNode()
+            .boundsInRoot
+            .top
+        listOf(
+            PEOPLE_SCREEN_FOLLOW_BUTTON_TAG,
+            PEOPLE_SCREEN_BLOCK_BUTTON_TAG,
+            PEOPLE_SCREEN_RECOMMENDATION_BLOCK_BUTTON_TAG,
+            PEOPLE_SCREEN_QUESTION_AUTHOR_BLOCK_BUTTON_TAG,
+        ).forEach { tag ->
+            assertTrue(
+                "展开态操作按钮必须完整位于标签栏之前: $tag",
+                composeRule
+                    .onNodeWithTag(tag)
+                    .fetchSemanticsNode()
+                    .boundsInRoot.bottom <= expandedTabTop,
+            )
+        }
+
+        fun captureScreenshot(name: String): String {
+            val screenshot = File(
+                requireNotNull(composeRule.activity.getExternalFilesDir(null)),
+                name,
+            )
+            FileOutputStream(screenshot).use { output ->
+                composeRule.onRoot().captureToImage().asAndroidBitmap().compress(
+                    android.graphics.Bitmap.CompressFormat.PNG,
+                    100,
+                    output,
+                )
+            }
+            assertTrue(screenshot.exists() && screenshot.length() > 0)
+            return MessageDigest
+                .getInstance("SHA-256")
+                .digest(screenshot.readBytes())
+                .joinToString("") { byte -> "%02x".format(byte) }
+        }
+
+        val expandedScreenshot = captureScreenshot("issue-718-expanded.png")
+        val listNode = composeRule.onNodeWithTag(PEOPLE_SCREEN_ANSWERS_LIST_TAG)
+        listNode.performTouchInput { swipeUp(250f) }
+        composeRule.waitForIdle()
+        val intermediateScreenshot = captureScreenshot("issue-718-intermediate.png")
+        listNode.performTouchInput { swipeUp(800f) }
+        composeRule.waitForIdle()
+        val collapsedTabBounds = composeRule
+            .onNodeWithTag(PEOPLE_SCREEN_TAB_ROW_TAG)
+            .fetchSemanticsNode()
+            .boundsInRoot
+        assertTrue("收起态标签栏必须保持可见", collapsedTabBounds.height > 0f)
+        listOf(
+            PEOPLE_SCREEN_FOLLOW_BUTTON_TAG,
+            PEOPLE_SCREEN_BLOCK_BUTTON_TAG,
+            PEOPLE_SCREEN_RECOMMENDATION_BLOCK_BUTTON_TAG,
+            PEOPLE_SCREEN_QUESTION_AUTHOR_BLOCK_BUTTON_TAG,
+        ).forEach { tag ->
+            val buttonBounds = composeRule.onNodeWithTag(tag).fetchSemanticsNode().boundsInRoot
+            assertTrue(
+                "收起态操作按钮不能覆盖标签栏: $tag",
+                buttonBounds.bottom <= collapsedTabBounds.top || buttonBounds.top >= collapsedTabBounds.bottom,
+            )
+        }
+        val collapsedScreenshot = captureScreenshot("issue-718-collapsed.png")
+        assertTrue(
+            "展开、中间、收起截图必须来自不同布局状态",
+            setOf(expandedScreenshot, intermediateScreenshot, collapsedScreenshot).size == 3,
         )
     }
 
