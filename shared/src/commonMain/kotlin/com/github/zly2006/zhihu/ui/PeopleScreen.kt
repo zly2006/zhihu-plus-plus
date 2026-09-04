@@ -1529,7 +1529,7 @@ private fun OfficialBadgeDetails(
                     text = "${badge.peopleDetailTitle}: ${badge.description}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
@@ -1666,46 +1666,50 @@ private fun UserInfoHeader(
                         )
                     }
                 }
-                Text(
-                    viewModel.headline,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                OfficialBadgeDetails(
-                    badges = viewModel.officialBadgeDetails,
-                    modifier = Modifier.padding(top = 6.dp),
-                )
-                viewModel.githubSocial?.let { githubSocial ->
-                    Row(
-                        modifier = Modifier
-                            .padding(top = 4.dp)
-                            .testTag(PEOPLE_SCREEN_GITHUB_STARS_TAG)
-                            .clickable { openExternalUrl(githubSocial.profileUrl) },
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        githubSocial.iconUrl?.let { iconUrl ->
-                            AsyncImage(
-                                model = iconUrl,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
+                Column(
+                    modifier = Modifier.padding(end = 48.dp), // 空出来搜索按钮的位置。搜索按钮有独特的动画，不受排版约束。
+                ) {
+                    Text(
+                        viewModel.headline,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    OfficialBadgeDetails(
+                        badges = viewModel.officialBadgeDetails,
+                        modifier = Modifier.padding(top = 6.dp),
+                    )
+                    viewModel.githubSocial?.let { githubSocial ->
+                        Row(
+                            modifier = Modifier
+                                .padding(top = 4.dp)
+                                .testTag(PEOPLE_SCREEN_GITHUB_STARS_TAG)
+                                .clickable { openExternalUrl(githubSocial.profileUrl) },
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            githubSocial.iconUrl?.let { iconUrl ->
+                                AsyncImage(
+                                    model = iconUrl,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                            }
+                            Text(
+                                text = githubSocial.title,
+                                modifier = Modifier.weight(1f, fill = false),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                text = "· ${githubSocial.starCount} stars",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
                             )
                         }
-                        Text(
-                            text = githubSocial.title,
-                            modifier = Modifier.weight(1f, fill = false),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Text(
-                            text = "· ${githubSocial.starCount} stars",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                        )
                     }
                 }
             }
