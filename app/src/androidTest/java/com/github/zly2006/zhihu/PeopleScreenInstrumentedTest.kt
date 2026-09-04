@@ -59,6 +59,7 @@ import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_QUESTION_AUTHOR_BLOCK_BUTTON_TA
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_RECOMMENDATION_BLOCK_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_SEARCH_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_SUBSCRIPTIONS_LIST_TAG
+import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_TAB_ROW_TAG
 import com.github.zly2006.zhihu.ui.PeopleScreen
 import com.github.zly2006.zhihu.ui.PersonViewModel
 import io.ktor.http.HttpMethod
@@ -189,6 +190,25 @@ class PeopleScreenInstrumentedTest {
         composeRule.onNodeWithTag(PEOPLE_SCREEN_BLOCK_BUTTON_TAG).assertIsDisplayed()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_RECOMMENDATION_BLOCK_BUTTON_TAG).assertIsDisplayed()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_QUESTION_AUTHOR_BLOCK_BUTTON_TAG).assertIsDisplayed()
+        val expandedTabTop = composeRule
+            .onNodeWithTag(PEOPLE_SCREEN_TAB_ROW_TAG)
+            .fetchSemanticsNode()
+            .boundsInRoot
+            .top
+        listOf(
+            PEOPLE_SCREEN_FOLLOW_BUTTON_TAG,
+            PEOPLE_SCREEN_BLOCK_BUTTON_TAG,
+            PEOPLE_SCREEN_RECOMMENDATION_BLOCK_BUTTON_TAG,
+            PEOPLE_SCREEN_QUESTION_AUTHOR_BLOCK_BUTTON_TAG,
+        ).forEach { tag ->
+            assertTrue(
+                "展开态操作按钮必须完整位于标签栏之前: $tag",
+                composeRule
+                    .onNodeWithTag(tag)
+                    .fetchSemanticsNode()
+                    .boundsInRoot.bottom <= expandedTabTop,
+            )
+        }
 
         fun captureScreenshot(name: String) {
             val screenshot = File(
@@ -213,6 +233,23 @@ class PeopleScreenInstrumentedTest {
         composeRule.waitForIdle()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_ANSWERS_LIST_TAG).performTouchInput { swipeUp(1200f) }
         composeRule.waitForIdle()
+        val collapsedTabBounds = composeRule
+            .onNodeWithTag(PEOPLE_SCREEN_TAB_ROW_TAG)
+            .fetchSemanticsNode()
+            .boundsInRoot
+        assertTrue("收起态标签栏必须保持可见", collapsedTabBounds.height > 0f)
+        listOf(
+            PEOPLE_SCREEN_FOLLOW_BUTTON_TAG,
+            PEOPLE_SCREEN_BLOCK_BUTTON_TAG,
+            PEOPLE_SCREEN_RECOMMENDATION_BLOCK_BUTTON_TAG,
+            PEOPLE_SCREEN_QUESTION_AUTHOR_BLOCK_BUTTON_TAG,
+        ).forEach { tag ->
+            val buttonBounds = composeRule.onNodeWithTag(tag).fetchSemanticsNode().boundsInRoot
+            assertTrue(
+                "收起态操作按钮不能覆盖标签栏: $tag",
+                buttonBounds.bottom <= collapsedTabBounds.top || buttonBounds.top >= collapsedTabBounds.bottom,
+            )
+        }
         captureScreenshot("issue-718-collapsed.png")
     }
 
