@@ -27,6 +27,8 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeUp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.FeedDisplayItem
@@ -187,18 +189,31 @@ class PeopleScreenInstrumentedTest {
         composeRule.onNodeWithTag(PEOPLE_SCREEN_BLOCK_BUTTON_TAG).assertIsDisplayed()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_RECOMMENDATION_BLOCK_BUTTON_TAG).assertIsDisplayed()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_QUESTION_AUTHOR_BLOCK_BUTTON_TAG).assertIsDisplayed()
-        val screenshot = File(
-            requireNotNull(composeRule.activity.getExternalFilesDir(null)),
-            "issue-718-dense-profile.png",
-        )
-        FileOutputStream(screenshot).use { output ->
-            composeRule.onRoot().captureToImage().asAndroidBitmap().compress(
-                android.graphics.Bitmap.CompressFormat.PNG,
-                100,
-                output,
+
+        fun captureScreenshot(name: String) {
+            val screenshot = File(
+                requireNotNull(composeRule.activity.getExternalFilesDir(null)),
+                name,
             )
+            FileOutputStream(screenshot).use { output ->
+                composeRule.onRoot().captureToImage().asAndroidBitmap().compress(
+                    android.graphics.Bitmap.CompressFormat.PNG,
+                    100,
+                    output,
+                )
+            }
+            assertTrue(screenshot.exists() && screenshot.length() > 0)
         }
-        assertTrue(screenshot.exists() && screenshot.length() > 0)
+
+        captureScreenshot("issue-718-expanded.png")
+        composeRule.onNodeWithTag(PEOPLE_SCREEN_ANSWERS_LIST_TAG).performTouchInput {
+            swipeUp(250f, durationMillis = 1000)
+        }
+        captureScreenshot("issue-718-intermediate.png")
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag(PEOPLE_SCREEN_ANSWERS_LIST_TAG).performTouchInput { swipeUp(1200f) }
+        composeRule.waitForIdle()
+        captureScreenshot("issue-718-collapsed.png")
     }
 
     /**

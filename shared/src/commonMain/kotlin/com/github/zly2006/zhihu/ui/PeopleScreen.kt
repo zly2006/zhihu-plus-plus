@@ -69,6 +69,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -1599,7 +1600,7 @@ private fun CollapsibleHeader(
     onExpandedHeightChanged: (Int) -> Unit,
     content: @Composable () -> Unit,
 ) {
-    SubcomposeLayout { constraints ->
+    SubcomposeLayout(modifier = Modifier.clipToBounds()) { constraints ->
         val placeable = subcompose("header", content).single().measure(
             constraints.copy(minHeight = 0, maxHeight = Constraints.Infinity),
         )
