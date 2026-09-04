@@ -73,6 +73,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
 import java.io.FileOutputStream
+import java.security.MessageDigest
 
 @RunWith(AndroidJUnit4::class)
 class PeopleScreenInstrumentedTest {
@@ -210,7 +211,7 @@ class PeopleScreenInstrumentedTest {
             )
         }
 
-        fun captureScreenshot(name: String) {
+        fun captureScreenshot(name: String): String {
             val screenshot = File(
                 requireNotNull(composeRule.activity.getExternalFilesDir(null)),
                 name,
@@ -223,15 +224,30 @@ class PeopleScreenInstrumentedTest {
                 )
             }
             assertTrue(screenshot.exists() && screenshot.length() > 0)
+            return MessageDigest
+                .getInstance("SHA-256")
+                .digest(screenshot.readBytes())
+                .joinToString("") { byte -> "%02x".format(byte) }
         }
 
-        captureScreenshot("issue-718-expanded.png")
+        val expandedScreenshot = captureScreenshot("issue-718-expanded.png")
+        val listNode = composeRule.onNodeWithTag(PEOPLE_SCREEN_ANSWERS_LIST_TAG)
         composeRule.onNodeWithTag(PEOPLE_SCREEN_ANSWERS_LIST_TAG).performTouchInput {
-            swipeUp(250f, durationMillis = 1000)
+            swipeUp(
+                startY = 1000f,
+                endY = 700f,
+                durationMillis = 1000,
+            )
         }
-        captureScreenshot("issue-718-intermediate.png")
         composeRule.waitForIdle()
-        composeRule.onNodeWithTag(PEOPLE_SCREEN_ANSWERS_LIST_TAG).performTouchInput { swipeUp(1200f) }
+        val intermediateScreenshot = captureScreenshot("issue-718-intermediate.png")
+        listNode.performTouchInput {
+            swipeUp(
+                startY = 1000f,
+                endY = 0f,
+                durationMillis = 1000,
+            )
+        }
         composeRule.waitForIdle()
         val collapsedTabBounds = composeRule
             .onNodeWithTag(PEOPLE_SCREEN_TAB_ROW_TAG)
@@ -250,7 +266,11 @@ class PeopleScreenInstrumentedTest {
                 buttonBounds.bottom <= collapsedTabBounds.top || buttonBounds.top >= collapsedTabBounds.bottom,
             )
         }
-        captureScreenshot("issue-718-collapsed.png")
+        val collapsedScreenshot = captureScreenshot("issue-718-collapsed.png")
+        assertTrue(
+            "展开、中间、收起截图必须来自不同布局状态",
+            setOf(expandedScreenshot, intermediateScreenshot, collapsedScreenshot).size == 3,
+        )
     }
 
     /**
