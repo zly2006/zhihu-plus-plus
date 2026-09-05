@@ -117,6 +117,7 @@ import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_ACTION_OPEN_ARTIC
 import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_ACTION_OPEN_PIN
 import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_ACTION_OPEN_UPDATE_SETTINGS
 import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_ACTION_OPEN_URL
+import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_ACTION_OPEN_WEBVIEW
 import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_ACTION_SET_SETTING
 import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_REFRESH_INTERVAL_MILLIS
 import com.github.zly2006.zhihu.notification.OnlineHomeNotification
@@ -128,6 +129,7 @@ import com.github.zly2006.zhihu.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.platform.rememberIsLiteVariant
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.platform.rememberWebViewUrlOpener
 import com.github.zly2006.zhihu.reading.RegisterReadingQueueSource
 import com.github.zly2006.zhihu.ui.components.AnnouncementCard
 import com.github.zly2006.zhihu.ui.components.AnnouncementCardDefaults
@@ -172,6 +174,7 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlin.time.Clock
 
 const val PREFERENCE_NAME = "com.github.zly2006.zhihu_preferences"
 const val ARTICLE_USE_WEBVIEW_PREFERENCE_KEY = "webviewRenderLegacy"
@@ -190,13 +193,14 @@ const val HOME_FEED_LIST_TAG = "home_feed_list"
 const val HOME_REFRESH_BUTTON_TAG = "home_refresh_button"
 const val HOME_AUTHOR_POLL_ANNOUNCEMENT_TAG = "home_author_poll_announcement"
 const val HOME_ONLINE_NOTIFICATION_TAG = "home_online_notification"
+const val HOME_PIN_ANNOUNCEMENT_READ_KEY_PREFIX = "readHomePinAnnouncement_"
 private const val MAX_HOME_PIN_ANNOUNCEMENTS = 3
 
 fun homeAuthorPollAnnouncementTag(pinId: Long): String = "$HOME_AUTHOR_POLL_ANNOUNCEMENT_TAG:$pinId"
 
 fun homeOnlineNotificationTag(uuid: String): String = "$HOME_ONLINE_NOTIFICATION_TAG:$uuid"
 
-fun homePinAnnouncementReadKey(pinId: Long): String = "readHomePinAnnouncement_$pinId"
+fun homePinAnnouncementReadKey(pinId: Long): String = "$HOME_PIN_ANNOUNCEMENT_READ_KEY_PREFIX$pinId"
 
 /**
  * 首页信息流页面。
@@ -220,6 +224,7 @@ fun HomeScreen(
     val notificationSettings = rememberNotificationSettingsStore()
     val userMessages = rememberUserMessageSink()
     val openExternalUrl = rememberExternalUrlOpener()
+    val openWebViewUrl = rememberWebViewUrlOpener()
     val lifecycleOwner = LocalLifecycleOwner.current
 
     val duo3HomeAccount = settings.getBoolean("duo3_home_account", false)
@@ -372,7 +377,10 @@ fun HomeScreen(
                 paginationEnvironment
                     .fetchJson(ZHIHU_PLUS_AUTHOR_PINS_URL, "")
                     ?.let(::decodeHomePinAnnouncements)
-                    ?.filterNot { settings.getBoolean(homePinAnnouncementReadKey(it.pinId), false) }
+                    ?.filter {
+                        it.kind == HomePinAnnouncementKind.Poll ||
+                            it.createdAtEpochSeconds >= Clock.System.now().epochSeconds - 5 * 24 * 60 * 60
+                    }?.filterNot { settings.getBoolean(homePinAnnouncementReadKey(it.pinId), false) }
                     ?.take(MAX_HOME_PIN_ANNOUNCEMENTS)
             } catch (e: CancellationException) {
                 throw e
@@ -660,64 +668,72 @@ fun HomeScreen(
                                 onlineNotifications = onlineNotifications.filterNot { it.uuid == notification.uuid }
                             }
                             item(notification.uuid) {
-                                AnnouncementCard(
-                                    modifier = Modifier.testTag(homeOnlineNotificationTag(notification.uuid)),
-                                    visible = true,
-                                    title = notification.title,
-                                    leadingIcon = { Icon(Icons.Default.Notifications, contentDescription = null) },
-                                    content = notification.content,
-                                    accept = notification.accept?.let { accept ->
-                                        { Text(accept.text) }
-                                    },
-                                    onAccept = {
-                                        val accept = notification.accept
-                                        markRead()
-                                        when (accept?.key) {
-                                            HOME_NOTIFICATION_ACTION_OPEN_URL -> {
-                                                accept.value
-                                                    ?.jsonPrimitive
-                                                    ?.contentOrNull
-                                                    ?.let(openExternalUrl::invoke)
-                                            }
-                                            HOME_NOTIFICATION_ACTION_OPEN_UPDATE_SETTINGS -> {
-                                                navigator.onNavigate(Account.SystemAndUpdateSettings())
-                                            }
-                                            HOME_NOTIFICATION_ACTION_OPEN_PIN -> {
-                                                accept.value?.jsonPrimitive?.contentOrNull?.toLongOrNull()?.let {
-                                                    navigator.onNavigate(Pin(it))
+                                Box(modifier = Modifier.animateItem()) {
+                                    AnnouncementCard(
+                                        modifier = Modifier.testTag(homeOnlineNotificationTag(notification.uuid)),
+                                        visible = true,
+                                        title = notification.title,
+                                        leadingIcon = { Icon(Icons.Default.Notifications, contentDescription = null) },
+                                        content = notification.content,
+                                        accept = notification.accept?.let { accept ->
+                                            { Text(accept.text) }
+                                        },
+                                        onAccept = {
+                                            val accept = notification.accept
+                                            markRead()
+                                            when (accept?.key) {
+                                                HOME_NOTIFICATION_ACTION_OPEN_URL -> {
+                                                    accept.value
+                                                        ?.jsonPrimitive
+                                                        ?.contentOrNull
+                                                        ?.let(openExternalUrl::invoke)
                                                 }
-                                            }
-                                            HOME_NOTIFICATION_ACTION_OPEN_ANSWER -> {
-                                                accept.value?.jsonPrimitive?.contentOrNull?.toLongOrNull()?.let {
-                                                    navigator.onNavigate(Article(type = ArticleType.Answer, id = it))
+                                                HOME_NOTIFICATION_ACTION_OPEN_WEBVIEW -> {
+                                                    accept.value
+                                                        ?.jsonPrimitive
+                                                        ?.contentOrNull
+                                                        ?.let(openWebViewUrl::invoke)
                                                 }
-                                            }
-                                            HOME_NOTIFICATION_ACTION_OPEN_ARTICLE -> {
-                                                accept.value?.jsonPrimitive?.contentOrNull?.toLongOrNull()?.let {
-                                                    navigator.onNavigate(Article(type = ArticleType.Article, id = it))
+                                                HOME_NOTIFICATION_ACTION_OPEN_UPDATE_SETTINGS -> {
+                                                    navigator.onNavigate(Account.SystemAndUpdateSettings())
                                                 }
-                                            }
-                                            HOME_NOTIFICATION_ACTION_SET_SETTING -> {
-                                                val setting = accept.value?.jsonObject
-                                                val name = setting?.get("setting_name")?.jsonPrimitive?.contentOrNull
-                                                when (setting?.get("value_type")?.jsonPrimitive?.contentOrNull) {
-                                                    "boolean" -> setting["value"]?.jsonPrimitive?.booleanOrNull?.let {
-                                                        settings.putBoolean(name!!, it)
-                                                    }
-                                                    "string" -> setting["value"]?.jsonPrimitive?.contentOrNull?.let {
-                                                        settings.putString(name!!, it)
-                                                    }
-                                                    "int" -> setting["value"]?.jsonPrimitive?.intOrNull?.let {
-                                                        settings.putInt(name!!, it)
+                                                HOME_NOTIFICATION_ACTION_OPEN_PIN -> {
+                                                    accept.value?.jsonPrimitive?.contentOrNull?.toLongOrNull()?.let {
+                                                        navigator.onNavigate(Pin(it))
                                                     }
                                                 }
+                                                HOME_NOTIFICATION_ACTION_OPEN_ANSWER -> {
+                                                    accept.value?.jsonPrimitive?.contentOrNull?.toLongOrNull()?.let {
+                                                        navigator.onNavigate(Article(type = ArticleType.Answer, id = it))
+                                                    }
+                                                }
+                                                HOME_NOTIFICATION_ACTION_OPEN_ARTICLE -> {
+                                                    accept.value?.jsonPrimitive?.contentOrNull?.toLongOrNull()?.let {
+                                                        navigator.onNavigate(Article(type = ArticleType.Article, id = it))
+                                                    }
+                                                }
+                                                HOME_NOTIFICATION_ACTION_SET_SETTING -> {
+                                                    val setting = accept.value?.jsonObject
+                                                    val name = setting?.get("setting_name")?.jsonPrimitive?.contentOrNull
+                                                    when (setting?.get("value_type")?.jsonPrimitive?.contentOrNull) {
+                                                        "boolean" -> setting["value"]?.jsonPrimitive?.booleanOrNull?.let {
+                                                            settings.putBoolean(name!!, it)
+                                                        }
+                                                        "string" -> setting["value"]?.jsonPrimitive?.contentOrNull?.let {
+                                                            settings.putString(name!!, it)
+                                                        }
+                                                        "int" -> setting["value"]?.jsonPrimitive?.intOrNull?.let {
+                                                            settings.putInt(name!!, it)
+                                                        }
+                                                    }
+                                                }
+                                                else -> userMessages.showShortMessage("当前版本不支持此通知操作")
                                             }
-                                            else -> userMessages.showShortMessage("当前版本不支持此通知操作")
-                                        }
-                                    },
-                                    dismiss = { Text(notification.dismiss) },
-                                    onDismiss = markRead,
-                                )
+                                        },
+                                        dismiss = { Text(notification.dismiss) },
+                                        onDismiss = markRead,
+                                    )
+                                }
                             }
                         }
                         authorPinAnnouncements.forEach { announcement ->

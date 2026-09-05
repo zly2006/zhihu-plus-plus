@@ -57,6 +57,22 @@ actual fun rememberExternalUrlOpener(): ExternalUrlOpener {
     }
 }
 
+@Composable
+actual fun rememberWebViewUrlOpener(): WebViewUrlOpener {
+    val context = LocalContext.current
+    return remember(context) {
+        object : WebViewUrlOpener {
+            override fun invoke(url: String) {
+                context.startActivity(
+                    Intent(context, Class.forName(WEBVIEW_ACTIVITY_CLASS)).apply {
+                        data = url.toUri()
+                    },
+                )
+            }
+        }
+    }
+}
+
 internal actual val platformBottomBarItemLimit: Int? = 5
 
 actual val platformName: String = "Android"
@@ -201,6 +217,12 @@ fun androidSettingsStore(context: Context): SettingsStore {
         override fun putFloat(key: String, value: Float) = preferences.edit { putFloat(key, value) }
 
         override fun remove(key: String) = preferences.edit { remove(key) }
+
+        override fun removeByPrefix(prefix: String) = preferences.edit {
+            preferences.all.keys
+                .filter { it.startsWith(prefix) }
+                .forEach(::remove)
+        }
 
         override fun observeKeyChanges(onChanged: (String) -> Unit): AutoCloseable {
             val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->

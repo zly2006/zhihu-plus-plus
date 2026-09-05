@@ -78,6 +78,11 @@ fun desktopSettingsStore(): SettingsStore {
             propertiesFile.save()
         }
 
+        override fun removeByPrefix(prefix: String) {
+            properties.stringPropertyNames().filter { it.startsWith(prefix) }.forEach(properties::remove)
+            propertiesFile.save()
+        }
+
         private fun write(key: String, value: String) {
             properties.setProperty(key, value)
             propertiesFile.save()
@@ -88,6 +93,15 @@ fun desktopSettingsStore(): SettingsStore {
 @Composable
 actual fun rememberExternalUrlOpener(): ExternalUrlOpener = remember {
     object : ExternalUrlOpener {
+        override fun invoke(url: String) {
+            openDesktopExternalUrl(url)
+        }
+    }
+}
+
+@Composable
+actual fun rememberWebViewUrlOpener(): WebViewUrlOpener = remember {
+    object : WebViewUrlOpener {
         override fun invoke(url: String) {
             openDesktopExternalUrl(url)
         }

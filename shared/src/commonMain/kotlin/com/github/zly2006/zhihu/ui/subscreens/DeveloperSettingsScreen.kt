@@ -66,11 +66,13 @@ import com.github.zly2006.zhihu.data.ZHIHU_ME_URL
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.SentenceSimilarityTest
+import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_READ_UUIDS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.platform.isSentenceSimilaritySupported
 import com.github.zly2006.zhihu.platform.rememberIsLiteVariant
 import com.github.zly2006.zhihu.platform.rememberPlainTextClipboard
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.ui.HOME_PIN_ANNOUNCEMENT_READ_KEY_PREFIX
 import com.github.zly2006.zhihu.ui.TtsState
 import com.github.zly2006.zhihu.ui.components.SettingItemOverall
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
@@ -197,6 +199,12 @@ fun DeveloperSettingsScreen() {
                         navigator.onNavigate(Account.DeveloperSettings.ColorScheme)
                     },
                 ) { Text("Color Scheme") }
+
+                Button(onClick = {
+                    settings.remove(HOME_NOTIFICATION_READ_UUIDS_PREFERENCE_KEY)
+                    settings.removeByPrefix(HOME_PIN_ANNOUNCEMENT_READ_KEY_PREFIX)
+                    userMessages.showShortMessage("已清除 online notification 和作者想法推送的已读记录")
+                }) { Text("清除所有 online notification 和作者想法推送已读记录") }
             }
 
             // TTS引擎信息显示

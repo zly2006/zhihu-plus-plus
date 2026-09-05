@@ -5,6 +5,10 @@ description: Audit, add, migrate, or remove Zhihu++ Android instrument tests und
 
 # Zhihu++ Instrument Test Governance
 
+## 回归与数据边界
+
+新增回归用例前必须在基线得到可复现失败，再在修复版本用同一用例验证通过。不得为注入时间或伪造后端数据新增一次性生产 helper；线上数据变更必须走真实服务端写入与读回，不能用 seed 冒充。
+
 Treat emulator time as a recurring maintenance cost. Keep it only where a real product contract or historical regression needs Android, Compose, window, lifecycle, accessibility, or device integration to prove the behavior.
 
 ## Non-negotiable Rules
