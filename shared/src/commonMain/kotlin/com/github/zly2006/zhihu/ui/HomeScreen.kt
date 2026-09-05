@@ -98,10 +98,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.data.MOBILE_NOTIFICATION_MESSAGE_URL
+import com.github.zly2006.zhihu.data.MobileNotificationMessageOverview
 import com.github.zly2006.zhihu.data.RecommendationMode
-import com.github.zly2006.zhihu.data.ZHIHU_ME_URL
 import com.github.zly2006.zhihu.data.ZhihuJson
-import com.github.zly2006.zhihu.data.ZhihuMeNotifications
 import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Article
@@ -159,6 +159,8 @@ import com.github.zly2006.zhihu.viewmodel.local.LocalHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.za.AndroidHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.za.MixedHomeFeedViewModel
+import io.ktor.client.call.body
+import io.ktor.client.request.get
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -169,6 +171,7 @@ import kotlinx.io.files.SystemFileSystem
 import kotlinx.io.readString
 import kotlinx.io.writeString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
@@ -302,14 +305,15 @@ fun HomeScreen(
         cachedScrollToTopTrigger = scrollToTopTrigger
     }
 
-    // 通知 ViewModel
     var unreadCount by remember { mutableIntStateOf(0) }
     LaunchedEffect(Unit) {
         try {
             unreadCount = paginationEnvironment
-                .fetchJson(ZHIHU_ME_URL, "")
-                ?.let { ZhihuJson.decodeJson<ZhihuMeNotifications>(it) }
-                ?.totalCount ?: 0
+                .mobileHomeFeedHttpClient()
+                .get("$MOBILE_NOTIFICATION_MESSAGE_URL?limit=20")
+                .body<JsonObject>()
+                .let { ZhihuJson.decodeJson<MobileNotificationMessageOverview>(it) }
+                .totalUnreadCount
         } catch (_: Exception) {
             // 忽略错误
         }

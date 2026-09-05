@@ -236,6 +236,12 @@ class ZhihuNotificationClientTest {
                       "target_link": "https://www.zhihu.com/notifications/v3/timeline/entry/system"
                     }
                   }],
+                  "unread": {
+                    "total": {"count": 17, "show_count": false},
+                    "feed": {"count": 4, "show_count": false},
+                    "message": {"count": 17, "show_count": true},
+                    "follow_updates": {"count": 0, "show_count": false}
+                  },
                   "paging": {
                     "is_end": false,
                     "next": "https://api.zhihu.com/notifications/v3/message/v3?limit=20&offset=1"
@@ -248,6 +254,8 @@ class ZhihuNotificationClientTest {
         assertEquals(3, page.head.single().unreadCount)
         assertEquals("邀请回答", page.columnHead.single().title)
         assertEquals(2, page.columnHead.single().unreadCount)
+        assertEquals(1, page.data.single().unreadCount)
+        assertEquals(17, page.totalUnreadCount)
         assertEquals(
             "系统消息",
             page.data
