@@ -20,7 +20,9 @@ package com.github.zly2006.zhihu.platform
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.backhandler.BackHandler
 import com.github.zly2006.zhihu.desktop.DesktopPropertiesFile
 import com.github.zly2006.zhihu.desktop.copyDesktopPlainText
 import com.github.zly2006.zhihu.desktop.defaultDesktopAccountStore
@@ -208,11 +210,12 @@ actual fun rememberUserMessageSink(): UserMessageSink = remember {
     }
 }
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 actual fun PlatformBackHandler(
     enabled: Boolean,
     onBack: () -> Unit,
-) = Unit // TODO: desktop back handler
+) = BackHandler(enabled = enabled, onBack = onBack)
 
 @Composable
 actual fun PlatformPredictiveBackHandler(

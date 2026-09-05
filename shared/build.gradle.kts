@@ -180,6 +180,8 @@ kotlin {
             kotlin.srcDir("src/tiqianMarkdownMain/kotlin")
         }
         jvmMain.dependencies {
+            implementation("org.jetbrains.compose.ui:ui-backhandler-desktop:1.11.1")
+            implementation("androidx.navigationevent:navigationevent:1.0.1")
             implementation("org.tiqian:markdown-compose:0.1.0-SNAPSHOT")
             implementation("org.tiqian:math-font-stix:0.1.0-SNAPSHOT")
             implementation("io.coil-kt.coil3:coil-network-ktor3:3.5.0")
