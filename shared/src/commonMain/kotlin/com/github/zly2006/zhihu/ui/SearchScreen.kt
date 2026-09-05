@@ -318,7 +318,7 @@ fun SearchScreen(
                                 .weight(1f)
                                 .height(40.dp),
                             shape = RoundedCornerShape(24.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            color = if (com.github.zly2006.zhihu.theme.LocalLiquidGlass.current) MaterialTheme.colorScheme.surfaceContainerHighest else MaterialTheme.colorScheme.surfaceVariant,
                         ) {
                             Row(
                                 modifier = Modifier

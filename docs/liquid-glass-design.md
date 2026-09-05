@@ -87,3 +87,10 @@ catalog 没有提供输入框、复选框、菜单、工具栏或弹层。这些
 已在 off API35 安装最终修正包，真实个人页加载了头像、签名、作者信息与回答列表。`profile-expanded-green.png`、`profile-middle-green.png`（持续按住手势取得）和 `profile-collapsed-green.png` 三帧摘要不同，标签顶部依次为 715/456/128 px。收起标签右边界 933 px，搜索按钮左边界 934 px，不再相交。水平拖动后可见末尾“专栏”标签；搜索进入限定作者页面，返回仍为个人页。边界断言保存在 `/tmp/zhihu-glass-evidence/profile-layout-results.json`，对应 XML 同目录。Android APK、JVM 编译及 shared/app ktlint 均通过，crash buffer 为空。
 
 搜索输入、筛选菜单已实际打开；搜索结果空态、深色与大字号搜索仍待下一轮验收。通知、私聊、视频和性能等未完成项目继续保留，不能把本次局部验收当作全应用完成。
+
+## 后续验收：2026-09-06 07:05 起
+
+- 搜索框继承玻璃工具栏的透明 `surfaceVariant`，导致输入区与工具栏缺少层次。首页搜索入口与搜索编辑框改用玻璃主题的 `surfaceContainerHighest`；Material 仍用原色。实际键盘截图 `search-field-red.png` / `search-field-green.png` 显示修正前后差异。200% 字号搜索输入未观察到裁切，未修改输入布局。
+- 消息首页加载了分类未读数、邀请入口和会话列表。200% 字号下分类容器裁掉未读角标顶部，单行标题全部省略；玻璃分支移除该容器裁切并允许两行居中标题。`notification-font200.png` 与 `notification-font200-green.png` 证明角标和四项标题由裁切/省略变为完整显示。正常字号截图为 `notification-light.png`。
+- 私信页进入并打开键盘，空输入的发送按钮为禁用状态，未发送内容。`chat-keyboard-light.png` 仅证明输入区与键盘边界；消息仍在加载，不计入消息列表验收通过。
+- 本轮 Android APK、JVM 编译及 shared/app ktlint 通过，证据位于 `/tmp/zhihu-glass-evidence/`。深色搜索/通知、搜索结果筛选、私信加载、视频及性能仍待后续验证。

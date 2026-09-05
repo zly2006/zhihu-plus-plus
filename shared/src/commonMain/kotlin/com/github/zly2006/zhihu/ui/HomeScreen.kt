@@ -559,7 +559,7 @@ fun HomeScreen(
                                     .height(36.dp)
                                     .testTag(HOME_SEARCH_BUTTON_TAG),
                                 shape = RoundedCornerShape(24.dp),
-                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                color = if (com.github.zly2006.zhihu.theme.LocalLiquidGlass.current) MaterialTheme.colorScheme.surfaceContainerHighest else MaterialTheme.colorScheme.surfaceVariant,
                                 onClick = {
                                     navigator.onNavigate(
                                         Search(query = ""),

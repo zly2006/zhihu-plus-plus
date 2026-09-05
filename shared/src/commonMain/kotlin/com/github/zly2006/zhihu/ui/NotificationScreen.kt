@@ -65,6 +65,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -221,6 +222,7 @@ private fun NotificationCategoryRow(
     showUnreadBadges: Boolean,
     onCategoryClick: (MobileNotificationCategory) -> Unit,
 ) {
+    val liquidGlass = com.github.zly2006.zhihu.theme.LocalLiquidGlass.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -231,7 +233,7 @@ private fun NotificationCategoryRow(
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .clip(RoundedCornerShape(12.dp))
+                    .then(if (liquidGlass) Modifier else Modifier.clip(RoundedCornerShape(12.dp)))
                     .testTag("notification_category_${category.entryName}")
                     .clickable { onCategoryClick(category) }
                     .padding(vertical = 4.dp),
@@ -258,7 +260,8 @@ private fun NotificationCategoryRow(
                     text = category.detailTitle,
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
+                    textAlign = TextAlign.Center,
+                    maxLines = if (liquidGlass) 2 else 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
