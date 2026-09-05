@@ -33,6 +33,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.github.zly2006.zhihu.data.fetchHighestQualityZhihuVideoUrl
@@ -85,6 +86,7 @@ import kotlinx.coroutines.withContext
  */
 @Composable
 fun DesktopZhihuMain() {
+    /** Primary NavHost for desktop tabs and the default content pane. */
     val navController = rememberNavController()
     val accountStore = defaultDesktopAccountStore
     val accounts by accountStore.accountsState.collectAsState()
@@ -105,8 +107,13 @@ fun DesktopZhihuMain() {
         }
     }
 
-    fun currentContentOpenSource(): NavDestination? {
-        val currentEntry = navController.currentBackStackEntry
+    /**
+     * Reads the content-open source from the selected NavHost, including the secondary detail pane.
+     *
+     * @param controller NavHost whose current entry should be inspected
+     */
+    fun currentContentOpenSource(controller: NavHostController = navController): NavDestination? {
+        val currentEntry = controller.currentBackStackEntry
         return runCatching {
             currentEntry?.toRoute<Article>()
         }.getOrNull() ?: runCatching {
@@ -122,18 +129,24 @@ fun DesktopZhihuMain() {
         }.getOrNull()
     }
 
-    fun navigate(route: NavDestination) {
+    /**
+     * Routes [route] through the primary or secondary NavHost selected by [targetController].
+     *
+     * @param route destination to open
+     * @param targetController NavHost that owns the destination's back stack
+     */
+    fun navigate(route: NavDestination, targetController: NavHostController = navController) {
         when (route) {
-            History -> navController.navigate(route)
+            History -> targetController.navigate(route)
             is TopLevelDestination -> {
                 mainTabNavigationTarget = route
                 navigateToMainTabs()
             }
             is Video -> {
                 val current = runCatching {
-                    navController.currentBackStackEntry?.toRoute<Article>()
+                    targetController.currentBackStackEntry?.toRoute<Article>()
                 }.getOrNull() ?: runCatching {
-                    navController.currentBackStackEntry?.toRoute<Question>()
+                    targetController.currentBackStackEntry?.toRoute<Question>()
                 }.getOrNull()
                 if (current == null) {
                     userMessages.showMessage("无法打开视频：未知的内容类型")
@@ -183,9 +196,9 @@ fun DesktopZhihuMain() {
                     } else {
                         null
                     },
-                    source = currentContentOpenSource(),
+                    source = currentContentOpenSource(targetController),
                 )
-                navController.navigate(route)
+                targetController.navigate(route)
             }
         }
     }
@@ -194,6 +207,8 @@ fun DesktopZhihuMain() {
         navController = navController,
         mainTabNavigationTarget = mainTabNavigationTarget,
         navigate = ::navigate,
+        navigateContent = { destination, targetController -> navigate(destination, targetController) },
+        enableLandscapeListDetail = true,
         setCurrentMainTabOpenFrom = { currentMainTabOpenFrom = it },
         consumeMainTabNavigationTarget = { destination ->
             if (mainTabNavigationTarget == destination) {

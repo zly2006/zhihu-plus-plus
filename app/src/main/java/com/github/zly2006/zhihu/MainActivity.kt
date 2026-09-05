@@ -102,6 +102,7 @@ class MainActivity : ComponentActivity() {
             .client
             .httpClient()
 
+    /** Primary NavHost used for the activity's main tabs and the default content pane. */
     lateinit var navController: NavHostController
     private lateinit var continuousUsageReminderManager: ContinuousUsageReminderManager
     private var currentMainTabOpenFrom: String? = null
@@ -332,20 +333,48 @@ class MainActivity : ComponentActivity() {
         return true
     }
 
+    /**
+     * Navigates through the activity's primary NavHost, optionally replacing the current popup route.
+     *
+     * @param route destination to open
+     * @param popup whether the destination is a popup that can replace the current popup entry
+     */
     fun navigate(route: NavDestination, popup: Boolean = false) {
+        navigate(route, navController, popup)
+    }
+
+    /**
+     * Navigates through [targetController], which may be the secondary landscape detail NavHost.
+     *
+     * @param route destination to open in the selected content pane
+     * @param targetController NavHost that owns the destination's back stack
+     */
+    fun navigateIn(route: NavDestination, targetController: NavHostController) {
+        navigate(route, targetController, popup = false)
+    }
+
+    /**
+     * Routes a destination through the requested NavHost. The primary controller owns top-level
+     * tabs, while a secondary controller owns content displayed beside a list on large screens.
+     */
+    private fun navigate(
+        route: NavDestination,
+        targetController: NavHostController,
+        popup: Boolean,
+    ) {
         if (route is CommentHolder) {
             AndroidArticleNavigationHandoff.prepareComment(route)
-            navigate(route.article, popup)
+            navigate(route.article, targetController, popup)
             return
         }
         AndroidArticleNavigationHandoff.clearCommentUnless(route)
-        preparePendingContentOpen(route)
+        preparePendingContentOpen(route, targetController)
         history.add(route)
         if (route is Video) {
             val current = runCatching {
-                navController.currentBackStackEntry?.toRoute<Article>()
+                targetController.currentBackStackEntry?.toRoute<Article>()
             }.getOrNull() ?: runCatching {
-                navController.currentBackStackEntry?.toRoute<Question>()
+                targetController.currentBackStackEntry?.toRoute<Question>()
             }.getOrNull()
             if (current == null) {
                 androidUserMessageSink(this).showShortMessage("无法打开视频：未知的内容类型")
@@ -378,14 +407,29 @@ class MainActivity : ComponentActivity() {
             }
             return
         }
+        if (route == History) {
+            // History is a legacy standalone page even though it remains a top-level tab target.
+            targetController.navigate(route)
+            return
+        }
+        if (route is TopLevelDestination) {
+            // Top-level destinations select a page in the main pager instead of being pushed as
+            // standalone routes, which keeps the landscape list pane and its pager offset stable.
+            mainTabNavigationTarget = route
+            navigateToMainTabs()
+            return
+        }
         if (route == MainTabs) {
             mainTabNavigationTarget = Home
             navigateToMainTabs()
             return
         }
-        navController.navigate(route) {
+        targetController.navigate(route) {
+            // A secondary NavHost scopes content ViewModels by back-stack entry. Reusing
+            // the same Article destination here keeps the old entry-scoped article alive
+            // when a different feed item is selected.
+            launchSingleTop = popup
             if (popup) {
-                launchSingleTop = true
                 popUpTo(MainTabs) {
                     // clear the back stack and viewModels
                     saveState = true
@@ -394,7 +438,10 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun preparePendingContentOpen(target: NavDestination) {
+    private fun preparePendingContentOpen(
+        target: NavDestination,
+        sourceController: NavHostController,
+    ) {
         val openFrom = if (
             runCatching { navController.currentBackStackEntry?.toRoute<MainTabs>() }.getOrNull() != null
         ) {
@@ -402,7 +449,7 @@ class MainActivity : ComponentActivity() {
         } else {
             null
         }
-            ?: ContentOpenEventSupport.inferOpenFrom(currentContentOpenSource(), target)
+            ?: ContentOpenEventSupport.inferOpenFrom(currentContentOpenSource(sourceController), target)
         AndroidArticleNavigationHandoff.prepareContentOpen(target, openFrom)
     }
 
@@ -426,8 +473,9 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun currentContentOpenSource(): NavDestination? {
-        val currentEntry = navController.currentBackStackEntry
+    /** Reads the content-open source from the selected NavHost, including the secondary detail pane. */
+    private fun currentContentOpenSource(controller: NavHostController = navController): NavDestination? {
+        val currentEntry = controller.currentBackStackEntry
         return runCatching {
             currentEntry?.toRoute<Article>()
         }.getOrNull() ?: runCatching {
