@@ -171,6 +171,8 @@ fun CommentScreenComponent(
                     pendingChildComment = childComment
                     activeChildComment = rootComment
                 },
+                skipPageTurn = activeChildComment != null,
+                showPageTurnFab = content !is Article,
             )
         }
     }
@@ -199,6 +201,7 @@ fun CommentScreenComponent(
                 onCommentInputChange = { updateCommentDraft(childDraftKey, it) },
                 listState = childListState,
                 initialComment = pendingChildComment,
+                showPageTurnFab = childTarget.article !is Article,
             )
         }
     }

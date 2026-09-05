@@ -82,8 +82,10 @@ import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.requestLoginNavigation
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.ui.components.PageTurnScrollContent
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
+import com.github.zly2006.zhihu.ui.components.rememberPageTurnState
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -193,6 +195,8 @@ fun IdentityManagementScreen() {
     val accountStore = rememberZhihuAccountStore()
     val userMessages = rememberUserMessageSink()
     val coroutineScope = rememberCoroutineScope()
+    val scrollState = rememberScrollState()
+    val pageTurnState = rememberPageTurnState()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     var state by remember(accountStore) {
         mutableStateOf(
@@ -269,154 +273,162 @@ fun IdentityManagementScreen() {
             )
         },
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(innerPadding)
-                .padding(vertical = 16.dp),
-        ) {
-            if (state.loading && state.accounts.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(160.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    CircularProgressIndicator()
+        PageTurnScrollContent(
+            pageTurnState = pageTurnState,
+            scrollState = scrollState,
+            innerPadding = innerPadding,
+            topBarState = scrollBehavior.state,
+        ) { sizeTrackingModifier ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .then(sizeTrackingModifier)
+                    .verticalScroll(scrollState)
+                    .padding(innerPadding)
+                    .padding(vertical = 16.dp),
+            ) {
+                if (state.loading && state.accounts.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(160.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator()
+                    }
                 }
-            }
 
-            state.errorMessage?.let { errorMessage ->
-                SettingItemGroup {
-                    SettingItem(
-                        title = { Text("加载失败") },
-                        description = { Text(errorMessage) },
-                        icon = { Icon(Icons.Default.ErrorOutline, null) },
-                        endAction = { Icon(Icons.Default.Refresh, contentDescription = "重试") },
-                        modifier = Modifier.testTag(IDENTITY_MANAGEMENT_RETRY_TAG),
-                        enabled = !state.busy,
-                        onClick = {
-                            coroutineScope.launch {
-                                refresh()
-                            }
-                        },
-                    )
-                }
-            }
-
-            if (state.accounts.isNotEmpty()) {
-                SettingItemGroup(
-                    title = "当前手机号下的账号",
-                ) {
-                    state.accounts.forEachIndexed { index, account ->
-                        val isCurrent = account.id == state.currentAccountId
-                        val isSwitching = account.id == state.switchingToAccountId
+                state.errorMessage?.let { errorMessage ->
+                    SettingItemGroup {
                         SettingItem(
-                            title = { Text(account.name) },
-                            description = {
-                                Text(
-                                    when (account.accountType) {
-                                        1 -> "主账号"
-                                        2 -> "马甲号"
-                                        else -> "知乎账号"
-                                    },
-                                )
-                            },
-                            icon = {
-                                AsyncImage(
-                                    model = account.avatarUrl,
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .size(40.dp)
-                                        .clip(CircleShape),
-                                )
-                            },
-                            endAction = {
-                                when {
-                                    isSwitching -> CircularProgressIndicator(Modifier.size(20.dp))
-                                    isCurrent -> Text(
-                                        "当前登录",
-                                        color = MaterialTheme.colorScheme.primary,
-                                        style = MaterialTheme.typography.labelLarge,
-                                    )
-                                    else -> Icon(Icons.Default.SwitchAccount, contentDescription = "切换")
-                                }
-                            },
-                            modifier = Modifier.testTag("identityManagement.account.$index"),
+                            title = { Text("加载失败") },
+                            description = { Text(errorMessage) },
+                            icon = { Icon(Icons.Default.ErrorOutline, null) },
+                            endAction = { Icon(Icons.Default.Refresh, contentDescription = "重试") },
+                            modifier = Modifier.testTag(IDENTITY_MANAGEMENT_RETRY_TAG),
                             enabled = !state.busy,
-                            onClick = if (isCurrent) {
-                                null
-                            } else {
-                                { switchTarget = account }
-                            },
-                        )
-                    }
-                }
-            } else if (!state.loading && state.errorMessage == null) {
-                SettingItemGroup {
-                    SettingItem(
-                        title = { Text("未找到可管理的账号") },
-                        description = { Text("请确认当前登录状态后重试") },
-                        icon = { Icon(Icons.Default.ErrorOutline, null) },
-                    )
-                }
-            }
-
-            if (state.accounts.isNotEmpty()) {
-                val otherAccounts = savedAccounts.accounts.filterNot { it.id == savedAccounts.activeAccountId }
-                SettingItemGroup(
-                    title = "其他登录账号",
-                ) {
-                    otherAccounts.forEach { account ->
-                        SettingItem(
-                            title = { Text(account.session.profile?.name ?: account.session.username) },
-                            description = { Text("切换到这个登录账号") },
-                            icon = { Icon(Icons.Default.SwitchAccount, null) },
-                            endAction = {
-                                IconButton(onClick = { removeLoginAccount = account }) {
-                                    Icon(Icons.Default.DeleteOutline, contentDescription = "移除登录账号")
+                            onClick = {
+                                coroutineScope.launch {
+                                    refresh()
                                 }
                             },
-                            onClick = { switchLoginAccount = account },
                         )
                     }
-                    SettingItem(
-                        title = { Text("添加其他手机号登录账号") },
-                        icon = { Icon(Icons.AutoMirrored.Filled.Login, null) },
-                        onClick = ::requestLoginNavigation,
-                    )
                 }
 
-                SettingItemGroup(
-                    title = "新账号",
-                    footer = {
-                        Text(
-                            if (state.canCreateSubAccount) {
-                                "新账号会先使用系统昵称完成初始化。昵称修改受知乎次数限制，本客户端不会自动改名。"
-                            } else if (state.accounts.size >= 2) {
-                                "当前手机号下已经存在主账号和马甲号。"
-                            } else {
-                                "当前登录账号暂不满足创建新账号的条件。"
+                if (state.accounts.isNotEmpty()) {
+                    SettingItemGroup(
+                        title = "当前手机号下的账号",
+                    ) {
+                        state.accounts.forEachIndexed { index, account ->
+                            val isCurrent = account.id == state.currentAccountId
+                            val isSwitching = account.id == state.switchingToAccountId
+                            SettingItem(
+                                title = { Text(account.name) },
+                                description = {
+                                    Text(
+                                        when (account.accountType) {
+                                            1 -> "主账号"
+                                            2 -> "马甲号"
+                                            else -> "知乎账号"
+                                        },
+                                    )
+                                },
+                                icon = {
+                                    AsyncImage(
+                                        model = account.avatarUrl,
+                                        contentDescription = null,
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(CircleShape),
+                                    )
+                                },
+                                endAction = {
+                                    when {
+                                        isSwitching -> CircularProgressIndicator(Modifier.size(20.dp))
+                                        isCurrent -> Text(
+                                            "当前登录",
+                                            color = MaterialTheme.colorScheme.primary,
+                                            style = MaterialTheme.typography.labelLarge,
+                                        )
+                                        else -> Icon(Icons.Default.SwitchAccount, contentDescription = "切换")
+                                    }
+                                },
+                                modifier = Modifier.testTag("identityManagement.account.$index"),
+                                enabled = !state.busy,
+                                onClick = if (isCurrent) {
+                                    null
+                                } else {
+                                    { switchTarget = account }
+                                },
+                            )
+                        }
+                    }
+                } else if (!state.loading && state.errorMessage == null) {
+                    SettingItemGroup {
+                        SettingItem(
+                            title = { Text("未找到可管理的账号") },
+                            description = { Text("请确认当前登录状态后重试") },
+                            icon = { Icon(Icons.Default.ErrorOutline, null) },
+                        )
+                    }
+                }
+
+                if (state.accounts.isNotEmpty()) {
+                    val otherAccounts = savedAccounts.accounts.filterNot { it.id == savedAccounts.activeAccountId }
+                    SettingItemGroup(
+                        title = "其他登录账号",
+                    ) {
+                        otherAccounts.forEach { account ->
+                            SettingItem(
+                                title = { Text(account.session.profile?.name ?: account.session.username) },
+                                description = { Text("切换到这个登录账号") },
+                                icon = { Icon(Icons.Default.SwitchAccount, null) },
+                                endAction = {
+                                    IconButton(onClick = { removeLoginAccount = account }) {
+                                        Icon(Icons.Default.DeleteOutline, contentDescription = "移除登录账号")
+                                    }
+                                },
+                                onClick = { switchLoginAccount = account },
+                            )
+                        }
+                        SettingItem(
+                            title = { Text("添加其他手机号登录账号") },
+                            icon = { Icon(Icons.AutoMirrored.Filled.Login, null) },
+                            onClick = ::requestLoginNavigation,
+                        )
+                    }
+
+                    SettingItemGroup(
+                        title = "新账号",
+                        footer = {
+                            Text(
+                                if (state.canCreateSubAccount) {
+                                    "新账号会先使用系统昵称完成初始化。昵称修改受知乎次数限制，本客户端不会自动改名。"
+                                } else if (state.accounts.size >= 2) {
+                                    "当前手机号下已经存在主账号和马甲号。"
+                                } else {
+                                    "当前登录账号暂不满足创建新账号的条件。"
+                                },
+                            )
+                        },
+                    ) {
+                        SettingItem(
+                            title = { Text("创建新账号") },
+                            icon = { Icon(Icons.Default.Add, null) },
+                            modifier = Modifier.testTag(IDENTITY_MANAGEMENT_CREATE_TAG),
+                            enabled = state.canCreateSubAccount && !state.busy,
+                            endAction = {
+                                if (state.creating) {
+                                    CircularProgressIndicator(Modifier.size(20.dp))
+                                }
+                            },
+                            onClick = {
+                                acceptedCreateRules = false
+                                showCreateDialog = true
                             },
                         )
-                    },
-                ) {
-                    SettingItem(
-                        title = { Text("创建新账号") },
-                        icon = { Icon(Icons.Default.Add, null) },
-                        modifier = Modifier.testTag(IDENTITY_MANAGEMENT_CREATE_TAG),
-                        enabled = state.canCreateSubAccount && !state.busy,
-                        endAction = {
-                            if (state.creating) {
-                                CircularProgressIndicator(Modifier.size(20.dp))
-                            }
-                        },
-                        onClick = {
-                            acceptedCreateRules = false
-                            showCreateDialog = true
-                        },
-                    )
+                    }
                 }
             }
         }

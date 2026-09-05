@@ -680,7 +680,7 @@ fun SearchScreen(
                     PaginatedList(
                         items = viewModel.entities,
                         onLoadMore = { viewModel.loadMore(paginationEnvironment) },
-                        modifier = Modifier.testTag("search_general_results"),
+                        listModifier = Modifier.testTag("search_general_results"),
                         topContent = {
                             item {
                                 if (isMemberSearch) {

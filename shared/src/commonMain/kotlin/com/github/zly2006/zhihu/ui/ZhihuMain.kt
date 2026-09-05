@@ -822,10 +822,12 @@ private fun MainTabsPager(
             MainTabPage.DailyPage -> DailyScreen(
                 scrollToTopTrigger = scrollToTopTrigger,
                 isActive = pagerState.currentPage == pageIndex,
+                outerBottomPadding = innerPadding.calculateBottomPadding(),
             )
             MainTabPage.OnlineHistoryPage -> OnlineHistoryScreen(
                 scrollToTopTrigger = scrollToTopTrigger,
                 isActive = pagerState.currentPage == pageIndex,
+                outerBottomPadding = innerPadding.calculateBottomPadding(),
             )
             MainTabPage.MyCollectionsPage -> MyCollectionsTopLevelPage(
                 scrollToTopTrigger = scrollToTopTrigger,
