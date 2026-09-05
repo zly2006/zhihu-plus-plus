@@ -245,7 +245,7 @@ open class SharedAndroidPaginationEnvironment(
             articleFollowersCount = settingsStore.getInt(ARTICLE_FOLLOWERS_THRESHOLD_PREFERENCE_KEY, 50).coerceAtLeast(0),
             videoVoteCount = settingsStore.getInt(VIDEO_VOTE_THRESHOLD_PREFERENCE_KEY, 20).coerceAtLeast(0),
             videoFollowersCount = settingsStore.getInt(VIDEO_FOLLOWERS_THRESHOLD_PREFERENCE_KEY, 50).coerceAtLeast(0),
-            questionAnswerCount = settingsStore.getInt(QUESTION_ANSWER_THRESHOLD_PREFERENCE_KEY, 5).coerceAtLeast(0),
+            questionAnswerCount = settingsStore.getInt(QUESTION_ANSWER_THRESHOLD_PREFERENCE_KEY, 0).coerceAtLeast(0),
             questionFollowersCount = settingsStore.getInt(QUESTION_FOLLOWERS_THRESHOLD_PREFERENCE_KEY, 50).coerceAtLeast(0),
         ),
         reverseBlock = settingsStore.getBoolean("reverseBlock", false),
