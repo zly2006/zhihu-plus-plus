@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -54,6 +55,8 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.notification.NotificationType
+import com.github.zly2006.zhihu.platform.isAnswerSwipeSupported
+import com.github.zly2006.zhihu.platform.isPageTurnSupported
 import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
@@ -61,6 +64,8 @@ import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.components.DISABLE_BOTTOM_SHEET_ROUNDED_CORNERS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
+import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
+import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.viewmodel.QUALITY_FILTER_MODE_PREFERENCE_KEY
 
 const val SETTINGS_SEARCH_INPUT_TAG = "settingsSearch.input"
@@ -169,7 +174,16 @@ private val settingsSearchEntries = buildList {
     add(appearanceEntry("appearance.autoHideArticleBottomBar", "自动隐藏回答底部按钮", "滚动阅读时自动隐藏底部操作栏。", "autoHideArticleBottomBar"))
     add(appearanceEntry("appearance.buttonSkipAnswer", "显示跳转下一个回答按钮", "在回答页显示快速跳转按钮。", "buttonSkipAnswer", listOf("下一个回答")))
     add(appearanceEntry("appearance.pinAnswerDate", "置顶回答日期", "调整回答日期在正文中的位置。", "pinAnswerDate"))
-    add(appearanceEntry("appearance.answerSwitchMode", "回答切换手势", "设置回答之间的上下或左右切换。", "answerSwitchMode", listOf("手势", "上下滑动", "左右滑动", "切换回答")))
+    if (isAnswerSwipeSupported) {
+        add(appearanceEntry("appearance.answerSwitchMode", "回答切换手势", "设置回答之间的上下或左右切换。", "answerSwitchMode", listOf("手势", "上下滑动", "左右滑动", "切换回答")))
+    }
+    if (isPageTurnSupported) {
+        add(appearanceEntry("appearance.pageTurnVolume", "音量键翻页", "在支持翻页的可滚动页面使用物理按键翻页。", PREF_VOLUME_KEY_PAGE_TURN, listOf("电纸书", "翻页")))
+        add(appearanceEntry("appearance.pageTurnSwitchAnswer", "翻页切换回答", "在回答顶部或底部继续翻页，切换到相邻回答。", PREF_PAGE_TURN_SWITCH_ANSWER, listOf("电纸书", "翻页", "上一个回答", "下一个回答")))
+        add(appearanceEntry("appearance.pageTurnFab", "显示翻页悬浮按钮", "在支持翻页的可滚动页面显示上下翻页按钮。", PREF_SHOW_PAGE_TURN_FAB, listOf("电纸书", "翻页")))
+        add(appearanceEntry("appearance.pageTurnDistance", "翻页距离", "设置每次滚动占可见区域的比例。", PREF_PAGE_TURN_PERCENT, listOf("电纸书", "翻页", "重叠")))
+        add(appearanceEntry("appearance.pageTurnGuide", "显示翻页位置线", "标记相邻两页的重叠位置。", PREF_SHOW_PAGE_TURN_GUIDE, listOf("电纸书", "翻页", "引导线")))
+    }
     add(appearanceEntry("appearance.answerDoubleTapAction", "双击回答动作", "设置双击正文后的默认动作。", ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY, listOf("双击")))
     add(
         appearanceEntry(
@@ -311,6 +325,8 @@ fun SettingsSearchScreen() {
             .filter { entry -> entry.matches(query) }
     }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val listState = rememberLazyListState()
+    val pageTurnTarget = rememberPageTurnTarget(listState, enabled = true)
 
     Scaffold(
         modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -340,8 +356,10 @@ fun SettingsSearchScreen() {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
+                .pageTurnViewportWithGuide(pageTurnTarget)
                 .testTag(SETTINGS_SEARCH_RESULTS_TAG)
                 .padding(innerPadding),
+            state = listState,
         ) {
             item {
                 OutlinedTextField(

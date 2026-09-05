@@ -163,3 +163,7 @@ actual val isSentenceSimilaritySupported: Boolean = false
 actual val isArticleHtmlExportSupported: Boolean = false
 
 actual val isArticleImageExportSupported: Boolean = false
+
+actual val isPageTurnSupported: Boolean = false
+
+actual val isAnswerSwipeSupported: Boolean = !nativeIsDesktop

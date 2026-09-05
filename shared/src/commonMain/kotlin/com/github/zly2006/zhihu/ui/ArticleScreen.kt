@@ -112,6 +112,7 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.Topic
 import com.github.zly2006.zhihu.platform.PlatformBackHandler
+import com.github.zly2006.zhihu.platform.isAnswerSwipeSupported
 import com.github.zly2006.zhihu.platform.isArticleHtmlExportSupported
 import com.github.zly2006.zhihu.platform.isArticleImageExportSupported
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
@@ -144,8 +145,12 @@ import com.github.zly2006.zhihu.ui.components.VerticalReadingProgressBar
 import com.github.zly2006.zhihu.ui.components.VotersSheet
 import com.github.zly2006.zhihu.ui.components.ZhihuTwoRowsTopAppBar
 import com.github.zly2006.zhihu.ui.components.normalizedAnswerSwitchSensitivity
+import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
+import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.ui.components.rememberPreferCollapsedExitUntilCollapsedScrollBehavior
+import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_PAGE_TURN_SWITCH_ANSWER
 import com.github.zly2006.zhihu.ui.subscreens.DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.subscreens.PREF_PAGE_TURN_SWITCH_ANSWER
 import com.github.zly2006.zhihu.util.formatCompactCount
 import com.github.zly2006.zhihu.util.smoothGradient
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
@@ -198,9 +203,10 @@ fun ArticleScreen(
     val autoHideArticleBottomBar by rememberObservedSetting(settings, "autoHideArticleBottomBar") {
         getBoolean("autoHideArticleBottomBar", false)
     }
-    val answerSwitchMode by rememberObservedSetting(settings, "answerSwitchMode") {
+    val configuredAnswerSwitchMode by rememberObservedSetting(settings, "answerSwitchMode") {
         getString("answerSwitchMode", "vertical")
     }
+    val answerSwitchMode = configuredAnswerSwitchMode.takeIf { isAnswerSwipeSupported } ?: "off"
     val answerSwitchSensitivity by rememberObservedSetting(settings, ANSWER_SWITCH_SENSITIVITY_PREFERENCE_KEY) {
         normalizedAnswerSwitchSensitivity(getFloat(ANSWER_SWITCH_SENSITIVITY_PREFERENCE_KEY, DEFAULT_ANSWER_SWITCH_SENSITIVITY))
     }
@@ -222,6 +228,9 @@ fun ArticleScreen(
     }
     val useTiqianMarkdown by rememberObservedSetting(settings, DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY) {
         getBoolean(DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY, false)
+    }
+    val pageTurnSwitchAnswer by rememberObservedSetting(settings, PREF_PAGE_TURN_SWITCH_ANSWER) {
+        getBoolean(PREF_PAGE_TURN_SWITCH_ANSWER, DEFAULT_PAGE_TURN_SWITCH_ANSWER)
     }
 
     fun saveAnswerDoubleTapAction(action: AnswerDoubleTapAction) {
@@ -278,11 +287,29 @@ fun ArticleScreen(
         answerSwitchMode = answerSwitchMode,
         readingQueueSourceId = article.readingQueueSourceId,
     )
+    val usesVerticalAnswerSwitch = article.type == ArticleType.Answer && answerSwitchMode == "vertical"
+    val pageTurnActive = !(useWebView && isLegacyWebViewSupported) &&
+        !showComments &&
+        !showCollectionDialog &&
+        !showActionsMenu &&
+        !showSummaryDialog &&
+        !showAigcFlagSheet &&
+        !showExportDialog &&
+        !showDoubleTapActionDialog &&
+        !showVoters
+    val pageTurnTarget = rememberPageTurnTarget(
+        scrollState = scrollState,
+        enabled = pageTurnActive,
+        maxScrollValue = effectiveScrollMaxValue,
+        onPageUpAtStart = (answerNavigationState::navigateToPrevious)
+            .takeIf { article.type == ArticleType.Answer && pageTurnSwitchAnswer },
+        onPageDownAtEnd = (answerNavigationState::navigateToNext)
+            .takeIf { article.type == ArticleType.Answer && pageTurnSwitchAnswer },
+    )
     val hapticFeedback = LocalHapticFeedback.current
     val readingPlayerOverlayRouteId = articleNavController?.currentBackStackEntry?.id
         ?: article.readingQueueSourceId
         ?: "${article.type}:${article.id}"
-    val usesVerticalAnswerSwitch = article.type == ArticleType.Answer && answerSwitchMode == "vertical"
     DisposableEffect(readingPlayerOverlayOffsetState, readingPlayerOverlayRouteId, usesVerticalAnswerSwitch) {
         if (usesVerticalAnswerSwitch) {
             readingPlayerOverlayOffsetState?.beginRoute(readingPlayerOverlayRouteId)
@@ -1071,6 +1098,12 @@ fun ArticleScreen(
                             }
                         }
                     }
+                    Spacer(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                            .pageTurnViewportWithGuide(pageTurnTarget),
+                    )
                     // 状态栏渐变遮罩，仅 duo3 路径需要；主视觉路径不绘制。
                     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
                     val surfaceColor = MaterialTheme.colorScheme.surfaceContainer

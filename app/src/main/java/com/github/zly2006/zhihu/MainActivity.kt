@@ -24,9 +24,11 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
+import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -71,7 +73,12 @@ import com.github.zly2006.zhihu.theme.AndroidThemeSettings
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.AndroidArticleNavigationHandoff
 import com.github.zly2006.zhihu.ui.AndroidZhihuMain
+import com.github.zly2006.zhihu.ui.components.LocalPageTurnDispatcher
+import com.github.zly2006.zhihu.ui.components.PageTurnCommand
+import com.github.zly2006.zhihu.ui.components.PageTurnDispatcher
+import com.github.zly2006.zhihu.ui.components.PageTurnFab
 import com.github.zly2006.zhihu.ui.components.getHighestQualityVideoUrl
+import com.github.zly2006.zhihu.ui.subscreens.PREF_VOLUME_KEY_PAGE_TURN
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.util.ContinuousUsageReminderManager
 import com.github.zly2006.zhihu.util.EmojiManager
@@ -104,6 +111,7 @@ class MainActivity : ComponentActivity() {
 
     lateinit var navController: NavHostController
     private lateinit var continuousUsageReminderManager: ContinuousUsageReminderManager
+    private val pageTurnDispatcher = PageTurnDispatcher()
     private var currentMainTabOpenFrom: String? = null
     var mainTabNavigationTarget by mutableStateOf<TopLevelDestination?>(null)
         private set
@@ -199,8 +207,11 @@ class MainActivity : ComponentActivity() {
         setContent {
             navController = rememberNavController()
             ZhihuTheme {
-                Box(Modifier.semantics { testTagsAsResourceId = true }) {
-                    AndroidZhihuMain(navController = navController)
+                CompositionLocalProvider(LocalPageTurnDispatcher provides pageTurnDispatcher) {
+                    Box(Modifier.semantics { testTagsAsResourceId = true }) {
+                        AndroidZhihuMain(navController = navController)
+                        PageTurnFab(dispatcher = pageTurnDispatcher)
+                    }
                 }
             }
         }
@@ -274,6 +285,59 @@ class MainActivity : ComponentActivity() {
     override fun onStop() {
         continuousUsageReminderManager.onAppBackground()
         super.onStop()
+    }
+
+    private var pageTurnLongPressConsumed = false
+
+    private fun pageTurnCommand(keyCode: Int): PageTurnCommand? = when (keyCode) {
+        KeyEvent.KEYCODE_PAGE_DOWN -> PageTurnCommand.PageDown
+        KeyEvent.KEYCODE_PAGE_UP -> PageTurnCommand.PageUp
+        KeyEvent.KEYCODE_VOLUME_DOWN ->
+            if (androidSettingsStore(this).getBoolean(PREF_VOLUME_KEY_PAGE_TURN, false)) {
+                PageTurnCommand.PageDown
+            } else {
+                null
+            }
+        KeyEvent.KEYCODE_VOLUME_UP ->
+            if (androidSettingsStore(this).getBoolean(PREF_VOLUME_KEY_PAGE_TURN, false)) {
+                PageTurnCommand.PageUp
+            } else {
+                null
+            }
+        else -> null
+    }
+
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        val command = pageTurnCommand(event.keyCode) ?: return super.dispatchKeyEvent(event)
+        if (!pageTurnDispatcher.hasActiveTarget) return super.dispatchKeyEvent(event)
+
+        return when (event.action) {
+            KeyEvent.ACTION_DOWN -> {
+                when {
+                    event.isLongPress -> {
+                        pageTurnLongPressConsumed = true
+                        pageTurnDispatcher.dispatch(
+                            if (command == PageTurnCommand.PageDown) {
+                                PageTurnCommand.JumpToBottom
+                            } else {
+                                PageTurnCommand.JumpToTop
+                            },
+                        )
+                    }
+                    event.repeatCount == 0 -> {
+                        pageTurnLongPressConsumed = false
+                        true
+                    }
+                    else -> true
+                }
+            }
+            KeyEvent.ACTION_UP -> {
+                val consumed = pageTurnLongPressConsumed || pageTurnDispatcher.dispatch(command)
+                pageTurnLongPressConsumed = false
+                consumed
+            }
+            else -> super.dispatchKeyEvent(event)
+        }
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {

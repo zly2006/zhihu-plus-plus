@@ -144,6 +144,8 @@ import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.ui.components.feedKeywordExtractionAvailable
+import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
+import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_FAB_OPACITY
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FAB_OPACITY
 import com.github.zly2006.zhihu.ui.subscreens.SystemUpdateState
@@ -218,6 +220,7 @@ fun HomeScreen(
     scrollToTopTrigger: Int,
     innerPadding: PaddingValues,
     showTopActions: Boolean = true,
+    isActive: Boolean = true,
 ) {
     val readingPlayerOverlayPadding = LocalReadingPlayerOverlayPadding.current
     val navigator = LocalNavigator.current
@@ -430,6 +433,15 @@ fun HomeScreen(
     // 按关键词屏蔽对话框
     var showBlockByKeywordsDialog by remember { mutableStateOf(false) }
     var feedToBlockByKeywords by remember { mutableStateOf<Pair<String, String?>?>(null) } // 二元组内容为标题和摘要。
+    val pageTurnTarget = rememberPageTurnTarget(
+        listState = listState,
+        enabled = isActive &&
+            !showAccountBottomSheet &&
+            !showCreateMenu &&
+            feedAuthorBlockRequest == null &&
+            !showBlockByKeywordsDialog &&
+            (!account.login || account.hasRequiredCookie),
+    )
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
@@ -637,7 +649,9 @@ fun HomeScreen(
                 PaginatedList(
                     items = viewModel.displayItems,
                     listState = listState,
-                    modifier = Modifier.testTag(HOME_FEED_LIST_TAG),
+                    modifier = Modifier
+                        .pageTurnViewportWithGuide(pageTurnTarget)
+                        .testTag(HOME_FEED_LIST_TAG),
                     contentPadding = PaddingValues(
                         top = scaffoldPadding.calculateTopPadding() + 8.dp,
                         bottom = innerPadding.calculateBottomPadding() + readingPlayerOverlayPadding,

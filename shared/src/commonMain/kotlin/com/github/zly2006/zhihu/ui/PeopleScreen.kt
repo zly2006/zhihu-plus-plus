@@ -38,6 +38,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
@@ -105,8 +107,11 @@ import com.github.zly2006.zhihu.platform.rememberZhihuWebUrlOpener
 import com.github.zly2006.zhihu.reading.RegisterReadingQueueSource
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.FeedCard
+import com.github.zly2006.zhihu.ui.components.PageTurnTarget
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
+import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
+import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.util.Log
 import com.github.zly2006.zhihu.util.raiseForStatus
 import com.github.zly2006.zhihu.viewmodel.ContentBlocklistEnvironment
@@ -867,6 +872,11 @@ fun PeopleScreen(
                     .weight(1f)
                     .testTag(PEOPLE_SCREEN_PAGER_TAG),
             ) { page ->
+                val listState = rememberLazyListState()
+                val pageTurnTarget = rememberPageTurnTarget(
+                    listState = listState,
+                    enabled = pagerState.currentPage == page,
+                )
                 when (page) {
                     0 -> {
                         // 回答
@@ -883,11 +893,13 @@ fun PeopleScreen(
                             )
                             PaginatedList(
                                 items = viewModel.answersFeedModel.allData,
+                                listState = listState,
                                 onLoadMore = { viewModel.answersFeedModel.loadMore(paginationEnvironment) },
                                 isEnd = { viewModel.answersFeedModel.isEnd },
                                 footer = ProgressIndicatorFooter,
                                 modifier = Modifier
                                     .fillMaxSize()
+                                    .pageTurnViewportWithGuide(pageTurnTarget)
                                     .testTag(PEOPLE_SCREEN_ANSWERS_LIST_TAG),
                                 key = { it.id },
                             ) {
@@ -918,11 +930,13 @@ fun PeopleScreen(
                             )
                             PaginatedList(
                                 items = viewModel.articlesFeedModel.allData,
+                                listState = listState,
                                 onLoadMore = { viewModel.articlesFeedModel.loadMore(paginationEnvironment) },
                                 isEnd = { viewModel.articlesFeedModel.isEnd },
                                 footer = ProgressIndicatorFooter,
                                 modifier = Modifier
                                     .fillMaxSize()
+                                    .pageTurnViewportWithGuide(pageTurnTarget)
                                     .testTag(PEOPLE_SCREEN_ARTICLES_LIST_TAG),
                                 key = { it.id },
                             ) {
@@ -942,11 +956,13 @@ fun PeopleScreen(
                         // 动态
                         PaginatedList(
                             items = viewModel.activitiesFeedModel.displayItems,
+                            listState = listState,
                             onLoadMore = { viewModel.activitiesFeedModel.loadMore(paginationEnvironment) },
                             isEnd = { viewModel.activitiesFeedModel.isEnd },
                             footer = ProgressIndicatorFooter,
                             modifier = Modifier
                                 .fillMaxSize()
+                                .pageTurnViewportWithGuide(pageTurnTarget)
                                 .testTag(PEOPLE_SCREEN_ACTIVITIES_LIST_TAG),
                         ) {
                             FeedCard(
@@ -962,11 +978,13 @@ fun PeopleScreen(
                         // 收藏
                         PaginatedList(
                             items = viewModel.collectionsFeedModel.allData,
+                            listState = listState,
                             onLoadMore = { viewModel.collectionsFeedModel.loadMore(paginationEnvironment) },
                             isEnd = { viewModel.collectionsFeedModel.isEnd },
                             footer = ProgressIndicatorFooter,
                             modifier = Modifier
                                 .fillMaxSize()
+                                .pageTurnViewportWithGuide(pageTurnTarget)
                                 .testTag(PEOPLE_SCREEN_COLLECTIONS_LIST_TAG),
                             key = { it.id },
                         ) { collection ->
@@ -981,11 +999,13 @@ fun PeopleScreen(
                         // 提问
                         PaginatedList(
                             items = viewModel.questionsFeedModel.allData,
+                            listState = listState,
                             onLoadMore = { viewModel.questionsFeedModel.loadMore(paginationEnvironment) },
                             isEnd = { viewModel.questionsFeedModel.isEnd },
                             footer = ProgressIndicatorFooter,
                             modifier = Modifier
                                 .fillMaxSize()
+                                .pageTurnViewportWithGuide(pageTurnTarget)
                                 .testTag(PEOPLE_SCREEN_QUESTIONS_LIST_TAG),
                             key = { it.id },
                         ) { question ->
@@ -1000,11 +1020,13 @@ fun PeopleScreen(
                         // 想法
                         PaginatedList(
                             items = viewModel.pinsFeedModel.allData,
+                            listState = listState,
                             onLoadMore = { viewModel.pinsFeedModel.loadMore(paginationEnvironment) },
                             isEnd = { viewModel.pinsFeedModel.isEnd },
                             footer = ProgressIndicatorFooter,
                             modifier = Modifier
                                 .fillMaxSize()
+                                .pageTurnViewportWithGuide(pageTurnTarget)
                                 .testTag(PEOPLE_SCREEN_PINS_LIST_TAG),
                             key = { it.id },
                         ) { pin ->
@@ -1020,11 +1042,13 @@ fun PeopleScreen(
                         // 专栏
                         PaginatedList(
                             items = viewModel.columnsFeedModel.allData,
+                            listState = listState,
                             onLoadMore = { viewModel.columnsFeedModel.loadMore(paginationEnvironment) },
                             isEnd = { viewModel.columnsFeedModel.isEnd },
                             footer = ProgressIndicatorFooter,
                             modifier = Modifier
                                 .fillMaxSize()
+                                .pageTurnViewportWithGuide(pageTurnTarget)
                                 .testTag(PEOPLE_SCREEN_COLUMNS_LIST_TAG),
                             key = { it.id },
                         ) { column ->
@@ -1039,11 +1063,13 @@ fun PeopleScreen(
                         // 粉丝
                         PaginatedList(
                             items = viewModel.followersFeedModel.allData,
+                            listState = listState,
                             onLoadMore = { viewModel.followersFeedModel.loadMore(paginationEnvironment) },
                             isEnd = { viewModel.followersFeedModel.isEnd },
                             footer = ProgressIndicatorFooter,
                             modifier = Modifier
                                 .fillMaxSize()
+                                .pageTurnViewportWithGuide(pageTurnTarget)
                                 .testTag(PEOPLE_SCREEN_FOLLOWERS_LIST_TAG),
                             key = { it.id },
                         ) { people ->
@@ -1059,11 +1085,13 @@ fun PeopleScreen(
                         // 关注
                         PaginatedList(
                             items = viewModel.followingFeedModel.allData,
+                            listState = listState,
                             onLoadMore = { viewModel.followingFeedModel.loadMore(paginationEnvironment) },
                             isEnd = { viewModel.followingFeedModel.isEnd },
                             footer = ProgressIndicatorFooter,
                             modifier = Modifier
                                 .fillMaxSize()
+                                .pageTurnViewportWithGuide(pageTurnTarget)
                                 .testTag(PEOPLE_SCREEN_FOLLOWING_LIST_TAG),
                             key = { it.id },
                         ) { people ->
@@ -1078,6 +1106,8 @@ fun PeopleScreen(
                     9 -> {
                         FollowingSubscriptionsPage(
                             viewModel = viewModel,
+                            listState = listState,
+                            pageTurnTarget = pageTurnTarget,
                             onLoadMore = { subscriptionPage ->
                                 when (subscriptionPage) {
                                     0 -> viewModel.followingColumnsFeedModel.loadMore(paginationEnvironment)
@@ -1100,6 +1130,8 @@ fun PeopleScreen(
 private fun FollowingSubscriptionsPage(
     viewModel: PersonViewModel,
     onLoadMore: (Int) -> Unit,
+    listState: LazyListState,
+    pageTurnTarget: PageTurnTarget,
     modifier: Modifier = Modifier,
 ) {
     var selectedPage by rememberSaveable { mutableIntStateOf(0) }
@@ -1141,11 +1173,13 @@ private fun FollowingSubscriptionsPage(
         when (selectedPage) {
             0 -> PaginatedList(
                 items = viewModel.followingColumnsFeedModel.allData,
+                listState = listState,
                 onLoadMore = { onLoadMore(0) },
                 isEnd = { viewModel.followingColumnsFeedModel.isEnd },
                 footer = ProgressIndicatorFooter,
                 modifier = Modifier
                     .fillMaxSize()
+                    .pageTurnViewportWithGuide(pageTurnTarget)
                     .testTag(PEOPLE_SCREEN_SUBSCRIPTIONS_LIST_TAG),
                 key = { it.id },
             ) { column ->
@@ -1157,11 +1191,13 @@ private fun FollowingSubscriptionsPage(
 
             1 -> PaginatedList(
                 items = viewModel.followingTopicsFeedModel.allData,
+                listState = listState,
                 onLoadMore = { onLoadMore(1) },
                 isEnd = { viewModel.followingTopicsFeedModel.isEnd },
                 footer = ProgressIndicatorFooter,
                 modifier = Modifier
                     .fillMaxSize()
+                    .pageTurnViewportWithGuide(pageTurnTarget)
                     .testTag(PEOPLE_SCREEN_SUBSCRIPTIONS_LIST_TAG),
                 key = { it.displayId },
             ) { topic ->
@@ -1170,11 +1206,13 @@ private fun FollowingSubscriptionsPage(
 
             2 -> PaginatedList(
                 items = viewModel.followingQuestionsFeedModel.allData,
+                listState = listState,
                 onLoadMore = { onLoadMore(2) },
                 isEnd = { viewModel.followingQuestionsFeedModel.isEnd },
                 footer = ProgressIndicatorFooter,
                 modifier = Modifier
                     .fillMaxSize()
+                    .pageTurnViewportWithGuide(pageTurnTarget)
                     .testTag(PEOPLE_SCREEN_SUBSCRIPTIONS_LIST_TAG),
                 key = { it.id },
             ) { question ->
@@ -1183,11 +1221,13 @@ private fun FollowingSubscriptionsPage(
 
             3 -> PaginatedList(
                 items = viewModel.followingCollectionsFeedModel.allData,
+                listState = listState,
                 onLoadMore = { onLoadMore(3) },
                 isEnd = { viewModel.followingCollectionsFeedModel.isEnd },
                 footer = ProgressIndicatorFooter,
                 modifier = Modifier
                     .fillMaxSize()
+                    .pageTurnViewportWithGuide(pageTurnTarget)
                     .testTag(PEOPLE_SCREEN_SUBSCRIPTIONS_LIST_TAG),
                 key = { it.id },
             ) { collection ->

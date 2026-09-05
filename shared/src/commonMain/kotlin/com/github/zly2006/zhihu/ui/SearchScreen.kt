@@ -105,6 +105,8 @@ import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
+import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
+import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.util.parseEmphasizedHtmlTextWithTheme
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.feed.SearchContentType
@@ -186,6 +188,8 @@ fun SearchScreen(
     val coroutineScope = rememberCoroutineScope()
     val peopleListState = rememberLazyListState()
     val topicListState = rememberLazyListState()
+    val generalListState = rememberLazyListState()
+    val suggestionScrollState = rememberScrollState()
     val isMemberSearch = search.isRestrictedToMember
     val memberSearchName = search.restrictedMemberName.ifBlank { "TA" }
     val searchPlaceholder = if (isMemberSearch) "搜索 $memberSearchName 的创作" else "搜索内容"
@@ -431,10 +435,15 @@ fun SearchScreen(
                 val shouldShowHistory = showSearchHistory.value && searchHistoryItems.isNotEmpty()
                 val shouldShowHotSearch = showHotSearch.value && hotSearchItems.isNotEmpty()
                 if (shouldShowHistory || shouldShowHotSearch) {
+                    val pageTurnTarget = rememberPageTurnTarget(
+                        scrollState = suggestionScrollState,
+                        enabled = !historyMoreMenuExpanded && !hotSearchMoreMenuExpanded,
+                    )
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .verticalScroll(rememberScrollState())
+                            .pageTurnViewportWithGuide(pageTurnTarget)
+                            .verticalScroll(suggestionScrollState)
                             .padding(16.dp)
                             .testTag("search_hot_list"),
                     ) {
@@ -587,6 +596,7 @@ fun SearchScreen(
                 }
             } else if (viewModel.searchTab != SearchTab.General) {
                 val resultListState = if (viewModel.searchTab == SearchTab.Topic) topicListState else peopleListState
+                val pageTurnTarget = rememberPageTurnTarget(resultListState, enabled = true)
                 val shouldLoadMoreResults by remember(resultListState) {
                     derivedStateOf {
                         val lastVisibleIndex = resultListState.layoutInfo.visibleItemsInfo
@@ -601,7 +611,9 @@ fun SearchScreen(
                     }
                 }
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .pageTurnViewportWithGuide(pageTurnTarget),
                     state = resultListState,
                 ) {
                     items(viewModel.entities, key = SearchEntity::id) { result ->
@@ -676,11 +688,18 @@ fun SearchScreen(
                     }
                 }
             } else {
+                val pageTurnTarget = rememberPageTurnTarget(
+                    listState = generalListState,
+                    enabled = filterMenuExpanded.not() && feedAuthorBlockRequest == null,
+                )
                 FeedPullToRefresh(viewModel, paginationEnvironment) {
                     PaginatedList(
                         items = viewModel.entities,
+                        listState = generalListState,
                         onLoadMore = { viewModel.loadMore(paginationEnvironment) },
-                        modifier = Modifier.testTag("search_general_results"),
+                        modifier = Modifier
+                            .pageTurnViewportWithGuide(pageTurnTarget)
+                            .testTag("search_general_results"),
                         topContent = {
                             item {
                                 if (isMemberSearch) {

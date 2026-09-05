@@ -23,7 +23,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu' # See 'Supported distributions' for available options
-          java-version: '17'
+          java-version: '25'
           cache: 'gradle'
       - name: Change wrapper permissions
         run: chmod +x ./gradlew

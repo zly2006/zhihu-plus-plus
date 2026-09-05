@@ -75,6 +75,8 @@ import com.github.zly2006.zhihu.ui.AUTO_REFRESH_HOME_ON_STARTUP_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
+import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
+import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.util.Log
 import com.github.zly2006.zhihu.viewmodel.ANSWER_VOTEUP_THRESHOLD_PREFERENCE_KEY
 import com.github.zly2006.zhihu.viewmodel.ARTICLE_FOLLOWERS_THRESHOLD_PREFERENCE_KEY
@@ -111,6 +113,7 @@ fun ContentFilterSettingsScreen(
     val highlightedSetting = setting.orEmpty()
 
     val scrollState = rememberScrollState()
+    val pageTurnTarget = rememberPageTurnTarget(scrollState, enabled = true)
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     LaunchedEffect(highlightedSetting) {
@@ -149,6 +152,7 @@ fun ContentFilterSettingsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .pageTurnViewportWithGuide(pageTurnTarget)
                 .verticalScroll(scrollState)
                 .testTag("contentFilterSettings:scroll")
                 .padding(innerPadding)

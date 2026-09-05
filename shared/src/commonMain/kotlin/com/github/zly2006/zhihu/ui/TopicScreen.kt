@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -95,6 +96,8 @@ import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.ui.components.ShareDialog
 import com.github.zly2006.zhihu.ui.components.getShareText
 import com.github.zly2006.zhihu.ui.components.handleShareAction
+import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
+import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.ui.components.rememberShareActionExecutor
 import com.github.zly2006.zhihu.util.raiseForStatus
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
@@ -431,6 +434,8 @@ fun TopicScreen(topic: Topic) {
     var showShareDialog by androidx.compose.runtime.remember { mutableStateOf(false) }
     var isIntroductionExpanded by rememberSaveable(topic.id) { mutableStateOf(false) }
     val viewModel: TopicViewModel = viewModel(key = "topic_${topic.id}_${topic.section}") { TopicViewModel(topic.id) }
+    val listState = rememberLazyListState()
+    val pageTurnTarget = rememberPageTurnTarget(listState = listState, enabled = !showShareDialog)
 
     LaunchedEffect(topic.id, topic.section) {
         viewModel.initializeSection(topic.section)
@@ -465,7 +470,11 @@ fun TopicScreen(topic: Topic) {
             onLoadMore = { viewModel.loadMore(environment) },
             isEnd = { viewModel.isEnd },
             key = FeedDisplayItem::stableKey,
-            modifier = Modifier.fillMaxSize().padding(padding),
+            listState = listState,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .pageTurnViewportWithGuide(pageTurnTarget),
             contentPadding = PaddingValues(bottom = 24.dp),
             footer = { listState ->
                 if (viewModel.errorMessage == null) {

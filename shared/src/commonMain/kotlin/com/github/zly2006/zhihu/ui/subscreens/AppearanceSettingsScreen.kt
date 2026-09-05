@@ -95,6 +95,8 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.MyCollections
 import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
+import com.github.zly2006.zhihu.platform.isAnswerSwipeSupported
+import com.github.zly2006.zhihu.platform.isPageTurnSupported
 import com.github.zly2006.zhihu.platform.platformBottomBarItemLimit
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
@@ -114,6 +116,8 @@ import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemOverall
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
 import com.github.zly2006.zhihu.ui.components.normalizedAnswerSwitchSensitivity
+import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
+import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.ui.isLegacyWebViewSupported
 import kotlinx.coroutines.delay
 import kotlin.math.abs
@@ -128,6 +132,14 @@ const val PREF_LINE_HEIGHT = "contentLineHeight"
 const val PREF_BLOCK_SPACING = "contentBlockSpacing"
 const val PREF_FAB_OPACITY = "fabOpacity"
 const val DEFAULT_FAB_OPACITY = 100
+const val PREF_PAGE_TURN_PERCENT = "pageTurnPercent"
+const val DEFAULT_PAGE_TURN_PERCENT = 90
+const val PREF_PAGE_TURN_SWITCH_ANSWER = "pageTurnSwitchAnswer"
+const val DEFAULT_PAGE_TURN_SWITCH_ANSWER = true
+const val PREF_SHOW_PAGE_TURN_FAB = "showPageTurnFab"
+const val PREF_SHOW_PAGE_TURN_GUIDE = "showPageTurnGuide"
+const val DEFAULT_SHOW_PAGE_TURN_GUIDE = false
+const val PREF_VOLUME_KEY_PAGE_TURN = "volumeKeyPageTurn"
 const val APPEARANCE_SETTINGS_SCROLL_TAG = "appearanceSettings.scroll"
 const val APPEARANCE_SETTINGS_START_DESTINATION_TAG = "appearanceSettings.startDestination"
 const val APPEARANCE_SETTINGS_ANSWER_DOUBLE_TAP_TAG = "appearanceSettings.answerDoubleTap"
@@ -299,6 +311,7 @@ fun AppearanceSettingsScreen(
     val userMessages = rememberUserMessageSink()
 
     val scrollState = rememberScrollState()
+    val pageTurnTarget = rememberPageTurnTarget(scrollState, enabled = true)
     val navigator = LocalNavigator.current
 
     val bringIntoViewRequesters = remember { mutableStateMapOf<String, BringIntoViewRequester>() }
@@ -372,6 +385,7 @@ fun AppearanceSettingsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .pageTurnViewportWithGuide(pageTurnTarget)
                 .verticalScroll(scrollState)
                 .testTag(APPEARANCE_SETTINGS_SCROLL_TAG)
                 .padding(innerPadding)
@@ -906,46 +920,48 @@ fun AppearanceSettingsScreen(
                     "vertical" to "上下滑动",
                     "horizontal" to "左右滑动",
                 )
-                SettingItem(
-                    title = { Text("回答切换手势") },
-                    description = { Text("在回答页面通过手势切换同一问题下的其他回答。") },
-                    settingKey = "answerSwitchMode",
-                    highlightedKey = settingKey,
-                    bringIntoViewRequester = requesterFor("answerSwitchMode"),
-                    endAction = {
-                        ExposedDropdownMenuBox(
-                            expanded = answerSwitchExpanded,
-                            onExpandedChange = { answerSwitchExpanded = it },
-                        ) {
-                            OutlinedTextField(
-                                value = answerSwitchOptions.find { it.first == answerSwitchMode.value }?.second ?: "上下滑动切换",
-                                onValueChange = {},
-                                readOnly = true,
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = answerSwitchExpanded) },
-                                modifier = Modifier
-                                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
-                                    .width(160.dp),
-                                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
-                            )
-                            ExposedDropdownMenu(
+                if (isAnswerSwipeSupported) {
+                    SettingItem(
+                        title = { Text("回答切换手势") },
+                        description = { Text("在回答页面通过手势切换同一问题下的其他回答。") },
+                        settingKey = "answerSwitchMode",
+                        highlightedKey = settingKey,
+                        bringIntoViewRequester = requesterFor("answerSwitchMode"),
+                        endAction = {
+                            ExposedDropdownMenuBox(
                                 expanded = answerSwitchExpanded,
-                                onDismissRequest = { answerSwitchExpanded = false },
+                                onExpandedChange = { answerSwitchExpanded = it },
                             ) {
-                                answerSwitchOptions.forEach { (mode, label) ->
-                                    DropdownMenuItem(
-                                        text = { Text(label) },
-                                        onClick = {
-                                            answerSwitchMode.value = mode
-                                            settings.putString("answerSwitchMode", mode)
-                                            answerSwitchExpanded = false
-                                            userMessages.showShortMessage("已设置为：$label")
-                                        },
-                                    )
+                                OutlinedTextField(
+                                    value = answerSwitchOptions.find { it.first == answerSwitchMode.value }?.second ?: "上下滑动切换",
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = answerSwitchExpanded) },
+                                    modifier = Modifier
+                                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                                        .width(160.dp),
+                                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                                )
+                                ExposedDropdownMenu(
+                                    expanded = answerSwitchExpanded,
+                                    onDismissRequest = { answerSwitchExpanded = false },
+                                ) {
+                                    answerSwitchOptions.forEach { (mode, label) ->
+                                        DropdownMenuItem(
+                                            text = { Text(label) },
+                                            onClick = {
+                                                answerSwitchMode.value = mode
+                                                settings.putString("answerSwitchMode", mode)
+                                                answerSwitchExpanded = false
+                                                userMessages.showShortMessage("已设置为：$label")
+                                            },
+                                        )
+                                    }
                                 }
                             }
-                        }
-                    },
-                )
+                        },
+                    )
+                }
 
                 var answerSwitchSensitivity by remember {
                     mutableStateOf(
@@ -957,7 +973,7 @@ fun AppearanceSettingsScreen(
                         ),
                     )
                 }
-                AnimatedVisibility(answerSwitchMode.value != "off") {
+                AnimatedVisibility(isAnswerSwipeSupported && answerSwitchMode.value != "off") {
                     SettingItem(
                         title = { Text("回答切换灵敏度") },
                         description = {
@@ -1305,6 +1321,107 @@ fun AppearanceSettingsScreen(
                         settings.putBoolean("autoHideBottomBar", it)
                     },
                 )
+            }
+
+            if (isPageTurnSupported) {
+                SettingItemGroup(
+                    title = "电纸书翻页",
+                    header = {
+                        Text(
+                            "在内容列表、正文、评论区和设置等可滚动页面生效，私聊除外。",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        )
+                    },
+                ) {
+                    var volumeKeyPageTurn by remember {
+                        mutableStateOf(settings.getBoolean(PREF_VOLUME_KEY_PAGE_TURN, false))
+                    }
+                    SettingItemWithSwitch(
+                        title = { Text("音量键翻页") },
+                        description = { Text("短按翻页，长按跳到顶部或底部。") },
+                        checked = volumeKeyPageTurn,
+                        onCheckedChange = {
+                            volumeKeyPageTurn = it
+                            settings.putBoolean(PREF_VOLUME_KEY_PAGE_TURN, it)
+                        },
+                        settingKey = PREF_VOLUME_KEY_PAGE_TURN,
+                        highlightedKey = settingKey,
+                        bringIntoViewRequester = requesterFor(PREF_VOLUME_KEY_PAGE_TURN),
+                    )
+
+                    var pageTurnSwitchAnswer by remember {
+                        mutableStateOf(settings.getBoolean(PREF_PAGE_TURN_SWITCH_ANSWER, DEFAULT_PAGE_TURN_SWITCH_ANSWER))
+                    }
+                    SettingItemWithSwitch(
+                        title = { Text("翻页切换回答") },
+                        description = { Text("默认开启。在回答顶部继续上翻进入上一个回答，在底部继续下翻进入下一个回答。") },
+                        checked = pageTurnSwitchAnswer,
+                        onCheckedChange = {
+                            pageTurnSwitchAnswer = it
+                            settings.putBoolean(PREF_PAGE_TURN_SWITCH_ANSWER, it)
+                        },
+                        settingKey = PREF_PAGE_TURN_SWITCH_ANSWER,
+                        highlightedKey = settingKey,
+                        bringIntoViewRequester = requesterFor(PREF_PAGE_TURN_SWITCH_ANSWER),
+                    )
+
+                    var showPageTurnFab by remember {
+                        mutableStateOf(settings.getBoolean(PREF_SHOW_PAGE_TURN_FAB, false))
+                    }
+                    SettingItemWithSwitch(
+                        title = { Text("显示翻页悬浮按钮") },
+                        description = { Text("只在支持翻页的可滚动页面显示。") },
+                        checked = showPageTurnFab,
+                        onCheckedChange = {
+                            showPageTurnFab = it
+                            settings.putBoolean(PREF_SHOW_PAGE_TURN_FAB, it)
+                        },
+                        settingKey = PREF_SHOW_PAGE_TURN_FAB,
+                        highlightedKey = settingKey,
+                        bringIntoViewRequester = requesterFor(PREF_SHOW_PAGE_TURN_FAB),
+                    )
+
+                    var pageTurnPercent by remember {
+                        mutableIntStateOf(settings.getInt(PREF_PAGE_TURN_PERCENT, DEFAULT_PAGE_TURN_PERCENT))
+                    }
+                    SettingItem(
+                        title = { Text("翻页距离") },
+                        description = { Text("每次滚动可见区域的 $pageTurnPercent%。") },
+                        bottomAction = {
+                            Slider(
+                                value = pageTurnPercent.toFloat(),
+                                onValueChange = {
+                                    pageTurnPercent = (it / 5).roundToInt() * 5
+                                    settings.putInt(PREF_PAGE_TURN_PERCENT, pageTurnPercent)
+                                },
+                                valueRange = 50f..100f,
+                                steps = 9,
+                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                            )
+                        },
+                        settingKey = PREF_PAGE_TURN_PERCENT,
+                        highlightedKey = settingKey,
+                        bringIntoViewRequester = requesterFor(PREF_PAGE_TURN_PERCENT),
+                    )
+
+                    var showGuide by remember {
+                        mutableStateOf(settings.getBoolean(PREF_SHOW_PAGE_TURN_GUIDE, DEFAULT_SHOW_PAGE_TURN_GUIDE))
+                    }
+                    SettingItemWithSwitch(
+                        title = { Text("显示翻页位置线") },
+                        description = { Text("翻页后标记上一页与下一页的重叠位置。") },
+                        checked = showGuide,
+                        onCheckedChange = {
+                            showGuide = it
+                            settings.putBoolean(PREF_SHOW_PAGE_TURN_GUIDE, it)
+                        },
+                        settingKey = PREF_SHOW_PAGE_TURN_GUIDE,
+                        highlightedKey = settingKey,
+                        bringIntoViewRequester = requesterFor(PREF_SHOW_PAGE_TURN_GUIDE),
+                    )
+                }
             }
 
             // ── 交互 ────────────────────────────────────────────────────────────

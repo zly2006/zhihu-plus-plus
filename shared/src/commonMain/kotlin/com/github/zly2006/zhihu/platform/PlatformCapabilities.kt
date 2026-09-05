@@ -39,6 +39,10 @@ expect val isArticleHtmlExportSupported: Boolean
 
 expect val isArticleImageExportSupported: Boolean
 
+expect val isPageTurnSupported: Boolean
+
+expect val isAnswerSwipeSupported: Boolean
+
 enum class UserMessageDuration {
     Short,
     Long,

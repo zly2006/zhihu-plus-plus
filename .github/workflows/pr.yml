@@ -19,7 +19,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: zulu
-          java-version: "17"
+          java-version: "25"
           cache: gradle
 
       - name: Change wrapper permissions
@@ -60,7 +60,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: zulu
-          java-version: "17"
+          java-version: "25"
           cache: gradle
 
       - name: Change wrapper permissions
@@ -116,7 +116,6 @@ jobs:
 
   unit-tests:
     name: Unit Tests
-    needs: build_pr
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -125,14 +124,8 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: zulu
-          java-version: "23"
+          java-version: "25"
           cache: gradle
-
-      - name: Restore Gradle build cache
-        uses: actions/download-artifact@v4
-        with:
-          name: PR Gradle build cache
-          path: .gradle/build-cache
 
       - name: Change wrapper permissions
         run: chmod +x ./gradlew
