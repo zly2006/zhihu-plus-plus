@@ -135,6 +135,7 @@ class AppearanceSettingsScreenInstrumentedTest {
         waitUntilDisplayed(hasText("显示翻页悬浮按钮"))
         composeRule.onNodeWithText("电纸书翻页").assertExists()
         composeRule.onNodeWithText("音量键翻页").assertExists()
+        composeRule.onNodeWithText("翻页切换回答").assertExists()
         composeRule.onNodeWithText("翻页距离").assertExists()
         composeRule.onNodeWithText("显示翻页位置线").assertExists()
         assertTrue(preferences.getBoolean(PREF_VOLUME_KEY_PAGE_TURN, false))

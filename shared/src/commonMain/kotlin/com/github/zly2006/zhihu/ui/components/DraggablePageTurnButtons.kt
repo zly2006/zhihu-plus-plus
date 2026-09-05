@@ -358,10 +358,12 @@ fun Modifier.pageTurnViewport(target: PageTurnTarget): Modifier =
 fun rememberPageTurnTarget(
     scrollState: ScrollState,
     enabled: Boolean,
+    onPageUpAtStart: (() -> Unit)? = null,
     onPageDownAtEnd: (() -> Unit)? = null,
 ): PageTurnTarget {
     val state = rememberPageTurnState()
     val target = remember(state) { PageTurnTarget(state) }
+    val currentOnPageUpAtStart by rememberUpdatedState(onPageUpAtStart)
     val currentOnPageDownAtEnd by rememberUpdatedState(onPageDownAtEnd)
     LaunchedEffect(state, scrollState) {
         snapshotFlow { scrollState.isScrollInProgress }.collect { scrolling ->
@@ -378,15 +380,18 @@ fun rememberPageTurnTarget(
                 PageTurnCommand.PageUp,
                 PageTurnCommand.PageDown,
                 -> {
+                    val reachedStart = command == PageTurnCommand.PageUp && scrollState.value <= 0
                     val reachedEnd = command == PageTurnCommand.PageDown &&
                         scrollState.maxValue != Int.MAX_VALUE &&
                         scrollState.value >= scrollState.maxValue
-                    if (reachedEnd && currentOnPageDownAtEnd != null) {
-                        currentOnPageDownAtEnd?.invoke()
-                    } else if (target.viewportHeight > 0f) {
-                        scrollState.scrollBy(
-                            target.viewportHeight * state.pageTurnPercent / 100f * command.direction,
-                        )
+                    when {
+                        reachedStart && currentOnPageUpAtStart != null -> currentOnPageUpAtStart?.invoke()
+                        reachedEnd && currentOnPageDownAtEnd != null -> currentOnPageDownAtEnd?.invoke()
+                        target.viewportHeight > 0f -> {
+                            scrollState.scrollBy(
+                                target.viewportHeight * state.pageTurnPercent / 100f * command.direction,
+                            )
+                        }
                     }
                 }
             }

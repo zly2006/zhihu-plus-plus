@@ -132,6 +132,8 @@ const val PREF_FAB_OPACITY = "fabOpacity"
 const val DEFAULT_FAB_OPACITY = 100
 const val PREF_PAGE_TURN_PERCENT = "pageTurnPercent"
 const val DEFAULT_PAGE_TURN_PERCENT = 90
+const val PREF_PAGE_TURN_SWITCH_ANSWER = "pageTurnSwitchAnswer"
+const val DEFAULT_PAGE_TURN_SWITCH_ANSWER = true
 const val PREF_SHOW_PAGE_TURN_FAB = "showPageTurnFab"
 const val PREF_SHOW_PAGE_TURN_GUIDE = "showPageTurnGuide"
 const val PREF_VOLUME_KEY_PAGE_TURN = "volumeKeyPageTurn"
@@ -1342,6 +1344,22 @@ fun AppearanceSettingsScreen(
                         settingKey = PREF_VOLUME_KEY_PAGE_TURN,
                         highlightedKey = settingKey,
                         bringIntoViewRequester = requesterFor(PREF_VOLUME_KEY_PAGE_TURN),
+                    )
+
+                    var pageTurnSwitchAnswer by remember {
+                        mutableStateOf(settings.getBoolean(PREF_PAGE_TURN_SWITCH_ANSWER, DEFAULT_PAGE_TURN_SWITCH_ANSWER))
+                    }
+                    SettingItemWithSwitch(
+                        title = { Text("翻页切换回答") },
+                        description = { Text("默认开启。在回答顶部继续上翻进入上一个回答，在底部继续下翻进入下一个回答。") },
+                        checked = pageTurnSwitchAnswer,
+                        onCheckedChange = {
+                            pageTurnSwitchAnswer = it
+                            settings.putBoolean(PREF_PAGE_TURN_SWITCH_ANSWER, it)
+                        },
+                        settingKey = PREF_PAGE_TURN_SWITCH_ANSWER,
+                        highlightedKey = settingKey,
+                        bringIntoViewRequester = requesterFor(PREF_PAGE_TURN_SWITCH_ANSWER),
                     )
 
                     var showPageTurnFab by remember {

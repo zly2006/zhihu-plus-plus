@@ -148,7 +148,9 @@ import com.github.zly2006.zhihu.ui.components.normalizedAnswerSwitchSensitivity
 import com.github.zly2006.zhihu.ui.components.pageTurnViewport
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.ui.components.rememberPreferCollapsedExitUntilCollapsedScrollBehavior
+import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_PAGE_TURN_SWITCH_ANSWER
 import com.github.zly2006.zhihu.ui.subscreens.DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.subscreens.PREF_PAGE_TURN_SWITCH_ANSWER
 import com.github.zly2006.zhihu.util.formatCompactCount
 import com.github.zly2006.zhihu.util.smoothGradient
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
@@ -227,6 +229,9 @@ fun ArticleScreen(
     val useTiqianMarkdown by rememberObservedSetting(settings, DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY) {
         getBoolean(DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY, false)
     }
+    val pageTurnSwitchAnswer by rememberObservedSetting(settings, PREF_PAGE_TURN_SWITCH_ANSWER) {
+        getBoolean(PREF_PAGE_TURN_SWITCH_ANSWER, DEFAULT_PAGE_TURN_SWITCH_ANSWER)
+    }
 
     fun saveAnswerDoubleTapAction(action: AnswerDoubleTapAction) {
         answerDoubleTapAction = action
@@ -295,7 +300,10 @@ fun ArticleScreen(
     val pageTurnTarget = rememberPageTurnTarget(
         scrollState = scrollState,
         enabled = pageTurnActive,
-        onPageDownAtEnd = (answerNavigationState::navigateToNext).takeIf { usesVerticalAnswerSwitch },
+        onPageUpAtStart = (answerNavigationState::navigateToPrevious)
+            .takeIf { usesVerticalAnswerSwitch && pageTurnSwitchAnswer },
+        onPageDownAtEnd = (answerNavigationState::navigateToNext)
+            .takeIf { usesVerticalAnswerSwitch && pageTurnSwitchAnswer },
     )
     val hapticFeedback = LocalHapticFeedback.current
     val readingPlayerOverlayRouteId = articleNavController?.currentBackStackEntry?.id

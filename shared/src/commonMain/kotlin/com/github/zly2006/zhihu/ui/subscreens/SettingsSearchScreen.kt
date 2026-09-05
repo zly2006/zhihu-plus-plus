@@ -176,6 +176,7 @@ private val settingsSearchEntries = buildList {
     }
     if (isPageTurnSupported) {
         add(appearanceEntry("appearance.pageTurnVolume", "音量键翻页", "在白名单阅读页面使用物理按键翻页。", PREF_VOLUME_KEY_PAGE_TURN, listOf("电纸书", "翻页")))
+        add(appearanceEntry("appearance.pageTurnSwitchAnswer", "翻页切换回答", "在回答顶部或底部继续翻页，切换到相邻回答。", PREF_PAGE_TURN_SWITCH_ANSWER, listOf("电纸书", "翻页", "上一个回答", "下一个回答")))
         add(appearanceEntry("appearance.pageTurnFab", "显示翻页悬浮按钮", "在白名单阅读页面显示上下翻页按钮。", PREF_SHOW_PAGE_TURN_FAB, listOf("电纸书", "翻页")))
         add(appearanceEntry("appearance.pageTurnDistance", "翻页距离", "设置每次滚动占可见区域的比例。", PREF_PAGE_TURN_PERCENT, listOf("电纸书", "翻页", "重叠")))
         add(appearanceEntry("appearance.pageTurnGuide", "显示翻页位置线", "标记相邻两页的重叠位置。", PREF_SHOW_PAGE_TURN_GUIDE, listOf("电纸书", "翻页", "引导线")))
