@@ -86,6 +86,7 @@ import kotlinx.coroutines.withContext
  */
 @Composable
 fun DesktopZhihuMain() {
+    /** Primary NavHost for desktop tabs and the default content pane. */
     val navController = rememberNavController()
     val accountStore = defaultDesktopAccountStore
     val accounts by accountStore.accountsState.collectAsState()
@@ -106,6 +107,11 @@ fun DesktopZhihuMain() {
         }
     }
 
+    /**
+     * Reads the content-open source from the selected NavHost, including the secondary detail pane.
+     *
+     * @param controller NavHost whose current entry should be inspected
+     */
     fun currentContentOpenSource(controller: NavHostController = navController): NavDestination? {
         val currentEntry = controller.currentBackStackEntry
         return runCatching {
@@ -123,6 +129,12 @@ fun DesktopZhihuMain() {
         }.getOrNull()
     }
 
+    /**
+     * Routes [route] through the primary or secondary NavHost selected by [targetController].
+     *
+     * @param route destination to open
+     * @param targetController NavHost that owns the destination's back stack
+     */
     fun navigate(route: NavDestination, targetController: NavHostController = navController) {
         when (route) {
             History -> targetController.navigate(route)

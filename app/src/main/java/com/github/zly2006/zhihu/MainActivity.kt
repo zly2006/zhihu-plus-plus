@@ -46,7 +46,6 @@ import coil3.request.crossfade
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.HistoryStorage
 import com.github.zly2006.zhihu.filter.ContentOpenEventSupport
-import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionContent
@@ -103,6 +102,7 @@ class MainActivity : ComponentActivity() {
             .client
             .httpClient()
 
+    /** Primary NavHost used for the activity's main tabs and the default content pane. */
     lateinit var navController: NavHostController
     private lateinit var continuousUsageReminderManager: ContinuousUsageReminderManager
     private var currentMainTabOpenFrom: String? = null
@@ -333,14 +333,30 @@ class MainActivity : ComponentActivity() {
         return true
     }
 
+    /**
+     * Navigates through the activity's primary NavHost, optionally replacing the current popup route.
+     *
+     * @param route destination to open
+     * @param popup whether the destination is a popup that can replace the current popup entry
+     */
     fun navigate(route: NavDestination, popup: Boolean = false) {
         navigate(route, navController, popup)
     }
 
+    /**
+     * Navigates through [targetController], which may be the secondary landscape detail NavHost.
+     *
+     * @param route destination to open in the selected content pane
+     * @param targetController NavHost that owns the destination's back stack
+     */
     fun navigateIn(route: NavDestination, targetController: NavHostController) {
         navigate(route, targetController, popup = false)
     }
 
+    /**
+     * Routes a destination through the requested NavHost. The primary controller owns top-level
+     * tabs, while a secondary controller owns content displayed beside a list on large screens.
+     */
     private fun navigate(
         route: NavDestination,
         targetController: NavHostController,
@@ -391,10 +407,15 @@ class MainActivity : ComponentActivity() {
             }
             return
         }
-        if (route == Account) {
-            // Account is a main-pager tab. Keeping it as a standalone route leaves the
-            // previous landscape list pane mounted while the account page is pushed.
-            mainTabNavigationTarget = Account
+        if (route == History) {
+            // History is a legacy standalone page even though it remains a top-level tab target.
+            targetController.navigate(route)
+            return
+        }
+        if (route is TopLevelDestination) {
+            // Top-level destinations select a page in the main pager instead of being pushed as
+            // standalone routes, which keeps the landscape list pane and its pager offset stable.
+            mainTabNavigationTarget = route
             navigateToMainTabs()
             return
         }
@@ -452,6 +473,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** Reads the content-open source from the selected NavHost, including the secondary detail pane. */
     private fun currentContentOpenSource(controller: NavHostController = navController): NavDestination? {
         val currentEntry = controller.currentBackStackEntry
         return runCatching {
