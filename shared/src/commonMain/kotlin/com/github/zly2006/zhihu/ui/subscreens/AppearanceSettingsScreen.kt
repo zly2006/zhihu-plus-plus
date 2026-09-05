@@ -51,14 +51,9 @@ import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -77,6 +72,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -98,8 +95,10 @@ import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.platform.platformBottomBarItemLimit
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.theme.LocalLiquidGlass
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.ThemeMode
+import com.github.zly2006.zhihu.theme.isLiquidGlassSupported
 import com.github.zly2006.zhihu.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.AnswerDoubleTapAction
@@ -119,10 +118,16 @@ import kotlinx.coroutines.delay
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
+import com.github.zly2006.zhihu.ui.components.AdaptiveIconButton as IconButton
+import com.github.zly2006.zhihu.ui.components.AdaptiveOutlinedButton as OutlinedButton
+import com.github.zly2006.zhihu.ui.components.AdaptiveOutlinedTextField as OutlinedTextField
+import com.github.zly2006.zhihu.ui.components.AdaptiveScaffold as Scaffold
+import com.github.zly2006.zhihu.ui.components.AdaptiveSlider as Slider
 
 const val DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY = "duo3_card_large_title"
 const val DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY = "duo3_tiqian_markdown"
 const val DUO3_TIQIAN_MATH_FONT_PREFERENCE_KEY = "duo3_tiqian_math_font"
+const val UI_STYLE_PREFERENCE_KEY = "uiStyle"
 const val PREF_FONT_SIZE = "contentFontSize"
 const val PREF_LINE_HEIGHT = "contentLineHeight"
 const val PREF_BLOCK_SPACING = "contentBlockSpacing"
@@ -385,6 +390,33 @@ fun AppearanceSettingsScreen(
             SettingItemGroup(
                 title = "主题",
             ) {
+                if (isLiquidGlassSupported) {
+                    var selectedStyle by remember { mutableStateOf(if (settings.getString(UI_STYLE_PREFERENCE_KEY, "material") == "liquid_glass") "liquid_glass" else "material") }
+                    SettingItem(
+                        title = { Text("界面风格") },
+                        description = { Text("Liquid Glass · 通透的悬浮导航与柔和层次。切换后重新启动应用生效。") },
+                        settingKey = UI_STYLE_PREFERENCE_KEY,
+                        highlightedKey = settingKey,
+                        bringIntoViewRequester = requesterFor(UI_STYLE_PREFERENCE_KEY),
+                        bottomAction = {
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                listOf("material" to "Material", "liquid_glass" to "Liquid Glass").forEach { (value, label) ->
+                                    OutlinedButton(
+                                        onClick = {
+                                            settings.putString(UI_STYLE_PREFERENCE_KEY, value)
+                                            selectedStyle = value
+                                            userMessages.showShortMessage("重新启动应用后使用 $label")
+                                        },
+                                        modifier = Modifier.weight(1f).testTag("appearance.style.$value").semantics { selected = selectedStyle == value },
+                                        colors = ButtonDefaults.outlinedButtonColors(
+                                            containerColor = if (selectedStyle == value) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+                                        ),
+                                    ) { Text(label) }
+                                }
+                            }
+                        },
+                    )
+                }
                 SettingItem(
                     title = { Text("主题模式") },
                     description = { Text("设置应用的显示主题。") },
@@ -430,51 +462,53 @@ fun AppearanceSettingsScreen(
                     },
                 )
 
-                SettingItemWithSwitch(
-                    title = { Text("使用 Material You 动态取色") },
-                    description = { Text("根据系统壁纸自动提取主题色（Android 12+ 可用）。\n关闭后可以自己设定主题颜色。") },
-                    checked = useDynamicColor,
-                    onCheckedChange = {
-                        ThemeManager.setUseDynamicColor(it)
-                        settings.putBoolean("useDynamicColor", it)
-                        userMessages.showShortMessage("已${if (it) "启用" else "禁用"}动态取色")
-                    },
-                    settingKey = "dynamicColor",
-                    highlightedKey = settingKey,
-                    bringIntoViewRequester = requesterFor("dynamicColor"),
-                )
-
-                var showColorPicker by remember { mutableStateOf(false) }
-                val customColor = ThemeManager.getCustomColor()
-
-                AnimatedVisibility(visible = !useDynamicColor) {
-                    SettingItem(
-                        title = { Text("自定义主题色") },
-                        description = { Text("点击选择您喜欢的主题颜色") },
-                        onClick = { showColorPicker = true },
-                        endAction = {
-                            Box(
-                                modifier = Modifier
-                                    .size(32.dp)
-                                    .clip(CircleShape)
-                                    .background(customColor)
-                                    .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape),
-                            )
+                if (!LocalLiquidGlass.current) {
+                    SettingItemWithSwitch(
+                        title = { Text("使用 Material You 动态取色") },
+                        description = { Text("根据系统壁纸自动提取主题色（Android 12+ 可用）。\n关闭后可以自己设定主题颜色。") },
+                        checked = useDynamicColor,
+                        onCheckedChange = {
+                            ThemeManager.setUseDynamicColor(it)
+                            settings.putBoolean("useDynamicColor", it)
+                            userMessages.showShortMessage("已${if (it) "启用" else "禁用"}动态取色")
                         },
+                        settingKey = "dynamicColor",
+                        highlightedKey = settingKey,
+                        bringIntoViewRequester = requesterFor("dynamicColor"),
                     )
-                }
-                if (showColorPicker) {
-                    ColorPickerDialog(
-                        title = "选择主题色",
-                        initialColor = customColor,
-                        onDismiss = { showColorPicker = false },
-                        onColorSelected = { color ->
-                            ThemeManager.setCustomColor(color)
-                            settings.putInt("customThemeColor", color.toArgb())
-                            userMessages.showShortMessage("主题色已保存")
-                            showColorPicker = false
-                        },
-                    )
+
+                    var showColorPicker by remember { mutableStateOf(false) }
+                    val customColor = ThemeManager.getCustomColor()
+
+                    AnimatedVisibility(visible = !useDynamicColor) {
+                        SettingItem(
+                            title = { Text("自定义主题色") },
+                            description = { Text("点击选择您喜欢的主题颜色") },
+                            onClick = { showColorPicker = true },
+                            endAction = {
+                                Box(
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(CircleShape)
+                                        .background(customColor)
+                                        .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape),
+                                )
+                            },
+                        )
+                    }
+                    if (showColorPicker) {
+                        ColorPickerDialog(
+                            title = "选择主题色",
+                            initialColor = customColor,
+                            onDismiss = { showColorPicker = false },
+                            onColorSelected = { color ->
+                                ThemeManager.setCustomColor(color)
+                                settings.putInt("customThemeColor", color.toArgb())
+                                userMessages.showShortMessage("主题色已保存")
+                                showColorPicker = false
+                            },
+                        )
+                    }
                 }
 
                 var showLuotianYiColorPicker by remember { mutableStateOf(false) }
@@ -518,45 +552,47 @@ fun AppearanceSettingsScreen(
                     )
                 }
 
-                val currentIsDarkTheme = ThemeManager.isDarkTheme()
-                var showBackgroundColorPicker by remember { mutableStateOf(false) }
-                val backgroundColor = ThemeManager.getBackgroundColor()
+                if (!LocalLiquidGlass.current) {
+                    val currentIsDarkTheme = ThemeManager.isDarkTheme()
+                    var showBackgroundColorPicker by remember { mutableStateOf(false) }
+                    val backgroundColor = ThemeManager.getBackgroundColor()
 
-                SettingItem(
-                    title = { Text("自定义背景颜色") },
-                    description = { Text(if (currentIsDarkTheme) "深色模式背景色" else "浅色模式背景色") },
-                    onClick = { showBackgroundColorPicker = true },
-                    endAction = {
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(CircleShape)
-                                .background(backgroundColor)
-                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
-                        )
-                    },
-                )
-
-                if (showBackgroundColorPicker) {
-                    ColorPickerDialog(
-                        title = "选择背景颜色",
-                        initialColor = backgroundColor,
-                        presetColors = listOfNotNull(
-                            Color(if (currentIsDarkTheme) 0xFF121212.toInt() else 0xFFFFFFFF.toInt()),
-                            MaterialTheme.colorScheme.surfaceContainer,
-                            if (ThemeManager.isDarkTheme()) Color.Black else null,
-                        ),
-                        onDismiss = { showBackgroundColorPicker = false },
-                        onColorSelected = { color ->
-                            ThemeManager.setBackgroundColor(color, currentIsDarkTheme)
-                            settings.putInt(
-                                if (currentIsDarkTheme) "backgroundColorDark" else "backgroundColorLight",
-                                color.toArgb(),
+                    SettingItem(
+                        title = { Text("自定义背景颜色") },
+                        description = { Text(if (currentIsDarkTheme) "深色模式背景色" else "浅色模式背景色") },
+                        onClick = { showBackgroundColorPicker = true },
+                        endAction = {
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(backgroundColor)
+                                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
                             )
-                            userMessages.showShortMessage("背景颜色已保存")
-                            showBackgroundColorPicker = false
                         },
                     )
+
+                    if (showBackgroundColorPicker) {
+                        ColorPickerDialog(
+                            title = "选择背景颜色",
+                            initialColor = backgroundColor,
+                            presetColors = listOfNotNull(
+                                Color(if (currentIsDarkTheme) 0xFF121212.toInt() else 0xFFFFFFFF.toInt()),
+                                MaterialTheme.colorScheme.surfaceContainer,
+                                if (ThemeManager.isDarkTheme()) Color.Black else null,
+                            ),
+                            onDismiss = { showBackgroundColorPicker = false },
+                            onColorSelected = { color ->
+                                ThemeManager.setBackgroundColor(color, currentIsDarkTheme)
+                                settings.putInt(
+                                    if (currentIsDarkTheme) "backgroundColorDark" else "backgroundColorLight",
+                                    color.toArgb(),
+                                )
+                                userMessages.showShortMessage("背景颜色已保存")
+                                showBackgroundColorPicker = false
+                            },
+                        )
+                    }
                 }
 
                 val disableBottomSheetRoundedCorners = remember {

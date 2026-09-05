@@ -38,7 +38,6 @@ import androidx.compose.material.icons.filled.GetApp
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.DesktopWindows
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -82,6 +81,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.github.zly2006.zhihu.ui.components.AdaptiveCircularProgressIndicator as CircularProgressIndicator
 
 private val VoteUpNeutralContent = Color(0xFF3671EE)
 private val VoteUpNeutralContentDark = Color(0xFF628DF7)

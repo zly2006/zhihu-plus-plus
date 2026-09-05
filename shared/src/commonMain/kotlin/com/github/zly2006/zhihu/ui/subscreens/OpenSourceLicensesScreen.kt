@@ -26,11 +26,9 @@ import androidx.compose.material.icons.filled.DataObject
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -43,6 +41,8 @@ import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.mikepenz.aboutlibraries.Libs
 import com.mikepenz.aboutlibraries.ui.compose.m3.LibrariesContainer
+import com.github.zly2006.zhihu.ui.components.AdaptiveIconButton as IconButton
+import com.github.zly2006.zhihu.ui.components.AdaptiveScaffold as Scaffold
 
 data class ManualLicenseEntry(
     val name: String,

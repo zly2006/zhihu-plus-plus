@@ -56,18 +56,12 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Visibility
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -125,6 +119,12 @@ import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.sharedArticleAnswerSwitchState
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import com.github.zly2006.zhihu.ui.components.AdaptiveButton as Button
+import com.github.zly2006.zhihu.ui.components.AdaptiveFilledTonalButton as FilledTonalButton
+import com.github.zly2006.zhihu.ui.components.AdaptiveIconButton as IconButton
+import com.github.zly2006.zhihu.ui.components.AdaptiveOutlinedButton as OutlinedButton
+import com.github.zly2006.zhihu.ui.components.AdaptiveScaffold as Scaffold
+import com.github.zly2006.zhihu.ui.components.AdaptiveTextButton as TextButton
 
 const val QUESTION_SCREEN_LIST_TAG = "question_screen_list"
 const val QUESTION_TITLE_TAG = "question_title"

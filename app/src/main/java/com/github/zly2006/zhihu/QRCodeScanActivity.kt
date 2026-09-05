@@ -39,17 +39,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.QrCodeScanner
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -69,6 +64,11 @@ import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanIntentResult
 import com.journeyapps.barcodescanner.ScanOptions
+import com.github.zly2006.zhihu.ui.components.AdaptiveAlertDialog as AlertDialog
+import com.github.zly2006.zhihu.ui.components.AdaptiveButton as Button
+import com.github.zly2006.zhihu.ui.components.AdaptiveIconButton as IconButton
+import com.github.zly2006.zhihu.ui.components.AdaptiveScaffold as Scaffold
+import com.github.zly2006.zhihu.ui.components.AdaptiveTextButton as TextButton
 
 class QRCodeScanActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

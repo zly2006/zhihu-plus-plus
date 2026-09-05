@@ -45,21 +45,15 @@ import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -120,6 +114,12 @@ import kotlinx.coroutines.yield
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonArray
+import com.github.zly2006.zhihu.ui.components.AdaptiveCircularProgressIndicator as CircularProgressIndicator
+import com.github.zly2006.zhihu.ui.components.AdaptiveDropdownMenu as DropdownMenu
+import com.github.zly2006.zhihu.ui.components.AdaptiveIconButton as IconButton
+import com.github.zly2006.zhihu.ui.components.AdaptivePrimaryTabRow as PrimaryTabRow
+import com.github.zly2006.zhihu.ui.components.AdaptiveScaffold as Scaffold
+import com.github.zly2006.zhihu.ui.components.AdaptiveTextButton as TextButton
 
 @Serializable
 private data class HotSearchItem(
@@ -419,6 +419,7 @@ fun SearchScreen(
                 PrimaryTabRow(selectedTabIndex = viewModel.searchTab.ordinal) {
                     SearchTab.entries.forEach { tab ->
                         Tab(
+                            unselectedContentColor = if (com.github.zly2006.zhihu.theme.LocalLiquidGlass.current) MaterialTheme.colorScheme.onSurfaceVariant else androidx.compose.material3.LocalContentColor.current,
                             selected = viewModel.searchTab == tab,
                             onClick = { viewModel.selectTab(paginationEnvironment, tab) },
                             text = { Text(tab.label) },

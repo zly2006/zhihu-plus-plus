@@ -17,6 +17,7 @@
 
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jlleitschuh.gradle.ktlint.tasks.GenerateReportsTask
+import org.jlleitschuh.gradle.ktlint.tasks.KtLintCheckTask
 import org.jlleitschuh.gradle.ktlint.tasks.KtLintFormatTask
 
 plugins {
@@ -47,6 +48,8 @@ ktlint {
     outputToConsole.set(true)
     enableExperimentalRules.set(true)
     filter {
+        // 保留官方 catalog 原始源码，升级时以 SHA256 校验。
+        exclude { it.file.absolutePath.contains("/third_party/android-liquid-glass/") }
         exclude("**/generated/**")
         exclude("**/build/**")
         exclude("build/generated/**")
@@ -87,6 +90,15 @@ mapOf(
             },
         )
     }
+}
+
+// 第三方 catalog 与应用代码使用不同的格式规范，检查仅覆盖本项目源码。
+tasks.withType<KtLintCheckTask>().matching { it.name == "runKtlintCheckOverAndroidMainSourceSet" }.configureEach {
+    setSource(
+        listOf("src/androidMain/kotlin", "src/tiqianMarkdownMain/kotlin").map { sourcePath ->
+            fileTree(sourcePath) { include("**/*.kt") }
+        },
+    )
 }
 
 kotlin {
@@ -157,6 +169,7 @@ kotlin {
             implementation("io.ktor:ktor-client-mock:3.5.0")
         }
         androidMain {
+            kotlin.srcDir("../third_party/android-liquid-glass/src")
             kotlin.srcDir("src/tiqianMarkdownMain/kotlin")
             dependencies {
                 implementation("org.tiqian:markdown-compose:0.1.0-SNAPSHOT")
@@ -166,6 +179,8 @@ kotlin {
                 implementation("androidx.core:core-ktx:1.19.0")
                 implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.11.0")
                 implementation("androidx.media:media:1.7.1")
+                implementation("io.github.kyant0:backdrop:1.0.6")
+                implementation("io.github.kyant0:shapes:1.2.0")
                 implementation("androidx.webkit:webkit:1.16.0")
                 implementation("com.journeyapps:zxing-android-embedded:4.3.0")
                 implementation("com.google.zxing:core:3.5.4")

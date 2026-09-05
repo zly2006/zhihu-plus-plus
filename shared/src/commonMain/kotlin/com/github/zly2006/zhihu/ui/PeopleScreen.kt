@@ -48,11 +48,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.PrimaryScrollableTabRow
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
@@ -133,6 +129,10 @@ import kotlin.math.roundToInt
 import kotlin.reflect.typeOf
 import androidx.lifecycle.viewmodel.compose.viewModel as composeViewModel
 import com.github.zly2006.zhihu.navigation.Search as SearchDestination
+import com.github.zly2006.zhihu.ui.components.AdaptiveIconButton as IconButton
+import com.github.zly2006.zhihu.ui.components.AdaptiveOutlinedButton as OutlinedButton
+import com.github.zly2006.zhihu.ui.components.AdaptivePrimaryScrollableTabRow as PrimaryScrollableTabRow
+import com.github.zly2006.zhihu.ui.components.AdaptiveScaffold as Scaffold
 
 class PeopleAnswersViewModel(
     val person: Person,
@@ -794,6 +794,7 @@ fun PeopleScreen(
                     ) {
                         PEOPLE_SCREEN_TITLES.forEachIndexed { index, title ->
                             Tab(
+                                unselectedContentColor = if (com.github.zly2006.zhihu.theme.LocalLiquidGlass.current) MaterialTheme.colorScheme.onSurfaceVariant else androidx.compose.material3.LocalContentColor.current,
                                 selected = pagerState.currentPage == index,
                                 onClick = {
                                     coroutineScope.launch {

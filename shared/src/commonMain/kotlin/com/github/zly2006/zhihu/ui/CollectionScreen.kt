@@ -22,23 +22,19 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -56,12 +52,18 @@ import com.github.zly2006.zhihu.data.Collection
 import com.github.zly2006.zhihu.navigation.CollectionContent
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.theme.LocalLiquidGlass
 import com.github.zly2006.zhihu.ui.components.CreateCollectionDialog
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.viewmodel.CollectionsViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.launch
+import com.github.zly2006.zhihu.ui.components.AdaptiveAlertDialog as AlertDialog
+import com.github.zly2006.zhihu.ui.components.AdaptiveFloatingActionButton as FloatingActionButton
+import com.github.zly2006.zhihu.ui.components.AdaptiveIconButton as IconButton
+import com.github.zly2006.zhihu.ui.components.AdaptiveScaffold as Scaffold
+import com.github.zly2006.zhihu.ui.components.AdaptiveTextButton as TextButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -94,7 +96,7 @@ fun CollectionScreen(
     Scaffold(
         modifier = Modifier
             .fillMaxSize()
-            .padding(contentPadding),
+            .then(if (LocalLiquidGlass.current) Modifier else Modifier.padding(contentPadding)),
         topBar = {
             TopAppBar(
                 title = {
@@ -140,16 +142,26 @@ fun CollectionScreen(
             listState = listState,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .then(if (LocalLiquidGlass.current) Modifier else Modifier.padding(innerPadding))
                 .testTag(COLLECTION_SCREEN_LIST_TAG),
+            contentPadding = if (LocalLiquidGlass.current) {
+                PaddingValues(
+                    top = maxOf(innerPadding.calculateTopPadding(), contentPadding.calculateTopPadding()),
+                    bottom = maxOf(innerPadding.calculateBottomPadding(), contentPadding.calculateBottomPadding()),
+                )
+            } else {
+                PaddingValues(0.dp)
+            },
             footer = ProgressIndicatorFooter,
         ) { collection ->
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 8.dp)
+                    .padding(horizontal = if (LocalLiquidGlass.current) 16.dp else 0.dp, vertical = 8.dp)
                     .testTag("collection_screen_item_${collection.id}"),
-                elevation = CardDefaults.cardElevation(4.dp),
+                elevation = CardDefaults.cardElevation(if (LocalLiquidGlass.current) 0.dp else 4.dp),
+                colors = if (LocalLiquidGlass.current) CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright) else CardDefaults.cardColors(),
+                shape = if (LocalLiquidGlass.current) MaterialTheme.shapes.large else CardDefaults.shape,
                 onClick = {
                     navigator.onNavigate(CollectionContent(collection.id))
                 },
@@ -157,7 +169,8 @@ fun CollectionScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
+                        .then(if (LocalLiquidGlass.current) Modifier.heightIn(min = 72.dp) else Modifier)
+                        .padding(horizontal = 16.dp, vertical = if (LocalLiquidGlass.current) 12.dp else 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(

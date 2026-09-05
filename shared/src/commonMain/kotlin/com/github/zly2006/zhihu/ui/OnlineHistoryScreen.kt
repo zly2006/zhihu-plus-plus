@@ -22,15 +22,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -42,12 +37,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.navigation.History
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.platform.PlatformBackHandler
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.reading.RegisterReadingQueueSource
+import com.github.zly2006.zhihu.theme.LocalLiquidGlass
 import com.github.zly2006.zhihu.ui.TopLevelReselectAction
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
@@ -57,6 +54,11 @@ import com.github.zly2006.zhihu.viewmodel.feed.OnlineHistoryViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import com.github.zly2006.zhihu.ui.components.AdaptiveAlertDialog as AlertDialog
+import com.github.zly2006.zhihu.ui.components.AdaptiveDropdownMenu as DropdownMenu
+import com.github.zly2006.zhihu.ui.components.AdaptiveIconButton as IconButton
+import com.github.zly2006.zhihu.ui.components.AdaptiveScaffold as Scaffold
+import com.github.zly2006.zhihu.ui.components.AdaptiveTextButton as TextButton
 
 const val ONLINE_HISTORY_OVERFLOW_TAG = "online_history_overflow"
 
@@ -71,6 +73,8 @@ const val ONLINE_HISTORY_OVERFLOW_TAG = "online_history_overflow"
 fun OnlineHistoryScreen(
     scrollToTopTrigger: Int = 0,
     isActive: Boolean = true,
+    navigationPadding: androidx.compose.foundation.layout.PaddingValues = androidx.compose.foundation.layout
+        .PaddingValues(0.dp),
 ) {
     val navigator = LocalNavigator.current
     val viewModel: OnlineHistoryViewModel = viewModel { OnlineHistoryViewModel() }
@@ -184,8 +188,17 @@ fun OnlineHistoryScreen(
             PaginatedList(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding)
+                    .then(if (LocalLiquidGlass.current) Modifier else Modifier.padding(innerPadding))
                     .testTag("online_history_list"),
+                contentPadding = if (LocalLiquidGlass.current) {
+                    androidx.compose.foundation.layout.PaddingValues(
+                        top = innerPadding.calculateTopPadding(),
+                        bottom = maxOf(innerPadding.calculateBottomPadding(), navigationPadding.calculateBottomPadding()),
+                    )
+                } else {
+                    androidx.compose.foundation.layout
+                        .PaddingValues(0.dp)
+                },
                 items = viewModel.displayItems,
                 listState = listState,
                 onLoadMore = { viewModel.loadMore(paginationEnvironment) },

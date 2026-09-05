@@ -40,10 +40,7 @@ import androidx.compose.material.icons.outlined.SentimentSatisfied
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
@@ -76,6 +73,9 @@ import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.util.formatRelativeTime
 import com.github.zly2006.zhihu.viewmodel.PrivateMessageViewModel
 import kotlinx.coroutines.launch
+import com.github.zly2006.zhihu.ui.components.AdaptiveIconButton as IconButton
+import com.github.zly2006.zhihu.ui.components.AdaptiveOutlinedTextField as OutlinedTextField
+import com.github.zly2006.zhihu.ui.components.AdaptiveScaffold as Scaffold
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -98,6 +98,7 @@ fun PrivateMessageScreen(destination: Notification.Message) {
     }
 
     Scaffold(
+        glassBottomBar = false,
         modifier = Modifier.fillMaxSize(),
         topBar = {
             CenterAlignedTopAppBar(

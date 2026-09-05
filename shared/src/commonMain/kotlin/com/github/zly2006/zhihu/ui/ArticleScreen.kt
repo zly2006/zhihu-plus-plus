@@ -58,16 +58,12 @@ import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -116,6 +112,7 @@ import com.github.zly2006.zhihu.platform.isArticleHtmlExportSupported
 import com.github.zly2006.zhihu.platform.isArticleImageExportSupported
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.theme.LocalLiquidGlass
 import com.github.zly2006.zhihu.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.ui.article.AigcFlagSheet
 import com.github.zly2006.zhihu.ui.article.ArticleActionsMenu
@@ -139,6 +136,7 @@ import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.DEFAULT_ANSWER_SWITCH_SENSITIVITY
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.ExportDialogComponent
+import com.github.zly2006.zhihu.ui.components.LiquidToolbar
 import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.github.zly2006.zhihu.ui.components.VerticalReadingProgressBar
 import com.github.zly2006.zhihu.ui.components.VotersSheet
@@ -161,6 +159,11 @@ import zhihu.shared.generated.resources.Res
 import zhihu.shared.generated.resources.ic_vote_down_24dp
 import zhihu.shared.generated.resources.ic_vote_up_24dp
 import kotlin.math.max
+import com.github.zly2006.zhihu.ui.components.AdaptiveButton as Button
+import com.github.zly2006.zhihu.ui.components.AdaptiveCircularProgressIndicator as CircularProgressIndicator
+import com.github.zly2006.zhihu.ui.components.AdaptiveIconButton as IconButton
+import com.github.zly2006.zhihu.ui.components.AdaptiveScaffold as Scaffold
+import com.github.zly2006.zhihu.ui.components.AdaptiveTextButton as TextButton
 
 private const val SCROLL_THRESHOLD = 10 // 滑动阈值，单位为dp
 private val ScrollThresholdDp = SCROLL_THRESHOLD.dp
@@ -406,6 +409,7 @@ fun ArticleScreen(
             }
         }
         Scaffold(
+            glassBottomBar = false,
             modifier = Modifier
                 .fillMaxSize()
                 .then(if (!isImmersiveMode) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier),
@@ -556,7 +560,51 @@ fun ArticleScreen(
                     // 操作栏内容的共享组合，按 useDuo3ArticleActions 切换两套视觉。
                     @Composable
                     fun ActionBarContent() {
-                        if (!useDuo3ArticleActions) {
+                        if (LocalLiquidGlass.current) {
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp)
+                                    .padding(bottom = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding() + 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                LiquidToolbar(Modifier.weight(1f)) {
+                                    TextButton(
+                                        onClick = { viewModel.toggleVoteUp(environment, if (viewModel.voteUpState == VoteUpState.Up) VoteUpState.Neutral else VoteUpState.Up) },
+                                        modifier = Modifier.weight(1f),
+                                        contentPadding = PaddingValues(horizontal = 4.dp),
+                                        colors = ButtonDefaults.textButtonColors(contentColor = if (viewModel.voteUpState == VoteUpState.Up) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface),
+                                    ) {
+                                        Icon(painterResource(Res.drawable.ic_vote_up_24dp), "赞同")
+                                        Spacer(Modifier.width(4.dp))
+                                        Text(viewModel.voteUpCount.toString(), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    }
+                                    IconButton(onClick = { viewModel.toggleVoteUp(environment, if (viewModel.voteUpState == VoteUpState.Down) VoteUpState.Neutral else VoteUpState.Down) }) {
+                                        Icon(painterResource(Res.drawable.ic_vote_down_24dp), "反对", tint = if (viewModel.voteUpState == VoteUpState.Down) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
+                                    }
+                                }
+                                LiquidToolbar(Modifier.weight(1f)) {
+                                    IconButton(onClick = { showCollectionDialog = true }) {
+                                        Icon(if (viewModel.isFavorited) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder, "收藏", tint = if (viewModel.isFavorited) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
+                                    }
+                                    val ttsState = rememberArticleTtsState()
+                                    val toggleSpeech = rememberArticleSpeechToggler()
+                                    if (ttsState.isSpeaking) {
+                                        IconButton(onClick = {
+                                            toggleSpeech("", "")
+                                            userMessages.showMessage("已停止朗读")
+                                        }, enabled = ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)) {
+                                            Icon(Icons.AutoMirrored.Filled.VolumeOff, "停止朗读")
+                                        }
+                                    }
+                                    TextButton(onClick = { showComments = true }, modifier = Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 4.dp), colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)) {
+                                        Icon(Icons.AutoMirrored.Filled.Comment, "评论")
+                                        Spacer(Modifier.width(4.dp))
+                                        Text(viewModel.commentCount.toString(), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    }
+                                }
+                            }
+                        } else if (!useDuo3ArticleActions) {
                             // ── 主视觉：按钮式投票与操作区 ────────────────────────
                             Row(
                                 modifier = Modifier

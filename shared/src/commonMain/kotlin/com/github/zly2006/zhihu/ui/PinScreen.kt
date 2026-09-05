@@ -43,13 +43,9 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -130,6 +126,10 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.putJsonArray
 import kotlin.time.Instant
 import androidx.compose.material.icons.outlined.ThumbUp as OutlinedThumbUp
+import com.github.zly2006.zhihu.ui.components.AdaptiveCircularProgressIndicator as CircularProgressIndicator
+import com.github.zly2006.zhihu.ui.components.AdaptiveFilledTonalButton as FilledTonalButton
+import com.github.zly2006.zhihu.ui.components.AdaptiveIconButton as IconButton
+import com.github.zly2006.zhihu.ui.components.AdaptiveScaffold as Scaffold
 
 const val PIN_SCREEN_BACK_BUTTON_TAG = "pin_screen_back_button"
 const val PIN_SCREEN_SHARE_BUTTON_TAG = "pin_screen_share_button"

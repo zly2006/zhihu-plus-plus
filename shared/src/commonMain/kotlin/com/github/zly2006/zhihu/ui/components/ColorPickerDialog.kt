@@ -31,11 +31,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -48,6 +45,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
+import com.github.zly2006.zhihu.ui.components.AdaptiveAlertDialog as AlertDialog
+import com.github.zly2006.zhihu.ui.components.AdaptiveSlider as Slider
+import com.github.zly2006.zhihu.ui.components.AdaptiveTextButton as TextButton
 
 @Composable
 fun ColorPickerDialog(

@@ -59,6 +59,7 @@ import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.theme.LocalLiquidGlass
 import com.github.zly2006.zhihu.util.ProvideContentColorTextStyle
 import kotlinx.coroutines.delay
 
@@ -160,7 +161,7 @@ fun SettingItemGroup(
                 text = title,
                 modifier = Modifier.padding(8.dp, 0.dp, 8.dp, 8.dp),
                 style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
+                color = if (LocalLiquidGlass.current) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
             )
         }
 
@@ -168,7 +169,7 @@ fun SettingItemGroup(
 
         Layout(
             content = content,
-            modifier = modifier.clip(RoundedCornerShape(16.dp)),
+            modifier = modifier.clip(RoundedCornerShape(if (LocalLiquidGlass.current) 24.dp else 16.dp)),
         ) { measurables, constraints ->
             val placeables = measurables.map { it.measure(constraints) }
             val spacing = 2.dp.roundToPx()
@@ -248,7 +249,7 @@ fun SettingItemOverall(
         endAction = {
             SwitchWithIcon(
                 checked = checked,
-                onCheckedChange = null,
+                onCheckedChange = if (LocalLiquidGlass.current) onCheckedChange else null,
                 enabled = enabled,
             )
         },
@@ -296,7 +297,7 @@ fun SettingItemWithSwitch(
         endAction = {
             SwitchWithIcon(
                 checked = checked,
-                onCheckedChange = null,
+                onCheckedChange = if (LocalLiquidGlass.current) onCheckedChange else null,
                 enabled = enabled,
             )
         },
@@ -323,6 +324,10 @@ fun SwitchWithIcon(
     colors: SwitchColors = SwitchDefaults.colors(),
     interactionSource: MutableInteractionSource? = null,
 ) {
+    if (LocalLiquidGlass.current) {
+        LiquidSwitch(checked, onCheckedChange, modifier, enabled)
+        return
+    }
     Switch(
         checked = checked,
         onCheckedChange = onCheckedChange,

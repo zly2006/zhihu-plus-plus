@@ -53,7 +53,6 @@ import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SwitchAccount
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -61,10 +60,8 @@ import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -93,6 +90,7 @@ import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberSystemUrlOpener
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.reading.isReadingPlayerSupported
+import com.github.zly2006.zhihu.theme.LocalLiquidGlass
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
@@ -108,6 +106,9 @@ import zhihu.shared.generated.resources.Res
 import zhihu.shared.generated.resources.ic_github_24dp
 import zhihu.shared.generated.resources.ic_launcher_foreground
 import zhihu.shared.generated.resources.ic_license_24dp
+import com.github.zly2006.zhihu.ui.components.AdaptiveAlertDialog as AlertDialog
+import com.github.zly2006.zhihu.ui.components.AdaptiveScaffold as Scaffold
+import com.github.zly2006.zhihu.ui.components.AdaptiveTextButton as TextButton
 
 const val ACCOUNT_SETTINGS_SCROLL_TAG = "accountSettings.scroll"
 const val ACCOUNT_SETTINGS_LOGIN_ITEM_TAG = "accountSettings.loginItem"
@@ -184,10 +185,19 @@ fun AccountSettingScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(innerPadding)
+                .then(if (LocalLiquidGlass.current) Modifier else Modifier.padding(innerPadding))
                 .testTag(ACCOUNT_SETTINGS_SCROLL_TAG)
                 .verticalScroll(rememberScrollState())
-                .padding(padding),
+                .padding(
+                    if (LocalLiquidGlass.current) {
+                        PaddingValues(
+                            top = maxOf(padding.calculateTopPadding(), innerPadding.calculateTopPadding()),
+                            bottom = maxOf(padding.calculateBottomPadding(), innerPadding.calculateBottomPadding()),
+                        )
+                    } else {
+                        padding
+                    },
+                ),
         ) {
             LaunchedEffect(data.login, refreshAccountProfileOnEnter) {
                 if (refreshAccountProfileOnEnter && data.login) {

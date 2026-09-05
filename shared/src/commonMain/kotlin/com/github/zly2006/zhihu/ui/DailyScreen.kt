@@ -38,19 +38,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -82,6 +77,7 @@ import com.github.zly2006.zhihu.data.DailySection
 import com.github.zly2006.zhihu.data.DailyStory
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.resolveContent
+import com.github.zly2006.zhihu.theme.LocalLiquidGlass
 import com.github.zly2006.zhihu.ui.TopLevelReselectAction
 import com.github.zly2006.zhihu.ui.topLevelReselectAction
 import com.github.zly2006.zhihu.util.formatDailyDate
@@ -100,6 +96,11 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
+import com.github.zly2006.zhihu.ui.components.AdaptiveAlertDialog as AlertDialog
+import com.github.zly2006.zhihu.ui.components.AdaptiveCircularProgressIndicator as CircularProgressIndicator
+import com.github.zly2006.zhihu.ui.components.AdaptiveIconButton as IconButton
+import com.github.zly2006.zhihu.ui.components.AdaptiveScaffold as Scaffold
+import com.github.zly2006.zhihu.ui.components.AdaptiveTextButton as TextButton
 
 /**
  * 知乎日报页面。
@@ -112,6 +113,8 @@ import kotlin.time.Instant
 fun DailyScreen(
     scrollToTopTrigger: Int = 0,
     isActive: Boolean = true,
+    navigationPadding: androidx.compose.foundation.layout.PaddingValues = androidx.compose.foundation.layout
+        .PaddingValues(0.dp),
 ) {
     val navigator = LocalNavigator.current
     val httpClient = rememberPaginationEnvironment(allowGuestAccess = false).httpClient()
@@ -279,7 +282,7 @@ fun DailyScreen(
             onRefresh = doRefresh,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = scaffoldPadding.calculateTopPadding()),
+                .then(if (LocalLiquidGlass.current) Modifier else Modifier.padding(top = scaffoldPadding.calculateTopPadding())),
         ) {
             when {
                 viewModel.isLoading -> {
@@ -339,7 +342,14 @@ fun DailyScreen(
                         modifier = Modifier
                             .fillMaxSize()
                             .testTag(DAILY_SCREEN_LIST_TAG),
-                        contentPadding = PaddingValues(vertical = 8.dp),
+                        contentPadding = if (LocalLiquidGlass.current) {
+                            PaddingValues(
+                                top = scaffoldPadding.calculateTopPadding() + 8.dp,
+                                bottom = maxOf(scaffoldPadding.calculateBottomPadding(), navigationPadding.calculateBottomPadding()) + 8.dp,
+                            )
+                        } else {
+                            PaddingValues(vertical = 8.dp)
+                        },
                     ) {
                         viewModel.sections.forEach { section ->
                             // 日期分组标题。

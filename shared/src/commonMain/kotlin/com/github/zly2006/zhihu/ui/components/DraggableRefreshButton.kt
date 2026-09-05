@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -44,9 +43,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.theme.LocalLiquidGlass
 import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_FAB_OPACITY
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FAB_OPACITY
 import kotlin.math.roundToInt
+import com.github.zly2006.zhihu.ui.components.AdaptiveFloatingActionButton as FloatingActionButton
 
 /**
  * 可拖动并自动贴边的刷新按钮。
@@ -66,6 +67,7 @@ fun DraggableRefreshButton(
         Icon(Icons.Default.Refresh, contentDescription = "刷新")
     },
 ) {
+    val liquidGlass = LocalLiquidGlass.current
     val density = LocalDensity.current
     val screenSize = LocalWindowInfo.current.containerSize
     val settings = rememberSettingsStore()
@@ -89,7 +91,8 @@ fun DraggableRefreshButton(
 
     fun adjustFabPosition() {
         with(density) {
-            offsetX = offsetX.coerceIn(0f, screenSize.width - 56.dp.toPx())
+            val edge = if (liquidGlass) 12.dp.toPx() else 0f
+            offsetX = offsetX.coerceIn(edge, (screenSize.width - 56.dp.toPx() - edge).coerceAtLeast(edge))
             offsetY = offsetY.coerceIn(0f, maxStoredOffsetY)
         }
     }
@@ -117,10 +120,12 @@ fun DraggableRefreshButton(
     FloatingActionButton(
         onClick = onClick,
         shape = CircleShape,
-        containerColor = FloatingActionButtonDefaults.containerColor.copy(alpha = opacityFraction),
-        contentColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = opacityFraction),
+        containerColor = (if (liquidGlass) MaterialTheme.colorScheme.surfaceBright else FloatingActionButtonDefaults.containerColor).copy(alpha = opacityFraction),
+        contentColor = (if (liquidGlass) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onPrimaryContainer).copy(alpha = opacityFraction),
         elevation = if (opacityFraction < 1f) {
             FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp)
+        } else if (liquidGlass) {
+            FloatingActionButtonDefaults.elevation(2.dp, 2.dp, 2.dp, 2.dp)
         } else {
             FloatingActionButtonDefaults.elevation()
         },

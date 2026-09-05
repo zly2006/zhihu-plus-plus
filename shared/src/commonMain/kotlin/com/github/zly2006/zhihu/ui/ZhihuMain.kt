@@ -49,13 +49,19 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.Newspaper
 import androidx.compose.material.icons.filled.Whatshot
+import androidx.compose.material.icons.outlined.AccountCircle
+import androidx.compose.material.icons.outlined.CollectionsBookmark
+import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Newspaper
+import androidx.compose.material.icons.outlined.People
+import androidx.compose.material.icons.outlined.Whatshot
 import androidx.compose.material3.FabPosition
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -128,6 +134,7 @@ import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.reading.rememberReadingPlayerController
 import com.github.zly2006.zhihu.reading.saveReadingPlaybackSpeed
+import com.github.zly2006.zhihu.theme.LocalLiquidGlass
 import com.github.zly2006.zhihu.ui.components.CompactReadingPlayerButton
 import com.github.zly2006.zhihu.ui.components.NoOpPagerNestedScrollConnection
 import com.github.zly2006.zhihu.ui.components.ReadingPlayerBar
@@ -146,6 +153,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.reflect.KClass
 import kotlin.reflect.typeOf
+import com.github.zly2006.zhihu.ui.components.AdaptiveScaffold as Scaffold
 
 private sealed class MainTabPage(
     val bottomDestination: TopLevelDestination,
@@ -204,6 +212,7 @@ fun ZhihuMain(
     articleEnterTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition?)? = null,
     articleExitTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition?)? = null,
 ) {
+    val liquidGlass = LocalLiquidGlass.current
     val bottomPadding = ScaffoldDefaults.contentWindowInsets.asPaddingValues().calculateBottomPadding()
     val duo3HomeAccount = preferenceState.duo3HomeAccount
     val tapToScrollToTopEnabled = preferenceState.tapToScrollToTopEnabled
@@ -438,6 +447,7 @@ fun ZhihuMain(
                 }
             },
             floatingActionButtonPosition = FabPosition.Center,
+            glassBottomBar = false,
             bottomBar = {
                 if (showMainNavigationBar && navEntry != null) {
                     // 页面切换时重置底部导航栏可见状态
@@ -450,50 +460,84 @@ fun ZhihuMain(
                         enter = slideInVertically(tween(200)) { it },
                         exit = slideOutVertically(tween(200)) { it },
                     ) {
-                        NavigationBar(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            modifier = Modifier.height(
-                                64.dp + bottomPadding,
-                            ),
-                        ) {
-                            @Composable
-                            fun Item(
-                                destination: TopLevelDestination,
-                                label: String,
-                                icon: ImageVector,
-                            ) {
-                                val tag = "nav_tab_${destination.name.lowercase()}"
-                                NavigationBarItem(
-                                    currentBottomDestination?.let { it::class == destination::class } == true,
-                                    onClick = {
+                        if (liquidGlass) {
+                            com.github.zly2006.zhihu.ui.components.LiquidNavigationBar(
+                                bottomBarItems.map { (destination, label, icon) ->
+                                    val selected = currentBottomDestination?.let { it::class == destination::class } == true
+                                    com.github.zly2006.zhihu.ui.components.LiquidNavigationItem(
+                                        label,
+                                        if (selected) {
+                                            icon
+                                        } else {
+                                            when (destination) {
+                                                Home -> Icons.Outlined.Home
+                                                Follow -> Icons.Outlined.People
+                                                Daily -> Icons.Outlined.Newspaper
+                                                OnlineHistory -> Icons.Outlined.History
+                                                Account -> Icons.Outlined.AccountCircle
+                                                HotList -> Icons.Outlined.Whatshot
+                                                MyCollections -> Icons.Outlined.CollectionsBookmark
+                                                else -> icon
+                                            }
+                                        },
+                                        selected,
+                                        "nav_tab_${destination.name.lowercase()}",
+                                    ) {
                                         isReadingPlayerExpandedByUser = false
-                                        if (currentBottomDestination?.let { it::class == destination::class } != true) {
+                                        if (!selected) {
                                             navigateTopLevel(destination)
                                         } else if (tapToScrollToTopEnabled) {
                                             scrollToTopTrigger++
                                         }
-                                    },
-                                    label = { Text(label) },
-                                    alwaysShowLabel = true,
-                                    colors = if (!isDarkTheme) {
-                                        NavigationBarItemDefaults.colors().copy(
-                                            selectedIndicatorColor =
-                                                MaterialTheme.colorScheme.secondaryContainer
-                                                    .copy(alpha = 0.92f)
-                                                    .compositeOver(MaterialTheme.colorScheme.secondary),
-                                        )
-                                    } else {
-                                        NavigationBarItemDefaults.colors()
-                                    },
-                                    icon = {
-                                        Icon(icon, contentDescription = label)
-                                    },
-                                    modifier = Modifier.padding(top = 4.dp).testTag(tag),
-                                )
-                            }
+                                    }
+                                },
+                            )
+                        } else {
+                            NavigationBar(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                modifier = Modifier.height(
+                                    64.dp + bottomPadding,
+                                ),
+                            ) {
+                                @Composable
+                                fun Item(
+                                    destination: TopLevelDestination,
+                                    label: String,
+                                    icon: ImageVector,
+                                ) {
+                                    val tag = "nav_tab_${destination.name.lowercase()}"
+                                    NavigationBarItem(
+                                        currentBottomDestination?.let { it::class == destination::class } == true,
+                                        onClick = {
+                                            isReadingPlayerExpandedByUser = false
+                                            if (currentBottomDestination?.let { it::class == destination::class } != true) {
+                                                navigateTopLevel(destination)
+                                            } else if (tapToScrollToTopEnabled) {
+                                                scrollToTopTrigger++
+                                            }
+                                        },
+                                        label = { Text(label) },
+                                        alwaysShowLabel = true,
+                                        colors = if (!isDarkTheme) {
+                                            NavigationBarItemDefaults.colors().copy(
+                                                selectedIndicatorColor =
+                                                    MaterialTheme.colorScheme.secondaryContainer
+                                                        .copy(alpha = 0.92f)
+                                                        .compositeOver(MaterialTheme.colorScheme.secondary),
+                                            )
+                                        } else {
+                                            NavigationBarItemDefaults.colors()
+                                        },
+                                        icon = {
+                                            Icon(icon, contentDescription = label)
+                                        },
+                                        modifier = Modifier.padding(top = 4.dp).testTag(tag),
+                                    )
+                                }
 
-                            bottomBarItems.forEach { item ->
-                                Item(item.first, item.second, item.third)
+                                bottomBarItems.forEach { item ->
+                                    Item(item.first, item.second, item.third)
+                                }
                             }
                         }
                     }
@@ -820,10 +864,12 @@ private fun MainTabsPager(
                 isActive = pagerState.currentPage == pageIndex,
             )
             MainTabPage.DailyPage -> DailyScreen(
+                navigationPadding = innerPadding,
                 scrollToTopTrigger = scrollToTopTrigger,
                 isActive = pagerState.currentPage == pageIndex,
             )
             MainTabPage.OnlineHistoryPage -> OnlineHistoryScreen(
+                navigationPadding = innerPadding,
                 scrollToTopTrigger = scrollToTopTrigger,
                 isActive = pagerState.currentPage == pageIndex,
             )

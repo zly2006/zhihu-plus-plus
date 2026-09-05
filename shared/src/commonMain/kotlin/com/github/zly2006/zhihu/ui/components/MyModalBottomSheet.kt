@@ -38,9 +38,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ConsumeSwipeWithinBottomSheetBoundsNestedScrollConnection
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheetDialog
 import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.SheetState
@@ -90,6 +92,7 @@ import com.github.zly2006.zhihu.platform.PlatformPredictiveBackHandler
 import com.github.zly2006.zhihu.platform.exportTestTagsForUiAutomation
 import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.theme.LocalLiquidGlass
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlin.math.max
@@ -105,9 +108,13 @@ fun MyModalBottomSheet(
     sheetState: SheetState = rememberModalBottomSheetState(),
     sheetMaxWidth: Dp = BottomSheetDefaults.SheetMaxWidth,
     sheetGesturesEnabled: Boolean = true,
-    shape: Shape = BottomSheetDefaults.ExpandedShape,
-    containerColor: Color = BottomSheetDefaults.ContainerColor,
-    contentColor: Color = contentColorFor(containerColor),
+    shape: Shape = if (LocalLiquidGlass.current) {
+        RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)
+    } else {
+        BottomSheetDefaults.ExpandedShape
+    },
+    containerColor: Color = if (LocalLiquidGlass.current) MaterialTheme.colorScheme.surfaceBright else BottomSheetDefaults.ContainerColor,
+    contentColor: Color = if (LocalLiquidGlass.current) MaterialTheme.colorScheme.onSurface else contentColorFor(containerColor),
     tonalElevation: Dp = 0.dp,
     scrimColor: Color = BottomSheetDefaults.ScrimColor,
     dragHandle: @Composable (() -> Unit)? = { BottomSheetDefaults.DragHandle() },
@@ -247,7 +254,7 @@ fun BottomSheet(
     },
     shape: Shape = BottomSheetDefaults.ExpandedShape,
     containerColor: Color = BottomSheetDefaults.ContainerColor,
-    contentColor: Color = contentColorFor(containerColor),
+    contentColor: Color = if (LocalLiquidGlass.current) MaterialTheme.colorScheme.onSurface else contentColorFor(containerColor),
     tonalElevation: Dp = BottomSheetDefaults.Elevation,
     shadowElevation: Dp = 0.dp,
     content: @Composable ColumnScope.() -> Unit,

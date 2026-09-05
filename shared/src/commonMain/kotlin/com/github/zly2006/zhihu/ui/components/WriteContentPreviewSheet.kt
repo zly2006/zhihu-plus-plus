@@ -30,7 +30,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SheetState
@@ -44,6 +43,7 @@ import com.github.zly2006.zhihu.markdown.RenderMarkdownText
 import com.github.zly2006.zhihu.ui.ZhihuHtmlWebViewContent
 import com.github.zly2006.zhihu.ui.isLegacyWebViewSupported
 import com.github.zly2006.zhihu.ui.questionSelectionWorkaround
+import com.github.zly2006.zhihu.ui.components.AdaptiveCircularProgressIndicator as CircularProgressIndicator
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

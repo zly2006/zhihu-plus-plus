@@ -27,9 +27,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -66,6 +64,8 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonElement
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
+import com.github.zly2006.zhihu.ui.components.AdaptiveCircularProgressIndicator as CircularProgressIndicator
+import com.github.zly2006.zhihu.ui.components.AdaptiveOutlinedButton as OutlinedButton
 
 const val ZHIHU_HOME_URL = "https://www.zhihu.com/"
 const val ZHIHU_SIGNIN_URL = "https://www.zhihu.com/signin?next=%2F"

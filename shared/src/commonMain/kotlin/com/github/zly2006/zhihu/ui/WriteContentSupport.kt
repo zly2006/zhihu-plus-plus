@@ -17,13 +17,13 @@
 
 package com.github.zly2006.zhihu.ui
 
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import com.github.zly2006.zhihu.util.HttpStatusException
+import com.github.zly2006.zhihu.ui.components.AdaptiveAlertDialog as AlertDialog
+import com.github.zly2006.zhihu.ui.components.AdaptiveButton as Button
+import com.github.zly2006.zhihu.ui.components.AdaptiveFilledTonalButton as FilledTonalButton
 
 @Composable
 internal fun WriteOperationErrorDialog(

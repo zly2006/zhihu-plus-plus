@@ -32,7 +32,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -82,6 +81,7 @@ import com.hrm.markdown.parser.ast.Document
 import com.hrm.markdown.renderer.Markdown
 import com.hrm.markdown.renderer.MarkdownImageData
 import com.hrm.markdown.renderer.MarkdownTheme
+import com.github.zly2006.zhihu.ui.components.AdaptiveDropdownMenu as DropdownMenu
 
 @Composable
 fun RenderImage(

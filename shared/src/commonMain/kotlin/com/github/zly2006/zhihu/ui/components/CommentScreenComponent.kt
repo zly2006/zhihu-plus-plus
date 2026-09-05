@@ -21,12 +21,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
@@ -56,6 +54,8 @@ import com.github.zly2006.zhihu.ui.consumePendingCommentId
 import com.github.zly2006.zhihu.viewmodel.CommentItem
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
+import com.github.zly2006.zhihu.ui.components.AdaptiveAlertDialog as AlertDialog
+import com.github.zly2006.zhihu.ui.components.AdaptiveTextButton as TextButton
 
 /**
  * 最好不要在 if 或者其他条件语句中使用，这会导致本组件内部状态丢失。

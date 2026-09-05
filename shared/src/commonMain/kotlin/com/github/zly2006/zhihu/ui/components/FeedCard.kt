@@ -41,11 +41,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -81,10 +79,13 @@ import com.github.zly2006.zhihu.navigation.withReadingQueueSource
 import com.github.zly2006.zhihu.platform.UserMessageDuration
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.theme.LocalLiquidGlass
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
 import com.github.zly2006.zhihu.util.parseEmphasizedHtmlTextWithTheme
 import com.github.zly2006.zhihu.viewmodel.QUALITY_FILTER_MODE_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.components.AdaptiveDropdownMenu as DropdownMenu
+import com.github.zly2006.zhihu.ui.components.AdaptiveIconButton as IconButton
 
 /**
  * 信息流卡片的 Material 3 实现。
@@ -119,10 +120,11 @@ fun FeedCard(
     val showFeedThumbnail = remember {
         settings.getBoolean("showFeedThumbnail", true)
     }
-    val feedCardStyle = remember {
-        settings.getString("feedCardStyle", "divider")
+    val liquidGlass = LocalLiquidGlass.current
+    val feedCardStyle = remember(liquidGlass) {
+        settings.getString("feedCardStyle", if (liquidGlass) "card" else "divider")
     }
-    val duo3CardAppearance = remember { settings.getBoolean("duo3_card_appearance", false) }
+    val duo3CardAppearance = liquidGlass || remember { settings.getBoolean("duo3_card_appearance", false) }
     val duo3CardLayout = remember { settings.getBoolean("duo3_card_layout", false) }
     val duo3CardLargeTitle = remember { settings.getBoolean("duo3_card_large_title", true) }
     val pinImages = (item.feed?.target as? Feed.PinTarget)

@@ -43,12 +43,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
@@ -81,6 +79,7 @@ import com.github.zly2006.zhihu.platform.UserMessageDuration
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.reading.RegisterReadingQueueSource
+import com.github.zly2006.zhihu.theme.LocalLiquidGlass
 import com.github.zly2006.zhihu.ui.TopLevelReselectAction
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.FeedAuthorBlockConfirmDialog
@@ -98,6 +97,8 @@ import com.github.zly2006.zhihu.viewmodel.feed.FollowViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.RecentMomentsViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.launch
+import com.github.zly2006.zhihu.ui.components.AdaptiveCircularProgressIndicator as CircularProgressIndicator
+import com.github.zly2006.zhihu.ui.components.AdaptivePrimaryTabRow as PrimaryTabRow
 
 class FollowScreenData : ViewModel() {
     var selectedTabIndex by mutableIntStateOf(0)
@@ -153,7 +154,8 @@ private fun FollowScreenContent(
         viewModel.selectedTabIndex = pagerState.currentPage
     }
 
-    Column(modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())) {
+    val liquidGlass = LocalLiquidGlass.current
+    Column(modifier = if (liquidGlass) Modifier else Modifier.padding(bottom = innerPadding.calculateBottomPadding())) {
         FollowTabRow(
             pagerState = pagerState,
             selectedTabIndex = pagerState.currentPage,
@@ -185,11 +187,13 @@ private fun FollowScreenContent(
                 0 -> FollowRecommendScreen(
                     scrollToTopTrigger = scrollToTopTrigger,
                     isActive = pagerState.currentPage == 0,
+                    contentPadding = if (liquidGlass) PaddingValues(bottom = innerPadding.calculateBottomPadding()) else PaddingValues(0.dp),
                 )
 
                 1 -> FollowDynamicScreen(
                     scrollToTopTrigger = scrollToTopTrigger,
                     isActive = pagerState.currentPage == 1,
+                    contentPadding = if (liquidGlass) PaddingValues(bottom = innerPadding.calculateBottomPadding()) else PaddingValues(0.dp),
                 )
             }
         }
@@ -207,6 +211,7 @@ private fun FollowTabRow(
     val tabs: @Composable () -> Unit = {
         titles.forEachIndexed { index, title ->
             Tab(
+                unselectedContentColor = if (com.github.zly2006.zhihu.theme.LocalLiquidGlass.current) MaterialTheme.colorScheme.onSurfaceVariant else androidx.compose.material3.LocalContentColor.current,
                 modifier = Modifier.testTag("follow_screen_tab_$index"),
                 selected = selectedTabIndex == index,
                 onClick = { onTabSelected(index) },
@@ -334,6 +339,7 @@ fun FollowingUsersRow() {
 fun FollowRecommendScreen(
     scrollToTopTrigger: Int = 0,
     isActive: Boolean = true,
+    contentPadding: PaddingValues = PaddingValues(0.dp),
 ) {
     val viewModel: FollowRecommendViewModel = viewModel { FollowRecommendViewModel() }
     val readingQueueSourceId = "follow:recommend"
@@ -385,6 +391,7 @@ fun FollowRecommendScreen(
                 items = viewModel.displayItems,
                 listState = listState,
                 modifier = Modifier.testTag(FOLLOW_RECOMMEND_LIST_TAG),
+                contentPadding = contentPadding,
                 topContent = {
                     item {
                         FollowingUsersRow()
@@ -452,6 +459,7 @@ fun FollowRecommendScreen(
 
             if (showRefreshFab) {
                 DraggableRefreshButton(
+                    bottomAvoidance = if (LocalLiquidGlass.current) contentPadding.calculateBottomPadding() else 0.dp,
                     modifier = Modifier.testTag(FOLLOW_RECOMMEND_REFRESH_BUTTON_TAG),
                     onClick = {
                         viewModel.refresh(environment)
@@ -482,6 +490,7 @@ fun FollowRecommendScreen(
 fun FollowDynamicScreen(
     scrollToTopTrigger: Int = 0,
     isActive: Boolean = true,
+    contentPadding: PaddingValues = PaddingValues(0.dp),
 ) {
     val viewModel: FollowViewModel = viewModel { FollowViewModel() }
     val readingQueueSourceId = "follow:dynamic"
@@ -533,6 +542,7 @@ fun FollowDynamicScreen(
                 items = viewModel.displayItems,
                 listState = listState,
                 modifier = Modifier.testTag(FOLLOW_DYNAMIC_LIST_TAG),
+                contentPadding = contentPadding,
                 onLoadMore = { viewModel.loadMore(environment) },
                 topContent = {
                     item {
@@ -601,6 +611,7 @@ fun FollowDynamicScreen(
 
             if (showRefreshFab) {
                 DraggableRefreshButton(
+                    bottomAvoidance = if (LocalLiquidGlass.current) contentPadding.calculateBottomPadding() else 0.dp,
                     modifier = Modifier.testTag(FOLLOW_DYNAMIC_REFRESH_BUTTON_TAG),
                     onClick = {
                         viewModel.refresh(environment)

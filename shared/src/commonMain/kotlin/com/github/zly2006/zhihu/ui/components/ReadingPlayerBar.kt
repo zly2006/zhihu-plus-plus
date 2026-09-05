@@ -43,14 +43,10 @@ import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
@@ -81,6 +77,10 @@ import com.github.zly2006.zhihu.reading.ReadingPlayerState
 import com.github.zly2006.zhihu.reading.ReadingQueueItem
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import com.github.zly2006.zhihu.ui.components.AdaptiveButton as Button
+import com.github.zly2006.zhihu.ui.components.AdaptiveCircularProgressIndicator as CircularProgressIndicator
+import com.github.zly2006.zhihu.ui.components.AdaptiveDropdownMenu as DropdownMenu
+import com.github.zly2006.zhihu.ui.components.AdaptiveIconButton as IconButton
 
 const val READING_PLAYER_BAR_TAG = "reading_player_bar"
 const val READING_PLAYER_COMPACT_TAG = "reading_player_compact"

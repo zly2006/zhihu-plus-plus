@@ -29,12 +29,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -56,12 +53,17 @@ import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.notification.NotificationType
 import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.theme.LocalLiquidGlass
+import com.github.zly2006.zhihu.theme.isLiquidGlassSupported
 import com.github.zly2006.zhihu.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.components.DISABLE_BOTTOM_SHEET_ROUNDED_CORNERS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.viewmodel.QUALITY_FILTER_MODE_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.components.AdaptiveIconButton as IconButton
+import com.github.zly2006.zhihu.ui.components.AdaptiveOutlinedTextField as OutlinedTextField
+import com.github.zly2006.zhihu.ui.components.AdaptiveScaffold as Scaffold
 
 const val SETTINGS_SEARCH_INPUT_TAG = "settingsSearch.input"
 const val SETTINGS_SEARCH_RESULTS_TAG = "settingsSearch.results"
@@ -157,6 +159,9 @@ private fun notificationEntry(
 )
 
 private val settingsSearchEntries = buildList {
+    if (isLiquidGlassSupported) {
+        add(appearanceEntry("appearance.uiStyle", "界面风格", "切换 Material 或 Liquid Glass，重启应用生效。", UI_STYLE_PREFERENCE_KEY, listOf("玻璃", "液态玻璃", "Liquid Glass", "Material")))
+    }
     add(appearanceEntry("appearance.nightMode", "主题模式", "切换浅色、深色或跟随系统。", "nightMode", listOf("夜间模式", "深色模式", "暗色模式", "浅色模式", "跟随系统")))
     add(appearanceEntry("appearance.dynamicColor", "使用 Material You 动态取色", "Android 12+ 根据系统壁纸取色。", "dynamicColor", listOf("动态颜色", "壁纸取色", "主题色")))
     add(appearanceEntry("appearance.bottomSheetCorners", "禁用 popup 圆角", "评论等 popup 顶部改为直角。", DISABLE_BOTTOM_SHEET_ROUNDED_CORNERS_PREFERENCE_KEY, listOf("评论圆角", "popup", "直角")))
@@ -305,9 +310,11 @@ fun SettingsSearchScreen() {
         }
         onDispose(subscription::close)
     }
-    val results = remember(query, developerModeEnabled) {
+    val liquidGlass = LocalLiquidGlass.current
+    val results = remember(query, developerModeEnabled, liquidGlass) {
         settingsSearchEntries
             .filter { entry -> entry.id != "developer.page" || developerModeEnabled }
+            .filter { entry -> !liquidGlass || entry.id != "appearance.dynamicColor" }
             .filter { entry -> entry.matches(query) }
     }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()

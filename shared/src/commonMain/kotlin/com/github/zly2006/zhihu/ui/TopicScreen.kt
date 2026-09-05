@@ -40,19 +40,12 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryTabRow
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -109,6 +102,13 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive
+import com.github.zly2006.zhihu.ui.components.AdaptiveButton as Button
+import com.github.zly2006.zhihu.ui.components.AdaptiveCircularProgressIndicator as CircularProgressIndicator
+import com.github.zly2006.zhihu.ui.components.AdaptiveFilledTonalButton as FilledTonalButton
+import com.github.zly2006.zhihu.ui.components.AdaptiveIconButton as IconButton
+import com.github.zly2006.zhihu.ui.components.AdaptivePrimaryTabRow as PrimaryTabRow
+import com.github.zly2006.zhihu.ui.components.AdaptiveScaffold as Scaffold
+import com.github.zly2006.zhihu.ui.components.AdaptiveTextButton as TextButton
 
 const val TOPIC_SCREEN_TAG = "topic_screen"
 const val TOPIC_SHARE_BUTTON_TAG = "topic_share_button"
@@ -509,6 +509,7 @@ fun TopicScreen(topic: Topic) {
                     PrimaryTabRow(selectedTabIndex = viewModel.selectedTab.ordinal) {
                         TopicFeedTab.entries.forEach { tab ->
                             Tab(
+                                unselectedContentColor = if (com.github.zly2006.zhihu.theme.LocalLiquidGlass.current) MaterialTheme.colorScheme.onSurfaceVariant else androidx.compose.material3.LocalContentColor.current,
                                 selected = viewModel.selectedTab == tab,
                                 onClick = { viewModel.selectTab(environment, tab) },
                                 text = { Text(tab.title) },

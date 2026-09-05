@@ -59,21 +59,15 @@ import androidx.compose.material.icons.filled.MarkUnreadChatAlt
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -131,6 +125,7 @@ import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.platform.rememberWebViewUrlOpener
 import com.github.zly2006.zhihu.reading.RegisterReadingQueueSource
+import com.github.zly2006.zhihu.theme.LocalLiquidGlass
 import com.github.zly2006.zhihu.ui.components.AnnouncementCard
 import com.github.zly2006.zhihu.ui.components.AnnouncementCardDefaults
 import com.github.zly2006.zhihu.ui.components.BlockByKeywordsDialog
@@ -178,6 +173,12 @@ import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.time.Clock
+import com.github.zly2006.zhihu.ui.components.AdaptiveAlertDialog as AlertDialog
+import com.github.zly2006.zhihu.ui.components.AdaptiveCircularProgressIndicator as CircularProgressIndicator
+import com.github.zly2006.zhihu.ui.components.AdaptiveFloatingActionButton as FloatingActionButton
+import com.github.zly2006.zhihu.ui.components.AdaptiveIconButton as IconButton
+import com.github.zly2006.zhihu.ui.components.AdaptiveScaffold as Scaffold
+import com.github.zly2006.zhihu.ui.components.AdaptiveTextButton as TextButton
 
 const val PREFERENCE_NAME = "com.github.zly2006.zhihu_preferences"
 const val ARTICLE_USE_WEBVIEW_PREFERENCE_KEY = "webviewRenderLegacy"
@@ -540,7 +541,7 @@ fun HomeScreen(
                         }
                     }
                 } else {
-                    Surface(shadowElevation = 4.dp) {
+                    Surface(shadowElevation = if (LocalLiquidGlass.current) 0.dp else 4.dp) {
                         Row(
                             modifier = Modifier
                                 .testTag(HOME_TOP_ACTIONS_TAG)
@@ -888,6 +889,8 @@ fun HomeScreen(
                     }
                     DraggableRefreshButton(
                         modifier = Modifier.testTag(HOME_REFRESH_BUTTON_TAG),
+                        preferenceName = if (LocalLiquidGlass.current) "liquidGlassRefresh" else "fabRefresh",
+                        initiallyOnLeft = LocalLiquidGlass.current,
                         bottomAvoidance = readingPlayerOverlayPadding,
                         onClick = { viewModel.refresh(paginationEnvironment) },
                     ) {
@@ -1001,9 +1004,9 @@ fun HomeScreen(
                 modifier = Modifier.testTag(HOME_CREATE_FAB_TAG),
                 onClick = { showCreateMenu = !showCreateMenu },
                 shape = CircleShape,
-                containerColor = FloatingActionButtonDefaults.containerColor.copy(alpha = createFabOpacity),
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = createFabOpacity),
-                elevation = if (createFabOpacity < 1f) {
+                containerColor = (if (LocalLiquidGlass.current) MaterialTheme.colorScheme.primary else FloatingActionButtonDefaults.containerColor).copy(alpha = createFabOpacity),
+                contentColor = (if (LocalLiquidGlass.current) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer).copy(alpha = createFabOpacity),
+                elevation = if (createFabOpacity < 1f || LocalLiquidGlass.current) {
                     FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp)
                 } else {
                     FloatingActionButtonDefaults.elevation()

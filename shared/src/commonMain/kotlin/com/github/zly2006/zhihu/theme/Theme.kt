@@ -22,7 +22,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.ui.subscreens.UI_STYLE_PREFERENCE_KEY
 import com.materialkolor.dynamicColorScheme
 
 private val DarkColorScheme = darkColorScheme(
@@ -48,6 +52,8 @@ private val LightColorScheme = lightColorScheme(
 fun ZhihuTheme(
     content: @Composable () -> Unit,
 ) {
+    val settings = rememberSettingsStore()
+    val liquidGlass = remember { isLiquidGlassSupported && settings.getString(UI_STYLE_PREFERENCE_KEY, "material") == "liquid_glass" }
     val useDynamicColor = ThemeManager.getUseDynamicColor()
     val customBackgroundColor = ThemeManager.getBackgroundColor()
     val darkTheme = ThemeManager.isDarkTheme()
@@ -66,18 +72,25 @@ fun ZhihuTheme(
         else -> LightColorScheme
     }
 
-    val colorScheme = baseColorScheme.copy(
-        background = customBackgroundColor,
-        surface = customBackgroundColor,
-    )
+    val colorScheme = if (liquidGlass) {
+        liquidGlassColors(darkTheme)
+    } else {
+        baseColorScheme.copy(
+            background = customBackgroundColor,
+            surface = customBackgroundColor,
+        )
+    }
 
     PlatformSystemBarEffect(darkTheme)
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content,
-    )
+    CompositionLocalProvider(LocalLiquidGlass provides liquidGlass) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = if (liquidGlass) LiquidGlassTypography else Typography,
+            shapes = if (liquidGlass) LiquidGlassShapes else androidx.compose.material3.Shapes(),
+            content = content,
+        )
+    }
 }
 
 @Composable
@@ -88,3 +101,41 @@ expect fun platformDynamicColorScheme(darkTheme: Boolean): ColorScheme?
 
 @Composable
 expect fun PlatformSystemBarEffect(darkTheme: Boolean)
+
+private fun liquidGlassColors(dark: Boolean): ColorScheme {
+    val background = if (dark) Color(0xFF101114) else Color(0xFFF2F3F7)
+    val surface = if (dark) Color(0xFF202126) else Color.White
+    val ink = if (dark) Color(0xFFF4F4F7) else Color(0xFF191A20)
+    val secondaryInk = if (dark) Color(0xFFB5B6C0) else Color(0xFF666872)
+    return (if (dark) darkColorScheme() else lightColorScheme()).copy(
+        primary = if (dark) Color(0xFF72ADFF) else Color(0xFF0065DD),
+        onPrimary = if (dark) Color(0xFF002B60) else Color.White,
+        primaryContainer = if (dark) Color(0xFF203552) else Color(0xFFE1EDFF),
+        onPrimaryContainer = ink,
+        secondary = secondaryInk,
+        onSecondary = surface,
+        secondaryContainer = if (dark) Color(0xFF343740) else Color(0xFFE8EBF1),
+        onSecondaryContainer = ink,
+        tertiary = if (dark) Color(0xFF93BDEA) else Color(0xFF38648F),
+        onTertiary = if (dark) Color(0xFF17344F) else Color.White,
+        tertiaryContainer = if (dark) Color(0xFF253748) else Color(0xFFE3EEF9),
+        onTertiaryContainer = ink,
+        inversePrimary = if (dark) Color(0xFF0065DD) else Color(0xFF72ADFF),
+        background = background,
+        onBackground = ink,
+        surface = background,
+        onSurface = ink,
+        surfaceBright = surface,
+        surfaceDim = background,
+        surfaceContainer = background,
+        surfaceContainerLow = surface,
+        surfaceContainerLowest = surface,
+        surfaceContainerHigh = surface,
+        surfaceContainerHighest = if (dark) Color(0xFF303239) else Color(0xFFE8EAF0),
+        surfaceVariant = if (dark) Color(0xFF24252A) else Color(0xFFF8F9FC),
+        onSurfaceVariant = secondaryInk,
+        outline = secondaryInk.copy(alpha = 0.5f),
+        outlineVariant = secondaryInk.copy(alpha = 0.16f),
+        surfaceTint = Color.Transparent,
+    )
+}

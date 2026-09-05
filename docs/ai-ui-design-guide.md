@@ -61,6 +61,7 @@ URL 解析集中在 `resolveContent()`。支持知乎问题、回答、文章、
 
 | preference key | 入口 | 主要影响 | 注意 |
 | --- | --- | --- | --- |
+| `uiStyle` | 界面风格 | Android 13+ 可选 Material / Liquid Glass，重启生效 | 不覆盖原有 Material 配色；通过 `LocalLiquidGlass` 与 `AdaptiveScaffold` 统一控制，Backdrop 仅在 Android 依赖 |
 | `themeMode` | 主题模式 | 应用明暗主题 | 通过 `ThemeManager` 立即影响顶层主题 |
 | `useDynamicColor` | Material You 动态取色 | Android 12+ 取系统壁纸色 | 关闭后自定义主题色才明显生效 |
 | `customThemeColor` | 自定义主题色 | Material 3 主色 | 不要和动态取色同时假设生效 |

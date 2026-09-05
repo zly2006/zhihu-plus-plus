@@ -69,7 +69,6 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -108,6 +107,7 @@ import com.github.zly2006.zhihu.platform.androidSettingsStore
 import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
 import kotlinx.coroutines.delay
 import kotlin.math.abs
+import com.github.zly2006.zhihu.ui.components.AdaptiveIconButton as IconButton
 
 class VideoPlayerActivity : ComponentActivity() {
     private var player: MediaPlayer? = null
@@ -130,56 +130,58 @@ class VideoPlayerActivity : ComponentActivity() {
 
         enableEdgeToEdgeCompat()
         setContent {
-            val toolbarColor = Color(0xFF1A1A2E).copy(alpha = 0.85f)
-            val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
-            val isFastForwardingState = remember { mutableStateOf(false) }
+            com.github.zly2006.zhihu.theme.ZhihuTheme {
+                val toolbarColor = Color(0xFF1A1A2E).copy(alpha = 0.85f)
+                val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+                val isFastForwardingState = remember { mutableStateOf(false) }
 
-            LaunchedEffect(isLandscape) {
-                val ctrl = WindowInsetsControllerCompat(window, window.decorView)
-                if (isLandscape) {
-                    ctrl.hide(WindowInsetsCompat.Type.systemBars())
-                    ctrl.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-                } else {
-                    ctrl.show(WindowInsetsCompat.Type.systemBars())
-                }
-            }
-
-            Box(Modifier.fillMaxSize().background(Color.Black)) {
-                VideoPlayerView(
-                    videoUrl = videoUrl,
-                    savedPosition = savedPosition,
-                    isFastForwardingState = isFastForwardingState,
-                    onPlayerReady = { p -> player = p },
-                )
-                if (isLandscape) {
-                    LandscapeOverlay(onBack = { finish() })
-                } else {
-                    PortraitOverlay(toolbarColor, onBack = { finish() })
-                }
-
-                AnimatedVisibility(
-                    visible = isFastForwardingState.value,
-                    enter = fadeIn(tween(150)),
-                    exit = fadeOut(tween(300)),
-                    modifier = Modifier.align(Alignment.TopCenter),
-                ) {
-                    Surface(
-                        modifier = Modifier.padding(top = 56.dp),
-                        shape = RoundedCornerShape(8.dp),
-                        color = Color.Black.copy(alpha = 0.35f),
-                    ) {
-                        Text(
-                            "2x",
-                            color = Color.White.copy(alpha = 0.85f),
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
-                        )
+                LaunchedEffect(isLandscape) {
+                    val ctrl = WindowInsetsControllerCompat(window, window.decorView)
+                    if (isLandscape) {
+                        ctrl.hide(WindowInsetsCompat.Type.systemBars())
+                        ctrl.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                    } else {
+                        ctrl.show(WindowInsetsCompat.Type.systemBars())
                     }
                 }
-            }
 
-            DisposableEffect(Unit) { onDispose { saveCurrentProgress() } }
+                Box(Modifier.fillMaxSize().background(Color.Black)) {
+                    VideoPlayerView(
+                        videoUrl = videoUrl,
+                        savedPosition = savedPosition,
+                        isFastForwardingState = isFastForwardingState,
+                        onPlayerReady = { p -> player = p },
+                    )
+                    if (isLandscape) {
+                        LandscapeOverlay(onBack = { finish() })
+                    } else {
+                        PortraitOverlay(toolbarColor, onBack = { finish() })
+                    }
+
+                    AnimatedVisibility(
+                        visible = isFastForwardingState.value,
+                        enter = fadeIn(tween(150)),
+                        exit = fadeOut(tween(300)),
+                        modifier = Modifier.align(Alignment.TopCenter),
+                    ) {
+                        Surface(
+                            modifier = Modifier.padding(top = 56.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color.Black.copy(alpha = 0.35f),
+                        ) {
+                            Text(
+                                "2x",
+                                color = Color.White.copy(alpha = 0.85f),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                            )
+                        }
+                    }
+                }
+
+                DisposableEffect(Unit) { onDispose { saveCurrentProgress() } }
+            }
         }
     }
 
@@ -466,25 +468,36 @@ private fun VideoPlayerView(
         AnimatedVisibility(visible = controlsVisible, enter = EnterTransition.None, exit = ExitTransition.None, modifier = Modifier.align(Alignment.BottomCenter).fillMaxHeight(0.23f)) {
             Surface(Modifier.fillMaxWidth().fillMaxHeight(), color = Color.Black.copy(alpha = 0.55f)) {
                 Column(Modifier.fillMaxHeight().padding(horizontal = 12.dp, vertical = 4.dp), verticalArrangement = Arrangement.Center) {
-                    Slider(
-                        value = if (duration > 0) currentPosition.toFloat() / duration else 0f,
-                        onValueChange = {
-                            val pos = (it * duration).toLong()
-                            safeSeekTo(pos)
-                            currentPosition = safeGetMediaTime(currentPosition) { this.currentPosition }
-                        },
-                        modifier = Modifier.fillMaxWidth().height(20.dp),
-                        track = {
-                            val frac = if (duration > 0) currentPosition.toFloat() / duration else 0f
-                            Canvas(Modifier.fillMaxWidth().height(8.dp)) {
-                                val y = size.height / 2f
-                                val sw = 2.dp.toPx()
-                                val pe = size.width * frac
-                                drawLine(Color.White.copy(alpha = 0.2f), Offset(pe, y), Offset(size.width, y), sw, cap = StrokeCap.Round)
-                                drawLine(Color.White, Offset(0f, y), Offset(pe, y), sw, cap = StrokeCap.Round)
-                            }
-                        },
-                    )
+                    if (com.github.zly2006.zhihu.theme.LocalLiquidGlass.current) {
+                        com.github.zly2006.zhihu.ui.components.AdaptiveSlider(
+                            value = if (duration > 0) currentPosition.toFloat() / duration else 0f,
+                            onValueChange = {
+                                safeSeekTo((it * duration).toLong())
+                                currentPosition = safeGetMediaTime(currentPosition) { this.currentPosition }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    } else {
+                        Slider(
+                            value = if (duration > 0) currentPosition.toFloat() / duration else 0f,
+                            onValueChange = {
+                                val pos = (it * duration).toLong()
+                                safeSeekTo(pos)
+                                currentPosition = safeGetMediaTime(currentPosition) { this.currentPosition }
+                            },
+                            modifier = Modifier.fillMaxWidth().height(20.dp),
+                            track = {
+                                val frac = if (duration > 0) currentPosition.toFloat() / duration else 0f
+                                Canvas(Modifier.fillMaxWidth().height(8.dp)) {
+                                    val y = size.height / 2f
+                                    val sw = 2.dp.toPx()
+                                    val pe = size.width * frac
+                                    drawLine(Color.White.copy(alpha = 0.2f), Offset(pe, y), Offset(size.width, y), sw, cap = StrokeCap.Round)
+                                    drawLine(Color.White, Offset(0f, y), Offset(pe, y), sw, cap = StrokeCap.Round)
+                                }
+                            },
+                        )
+                    }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         IconButton(onClick = {
                             val p = mediaPlayer ?: return@IconButton

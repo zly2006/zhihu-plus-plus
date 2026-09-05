@@ -38,11 +38,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Comment
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -57,12 +55,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
+import com.github.zly2006.zhihu.theme.LocalLiquidGlass
 import com.github.zly2006.zhihu.ui.AnswerEndorsementChip
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
 import org.jetbrains.compose.resources.painterResource
 import zhihu.shared.generated.resources.Res
 import zhihu.shared.generated.resources.ic_vote_up_24dp
+import com.github.zly2006.zhihu.ui.components.AdaptiveButton as Button
+import com.github.zly2006.zhihu.ui.components.AdaptiveScaffold as Scaffold
 
 /** 渲染水平回答切换时的缓存内容预览。 */
 @OptIn(ExperimentalLayoutApi::class)
@@ -96,20 +97,20 @@ internal fun CachedAnswerPreview(cached: CachedAnswerContent, useTiqianMarkdown:
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(36.dp),
+                        .height(if (LocalLiquidGlass.current) 56.dp else 36.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Row(
                         modifier = Modifier
                             .clip(RoundedCornerShape(50))
-                            .background(color = Color(0xFF40B6F6)),
+                            .background(color = if (LocalLiquidGlass.current) MaterialTheme.colorScheme.primary else Color(0xFF40B6F6)),
                         horizontalArrangement = Arrangement.Start,
                     ) {
                         Button(
                             onClick = {},
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF40B6F6),
-                                contentColor = Color.Black,
+                                containerColor = if (LocalLiquidGlass.current) MaterialTheme.colorScheme.primary else Color(0xFF40B6F6),
+                                contentColor = if (LocalLiquidGlass.current) MaterialTheme.colorScheme.onPrimary else Color.Black,
                             ),
                             shape = RectangleShape,
                             contentPadding = PaddingValues(horizontal = 0.dp),
@@ -133,7 +134,7 @@ internal fun CachedAnswerPreview(cached: CachedAnswerContent, useTiqianMarkdown:
                         Text(text = "${cached.commentCount}")
                     }
                 }
-                Spacer(modifier = Modifier.height(16.dp))
+                if (!LocalLiquidGlass.current) Spacer(modifier = Modifier.height(16.dp))
             }
         },
     ) { innerPadding ->
