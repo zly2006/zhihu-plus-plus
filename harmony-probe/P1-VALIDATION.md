@@ -47,4 +47,4 @@
 - **深链解析（resolveContent）**：路由文件已编译，但 URL 解析未端到端验证；x64 使用 `io.ktor.http` 垫片，行为未与 ktor 对齐。
 - **启动器出现两个知乎++图标**：模拟器桌面显示新旧两个入口，bundle 查询显示同一 bundleName，疑似 launcher 缓存或历史安装残留，未深究。
 - Debug 原生库体积较大（arm64 ≈ 113 MB），Release/符号/包体优化仍属后续工作。
-- `P2-VALIDATION.md`（P2 阶段同规格验收记录）仍然缺失，本文件只覆盖 P1。
+- P2 阶段的同规格验收记录见 [P2-VALIDATION.md](P2-VALIDATION.md)，本文件只覆盖 P1。
