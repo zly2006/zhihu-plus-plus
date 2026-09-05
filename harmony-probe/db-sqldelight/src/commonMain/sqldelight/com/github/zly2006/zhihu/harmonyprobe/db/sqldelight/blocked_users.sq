@@ -1,0 +1,20 @@
+CREATE TABLE blocked_users (
+  userId TEXT NOT NULL PRIMARY KEY,
+  userName TEXT NOT NULL,
+  urlToken TEXT,
+  avatarUrl TEXT,
+  createdTime INTEGER NOT NULL
+);
+
+upsertBlockedUser:
+INSERT OR REPLACE INTO blocked_users (userId, userName, urlToken, avatarUrl, createdTime)
+VALUES (?, ?, ?, ?, ?);
+
+selectBlockedUserByUserId:
+SELECT * FROM blocked_users WHERE userId = ?;
+
+selectAllBlockedUsers:
+SELECT * FROM blocked_users ORDER BY createdTime DESC;
+
+countBlockedUsers:
+SELECT COUNT(*) FROM blocked_users;

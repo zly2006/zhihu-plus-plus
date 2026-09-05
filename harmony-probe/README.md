@@ -156,3 +156,20 @@ P1 阶段把真实共享主壳的最小裁剪入口搬进了探针，验收详�
 - 已知限制：material-icons 构件无 ohos 变体，底部栏三个图标以 ImageVector 内联（路径数据取自 CMP 1.7.3 icons 源码包）；material-kolor 动态取色未进探针，主题用静态 seed 方案替代；系统深色跟随、字体缩放、横竖屏尚未自动化验证。
 
 构建与 P2 相同：`.\gradlew.bat :probe:publishDebugBinariesToHarmonyApp` 后在 `harmonyApp` 执行 `devecocli build`。
+
+## P3 数据库选型
+
+选型结论：**HarmonyOS 端采用 CPF SQLDelight（app.cash.sqldelight 2.2.1-1.0.0 OH 变体线）**；CPF Room3 的 OH 变体（room3-runtime-ohosarm64 3.0.0-alpha01-0.3.0）被 fork 改为非 suspend API 但配套 room3-compiler 未发布，上游编译器（alpha01～3.0.2）生成的代码全部无法编译，按可行性报告停止条件不承担私有 compiler fork。详见 [P3 验收记录](P3-VALIDATION.md)。
+
+四个新增模块（`settings.gradle.kts`）：
+
+- `db-room3`：Room3 纯 JVM 验证模块（上游 room3 3.0.0-alpha01 + sqlite-bundled-jvm 2.7.0-alpha01），KSP schema 导出到 `db-room3/schemas`。
+- `db-sqldelight`：SQLDelight KMP 模块（jvm + ohosArm64），`.sq`/`.sqm` 与生产表名对齐；OH 侧随 `:probe` 进入 libkn.so。
+- `db-legacy-room2`：生产 Room 2.8.4 基线 fixture（Sync 方式引入 shared-local-db 的 7 个实体源文件），导出生产 v6 schema JSON。
+- `db-checks`：双栈同项测试 + 格式兼容实验，`.\gradlew.bat :db-checks:test` 运行（A1-A8 / B1-B7 / C1-C5 全部通过）。
+
+关键格式兼容结论：SQLDelight 可零迁移直接读取生产 Room 2.8.4 数据库文件；Room3 3.0.0-alpha01 与 Room 2.8.4 的 identity hash 兼容（同 DDL 文件可直接接管，数据零丢失）。
+
+SQLDelight OHOS 侧适配注意点（详见验收记录）：dialect 的 `AS Boolean` 代码生成有缺陷（用 INTEGER 存布尔）、CREATE TABLE 内不能写注释（会进 sqlite_master DDL）、`NativeSqliteDriver` 路径随 `name` 传完整沙箱路径（ArkTS 壳经 `P3SetDatabasePath` 注入 `filesDir/databases`，napi 入口 `setDatabasePath`）。
+
+模拟器（x86_64）上两个 DB 栈均无 ohosX64 变体，P3 切片页面如实展示该能力边界；arm64 设备端冒烟待真机。

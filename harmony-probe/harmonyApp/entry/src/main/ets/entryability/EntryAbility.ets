@@ -34,6 +34,12 @@ export default class EntryAbility extends UIAbility {
     // Main window is created, set main page for this ability
     hilog.info(DOMAIN, 'testTag', 'Ability onWindowStageCreate');
     this.pushColorMode();
+    // P3：把应用沙箱 filesDir 注入原生层，作为 CPF Room3 / SQLDelight 数据库的存储目录。
+    try {
+      nativeApi.setDatabasePath(this.context.filesDir + '/databases');
+    } catch (err) {
+      hilog.error(DOMAIN, 'P3', 'Failed to set database path. Cause: %{public}s', JSON.stringify(err));
+    }
 
     windowStage.loadContent('pages/Index', (err) => {
       if (err.code) {

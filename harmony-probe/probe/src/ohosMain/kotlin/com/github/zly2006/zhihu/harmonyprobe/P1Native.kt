@@ -15,3 +15,13 @@ fun p1HandleBack(): Boolean = P1ShellState.handleBack()
 fun p1ApplyColorMode(value: CPointer<ByteVar>?) {
     value?.toKString()?.let { P1ShellState.applyColorMode(it.equals("dark", ignoreCase = true)) }
 }
+
+/** P3：由 ArkTS 壳注入应用沙箱 filesDir 路径，作为原生数据库的存储目录。 */
+internal var p3DatabaseDir: String? = null
+    private set
+
+@OptIn(ExperimentalNativeApi::class, ExperimentalForeignApi::class)
+@CName("P3SetDatabasePath")
+fun p3SetDatabasePath(value: CPointer<ByteVar>?) {
+    value?.toKString()?.let { p3DatabaseDir = it }
+}

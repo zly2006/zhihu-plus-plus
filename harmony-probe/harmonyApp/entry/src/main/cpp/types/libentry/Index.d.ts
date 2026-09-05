@@ -9,3 +9,4 @@ export const applyError: (value: string) => void
 export const applyColorMode: (value: string) => void
 export const usesNativeNetwork: () => boolean
 export const handleBack: () => boolean
+export const setDatabasePath: (value: string) => void

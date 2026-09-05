@@ -3,6 +3,9 @@ plugins {
     alias(libs.plugins.composeMultiplatform) apply false
     alias(libs.plugins.composeCompiler) apply false
     alias(libs.plugins.kotlinSerialization) apply false
+    alias(libs.plugins.kotlinJvm) apply false
+    alias(libs.plugins.ksp) apply false
+    alias(libs.plugins.sqldelight) apply false
 }
 
 // CPF runtime has no desktop JVM variant. Host-only parser tests use the matching

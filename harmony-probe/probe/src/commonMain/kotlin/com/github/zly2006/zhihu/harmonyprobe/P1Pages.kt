@@ -240,6 +240,10 @@ internal fun P1AccountPage(innerPadding: PaddingValues) {
         P1Row("P2 知乎日报访客切片", "打开 P2 阶段的日报阅读验证内容") {
             P1ShellState.p2SliceOpen = true
         }
+        HorizontalDivider()
+        P1Row("P3 数据库选型", "CPF Room3 vs SQLDelight 双栈验证状态") {
+            P1ShellState.p3SliceOpen = true
+        }
         Text(
             "返回键、深色模式推送与状态恢复由宿主壳提供；详见 harmony-probe/README.md。",
             Modifier.padding(vertical = 16.dp),

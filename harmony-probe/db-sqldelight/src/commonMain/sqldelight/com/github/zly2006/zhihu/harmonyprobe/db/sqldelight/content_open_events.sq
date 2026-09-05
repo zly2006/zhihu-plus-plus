@@ -1,0 +1,24 @@
+CREATE TABLE content_open_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  contentType TEXT NOT NULL,
+  contentId TEXT NOT NULL,
+  questionId INTEGER,
+  openFrom TEXT NOT NULL,
+  openedAt INTEGER NOT NULL
+);
+
+CREATE INDEX index_content_open_events_contentType_contentId
+  ON content_open_events (contentType, contentId);
+
+CREATE INDEX index_content_open_events_openedAt
+  ON content_open_events (openedAt);
+
+insertOpenEvent:
+INSERT INTO content_open_events (contentType, contentId, questionId, openFrom, openedAt)
+VALUES (?, ?, ?, ?, ?);
+
+selectRecentOpenEvents:
+SELECT * FROM content_open_events ORDER BY openedAt DESC LIMIT ?;
+
+countOpenEvents:
+SELECT COUNT(*) FROM content_open_events;

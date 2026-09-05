@@ -103,6 +103,9 @@ kotlin {
                 implementation(libs.ktor.serialization.kotlinx.json)
                 implementation("io.coil-kt.coil3:coil-compose:3.3.0-1.0.0")
                 implementation("io.coil-kt.coil3:coil-network-ktor3:3.3.0-1.0.0")
+                // P3 数据库选型：CPF SQLDelight 只有 ohosArm64 变体，只在 arm64 编译接入。
+                // CPF Room3 OH 变体缺配套 compiler（见 P3-VALIDATION.md），不参与 OHOS 编译。
+                implementation(project(":db-sqldelight"))
             }
         }
         val ohosX64Main by getting {

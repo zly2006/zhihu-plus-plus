@@ -1,0 +1,24 @@
+-- 注意：CPF fork 的 sqlite-3-30-dialect 对 "AS Boolean" 代码生成有缺陷（生成非法 import Boolean），
+-- 因此这里直接用 INTEGER（SQLite 中布尔即整数 0/1），与生产 Room 2.8.4 的存储一致。
+-- 注意：不要把注释写进 CREATE TABLE 语句内部，SQLDelight 会把注释一并存入 sqlite_master 的 DDL。
+CREATE TABLE blocked_keywords (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  keyword TEXT NOT NULL,
+  keywordType TEXT NOT NULL DEFAULT 'EXACT_MATCH',
+  caseSensitive INTEGER NOT NULL,
+  isRegex INTEGER NOT NULL,
+  createdTime INTEGER NOT NULL
+);
+
+insertKeyword:
+INSERT INTO blocked_keywords (keyword, keywordType, caseSensitive, isRegex, createdTime)
+VALUES (?, ?, ?, ?, ?);
+
+selectAllKeywords:
+SELECT * FROM blocked_keywords ORDER BY createdTime DESC;
+
+countKeywords:
+SELECT COUNT(*) FROM blocked_keywords;
+
+deleteAllKeywords:
+DELETE FROM blocked_keywords;

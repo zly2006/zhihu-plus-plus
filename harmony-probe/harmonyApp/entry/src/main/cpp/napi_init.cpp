@@ -81,6 +81,12 @@ static napi_value ApplyColorMode(napi_env env, napi_callback_info info) {
     return nullptr;
 }
 
+static napi_value SetDatabasePath(napi_env env, napi_callback_info info) {
+    const std::string value = ReadStringArgument(env, info);
+    P3SetDatabasePath(const_cast<char*>(value.c_str()));
+    return nullptr;
+}
+
 EXTERN_C_START
 static napi_value Init(napi_env env, napi_value exports) {
     androidx_compose_ui_arkui_init(env, exports);
@@ -92,6 +98,7 @@ static napi_value Init(napi_env env, napi_value exports) {
         {"applySessionStatus", nullptr, ApplySessionStatus, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"applyError", nullptr, ApplyError, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"applyColorMode", nullptr, ApplyColorMode, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setDatabasePath", nullptr, SetDatabasePath, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"usesNativeNetwork", nullptr, UsesNativeNetwork, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"handleBack", nullptr, HandleBack, nullptr, nullptr, nullptr, napi_default, nullptr},
     };

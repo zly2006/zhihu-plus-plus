@@ -9,6 +9,17 @@ navigationCompose = "2.9.4-OH.0.1.2-37"
 lifecycle = "2.9.4-OH.0.1.2-37"
 savedstate = "1.3.3-OH.0.1.2-37"
 
+# P3 数据库选型：CPF Room3 OH 变体、CPF SQLDelight OH 变体与上游 JVM 变体。
+# room3-compiler 用上游 alpha01（OH 运行时是 alpha01 的 fork）。
+ksp = "2.2.21-2.0.4"
+room3 = "3.0.0-alpha01"
+room3-ohos = "3.0.0-alpha01-0.3.0"
+sqlite-ohos = "2.7.0-alpha01-0.3.0"
+sqlite-upstream = "2.7.0-alpha01"
+sqldelight = "2.2.1-1.0.0"
+room2 = "2.8.4"
+sqlite2 = "2.6.2"
+
 [libraries]
 compose-multiplatform-export = { module = "org.jetbrains.compose.export:export", version.ref = "composeMultiplatform" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
@@ -22,8 +33,34 @@ androidx-lifecycle-runtime-compose = { module = "org.jetbrains.androidx.lifecycl
 androidx-lifecycle-viewmodel-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
 androidx-savedstate = { module = "org.jetbrains.androidx.savedstate:savedstate", version.ref = "savedstate" }
 
+# CPF Room3（上游 androidx.room3 组 + CPF ohosArm64 变体）
+room3-runtime = { module = "androidx.room3:room3-runtime", version.ref = "room3" }
+room3-runtime-ohosarm64 = { module = "androidx.room3:room3-runtime-ohosarm64", version.ref = "room3-ohos" }
+room3-compiler = { module = "androidx.room3:room3-compiler", version.ref = "room3" }
+sqlite-bundled-ohosarm64 = { module = "androidx.sqlite:sqlite-bundled-ohosarm64", version.ref = "sqlite-ohos" }
+# 上游 JVM 变体：room3-runtime-jvm 3.0.0-alpha01 的生成代码针对上游 sqlite 2.7.0-alpha01 API（executeSQL/prepare/step），
+# CPF 的 sqlite-jvm 2.7.0-alpha01-0.3.0 fork 是旧 API 线，JVM 验证必须用上游链。
+sqlite-bundled-jvm-upstream = { module = "androidx.sqlite:sqlite-bundled-jvm", version.ref = "sqlite-upstream" }
+
+# CPF SQLDelight（OH 变体与 JVM 变体同一 fork 版本线）
+sqldelight-runtime-jvm = { module = "app.cash.sqldelight:runtime-jvm", version.ref = "sqldelight" }
+sqldelight-runtime-ohosarm64 = { module = "app.cash.sqldelight:runtime-ohosarm64", version.ref = "sqldelight" }
+sqldelight-sqlite-driver = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "sqldelight" }
+sqldelight-native-driver-ohosarm64 = { module = "app.cash.sqldelight:native-driver-ohosarm64", version.ref = "sqldelight" }
+sqldelight-coroutines-extensions-jvm = { module = "app.cash.sqldelight:coroutines-extensions-jvm", version.ref = "sqldelight" }
+sqldelight-coroutines-extensions-ohosarm64 = { module = "app.cash.sqldelight:coroutines-extensions-ohosarm64", version.ref = "sqldelight" }
+sqldelight-dialect = { module = "app.cash.sqldelight:sqlite-3-30-dialect", version.ref = "sqldelight" }
+
+# 生产 Android/Desktop 数据库基线（Room 2.8.4）与 legacy fixture
+room2-runtime = { module = "androidx.room:room-runtime", version.ref = "room2" }
+room2-compiler = { module = "androidx.room:room-compiler", version.ref = "room2" }
+sqlite2-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "sqlite2" }
+
 [plugins]
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 composeMultiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
 composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+kotlinJvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }

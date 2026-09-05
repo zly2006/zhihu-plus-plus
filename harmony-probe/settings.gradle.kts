@@ -16,6 +16,7 @@ dependencyResolutionManagement {
 include(":probe")
 include(":reader-checks")
 include(":ktor-url-shim")
+include(":db-room3", ":db-sqldelight", ":db-legacy-room2", ":db-checks")
 
 listOf(
     "markdown-parser", "markdown-runtime", "markdown-renderer",

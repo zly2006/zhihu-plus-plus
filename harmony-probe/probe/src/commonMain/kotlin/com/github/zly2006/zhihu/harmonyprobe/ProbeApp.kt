@@ -20,7 +20,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -33,6 +36,8 @@ fun ProbeApp() {
         Surface(Modifier.fillMaxSize()) {
             if (P1ShellState.p2SliceOpen) {
                 P2Slice()
+            } else if (P1ShellState.p3SliceOpen) {
+                P3Slice()
             } else {
                 P1Shell()
             }
@@ -141,6 +146,41 @@ private fun P2Slice() {
                 item { Text("知乎日报公开 API · ${home.date}", style = MaterialTheme.typography.bodySmall) }
             }
         }
+    }
+}
+
+@Composable
+private fun P3Slice() {
+    var status by remember { mutableStateOf("P3 数据库冒烟：尚未运行") }
+    LaunchedEffect(Unit) {
+        status = p3DatabaseSmoke()
+    }
+    Column(
+        Modifier.fillMaxSize().padding(horizontal = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Spacer(Modifier.height(18.dp))
+        Text("P3 数据库选型", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+        Text(
+            "CPF Room3（androidx.room3 · JVM 3.0.0-alpha01）与 CPF SQLDelight（app.cash.sqldelight 2.2.1-1.0.0）" +
+                "双栈选型验证。选型结论：OHOS 端采用 SQLDelight；Room3 的 OH 变体缺配套 compiler 暂不可用。",
+            style = MaterialTheme.typography.bodySmall,
+        )
+        Text(
+            status,
+            Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(14.dp))
+                .clickable { }
+                .padding(16.dp),
+        )
+        Text(
+            "宿主机 JVM 已完成迁移/事务/Flow/并发/异常恢复/格式兼容全项对比（db-checks）；" +
+                "本页为设备端能力边界展示。",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Button(onClick = { P1ShellState.p3SliceOpen = false }) { Text("← 返回 P1 主壳") }
     }
 }
 
