@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
@@ -54,6 +55,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.ui.components.pageTurnViewport
+import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.util.twoDigitString
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedFeedRecord
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
@@ -78,6 +81,11 @@ fun BlockedFeedHistoryScreen() {
 
     val records by dao.observeAll().collectAsState(initial = emptyList())
     var showClearDialog by remember { mutableStateOf(false) }
+    val listState = rememberLazyListState()
+    val pageTurnTarget = rememberPageTurnTarget(
+        listState = listState,
+        enabled = !showClearDialog,
+    )
 
     Scaffold(
         topBar = {
@@ -111,8 +119,10 @@ fun BlockedFeedHistoryScreen() {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
+                    .pageTurnViewport(pageTurnTarget)
                     .padding(innerPadding)
                     .testTag("blocked_feed_history_list"),
+                state = listState,
             ) {
                 items(records, key = { it.id }) { record ->
                     BlockedFeedRecordItem(

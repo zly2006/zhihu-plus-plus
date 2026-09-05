@@ -116,6 +116,8 @@ import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemOverall
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
 import com.github.zly2006.zhihu.ui.components.normalizedAnswerSwitchSensitivity
+import com.github.zly2006.zhihu.ui.components.pageTurnViewport
+import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.ui.isLegacyWebViewSupported
 import kotlinx.coroutines.delay
 import kotlin.math.abs
@@ -308,6 +310,7 @@ fun AppearanceSettingsScreen(
     val userMessages = rememberUserMessageSink()
 
     val scrollState = rememberScrollState()
+    val pageTurnTarget = rememberPageTurnTarget(scrollState, enabled = true)
     val navigator = LocalNavigator.current
 
     val bringIntoViewRequesters = remember { mutableStateMapOf<String, BringIntoViewRequester>() }
@@ -381,6 +384,7 @@ fun AppearanceSettingsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .pageTurnViewport(pageTurnTarget)
                 .verticalScroll(scrollState)
                 .testTag(APPEARANCE_SETTINGS_SCROLL_TAG)
                 .padding(innerPadding)
@@ -1323,7 +1327,7 @@ fun AppearanceSettingsScreen(
                     title = "电纸书翻页",
                     header = {
                         Text(
-                            "仅在文章、回答、想法及其评论区生效。",
+                            "在内容列表、正文、评论区和设置等可滚动页面生效，私聊除外。",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -1367,7 +1371,7 @@ fun AppearanceSettingsScreen(
                     }
                     SettingItemWithSwitch(
                         title = { Text("显示翻页悬浮按钮") },
-                        description = { Text("只在支持翻页的阅读页面显示。") },
+                        description = { Text("只在支持翻页的可滚动页面显示。") },
                         checked = showPageTurnFab,
                         onCheckedChange = {
                             showPageTurnFab = it

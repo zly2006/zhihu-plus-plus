@@ -71,6 +71,8 @@ import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
 import com.github.zly2006.zhihu.ui.components.SwitchWithIcon
+import com.github.zly2006.zhihu.ui.components.pageTurnViewport
+import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 
 const val READING_SETTINGS_SCROLL_TAG = "readingSettings.scroll"
 const val READING_SETTINGS_FIELD_TAG_PREFIX = "readingSettings.field."
@@ -97,6 +99,8 @@ private val queueLimitPresets = listOf(5, 10, 20)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReadingSettingsScreen() {
+    val scrollState = rememberScrollState()
+    val pageTurnTarget = rememberPageTurnTarget(scrollState, enabled = true)
     val navigator = LocalNavigator.current
     val settings = rememberSettingsStore()
     var preferences by remember { mutableStateOf(loadReadingPreferences(settings)) }
@@ -159,7 +163,8 @@ fun ReadingSettingsScreen() {
                 .padding(innerPadding)
                 .consumeWindowInsets(innerPadding)
                 .imePadding()
-                .verticalScroll(rememberScrollState())
+                .pageTurnViewport(pageTurnTarget)
+                .verticalScroll(scrollState)
                 .testTag(READING_SETTINGS_SCROLL_TAG)
                 .padding(vertical = 16.dp),
         ) {

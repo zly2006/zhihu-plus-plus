@@ -46,6 +46,8 @@ import com.github.zly2006.zhihu.notification.NotificationType
 import com.github.zly2006.zhihu.notification.rememberNotificationSettingsStore
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
+import com.github.zly2006.zhihu.ui.components.pageTurnViewport
+import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.notification.matchNotificationType as sharedMatchNotificationType
 
 object NotificationPreferences {
@@ -68,6 +70,8 @@ fun NotificationSettingsScreen(
     val settingsStore = rememberNotificationSettingsStore()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val highlightedSetting = setting.orEmpty()
+    val scrollState = rememberScrollState()
+    val pageTurnTarget = rememberPageTurnTarget(scrollState, enabled = true)
 
     var systemNotificationSettings by remember {
         mutableStateOf(
@@ -115,7 +119,8 @@ fun NotificationSettingsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .pageTurnViewport(pageTurnTarget)
+                .verticalScroll(scrollState)
                 .padding(innerPadding)
                 .padding(vertical = 16.dp),
         ) {

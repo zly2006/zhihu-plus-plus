@@ -91,7 +91,9 @@ import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.NoOpPagerNestedScrollConnection
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
+import com.github.zly2006.zhihu.ui.components.pageTurnViewport
 import com.github.zly2006.zhihu.ui.components.rememberNestedHorizontalPagerConnection
+import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.ui.topLevelReselectAction
 import com.github.zly2006.zhihu.viewmodel.feed.FollowRecommendViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.FollowViewModel
@@ -378,13 +380,19 @@ fun FollowRecommendScreen(
     }
 
     var feedAuthorBlockRequest by remember { mutableStateOf<FeedAuthorBlockRequest?>(null) }
+    val pageTurnTarget = rememberPageTurnTarget(
+        listState = listState,
+        enabled = isActive && feedAuthorBlockRequest == null,
+    )
 
     Column {
         FeedPullToRefresh(viewModel, environment) {
             PaginatedList(
                 items = viewModel.displayItems,
                 listState = listState,
-                modifier = Modifier.testTag(FOLLOW_RECOMMEND_LIST_TAG),
+                modifier = Modifier
+                    .pageTurnViewport(pageTurnTarget)
+                    .testTag(FOLLOW_RECOMMEND_LIST_TAG),
                 topContent = {
                     item {
                         FollowingUsersRow()
@@ -526,13 +534,19 @@ fun FollowDynamicScreen(
     }
 
     var feedAuthorBlockRequest by remember { mutableStateOf<FeedAuthorBlockRequest?>(null) }
+    val pageTurnTarget = rememberPageTurnTarget(
+        listState = listState,
+        enabled = isActive && feedAuthorBlockRequest == null,
+    )
 
     Column {
         FeedPullToRefresh(viewModel, environment) {
             PaginatedList(
                 items = viewModel.displayItems,
                 listState = listState,
-                modifier = Modifier.testTag(FOLLOW_DYNAMIC_LIST_TAG),
+                modifier = Modifier
+                    .pageTurnViewport(pageTurnTarget)
+                    .testTag(FOLLOW_DYNAMIC_LIST_TAG),
                 onLoadMore = { viewModel.loadMore(environment) },
                 topContent = {
                     item {

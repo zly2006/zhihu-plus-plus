@@ -95,6 +95,8 @@ import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.reading.isReadingPlayerSupported
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
+import com.github.zly2006.zhihu.ui.components.pageTurnViewport
+import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.SystemUpdateState
 import com.github.zly2006.zhihu.ui.subscreens.defaultBottomBarSelectionKeys
@@ -143,6 +145,7 @@ fun AccountSettingScreen(
     showUnreadBadge: Boolean = true,
     onDismissRequest: () -> Unit = {},
     refreshAccountProfileOnEnter: Boolean = true,
+    isActive: Boolean = true,
 ) {
     val navigator = LocalNavigator.current
     val accountStore = rememberZhihuAccountStore()
@@ -171,6 +174,11 @@ fun AccountSettingScreen(
     var isDeveloper by remember { mutableStateOf(settings.getBoolean("developer", false)) }
     var clickTimes by remember { mutableIntStateOf(0) }
     var showLogoutDialog by remember { mutableStateOf(false) }
+    val scrollState = rememberScrollState()
+    val pageTurnTarget = rememberPageTurnTarget(
+        scrollState = scrollState,
+        enabled = isActive && !showLogoutDialog,
+    )
     LaunchedEffect(isDeveloper) {
         settings.putBoolean("developer", isDeveloper)
     }
@@ -186,7 +194,8 @@ fun AccountSettingScreen(
                 .fillMaxWidth()
                 .padding(innerPadding)
                 .testTag(ACCOUNT_SETTINGS_SCROLL_TAG)
-                .verticalScroll(rememberScrollState())
+                .pageTurnViewport(pageTurnTarget)
+                .verticalScroll(scrollState)
                 .padding(padding),
         ) {
             LaunchedEffect(data.login, refreshAccountProfileOnEnter) {

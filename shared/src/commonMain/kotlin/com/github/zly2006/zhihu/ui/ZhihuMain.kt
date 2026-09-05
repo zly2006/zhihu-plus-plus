@@ -808,6 +808,7 @@ private fun MainTabsPager(
                 scrollToTopTrigger = scrollToTopTrigger,
                 innerPadding = innerPadding,
                 showTopActions = showHomeTopActions,
+                isActive = pagerState.currentPage == pageIndex,
             )
             MainTabPage.FollowPage -> FollowScreen(
                 scrollToTopTrigger = scrollToTopTrigger,
@@ -833,7 +834,10 @@ private fun MainTabsPager(
                 collectionDirectBrowseEnabled = collectionDirectBrowseEnabled,
                 isActive = pagerState.currentPage == pageIndex,
             )
-            MainTabPage.AccountPage -> AccountSettingScreen(innerPadding)
+            MainTabPage.AccountPage -> AccountSettingScreen(
+                innerPadding = innerPadding,
+                isActive = pagerState.currentPage == pageIndex,
+            )
         }
     }
 }

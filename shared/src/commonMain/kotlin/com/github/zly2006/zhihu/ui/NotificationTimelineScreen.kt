@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -66,6 +67,9 @@ import com.github.zly2006.zhihu.notification.rememberNotificationSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
+import com.github.zly2006.zhihu.ui.components.pageTurnViewport
+import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
+import com.github.zly2006.zhihu.viewmodel.MobileNotificationCategory
 import com.github.zly2006.zhihu.viewmodel.NotificationTimelineViewModel
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.number
@@ -88,6 +92,11 @@ fun NotificationTimelineScreen(
         NotificationTimelineViewModel(entryName)
     }
     val invitations = entryName == INVITATION_ENTRY_NAME
+    val listState = rememberLazyListState()
+    val pageTurnTarget = rememberPageTurnTarget(
+        listState = listState,
+        enabled = MobileNotificationCategory.entries.any { it.entryName == entryName },
+    )
 
     LaunchedEffect(entryName) {
         if (viewModel.allData.isEmpty()) {
@@ -120,7 +129,10 @@ fun NotificationTimelineScreen(
                 items = viewModel.allData,
                 onLoadMore = { viewModel.loadMore(environment) },
                 isEnd = { viewModel.isEnd },
-                modifier = Modifier.fillMaxSize(),
+                listState = listState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pageTurnViewport(pageTurnTarget),
                 footer = ProgressIndicatorFooter,
                 key = { it.stableId },
             ) { notification ->
