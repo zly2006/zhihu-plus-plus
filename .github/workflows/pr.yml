@@ -19,7 +19,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: zulu
-          java-version: "17"
+          java-version: "25"
           cache: gradle
 
       - name: Change wrapper permissions
@@ -60,7 +60,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: zulu
-          java-version: "17"
+          java-version: "25"
           cache: gradle
 
       - name: Change wrapper permissions
@@ -124,7 +124,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: zulu
-          java-version: "23"
+          java-version: "25"
           cache: gradle
 
       - name: Change wrapper permissions

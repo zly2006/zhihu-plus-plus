@@ -44,7 +44,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
-          java-version: '17'
+          java-version: '25'
           cache: 'gradle'
 
       - name: Change wrapper permissions
@@ -136,7 +136,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu' # See 'Supported distributions' for available options
-          java-version: '17'
+          java-version: '25'
           cache: 'gradle'
       - name: Setup rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
