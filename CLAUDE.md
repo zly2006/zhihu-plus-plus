@@ -105,6 +105,8 @@ KMP 迁移后的回归不能只看 common 层调用链，还必须检查平台�
 
 macOS 原生侧栏不能用视觉效果容器加手工坐标按钮模仿。承载分组导航时应使用 AppKit 的 source-list 语义组件（如 `NSOutlineView` 配合原生 selection、group row 和 cell view），让系统负责选中高亮、键盘导航、行高、缩进和外观适配；声明层只提供分组与行模型。例子：内容、资料、账号等分组应成为 outline 的 group rows，导航项成为带系统图标的 child rows，而不是用 textured button、固定 y 坐标和手工开关状态拼出相似布局。
 
+macOS 原生侧栏存在时，必须在包含 Snackbar、Bottom Sheet 等所有 Compose overlay 的共同父布局上施加内容区 inset；只给页面根节点传 padding 会让根节点外发射的 overlay 仍按全窗口测量，从而覆盖侧栏。
+
 修复 Apple Silicon 上的 Gradle JDK 时，必须同时核对 IDE 配置引用、实际路径和 Java 二进制架构，不能只修改 IDE 中显示的 JDK 名称，也不能看到版本号正确就假定架构正确。项目使用 `#GRADLE_LOCAL_JAVA_HOME` 时，应检查 `.gradle/config.properties` 的真实 `java.home`；引用命名 JDK 时，还要确认对应 Android Studio 的 `jdk.table.xml` 存在该条目。例子：M 系列 Mac 上一个版本较新的 Intel JDK 会让 Kotlin/Native 把 host 识别成 `macos_x64`；把项目改成一个未注册的 arm64 JDK 名称又会产生“Undefined jdk.table.xml entry”，正确做法是选定已存在的 arm64 JDK 路径、停止旧 daemon，再读回 Gradle JVM 与 host 架构。
 
 ### Issue 内容可信度与实施流程（最高优先级）

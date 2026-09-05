@@ -22,6 +22,8 @@
 
 package com.github.zly2006.zhihu.macos
 
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -34,10 +36,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.platform.MacosUserMessageHost
+import com.github.zly2006.zhihu.platform.macosContentAreaInsetState
 import com.github.zly2006.zhihu.ui.MacosWindowChrome
 import com.github.zly2006.zhihu.ui.MacosWindowNavigationItem
 import kotlinx.cinterop.ObjCAction
 import kotlinx.cinterop.ObjCSignatureOverride
+import platform.AppKit.NSAnimationContext
 import platform.AppKit.NSColor
 import platform.AppKit.NSImage
 import platform.AppKit.NSImageView
@@ -73,15 +78,21 @@ internal fun MacosNativeWindowChrome(
     content: @Composable (Modifier) -> Unit,
 ) {
     var sidebarVisible by remember { mutableStateOf(true) }
+    val sidebarInset by animateDpAsState(
+        targetValue = if (sidebarVisible) SIDEBAR_WIDTH.dp else 0.dp,
+        animationSpec = tween(durationMillis = 240),
+        label = "macos-sidebar-content-inset",
+    )
+
+    SideEffect {
+        macosContentAreaInsetState.value = sidebarInset
+    }
 
     Box(Modifier.fillMaxSize()) {
-        content(
-            if (sidebarVisible) {
-                Modifier.padding(start = SIDEBAR_WIDTH.dp)
-            } else {
-                Modifier
-            },
-        )
+        val contentAreaModifier = Modifier.padding(start = sidebarInset)
+        MacosUserMessageHost(modifier = contentAreaModifier) {
+            content(Modifier.fillMaxSize())
+        }
     }
 
     MacosNativeSidebar(
@@ -155,6 +166,7 @@ internal class MacosNativeSidebarController(
     private var items: List<MacosWindowNavigationItem> = emptyList()
     private var visualItems: List<VisualItem> = emptyList()
     private var attached = false
+    private var sidebarVisible = false
 
     private val tableColumn = NSTableColumn(SIDEBAR_COLUMN_IDENTIFIER)
     internal val outlineView = NSOutlineView().apply {
@@ -190,7 +202,16 @@ internal class MacosNativeSidebarController(
         visible: Boolean,
     ) {
         this.items = items
-        sidebarView.setHidden(!visible)
+        if (attached && sidebarVisible != visible) {
+            val contentView = window.contentView
+            val contentHeight = contentView?.bounds?.let(::CGRectGetHeight) ?: 0.0
+            val targetFrame = CGRectMake(0.0, 0.0, if (visible) SIDEBAR_WIDTH else 0.0, contentHeight)
+            NSAnimationContext.beginGrouping()
+            NSAnimationContext.currentContext.duration = 0.24
+            sidebarView.animator().setFrame(targetFrame)
+            NSAnimationContext.endGrouping()
+        }
+        sidebarVisible = visible
         val newVisualItems = items.map { item ->
             VisualItem(
                 identifier = item.identifier,
@@ -215,6 +236,7 @@ internal class MacosNativeSidebarController(
         val contentView = window.contentView ?: return
         val contentBounds = contentView.bounds
         sidebarView.frame = CGRectMake(0.0, 0.0, SIDEBAR_WIDTH, CGRectGetHeight(contentBounds))
+        sidebarVisible = true
         scrollView.frame = sidebarView.bounds
         contentView.addSubview(sidebarView)
         attached = true
