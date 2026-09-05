@@ -74,7 +74,9 @@ import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.HOME_PIN_ANNOUNCEMENT_READ_KEY_PREFIX
 import com.github.zly2006.zhihu.ui.TtsState
+import com.github.zly2006.zhihu.ui.components.PageTurnScrollContent
 import com.github.zly2006.zhihu.ui.components.SettingItemOverall
+import com.github.zly2006.zhihu.ui.components.rememberPageTurnState
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.launch
 
@@ -106,6 +108,8 @@ fun DeveloperSettingsScreen() {
     var showCookieDialog by remember { mutableStateOf(false) }
     var showSignedRequestDialog by remember { mutableStateOf(false) }
 
+    val scrollState = rememberScrollState()
+    val pageTurnState = rememberPageTurnState()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     Scaffold(
@@ -134,158 +138,166 @@ fun DeveloperSettingsScreen() {
             )
         },
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(innerPadding)
-                .padding(16.dp),
-        ) {
-            SettingItemOverall(
-                modifier = Modifier.testTag(DEVELOPER_SETTINGS_MODE_TAG),
-                title = { Text("开发者模式") },
-                checked = developerModeEnabled,
-                onCheckedChange = {
-                    developerModeEnabled = it
-                    settings.putBoolean("developer", it)
-                    if (!it) {
-                        navigator.onNavigateBack()
-                    }
-                },
-            )
-            SelectionContainer {
-                Column {
-                    Text(runtimeInfo.networkStatus)
-                    runtimeInfo.powerSaveModeText?.let { Text(it) }
-                    Text("连续使用时长：${formatContinuousUsageDuration(runtimeInfo.continuousUsageDurationMs)}")
-
-                    Spacer(Modifier.height(16.dp))
-                }
-            }
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = {
-                    coroutineScope.launch {
-                        if (accountStore.client.refreshAndSaveProfile() != null) {
-                            userMessages.showShortMessage("登录成功")
-                        } else {
-                            userMessages.showShortMessage("登录失败")
-                        }
-                    }
-                }) { Text("验证登录") }
-
-                Button(onClick = {
-                    coroutineScope.launch {
-                        environment.refreshToken()
-                        userMessages.showShortMessage("刷新成功")
-                    }
-                }) { Text("刷新Token") }
-
-                Button(onClick = { showCookieDialog = true }) { Text("手动设置Cookie") }
-
-                Button(onClick = { showSignedRequestDialog = true }) { Text("签名请求") }
-
-                if (isSentenceSimilaritySupported && !rememberIsLiteVariant()) {
-                    Button(
-                        modifier = Modifier.testTag(DEVELOPER_SETTINGS_SENTENCE_SIMILARITY_TAG),
-                        onClick = {
-                            navigator.onNavigate(SentenceSimilarityTest)
-                        },
-                    ) { Text("句子相似度") }
-                }
-
-                Button(
-                    modifier = Modifier.testTag(DEVELOPER_SETTINGS_COLOR_SCHEME_TAG),
-                    onClick = {
-                        navigator.onNavigate(Account.DeveloperSettings.ColorScheme)
-                    },
-                ) { Text("Color Scheme") }
-
-                Button(onClick = {
-                    settings.remove(HOME_NOTIFICATION_READ_UUIDS_PREFERENCE_KEY)
-                    settings.removeByPrefix(HOME_PIN_ANNOUNCEMENT_READ_KEY_PREFIX)
-                    userMessages.showShortMessage("已清除 online notification 和作者想法推送的已读记录")
-                }) { Text("清除所有 online notification 和作者想法推送已读记录") }
-            }
-
-            // TTS引擎信息显示
-            Card(
+        PageTurnScrollContent(
+            pageTurnState = pageTurnState,
+            scrollState = scrollState,
+            innerPadding = innerPadding,
+            topBarState = scrollBehavior.state,
+        ) { sizeTrackingModifier ->
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                ),
+                    .fillMaxSize()
+                    .then(sizeTrackingModifier)
+                    .verticalScroll(scrollState)
+                    .padding(innerPadding)
+                    .padding(16.dp),
             ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                ) {
-                    Text(
-                        "语音朗读引擎信息",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
+                SettingItemOverall(
+                    modifier = Modifier.testTag(DEVELOPER_SETTINGS_MODE_TAG),
+                    title = { Text("开发者模式") },
+                    checked = developerModeEnabled,
+                    onCheckedChange = {
+                        developerModeEnabled = it
+                        settings.putBoolean("developer", it)
+                        if (!it) {
+                            navigator.onNavigateBack()
+                        }
+                    },
+                )
+                SelectionContainer {
+                    Column {
+                        Text(runtimeInfo.networkStatus)
+                        runtimeInfo.powerSaveModeText?.let { Text(it) }
+                        Text("连续使用时长：${formatContinuousUsageDuration(runtimeInfo.continuousUsageDurationMs)}")
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Text(
-                            "当前引擎",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                        Text(
-                            runtimeInfo.currentTtsEngineLabel,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
+                        Spacer(Modifier.height(16.dp))
                     }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Text(
-                            "引擎状态",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                        Text(
-                            if (runtimeInfo.ttsState.isSpeaking) {
-                                "正在朗读"
-                            } else if (runtimeInfo.ttsState != TtsState.Uninitialized) {
-                                "就绪"
+                }
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = {
+                        coroutineScope.launch {
+                            if (accountStore.client.refreshAndSaveProfile() != null) {
+                                userMessages.showShortMessage("登录成功")
                             } else {
-                                "未就绪"
+                                userMessages.showShortMessage("登录失败")
+                            }
+                        }
+                    }) { Text("验证登录") }
+
+                    Button(onClick = {
+                        coroutineScope.launch {
+                            environment.refreshToken()
+                            userMessages.showShortMessage("刷新成功")
+                        }
+                    }) { Text("刷新Token") }
+
+                    Button(onClick = { showCookieDialog = true }) { Text("手动设置Cookie") }
+
+                    Button(onClick = { showSignedRequestDialog = true }) { Text("签名请求") }
+
+                    if (isSentenceSimilaritySupported && !rememberIsLiteVariant()) {
+                        Button(
+                            modifier = Modifier.testTag(DEVELOPER_SETTINGS_SENTENCE_SIMILARITY_TAG),
+                            onClick = {
+                                navigator.onNavigate(SentenceSimilarityTest)
                             },
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = when {
-                                runtimeInfo.ttsState.isSpeaking -> MaterialTheme.colorScheme.tertiary
-                                runtimeInfo.ttsState != TtsState.Uninitialized -> MaterialTheme.colorScheme.primary
-                                else -> MaterialTheme.colorScheme.error
-                            },
-                        )
+                        ) { Text("句子相似度") }
                     }
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                    Button(
+                        modifier = Modifier.testTag(DEVELOPER_SETTINGS_COLOR_SCHEME_TAG),
+                        onClick = {
+                            navigator.onNavigate(Account.DeveloperSettings.ColorScheme)
+                        },
+                    ) { Text("Color Scheme") }
+
+                    Button(onClick = {
+                        settings.remove(HOME_NOTIFICATION_READ_UUIDS_PREFERENCE_KEY)
+                        settings.removeByPrefix(HOME_PIN_ANNOUNCEMENT_READ_KEY_PREFIX)
+                        userMessages.showShortMessage("已清除 online notification 和作者想法推送的已读记录")
+                    }) { Text("清除所有 online notification 和作者想法推送已读记录") }
+                }
+
+                // TTS引擎信息显示
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    ),
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
                     ) {
                         Text(
-                            "引擎列表",
-                            style = MaterialTheme.typography.bodyMedium,
+                            "语音朗读引擎信息",
+                            style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurface,
                         )
-                        Text(
-                            runtimeInfo.availableTtsEngineLabels.joinToString(),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = when {
-                                runtimeInfo.ttsState.isSpeaking -> MaterialTheme.colorScheme.tertiary
-                                runtimeInfo.ttsState != TtsState.Uninitialized -> MaterialTheme.colorScheme.primary
-                                else -> MaterialTheme.colorScheme.error
-                            },
-                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text(
+                                "当前引擎",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                            Text(
+                                runtimeInfo.currentTtsEngineLabel,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text(
+                                "引擎状态",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                            Text(
+                                if (runtimeInfo.ttsState.isSpeaking) {
+                                    "正在朗读"
+                                } else if (runtimeInfo.ttsState != TtsState.Uninitialized) {
+                                    "就绪"
+                                } else {
+                                    "未就绪"
+                                },
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = when {
+                                    runtimeInfo.ttsState.isSpeaking -> MaterialTheme.colorScheme.tertiary
+                                    runtimeInfo.ttsState != TtsState.Uninitialized -> MaterialTheme.colorScheme.primary
+                                    else -> MaterialTheme.colorScheme.error
+                                },
+                            )
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text(
+                                "引擎列表",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                            Text(
+                                runtimeInfo.availableTtsEngineLabels.joinToString(),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = when {
+                                    runtimeInfo.ttsState.isSpeaking -> MaterialTheme.colorScheme.tertiary
+                                    runtimeInfo.ttsState != TtsState.Uninitialized -> MaterialTheme.colorScheme.primary
+                                    else -> MaterialTheme.colorScheme.error
+                                },
+                            )
+                        }
                     }
                 }
             }

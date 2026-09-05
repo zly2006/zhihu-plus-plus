@@ -637,7 +637,7 @@ fun HomeScreen(
                 PaginatedList(
                     items = viewModel.displayItems,
                     listState = listState,
-                    modifier = Modifier.testTag(HOME_FEED_LIST_TAG),
+                    listModifier = Modifier.testTag(HOME_FEED_LIST_TAG),
                     contentPadding = PaddingValues(
                         top = scaffoldPadding.calculateTopPadding() + 8.dp,
                         bottom = innerPadding.calculateBottomPadding() + readingPlayerOverlayPadding,

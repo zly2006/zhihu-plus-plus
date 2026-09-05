@@ -26,6 +26,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -136,14 +137,17 @@ import com.github.zly2006.zhihu.ui.components.AnswerVerticalOverscroll
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.CollectionDialogComponent
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
+import com.github.zly2006.zhihu.ui.components.ContentEndSpacer
 import com.github.zly2006.zhihu.ui.components.DEFAULT_ANSWER_SWITCH_SENSITIVITY
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.ExportDialogComponent
 import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
+import com.github.zly2006.zhihu.ui.components.PageTurnGuideOverlay
 import com.github.zly2006.zhihu.ui.components.VerticalReadingProgressBar
 import com.github.zly2006.zhihu.ui.components.VotersSheet
 import com.github.zly2006.zhihu.ui.components.ZhihuTwoRowsTopAppBar
 import com.github.zly2006.zhihu.ui.components.normalizedAnswerSwitchSensitivity
+import com.github.zly2006.zhihu.ui.components.rememberPageTurnState
 import com.github.zly2006.zhihu.ui.components.rememberPreferCollapsedExitUntilCollapsedScrollBehavior
 import com.github.zly2006.zhihu.ui.subscreens.DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY
 import com.github.zly2006.zhihu.util.formatCompactCount
@@ -193,6 +197,8 @@ fun ArticleScreen(
         ?: remember { mutableStateOf(null) }
 
     val scrollState = rememberScrollState()
+    val pageTurnState = rememberPageTurnState()
+    var viewportHeight by remember { mutableIntStateOf(0) }
     val settings = rememberSettingsStore()
     val isTitleAutoHide by rememberObservedSetting(settings, "titleAutoHide") { getBoolean("titleAutoHide", false) }
     val autoHideArticleBottomBar by rememberObservedSetting(settings, "autoHideArticleBottomBar") {
@@ -853,7 +859,74 @@ fun ArticleScreen(
             },
         ) { innerPadding ->
             CompositionLocalProvider(LocalBringIntoViewSpec provides articleBringIntoViewSpec) {
-                Box {
+                if (pageTurnState.showGuide &&
+                    pageTurnState.guideLastDirection != 0 &&
+                    scrollState.isScrollInProgress &&
+                    !pageTurnState.guideIsScrolling
+                ) {
+                    pageTurnState.guideLastDirection = 0
+                }
+                // 不使用通用 PageTurnScrollEffect，因为 ArticleScreen 拥有自定义的
+                // ArticleTopBarState/ArticleBottomBarState (Animatable offset)，与 Material3 TopAppBarState 不兼容，
+                // 翻页时需要直接操控这些自定义 offset 和 scrollBehavior.state.heightOffset。
+                LaunchedEffect(pageTurnState.channel) {
+                    pageTurnState.channel.collect { direction ->
+                        if (showComments) return@collect
+                        pageTurnState.guideLastDirection = direction.coerceIn(-1, 1)
+                        pageTurnState.guideIsScrolling = true
+                        try {
+                            // 同步 Material3 scrollBehavior，使 TopAppBar 在翻页时收起/展开
+                            val sbState = scrollBehavior.state
+                            if (direction > 0 || direction == Int.MAX_VALUE) {
+                                sbState.heightOffset = sbState.heightOffsetLimit
+                            } else if (direction == Int.MIN_VALUE) {
+                                sbState.heightOffset = 0f
+                            } else if (direction < 0 && scrollState.value == 0) {
+                                sbState.heightOffset = 0f
+                            }
+                            when (direction) {
+                                Int.MAX_VALUE -> {
+                                    scrollState.scrollTo(scrollState.maxValue)
+                                    if (isTitleAutoHide && topBarState.heightPx > 0f) {
+                                        topBarState.offset.snapTo(-topBarState.heightPx)
+                                    }
+                                }
+                                Int.MIN_VALUE -> {
+                                    scrollState.scrollTo(0)
+                                    topBarState.offset.snapTo(0f)
+                                }
+                                else -> {
+                                    if (isTitleAutoHide && topBarState.heightPx > 0f && direction > 0) {
+                                        topBarState.offset.snapTo(-topBarState.heightPx)
+                                    }
+                                    val visibleTopBar =
+                                        (topBarState.heightPx + topBarState.offset.value).coerceAtLeast(0f)
+                                    val visibleBottomBar =
+                                        (bottomBarState.heightPx - bottomBarState.offset.value).coerceAtLeast(0f)
+                                    val effectiveViewport =
+                                        viewportHeight - visibleTopBar.toInt() - visibleBottomBar.toInt()
+                                    if (effectiveViewport > 0) {
+                                        scrollState.scrollBy(
+                                            effectiveViewport * pageTurnState.pageTurnPercent / 100f * direction,
+                                        )
+                                    }
+                                    if (direction < 0 && scrollState.value == 0 && isTitleAutoHide) {
+                                        topBarState.offset.snapTo(0f)
+                                    }
+                                }
+                            }
+                        } finally {
+                            pageTurnState.guideIsScrolling = false
+                        }
+                    }
+                }
+                Box(modifier = Modifier.onSizeChanged { viewportHeight = it.height }) {
+                    val density = LocalDensity.current
+                    PageTurnGuideOverlay(
+                        state = pageTurnState,
+                        topInsetPx = with(density) { innerPadding.calculateTopPadding().toPx() },
+                        bottomInsetPx = with(density) { innerPadding.calculateBottomPadding().toPx() },
+                    )
                     Column(
                         modifier = Modifier
                             .padding(horizontal = 16.dp)
@@ -1065,6 +1138,7 @@ fun ArticleScreen(
                                                 )
                                             }
                                         }
+                                        ContentEndSpacer(state = pageTurnState, viewportHeight = viewportHeight)
                                         Spacer(modifier = Modifier.height((16 + 36).dp))
                                     },
                                 )

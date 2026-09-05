@@ -17,12 +17,14 @@
 
 package com.github.zly2006.zhihu.ui.subscreens
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -59,8 +61,11 @@ import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.components.DISABLE_BOTTOM_SHEET_ROUNDED_CORNERS_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.components.PageTurnGuideOverlay
+import com.github.zly2006.zhihu.ui.components.PageTurnLazyListEffect
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
+import com.github.zly2006.zhihu.ui.components.rememberPageTurnState
 import com.github.zly2006.zhihu.viewmodel.QUALITY_FILTER_MODE_PREFERENCE_KEY
 
 const val SETTINGS_SEARCH_INPUT_TAG = "settingsSearch.input"
@@ -310,6 +315,8 @@ fun SettingsSearchScreen() {
             .filter { entry -> entry.id != "developer.page" || developerModeEnabled }
             .filter { entry -> entry.matches(query) }
     }
+    val listState = rememberLazyListState()
+    val pageTurnState = rememberPageTurnState()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     Scaffold(
@@ -337,73 +344,81 @@ fun SettingsSearchScreen() {
             )
         },
     ) { innerPadding ->
-        LazyColumn(
+        PageTurnLazyListEffect(state = pageTurnState, listState = listState)
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .testTag(SETTINGS_SEARCH_RESULTS_TAG)
                 .padding(innerPadding),
         ) {
-            item {
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .padding(top = 8.dp, bottom = 16.dp)
-                        .testTag(SETTINGS_SEARCH_INPUT_TAG),
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                    placeholder = { Text("搜索设置名称或关键词") },
-                    singleLine = true,
-                )
-            }
-
-            if (results.isEmpty()) {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .testTag(SETTINGS_SEARCH_RESULTS_TAG),
+            ) {
                 item {
-                    Text(
-                        text = "没有找到相关设置",
-                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    OutlinedTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                            .padding(top = 8.dp, bottom = 16.dp)
+                            .testTag(SETTINGS_SEARCH_INPUT_TAG),
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                        placeholder = { Text("搜索设置名称或关键词") },
+                        singleLine = true,
                     )
                 }
-            } else {
-                items(
-                    items = results,
-                    key = { it.id },
-                ) { entry ->
-                    SettingItemGroup {
-                        SettingItem(
-                            modifier = Modifier.testTag("settingsSearch.result.${entry.id}"),
-                            title = {
-                                Column {
-                                    Text(entry.title)
-                                    Text(
-                                        text = entry.section,
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = MaterialTheme.colorScheme.primary,
-                                    )
-                                }
-                            },
-                            description = {
-                                Text(entry.description)
-                            },
-                            onClick = {
-                                if (entry.id != "developer.page" || settings.getBoolean("developer", false)) {
-                                    navigator.onNavigate(entry.destination)
-                                }
-                            },
-                            endAction = {
-                                Icon(
-                                    Icons.AutoMirrored.Filled.ArrowForward,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            },
+
+                if (results.isEmpty()) {
+                    item {
+                        Text(
+                            text = "没有找到相关设置",
+                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                    }
+                } else {
+                    items(
+                        items = results,
+                        key = { it.id },
+                    ) { entry ->
+                        SettingItemGroup {
+                            SettingItem(
+                                modifier = Modifier.testTag("settingsSearch.result.${entry.id}"),
+                                title = {
+                                    Column {
+                                        Text(entry.title)
+                                        Text(
+                                            text = entry.section,
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.primary,
+                                        )
+                                    }
+                                },
+                                description = {
+                                    Text(entry.description)
+                                },
+                                onClick = {
+                                    if (entry.id != "developer.page" || settings.getBoolean("developer", false)) {
+                                        navigator.onNavigate(entry.destination)
+                                    }
+                                },
+                                endAction = {
+                                    Icon(
+                                        Icons.AutoMirrored.Filled.ArrowForward,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                },
+                            )
+                        }
                     }
                 }
             }
+            PageTurnGuideOverlay(state = pageTurnState)
         }
     }
 }

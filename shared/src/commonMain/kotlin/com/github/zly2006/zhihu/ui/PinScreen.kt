@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.ui
 
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -69,6 +70,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -99,10 +101,13 @@ import com.github.zly2006.zhihu.reading.rememberReadingPlayerController
 import com.github.zly2006.zhihu.reading.toReadingQueueItem
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
+import com.github.zly2006.zhihu.ui.components.PageTurnGuideOverlay
+import com.github.zly2006.zhihu.ui.components.PageTurnScrollEffect
 import com.github.zly2006.zhihu.ui.components.ShareDialog
 import com.github.zly2006.zhihu.ui.components.VotersSheet
 import com.github.zly2006.zhihu.ui.components.getShareText
 import com.github.zly2006.zhihu.ui.components.handleShareAction
+import com.github.zly2006.zhihu.ui.components.rememberPageTurnState
 import com.github.zly2006.zhihu.ui.components.rememberShareActionExecutor
 import com.github.zly2006.zhihu.util.formatCompactCount
 import com.github.zly2006.zhihu.util.twoDigitString
@@ -237,6 +242,9 @@ fun PinScreen(
         }
     }
 
+    val pageTurnState = rememberPageTurnState()
+    val scrollState = rememberScrollState()
+    var viewportHeight by remember { mutableIntStateOf(0) }
     var showShareDialog by remember { mutableStateOf(false) }
     var showComments by rememberSaveable(pin.id) { mutableStateOf(false) }
     var showVoters by rememberSaveable(pin.id) { mutableStateOf(false) }
@@ -366,7 +374,8 @@ fun PinScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding),
+                .padding(innerPadding)
+                .onSizeChanged { viewportHeight = it.height },
         ) {
             when {
                 isLoading -> {
@@ -397,6 +406,7 @@ fun PinScreen(
                     val loadedPin = pinContent ?: return@Box
                     PinContent(
                         pin = loadedPin,
+                        scrollState = scrollState,
                         environment = paginationEnvironment,
                         isLiked = isLiked,
                         likeCount = likeCount,
@@ -471,6 +481,8 @@ fun PinScreen(
                     )
                 }
             }
+            PageTurnScrollEffect(state = pageTurnState, scrollState = scrollState, viewportHeight = viewportHeight, skip = showComments)
+            PageTurnGuideOverlay(state = pageTurnState)
         }
     }
 }
@@ -478,6 +490,7 @@ fun PinScreen(
 @Composable
 private fun PinContent(
     pin: DataHolder.Pin,
+    scrollState: ScrollState,
     environment: ZhihuApiEnvironment,
     isLiked: Boolean,
     likeCount: Int,
@@ -495,7 +508,7 @@ private fun PinContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(scrollState)
             .testTag(PIN_SCREEN_SCROLL_TAG)
             .padding(16.dp),
     ) {
