@@ -31,6 +31,16 @@ import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNames
 
+data class QualityFilterSettings(
+    val answerVoteupCount: Int = 10,
+    val articleVoteupCount: Int = 20,
+    val articleFollowersCount: Int = 50,
+    val videoVoteCount: Int = 20,
+    val videoFollowersCount: Int = 50,
+    val questionAnswerCount: Int = 5,
+    val questionFollowersCount: Int = 50,
+)
+
 @Serializable
 sealed interface Feed {
     @Serializable
@@ -106,8 +116,10 @@ sealed interface Feed {
         @Serializable(with = BooleanCompatSerializer::class)
         val allowSegmentInteraction: Boolean = false,
     ) : Target {
-        override fun filterReason(): String? = if (voteupCount < 10 && author?.isFollowing == false) {
-            "规则：回答；赞数 < 10，未关注作者"
+        override fun filterReason(): String? = filterReason(QualityFilterSettings())
+
+        fun filterReason(settings: QualityFilterSettings): String? = if (voteupCount >= 0 && voteupCount < settings.answerVoteupCount && author?.isFollowing == false) {
+            "规则：回答；赞数 < ${settings.answerVoteupCount}，未关注作者"
         } else {
             null
         }
@@ -129,8 +141,10 @@ sealed interface Feed {
         val description: String,
         override val excerpt: String,
     ) : Target {
-        override fun filterReason(): String? = if (author.followersCount < 50 && voteCount < 20 && !author.isFollowing) {
-            "规则：所有视频"
+        override fun filterReason(): String? = filterReason(QualityFilterSettings())
+
+        fun filterReason(settings: QualityFilterSettings): String? = if (author.followersCount < settings.videoFollowersCount && voteCount >= 0 && voteCount < settings.videoVoteCount && !author.isFollowing) {
+            "规则：视频；作者粉丝数 < ${settings.videoFollowersCount} 且赞数 < ${settings.videoVoteCount}"
         } else {
             null
         }
@@ -173,8 +187,10 @@ sealed interface Feed {
         @Serializable(with = BooleanCompatSerializer::class)
         val allowSegmentInteraction: Boolean = false,
     ) : Target {
-        override fun filterReason(): String? = if ((author.followersCount < 50 || voteupCount < 20) && !author.isFollowing) {
-            "规则：文章；作者粉丝数 < 50 或 文章赞数 < 20，未关注作者"
+        override fun filterReason(): String? = filterReason(QualityFilterSettings())
+
+        fun filterReason(settings: QualityFilterSettings): String? = if ((author.followersCount < settings.articleFollowersCount || (voteupCount >= 0 && voteupCount < settings.articleVoteupCount)) && !author.isFollowing) {
+            "规则：文章；作者粉丝数 < ${settings.articleFollowersCount} 或文章赞数 < ${settings.articleVoteupCount}，未关注作者"
         } else {
             null
         }
@@ -257,8 +273,10 @@ sealed interface Feed {
         override val title: String
             get() = _title ?: _name.orEmpty()
 
-        override fun filterReason(): String? = if (answerCount < 5 && followerCount < 50) {
-            "规则：问题；回答数 < 5，关注数 < 50"
+        override fun filterReason(): String? = filterReason(QualityFilterSettings())
+
+        fun filterReason(settings: QualityFilterSettings): String? = if (answerCount < settings.questionAnswerCount && followerCount < settings.questionFollowersCount) {
+            "规则：问题；回答数 < ${settings.questionAnswerCount}，关注数 < ${settings.questionFollowersCount}"
         } else {
             null
         }

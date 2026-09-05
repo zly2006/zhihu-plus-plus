@@ -37,6 +37,7 @@ const val HOME_NOTIFICATION_READ_UUIDS_PREFERENCE_KEY = "onlineHomeNotificationR
 const val HOME_NOTIFICATION_REFRESH_INTERVAL_MILLIS = 3 * 60 * 60 * 1000L
 
 const val HOME_NOTIFICATION_ACTION_OPEN_URL = "open_url"
+const val HOME_NOTIFICATION_ACTION_OPEN_WEBVIEW = "open_webview"
 const val HOME_NOTIFICATION_ACTION_OPEN_UPDATE_SETTINGS = "open_update_settings"
 const val HOME_NOTIFICATION_ACTION_OPEN_PIN = "open_pin"
 const val HOME_NOTIFICATION_ACTION_OPEN_ANSWER = "open_answer"
@@ -109,6 +110,8 @@ class OnlineHomeNotificationRepository(
     private fun OnlineHomeNotificationAccept.isValid(): Boolean = text.isNotBlank() &&
         when (key) {
             HOME_NOTIFICATION_ACTION_OPEN_URL ->
+                (value as? JsonPrimitive)?.contentOrNull?.startsWith("https://") == true
+            HOME_NOTIFICATION_ACTION_OPEN_WEBVIEW ->
                 (value as? JsonPrimitive)?.contentOrNull?.startsWith("https://") == true
             HOME_NOTIFICATION_ACTION_OPEN_PIN,
             HOME_NOTIFICATION_ACTION_OPEN_ANSWER,
