@@ -188,6 +188,13 @@ internal val LocalArticleNavController = staticCompositionLocalOf<NavHostControl
  *
  * 用户可见的主壳设置通过 [preferenceState] 流入。设置页退出时只 reload 这份状态，不重建 NavHost，从而在应用底栏和主题相关变更时
  * 保留已加载页面、返回栈和滚动位置。
+ *
+ * [navController] 是主内容 NavHost 的控制器；[navigate] 负责把目标交给平台主导航入口。
+ * [navigateContent] 可将目标交给指定的内容控制器，用于横屏列表/详情布局的右侧 NavHost；未提供平台实现时会回退到 [navigate]。
+ *
+ * @param navController 主内容 NavHost；顶层 tab 和默认内容页使用它维护返回栈。
+ * @param navigate 平台主导航入口，负责处理顶层 tab 与外部导航。
+ * @param navigateContent 指定内容 NavHost 的导航入口；大屏列表/详情布局通过它打开右侧内容。
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Suppress("RestrictedApi")
