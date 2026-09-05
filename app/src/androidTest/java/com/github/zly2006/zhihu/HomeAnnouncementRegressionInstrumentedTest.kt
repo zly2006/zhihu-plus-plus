@@ -188,6 +188,7 @@ class HomeAnnouncementRegressionInstrumentedTest {
             userType = "people",
         ),
         excerptTitle = title,
+        created = System.currentTimeMillis() / 1_000,
         topics = listOf(
             DataHolder.Topic(
                 id = "2064846813258109867",

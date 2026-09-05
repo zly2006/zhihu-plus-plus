@@ -37,6 +37,7 @@ enum class HomePinAnnouncementKind {
 data class HomePinAnnouncement(
     val pinId: Long,
     val kind: HomePinAnnouncementKind,
+    val createdAtEpochSeconds: Long = 0L,
     val title: String,
     val optionCount: Int,
     val memberCount: Int,
@@ -120,6 +121,7 @@ internal fun DataHolder.Pin.toHomePinAnnouncement(): HomePinAnnouncement? {
         return HomePinAnnouncement(
             pinId = pinId,
             kind = HomePinAnnouncementKind.Poll,
+            createdAtEpochSeconds = created,
             title = poll.title.ifBlank { "想法投票" },
             optionCount = poll.options.size,
             memberCount = poll.memberCount,
@@ -132,6 +134,7 @@ internal fun DataHolder.Pin.toHomePinAnnouncement(): HomePinAnnouncement? {
     return HomePinAnnouncement(
         pinId = pinId,
         kind = HomePinAnnouncementKind.Topic,
+        createdAtEpochSeconds = created,
         title = Ksoup.parse(excerptTitle.substringBefore("<br")).text().ifBlank { "知乎++新动态" },
         optionCount = 0,
         memberCount = 0,
