@@ -27,6 +27,7 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -71,7 +72,11 @@ import com.github.zly2006.zhihu.theme.AndroidThemeSettings
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.AndroidArticleNavigationHandoff
 import com.github.zly2006.zhihu.ui.AndroidZhihuMain
+import com.github.zly2006.zhihu.ui.components.LocalPageTurnChannel
+import com.github.zly2006.zhihu.ui.components.PageTurnFab
 import com.github.zly2006.zhihu.ui.components.getHighestQualityVideoUrl
+import com.github.zly2006.zhihu.ui.components.rememberPageTurnState
+import com.github.zly2006.zhihu.ui.subscreens.PREF_VOLUME_KEY_PAGE_TURN
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.util.ContinuousUsageReminderManager
 import com.github.zly2006.zhihu.util.EmojiManager
@@ -91,10 +96,13 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
+    private val pageTurnChannel = MutableSharedFlow<Int>(extraBufferCapacity = 1)
+
     lateinit var history: HistoryStorage
     val httpClient
         get() = com.github.zly2006.zhihu.account
@@ -199,8 +207,11 @@ class MainActivity : ComponentActivity() {
         setContent {
             navController = rememberNavController()
             ZhihuTheme {
-                Box(Modifier.semantics { testTagsAsResourceId = true }) {
-                    AndroidZhihuMain(navController = navController)
+                CompositionLocalProvider(LocalPageTurnChannel provides pageTurnChannel) {
+                    Box(Modifier.semantics { testTagsAsResourceId = true }) {
+                        AndroidZhihuMain(navController = navController)
+                        PageTurnFab(state = rememberPageTurnState())
+                    }
                 }
             }
         }
@@ -274,6 +285,36 @@ class MainActivity : ComponentActivity() {
     override fun onStop() {
         continuousUsageReminderManager.onAppBackground()
         super.onStop()
+    }
+
+    private var longPressConsumed = false
+
+    private fun pageTurnDirection(keyCode: Int): Int? = when (keyCode) {
+        android.view.KeyEvent.KEYCODE_PAGE_DOWN -> 1
+        android.view.KeyEvent.KEYCODE_PAGE_UP -> -1
+        android.view.KeyEvent.KEYCODE_VOLUME_DOWN ->
+            if (androidSettingsStore(this).getBoolean(PREF_VOLUME_KEY_PAGE_TURN, false)) 1 else null
+        android.view.KeyEvent.KEYCODE_VOLUME_UP ->
+            if (androidSettingsStore(this).getBoolean(PREF_VOLUME_KEY_PAGE_TURN, false)) -1 else null
+        else -> null
+    }
+
+    override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
+        val direction = pageTurnDirection(event.keyCode) ?: return super.dispatchKeyEvent(event)
+        if (event.action == android.view.KeyEvent.ACTION_DOWN) {
+            if (event.isLongPress) {
+                longPressConsumed = true
+                pageTurnChannel.tryEmit(if (direction > 0) Int.MAX_VALUE else Int.MIN_VALUE)
+            } else if (event.repeatCount == 0) {
+                longPressConsumed = false
+            }
+        } else if (event.action == android.view.KeyEvent.ACTION_UP) {
+            if (!longPressConsumed) {
+                pageTurnChannel.tryEmit(direction)
+            }
+            longPressConsumed = false
+        }
+        return true
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {

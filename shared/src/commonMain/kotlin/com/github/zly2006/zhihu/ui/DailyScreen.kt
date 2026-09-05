@@ -73,6 +73,7 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -83,6 +84,9 @@ import com.github.zly2006.zhihu.data.DailyStory
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.ui.TopLevelReselectAction
+import com.github.zly2006.zhihu.ui.components.PageTurnGuideOverlay
+import com.github.zly2006.zhihu.ui.components.PageTurnLazyListEffect
+import com.github.zly2006.zhihu.ui.components.rememberPageTurnState
 import com.github.zly2006.zhihu.ui.topLevelReselectAction
 import com.github.zly2006.zhihu.util.formatDailyDate
 import com.github.zly2006.zhihu.util.twoDigitString
@@ -112,6 +116,7 @@ import kotlin.time.Instant
 fun DailyScreen(
     scrollToTopTrigger: Int = 0,
     isActive: Boolean = true,
+    outerBottomPadding: Dp = 0.dp,
 ) {
     val navigator = LocalNavigator.current
     val httpClient = rememberPaginationEnvironment(allowGuestAccess = false).httpClient()
@@ -334,72 +339,84 @@ fun DailyScreen(
                 }
 
                 else -> {
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .testTag(DAILY_SCREEN_LIST_TAG),
-                        contentPadding = PaddingValues(vertical = 8.dp),
-                    ) {
-                        viewModel.sections.forEach { section ->
-                            // 日期分组标题。
-                            item(key = "header_${section.date}") {
-                                DateHeader(
-                                    date = formatDailyDate(section.date),
-                                    modifier = Modifier.testTag("daily_screen_section_${section.date}"),
-                                )
-                            }
-                            // 当前日期的日报条目。
-                            items(section.stories, key = { "story_${it.id}" }) { story ->
-                                DailyStoryCard(
-                                    story = story,
-                                    modifier = Modifier.testTag("daily_screen_story_${story.id}"),
-                                    onClick = {
-                                        scope.launch {
-                                            val response: JsonObject = withContext(Dispatchers.Default) {
-                                                httpClient
-                                                    .get("https://daily.zhihu.com/api/7/story/${story.id}")
-                                                    .body()
-                                            }
-                                            val body = response["body"]?.jsonPrimitive?.content
-                                            if (body == null) {
-                                                missingOriginStoryUrl = story.url
-                                                return@launch
-                                            }
-                                            val doc = Ksoup.parse(body)
-                                            val originUrl = doc.selectFirst("a.originUrl")?.attr("href")
-                                            val destination = originUrl
-                                                ?.let(::resolveContent)
-                                                ?: doc
-                                                    .selectFirst("div.view-more a")
-                                                    ?.attr("href")
+                    val pageTurnState = rememberPageTurnState()
+                    PageTurnLazyListEffect(state = pageTurnState, listState = listState)
+                    Box {
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .testTag(DAILY_SCREEN_LIST_TAG),
+                            contentPadding = PaddingValues(
+                                top = 8.dp,
+                                bottom = 8.dp + outerBottomPadding,
+                            ),
+                        ) {
+                            viewModel.sections.forEach { section ->
+                                // 日期分组标题。
+                                item(key = "header_${section.date}") {
+                                    DateHeader(
+                                        date = formatDailyDate(section.date),
+                                        modifier = Modifier.testTag("daily_screen_section_${section.date}"),
+                                    )
+                                }
+                                // 当前日期的日报条目。
+                                items(section.stories, key = { "story_${it.id}" }) { story ->
+                                    DailyStoryCard(
+                                        story = story,
+                                        modifier = Modifier.testTag("daily_screen_story_${story.id}"),
+                                        onClick = {
+                                            scope.launch {
+                                                val response: JsonObject = withContext(Dispatchers.Default) {
+                                                    httpClient
+                                                        .get("https://daily.zhihu.com/api/7/story/${story.id}")
+                                                        .body()
+                                                }
+                                                val body = response["body"]?.jsonPrimitive?.content
+                                                if (body == null) {
+                                                    missingOriginStoryUrl = story.url
+                                                    return@launch
+                                                }
+                                                val doc = Ksoup.parse(body)
+                                                val originUrl = doc.selectFirst("a.originUrl")?.attr("href")
+                                                val destination = originUrl
                                                     ?.let(::resolveContent)
-                                            if (destination != null) {
-                                                navigator.onNavigate(destination)
-                                            } else {
-                                                missingOriginStoryUrl = story.url
+                                                    ?: doc
+                                                        .selectFirst("div.view-more a")
+                                                        ?.attr("href")
+                                                        ?.let(::resolveContent)
+                                                if (destination != null) {
+                                                    navigator.onNavigate(destination)
+                                                } else {
+                                                    missingOriginStoryUrl = story.url
+                                                }
                                             }
-                                        }
-                                    },
-                                )
-                            }
-                        }
-
-                        // 底部加载指示器。
-                        if (viewModel.isLoadingMore) {
-                            item(key = "loading_more") {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(24.dp),
+                                        },
                                     )
                                 }
                             }
+
+                            // 底部加载指示器。
+                            if (viewModel.isLoadingMore) {
+                                item(key = "loading_more") {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(24.dp),
+                                        )
+                                    }
+                                }
+                            }
                         }
+                        PageTurnGuideOverlay(
+                            state = pageTurnState,
+                            topInsetPx = listState.layoutInfo.beforeContentPadding.toFloat(),
+                            bottomInsetPx = listState.layoutInfo.afterContentPadding.toFloat(),
+                        )
                     }
                 }
             }
