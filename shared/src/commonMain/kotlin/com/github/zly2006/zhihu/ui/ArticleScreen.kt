@@ -270,19 +270,6 @@ fun ArticleScreen(
                 .coerceAtLeast(0f)
         },
     )
-    val pageTurnActive = !(useWebView && isLegacyWebViewSupported) &&
-        !showComments &&
-        !showCollectionDialog &&
-        !showActionsMenu &&
-        !showSummaryDialog &&
-        !showAigcFlagSheet &&
-        !showExportDialog &&
-        !showDoubleTapActionDialog &&
-        !showVoters
-    val pageTurnTarget = rememberPageTurnTarget(
-        scrollState = scrollState,
-        enabled = pageTurnActive,
-    )
     val sharedData = sharedArticleAnswerSwitchState.takeIf { article.type == ArticleType.Answer }
     var isImmersiveMode by remember(sharedData) {
         mutableStateOf(sharedData?.isImmersiveMode ?: false)
@@ -295,11 +282,25 @@ fun ArticleScreen(
         answerSwitchMode = answerSwitchMode,
         readingQueueSourceId = article.readingQueueSourceId,
     )
+    val usesVerticalAnswerSwitch = article.type == ArticleType.Answer && answerSwitchMode == "vertical"
+    val pageTurnActive = !(useWebView && isLegacyWebViewSupported) &&
+        !showComments &&
+        !showCollectionDialog &&
+        !showActionsMenu &&
+        !showSummaryDialog &&
+        !showAigcFlagSheet &&
+        !showExportDialog &&
+        !showDoubleTapActionDialog &&
+        !showVoters
+    val pageTurnTarget = rememberPageTurnTarget(
+        scrollState = scrollState,
+        enabled = pageTurnActive,
+        onPageDownAtEnd = (answerNavigationState::navigateToNext).takeIf { usesVerticalAnswerSwitch },
+    )
     val hapticFeedback = LocalHapticFeedback.current
     val readingPlayerOverlayRouteId = articleNavController?.currentBackStackEntry?.id
         ?: article.readingQueueSourceId
         ?: "${article.type}:${article.id}"
-    val usesVerticalAnswerSwitch = article.type == ArticleType.Answer && answerSwitchMode == "vertical"
     DisposableEffect(readingPlayerOverlayOffsetState, readingPlayerOverlayRouteId, usesVerticalAnswerSwitch) {
         if (usesVerticalAnswerSwitch) {
             readingPlayerOverlayOffsetState?.beginRoute(readingPlayerOverlayRouteId)

@@ -358,9 +358,11 @@ fun Modifier.pageTurnViewport(target: PageTurnTarget): Modifier =
 fun rememberPageTurnTarget(
     scrollState: ScrollState,
     enabled: Boolean,
+    onPageDownAtEnd: (() -> Unit)? = null,
 ): PageTurnTarget {
     val state = rememberPageTurnState()
     val target = remember(state) { PageTurnTarget(state) }
+    val currentOnPageDownAtEnd by rememberUpdatedState(onPageDownAtEnd)
     LaunchedEffect(state, scrollState) {
         snapshotFlow { scrollState.isScrollInProgress }.collect { scrolling ->
             if (scrolling && !state.guideIsScrolling) state.guideLastDirection = 0
@@ -376,7 +378,12 @@ fun rememberPageTurnTarget(
                 PageTurnCommand.PageUp,
                 PageTurnCommand.PageDown,
                 -> {
-                    if (target.viewportHeight > 0f) {
+                    val reachedEnd = command == PageTurnCommand.PageDown &&
+                        scrollState.maxValue != Int.MAX_VALUE &&
+                        scrollState.value >= scrollState.maxValue
+                    if (reachedEnd && currentOnPageDownAtEnd != null) {
+                        currentOnPageDownAtEnd?.invoke()
+                    } else if (target.viewportHeight > 0f) {
                         scrollState.scrollBy(
                             target.viewportHeight * state.pageTurnPercent / 100f * command.direction,
                         )
