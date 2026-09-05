@@ -79,3 +79,11 @@ catalog 没有提供输入框、复选框、菜单、工具栏或弹层。这些
 本轮最终布局证据：`layout-regression-results.json` 验证复制按钮与创作按钮由相交变为不相交；200% 风格按钮均为 y=1145..1399。`write-pin-font200-green.png` 验证工具条底部 y=2337，位于 2400 像素屏幕的系统手势区上方；键盘状态单独保存。编辑页面消费已经应用的 Scaffold inset，避免键盘上方再叠加导航栏留白。上述变更保持正文、草稿及发布调用不变；验证没有发布或保存远端草稿。
 
 最终包检查：Android APK、JVM 编译与 shared/app ktlint 全部通过；已安装到 off API35。正常字号创作页面与键盘状态截图为 `write-pin-normal-final.png` / `write-pin-keyboard-normal-final.png`，键盘展开后工具条底部 y=1517，与键盘上边缘接合，未再次叠加 63 px 导航栏间距。crash buffer 无异常；系统字号已恢复 1.0。空内容的禁用预览点击不会打开预览，也未触发发布或草稿保存。
+
+## 后续验收：2026-09-06 06:18 起
+
+个人页收起态发现搜索按钮与标签重叠：基线标签占满 1080 px，搜索按钮触摸区域从 x=934 开始。玻璃风格现随折叠比例为标签连续留出按钮空间，并按标签实测高度垂直居中搜索按钮；展开态位置和 Material 布局保持原契约。
+
+已在 off API35 安装最终修正包，真实个人页加载了头像、签名、作者信息与回答列表。`profile-expanded-green.png`、`profile-middle-green.png`（持续按住手势取得）和 `profile-collapsed-green.png` 三帧摘要不同，标签顶部依次为 715/456/128 px。收起标签右边界 933 px，搜索按钮左边界 934 px，不再相交。水平拖动后可见末尾“专栏”标签；搜索进入限定作者页面，返回仍为个人页。边界断言保存在 `/tmp/zhihu-glass-evidence/profile-layout-results.json`，对应 XML 同目录。Android APK、JVM 编译及 shared/app ktlint 均通过，crash buffer 为空。
+
+搜索输入、筛选菜单已实际打开；搜索结果空态、深色与大字号搜索仍待下一轮验收。通知、私聊、视频和性能等未完成项目继续保留，不能把本次局部验收当作全应用完成。

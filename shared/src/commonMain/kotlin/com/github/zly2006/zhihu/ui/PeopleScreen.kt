@@ -72,6 +72,8 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.SubcomposeLayout
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
@@ -719,6 +721,10 @@ fun PeopleScreen(
         }
     }
 
+    val canSearch = viewModel.memberHashId.isNotBlank() && viewModel.memberHashId != Person.EMPTY_ID
+    val liquidGlass = com.github.zly2006.zhihu.theme.LocalLiquidGlass.current
+    val density = LocalDensity.current
+    var tabRowHeight by remember { mutableStateOf(0.dp) }
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     var expandedHeaderHeightPx by remember { mutableIntStateOf(0) }
     LaunchedEffect(expandedHeaderHeightPx) {
@@ -790,11 +796,14 @@ fun PeopleScreen(
                     }
                     PrimaryScrollableTabRow(
                         selectedTabIndex = pagerState.currentPage,
-                        modifier = Modifier.testTag(PEOPLE_SCREEN_TAB_ROW_TAG),
+                        modifier = Modifier
+                            .padding(end = if (liquidGlass && canSearch) lerp(0.dp, 56.dp, collapsedFraction) else 0.dp)
+                            .testTag(PEOPLE_SCREEN_TAB_ROW_TAG)
+                            .onSizeChanged { tabRowHeight = with(density) { it.height.toDp() } },
                     ) {
                         PEOPLE_SCREEN_TITLES.forEachIndexed { index, title ->
                             Tab(
-                                unselectedContentColor = if (com.github.zly2006.zhihu.theme.LocalLiquidGlass.current) MaterialTheme.colorScheme.onSurfaceVariant else androidx.compose.material3.LocalContentColor.current,
+                                unselectedContentColor = if (liquidGlass) MaterialTheme.colorScheme.onSurfaceVariant else androidx.compose.material3.LocalContentColor.current,
                                 selected = pagerState.currentPage == index,
                                 onClick = {
                                     coroutineScope.launch {
@@ -813,29 +822,31 @@ fun PeopleScreen(
                         }
                     }
                 }
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .offset(y = lerp(240.dp, 0.dp, collapsedFraction))
-                        .padding(end = 0.dp)
-                        .size(width = 96.dp, height = 56.dp)
-                        .alpha(collapsedFraction)
-                        .background(
-                            Brush.horizontalGradient(
-                                colors = listOf(Color.Transparent, MaterialTheme.colorScheme.surface),
-                            ),
-                        ).pointerInput(Unit) {
-                            awaitPointerEventScope {
-                                while (true) {
-                                    awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-                                    while (awaitPointerEvent(PointerEventPass.Initial).changes.any { it.pressed }) {
-                                        awaitPointerEvent(PointerEventPass.Initial).changes.forEach { it.consume() }
+                if (!liquidGlass) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .offset(y = lerp(240.dp, 0.dp, collapsedFraction))
+                            .padding(end = 0.dp)
+                            .size(width = 96.dp, height = 56.dp)
+                            .alpha(collapsedFraction)
+                            .background(
+                                Brush.horizontalGradient(
+                                    colors = listOf(Color.Transparent, MaterialTheme.colorScheme.surface),
+                                ),
+                            ).pointerInput(Unit) {
+                                awaitPointerEventScope {
+                                    while (true) {
+                                        awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                                        while (awaitPointerEvent(PointerEventPass.Initial).changes.any { it.pressed }) {
+                                            awaitPointerEvent(PointerEventPass.Initial).changes.forEach { it.consume() }
+                                        }
                                     }
                                 }
-                            }
-                        },
-                )
-                if (viewModel.memberHashId.isNotBlank() && viewModel.memberHashId != Person.EMPTY_ID) {
+                            },
+                    )
+                }
+                if (canSearch) {
                     IconButton(
                         onClick = {
                             val memberName = viewModel.name.takeIf { it.isNotBlank() } ?: person.name
@@ -848,7 +859,7 @@ fun PeopleScreen(
                         },
                         modifier = Modifier
                             .align(Alignment.TopEnd)
-                            .padding(top = lerp(32.dp, 4.dp, collapsedFraction), end = 8.dp)
+                            .padding(top = lerp(32.dp, if (liquidGlass) ((tabRowHeight - 48.dp) / 2).coerceAtLeast(0.dp) else 4.dp, collapsedFraction), end = 8.dp)
                             .testTag(PEOPLE_SCREEN_SEARCH_BUTTON_TAG),
                     ) {
                         Icon(Icons.Default.Search, contentDescription = "搜索 TA 的创作")
