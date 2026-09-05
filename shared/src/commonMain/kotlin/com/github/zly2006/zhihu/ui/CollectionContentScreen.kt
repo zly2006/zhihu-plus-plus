@@ -205,8 +205,7 @@ internal fun CollectionContentBody(
         onLoadMore = { viewModel.loadMore(environment) },
         isEnd = { viewModel.isEnd },
         listState = listState,
-        modifier = modifier,
-        listModifier = Modifier.testTag("${tagPrefix}_list"),
+        modifier = modifier.testTag("${tagPrefix}_list"),
         footer = ProgressIndicatorFooter,
         topContent = {
             item(0) {

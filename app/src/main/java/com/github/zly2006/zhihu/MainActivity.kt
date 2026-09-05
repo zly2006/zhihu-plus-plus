@@ -24,6 +24,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
+import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
@@ -72,10 +73,11 @@ import com.github.zly2006.zhihu.theme.AndroidThemeSettings
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.AndroidArticleNavigationHandoff
 import com.github.zly2006.zhihu.ui.AndroidZhihuMain
-import com.github.zly2006.zhihu.ui.components.LocalPageTurnChannel
+import com.github.zly2006.zhihu.ui.components.LocalPageTurnDispatcher
+import com.github.zly2006.zhihu.ui.components.PageTurnCommand
+import com.github.zly2006.zhihu.ui.components.PageTurnDispatcher
 import com.github.zly2006.zhihu.ui.components.PageTurnFab
 import com.github.zly2006.zhihu.ui.components.getHighestQualityVideoUrl
-import com.github.zly2006.zhihu.ui.components.rememberPageTurnState
 import com.github.zly2006.zhihu.ui.subscreens.PREF_VOLUME_KEY_PAGE_TURN
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.util.ContinuousUsageReminderManager
@@ -96,13 +98,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
-    private val pageTurnChannel = MutableSharedFlow<Int>(extraBufferCapacity = 1)
-
     lateinit var history: HistoryStorage
     val httpClient
         get() = com.github.zly2006.zhihu.account
@@ -112,6 +111,7 @@ class MainActivity : ComponentActivity() {
 
     lateinit var navController: NavHostController
     private lateinit var continuousUsageReminderManager: ContinuousUsageReminderManager
+    private val pageTurnDispatcher = PageTurnDispatcher()
     private var currentMainTabOpenFrom: String? = null
     var mainTabNavigationTarget by mutableStateOf<TopLevelDestination?>(null)
         private set
@@ -207,10 +207,10 @@ class MainActivity : ComponentActivity() {
         setContent {
             navController = rememberNavController()
             ZhihuTheme {
-                CompositionLocalProvider(LocalPageTurnChannel provides pageTurnChannel) {
+                CompositionLocalProvider(LocalPageTurnDispatcher provides pageTurnDispatcher) {
                     Box(Modifier.semantics { testTagsAsResourceId = true }) {
                         AndroidZhihuMain(navController = navController)
-                        PageTurnFab(state = rememberPageTurnState())
+                        PageTurnFab(dispatcher = pageTurnDispatcher)
                     }
                 }
             }
@@ -287,34 +287,57 @@ class MainActivity : ComponentActivity() {
         super.onStop()
     }
 
-    private var longPressConsumed = false
+    private var pageTurnLongPressConsumed = false
 
-    private fun pageTurnDirection(keyCode: Int): Int? = when (keyCode) {
-        android.view.KeyEvent.KEYCODE_PAGE_DOWN -> 1
-        android.view.KeyEvent.KEYCODE_PAGE_UP -> -1
-        android.view.KeyEvent.KEYCODE_VOLUME_DOWN ->
-            if (androidSettingsStore(this).getBoolean(PREF_VOLUME_KEY_PAGE_TURN, false)) 1 else null
-        android.view.KeyEvent.KEYCODE_VOLUME_UP ->
-            if (androidSettingsStore(this).getBoolean(PREF_VOLUME_KEY_PAGE_TURN, false)) -1 else null
+    private fun pageTurnCommand(keyCode: Int): PageTurnCommand? = when (keyCode) {
+        KeyEvent.KEYCODE_PAGE_DOWN -> PageTurnCommand.PageDown
+        KeyEvent.KEYCODE_PAGE_UP -> PageTurnCommand.PageUp
+        KeyEvent.KEYCODE_VOLUME_DOWN ->
+            if (androidSettingsStore(this).getBoolean(PREF_VOLUME_KEY_PAGE_TURN, false)) {
+                PageTurnCommand.PageDown
+            } else {
+                null
+            }
+        KeyEvent.KEYCODE_VOLUME_UP ->
+            if (androidSettingsStore(this).getBoolean(PREF_VOLUME_KEY_PAGE_TURN, false)) {
+                PageTurnCommand.PageUp
+            } else {
+                null
+            }
         else -> null
     }
 
-    override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
-        val direction = pageTurnDirection(event.keyCode) ?: return super.dispatchKeyEvent(event)
-        if (event.action == android.view.KeyEvent.ACTION_DOWN) {
-            if (event.isLongPress) {
-                longPressConsumed = true
-                pageTurnChannel.tryEmit(if (direction > 0) Int.MAX_VALUE else Int.MIN_VALUE)
-            } else if (event.repeatCount == 0) {
-                longPressConsumed = false
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        val command = pageTurnCommand(event.keyCode) ?: return super.dispatchKeyEvent(event)
+        if (!pageTurnDispatcher.hasActiveTarget) return super.dispatchKeyEvent(event)
+
+        return when (event.action) {
+            KeyEvent.ACTION_DOWN -> {
+                when {
+                    event.isLongPress -> {
+                        pageTurnLongPressConsumed = true
+                        pageTurnDispatcher.dispatch(
+                            if (command == PageTurnCommand.PageDown) {
+                                PageTurnCommand.JumpToBottom
+                            } else {
+                                PageTurnCommand.JumpToTop
+                            },
+                        )
+                    }
+                    event.repeatCount == 0 -> {
+                        pageTurnLongPressConsumed = false
+                        true
+                    }
+                    else -> true
+                }
             }
-        } else if (event.action == android.view.KeyEvent.ACTION_UP) {
-            if (!longPressConsumed) {
-                pageTurnChannel.tryEmit(direction)
+            KeyEvent.ACTION_UP -> {
+                val consumed = pageTurnLongPressConsumed || pageTurnDispatcher.dispatch(command)
+                pageTurnLongPressConsumed = false
+                consumed
             }
-            longPressConsumed = false
+            else -> super.dispatchKeyEvent(event)
         }
-        return true
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {

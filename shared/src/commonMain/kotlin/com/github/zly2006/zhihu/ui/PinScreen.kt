@@ -70,7 +70,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -101,13 +100,13 @@ import com.github.zly2006.zhihu.reading.rememberReadingPlayerController
 import com.github.zly2006.zhihu.reading.toReadingQueueItem
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
-import com.github.zly2006.zhihu.ui.components.PageTurnGuideOverlay
-import com.github.zly2006.zhihu.ui.components.PageTurnScrollEffect
+import com.github.zly2006.zhihu.ui.components.PageTurnTarget
 import com.github.zly2006.zhihu.ui.components.ShareDialog
 import com.github.zly2006.zhihu.ui.components.VotersSheet
 import com.github.zly2006.zhihu.ui.components.getShareText
 import com.github.zly2006.zhihu.ui.components.handleShareAction
-import com.github.zly2006.zhihu.ui.components.rememberPageTurnState
+import com.github.zly2006.zhihu.ui.components.pageTurnViewport
+import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.ui.components.rememberShareActionExecutor
 import com.github.zly2006.zhihu.util.formatCompactCount
 import com.github.zly2006.zhihu.util.twoDigitString
@@ -242,16 +241,19 @@ fun PinScreen(
         }
     }
 
-    val pageTurnState = rememberPageTurnState()
-    val scrollState = rememberScrollState()
-    var viewportHeight by remember { mutableIntStateOf(0) }
     var showShareDialog by remember { mutableStateOf(false) }
     var showComments by rememberSaveable(pin.id) { mutableStateOf(false) }
     var showVoters by rememberSaveable(pin.id) { mutableStateOf(false) }
+    val scrollState = rememberScrollState()
     var votersNextUrl by rememberSaveable(pin.id) { mutableStateOf<String?>(null) }
     var votersLoading by rememberSaveable(pin.id) { mutableStateOf(false) }
     var votersError by rememberSaveable(pin.id) { mutableStateOf<String?>(null) }
     val voters = remember(pin.id) { mutableStateListOf<DataHolder.Author>() }
+    val pageTurnActive = pinContent != null && !showComments && !showVoters && !showShareDialog
+    val pageTurnTarget = rememberPageTurnTarget(
+        scrollState = scrollState,
+        enabled = pageTurnActive,
+    )
 
     fun loadMoreVoters(reset: Boolean = false) {
         if (votersLoading) return
@@ -374,8 +376,7 @@ fun PinScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-                .onSizeChanged { viewportHeight = it.height },
+                .padding(innerPadding),
         ) {
             when {
                 isLoading -> {
@@ -407,6 +408,7 @@ fun PinScreen(
                     PinContent(
                         pin = loadedPin,
                         scrollState = scrollState,
+                        pageTurnTarget = pageTurnTarget,
                         environment = paginationEnvironment,
                         isLiked = isLiked,
                         likeCount = likeCount,
@@ -481,8 +483,6 @@ fun PinScreen(
                     )
                 }
             }
-            PageTurnScrollEffect(state = pageTurnState, scrollState = scrollState, viewportHeight = viewportHeight, skip = showComments)
-            PageTurnGuideOverlay(state = pageTurnState)
         }
     }
 }
@@ -491,6 +491,7 @@ fun PinScreen(
 private fun PinContent(
     pin: DataHolder.Pin,
     scrollState: ScrollState,
+    pageTurnTarget: PageTurnTarget,
     environment: ZhihuApiEnvironment,
     isLiked: Boolean,
     likeCount: Int,
@@ -508,6 +509,7 @@ private fun PinContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .pageTurnViewport(pageTurnTarget)
             .verticalScroll(scrollState)
             .testTag(PIN_SCREEN_SCROLL_TAG)
             .padding(16.dp),

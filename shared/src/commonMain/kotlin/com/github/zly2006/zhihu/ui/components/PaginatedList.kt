@@ -31,8 +31,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.TopAppBarState
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -40,6 +39,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 
@@ -111,26 +111,20 @@ private fun <T> LazyItemScope.PaginatedListItem(
 }
 
 @Composable
-@OptIn(ExperimentalMaterial3Api::class)
 fun <T> PaginatedList(
     items: List<T>,
     onLoadMore: () -> Unit,
     modifier: Modifier = Modifier,
-    listModifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(0.dp),
     listState: LazyListState = rememberLazyListState(),
     reverseLayout: Boolean = false,
     isEnd: () -> Boolean = { false },
     footer: @Composable ((LazyListState) -> Unit)? = null,
     key: ((T) -> Any)? = null,
-    topBarState: TopAppBarState? = null,
     topContent: LazyListScope.() -> Unit = {},
     bottomContent: LazyListScope.() -> Unit = {},
     itemContent: @Composable LazyItemScope.(T) -> Unit,
 ) {
-    val pageTurnState = rememberPageTurnState()
-    PageTurnLazyListEffect(state = pageTurnState, listState = listState, topBarState = topBarState)
-
     val shouldLoadMore by remember {
         derivedStateOf {
             val layoutInfo = listState.layoutInfo
@@ -152,41 +146,43 @@ fun <T> PaginatedList(
         }
     }
 
-    Box(modifier = modifier) {
-        LazyColumn(
-            state = listState,
-            modifier = listModifier,
-            contentPadding = contentPadding,
-            reverseLayout = reverseLayout,
-        ) {
-            topContent(this)
+    LazyColumn(
+        state = listState,
+        modifier = modifier,
+        contentPadding = contentPadding,
+        reverseLayout = reverseLayout,
+    ) {
+        topContent(this)
 
-            if (key != null) {
-                val itemKeys = uniquePaginatedListKeys(items, key)
-                itemsIndexed(items, key = { index, _ -> itemKeys[index] }) { _, item ->
-                    PaginatedListItem(item, itemContent)
-                }
-            } else {
-                items(items) { item ->
-                    PaginatedListItem(item, itemContent)
-                }
+        if (key != null) {
+            val itemKeys = uniquePaginatedListKeys(items, key)
+            itemsIndexed(items, key = { index, _ -> itemKeys[index] }) { _, item ->
+                PaginatedListItem(item, itemContent)
             }
-
-            bottomContent(this)
-
-            if (isEnd() && items.isNotEmpty()) {
-                pageTurnEndItems(pageTurnState, listState)
-            } else if (!isEnd()) {
-                item {
-                    footer?.invoke(listState)
-                }
+        } else {
+            items(items) { item ->
+                PaginatedListItem(item, itemContent)
             }
         }
 
-        PageTurnGuideOverlay(
-            state = pageTurnState,
-            topInsetPx = listState.layoutInfo.beforeContentPadding.toFloat(),
-            bottomInsetPx = listState.layoutInfo.afterContentPadding.toFloat(),
-        )
+        bottomContent(this)
+
+        item {
+            if (isEnd()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "已经到底啦",
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            } else {
+                footer?.invoke(listState)
+            }
+        }
     }
 }

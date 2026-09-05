@@ -27,7 +27,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
@@ -55,9 +54,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.NavDestination
-import com.github.zly2006.zhihu.ui.components.PageTurnGuideOverlay
-import com.github.zly2006.zhihu.ui.components.PageTurnLazyListEffect
-import com.github.zly2006.zhihu.ui.components.rememberPageTurnState
 import com.github.zly2006.zhihu.util.twoDigitString
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedFeedRecord
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
@@ -79,8 +75,6 @@ fun BlockedFeedHistoryScreen() {
     val navigator = LocalNavigator.current
     val coroutineScope = rememberCoroutineScope()
     val dao = getContentFilterDatabase().blockedFeedRecordDao()
-    val listState = rememberLazyListState()
-    val pageTurnState = rememberPageTurnState()
 
     val records by dao.observeAll().collectAsState(initial = emptyList())
     var showClearDialog by remember { mutableStateOf(false) }
@@ -114,29 +108,21 @@ fun BlockedFeedHistoryScreen() {
                 Text("暂无屏蔽记录", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
-            PageTurnLazyListEffect(state = pageTurnState, listState = listState)
-            Box(
+            LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding),
+                    .padding(innerPadding)
+                    .testTag("blocked_feed_history_list"),
             ) {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .testTag("blocked_feed_history_list"),
-                ) {
-                    items(records, key = { it.id }) { record ->
-                        BlockedFeedRecordItem(
-                            record = record,
-                            onDelete = {
-                                coroutineScope.launch { dao.deleteById(record.id) }
-                            },
-                        )
-                        HorizontalDivider()
-                    }
+                items(records, key = { it.id }) { record ->
+                    BlockedFeedRecordItem(
+                        record = record,
+                        onDelete = {
+                            coroutineScope.launch { dao.deleteById(record.id) }
+                        },
+                    )
+                    HorizontalDivider()
                 }
-                PageTurnGuideOverlay(state = pageTurnState)
             }
         }
     }

@@ -269,8 +269,9 @@ fun QuestionScreen(
                 isEnd = { viewModel.isEnd },
                 key = { it.stableKey },
                 listState = listState,
-                modifier = Modifier.padding(innerPadding),
-                listModifier = Modifier.testTag(QUESTION_SCREEN_LIST_TAG),
+                modifier = Modifier
+                    .padding(innerPadding)
+                    .testTag(QUESTION_SCREEN_LIST_TAG),
                 contentPadding = PaddingValues(bottom = readingPlayerOverlayPadding),
                 footer = ProgressIndicatorFooter,
                 topContent = {

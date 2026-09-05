@@ -56,7 +56,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.TopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -857,248 +856,238 @@ fun PeopleScreen(
             }
         },
     ) { innerPadding ->
-        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-            Column(
-                modifier = Modifier.padding(horizontal = 8.dp),
-            ) {
-                HorizontalPager(
-                    state = pagerState,
-                    modifier = Modifier
-                        .weight(1f)
-                        .testTag(PEOPLE_SCREEN_PAGER_TAG),
-                ) { page ->
-                    when (page) {
-                        0 -> {
-                            // 回答
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .testTag("people_screen_page_$page"),
-                            ) {
-                                SortBar(
-                                    currentSort = viewModel.answersFeedModel.sortBy,
-                                    onSortChange = { viewModel.answersFeedModel.changeSortBy(it, paginationEnvironment) },
-                                    hotTag = PEOPLE_SCREEN_ANSWER_SORT_HOT_TAG,
-                                    timeTag = PEOPLE_SCREEN_ANSWER_SORT_TIME_TAG,
-                                )
-                                PaginatedList(
-                                    topBarState = scrollBehavior.state,
-                                    items = viewModel.answersFeedModel.allData,
-                                    onLoadMore = { viewModel.answersFeedModel.loadMore(paginationEnvironment) },
-                                    isEnd = { viewModel.answersFeedModel.isEnd },
-                                    footer = ProgressIndicatorFooter,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .testTag(PEOPLE_SCREEN_ANSWERS_LIST_TAG),
-                                    key = { it.id },
-                                ) {
-                                    FeedCard(
-                                        it.toPeopleAnswerDisplayItem(),
-                                        readingQueueSourceId = readingQueueSourceId,
-                                        modifier = Modifier.testTag("people_screen_answer_item_${it.id}"),
-                                        horizontalPadding = 4.dp,
-                                    ) { _, destination ->
-                                        destination?.let(navigator.onNavigate)
-                                    }
-                                }
-                            }
-                        }
-
-                        1 -> {
-                            // 文章
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .testTag("people_screen_page_$page"),
-                            ) {
-                                SortBar(
-                                    currentSort = viewModel.articlesFeedModel.sortBy,
-                                    onSortChange = { viewModel.articlesFeedModel.changeSortBy(it, paginationEnvironment) },
-                                    hotTag = PEOPLE_SCREEN_ARTICLE_SORT_HOT_TAG,
-                                    timeTag = PEOPLE_SCREEN_ARTICLE_SORT_TIME_TAG,
-                                )
-                                PaginatedList(
-                                    topBarState = scrollBehavior.state,
-                                    items = viewModel.articlesFeedModel.allData,
-                                    onLoadMore = { viewModel.articlesFeedModel.loadMore(paginationEnvironment) },
-                                    isEnd = { viewModel.articlesFeedModel.isEnd },
-                                    footer = ProgressIndicatorFooter,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .testTag(PEOPLE_SCREEN_ARTICLES_LIST_TAG),
-                                    key = { it.id },
-                                ) {
-                                    FeedCard(
-                                        it.toPeopleArticleDisplayItem(),
-                                        readingQueueSourceId = readingQueueSourceId,
-                                        modifier = Modifier.testTag("people_screen_article_item_${it.id}"),
-                                        horizontalPadding = 4.dp,
-                                    ) { _, destination ->
-                                        destination?.let(navigator.onNavigate)
-                                    }
-                                }
-                            }
-                        }
-
-                        2 -> {
-                            // 动态
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+                .padding(horizontal = 8.dp),
+        ) {
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier
+                    .weight(1f)
+                    .testTag(PEOPLE_SCREEN_PAGER_TAG),
+            ) { page ->
+                when (page) {
+                    0 -> {
+                        // 回答
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .testTag("people_screen_page_$page"),
+                        ) {
+                            SortBar(
+                                currentSort = viewModel.answersFeedModel.sortBy,
+                                onSortChange = { viewModel.answersFeedModel.changeSortBy(it, paginationEnvironment) },
+                                hotTag = PEOPLE_SCREEN_ANSWER_SORT_HOT_TAG,
+                                timeTag = PEOPLE_SCREEN_ANSWER_SORT_TIME_TAG,
+                            )
                             PaginatedList(
-                                topBarState = scrollBehavior.state,
-                                items = viewModel.activitiesFeedModel.displayItems,
-                                onLoadMore = { viewModel.activitiesFeedModel.loadMore(paginationEnvironment) },
-                                isEnd = { viewModel.activitiesFeedModel.isEnd },
+                                items = viewModel.answersFeedModel.allData,
+                                onLoadMore = { viewModel.answersFeedModel.loadMore(paginationEnvironment) },
+                                isEnd = { viewModel.answersFeedModel.isEnd },
                                 footer = ProgressIndicatorFooter,
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .testTag(PEOPLE_SCREEN_ACTIVITIES_LIST_TAG),
+                                    .testTag(PEOPLE_SCREEN_ANSWERS_LIST_TAG),
+                                key = { it.id },
                             ) {
                                 FeedCard(
-                                    it,
+                                    it.toPeopleAnswerDisplayItem(),
                                     readingQueueSourceId = readingQueueSourceId,
-                                    modifier = Modifier.testTag("people_screen_activity_item_${it.stableKey}"),
+                                    modifier = Modifier.testTag("people_screen_answer_item_${it.id}"),
                                     horizontalPadding = 4.dp,
-                                )
+                                ) { _, destination ->
+                                    destination?.let(navigator.onNavigate)
+                                }
                             }
                         }
+                    }
 
-                        3 -> {
-                            // 收藏
+                    1 -> {
+                        // 文章
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .testTag("people_screen_page_$page"),
+                        ) {
+                            SortBar(
+                                currentSort = viewModel.articlesFeedModel.sortBy,
+                                onSortChange = { viewModel.articlesFeedModel.changeSortBy(it, paginationEnvironment) },
+                                hotTag = PEOPLE_SCREEN_ARTICLE_SORT_HOT_TAG,
+                                timeTag = PEOPLE_SCREEN_ARTICLE_SORT_TIME_TAG,
+                            )
                             PaginatedList(
-                                topBarState = scrollBehavior.state,
-                                items = viewModel.collectionsFeedModel.allData,
-                                onLoadMore = { viewModel.collectionsFeedModel.loadMore(paginationEnvironment) },
-                                isEnd = { viewModel.collectionsFeedModel.isEnd },
+                                items = viewModel.articlesFeedModel.allData,
+                                onLoadMore = { viewModel.articlesFeedModel.loadMore(paginationEnvironment) },
+                                isEnd = { viewModel.articlesFeedModel.isEnd },
                                 footer = ProgressIndicatorFooter,
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .testTag(PEOPLE_SCREEN_COLLECTIONS_LIST_TAG),
+                                    .testTag(PEOPLE_SCREEN_ARTICLES_LIST_TAG),
                                 key = { it.id },
-                            ) { collection ->
-                                CollectionListItem(
-                                    collection = collection,
-                                    itemTag = "people_screen_collection_item_${collection.id}",
-                                )
-                            }
-                        }
-
-                        4 -> {
-                            // 提问
-                            PaginatedList(
-                                topBarState = scrollBehavior.state,
-                                items = viewModel.questionsFeedModel.allData,
-                                onLoadMore = { viewModel.questionsFeedModel.loadMore(paginationEnvironment) },
-                                isEnd = { viewModel.questionsFeedModel.isEnd },
-                                footer = ProgressIndicatorFooter,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .testTag(PEOPLE_SCREEN_QUESTIONS_LIST_TAG),
-                                key = { it.id },
-                            ) { question ->
-                                QuestionListItem(
-                                    question = question,
-                                    itemTag = "people_screen_question_item_${question.id}",
-                                )
-                            }
-                        }
-
-                        5 -> {
-                            // 想法
-                            PaginatedList(
-                                topBarState = scrollBehavior.state,
-                                items = viewModel.pinsFeedModel.allData,
-                                onLoadMore = { viewModel.pinsFeedModel.loadMore(paginationEnvironment) },
-                                isEnd = { viewModel.pinsFeedModel.isEnd },
-                                footer = ProgressIndicatorFooter,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .testTag(PEOPLE_SCREEN_PINS_LIST_TAG),
-                                key = { it.id },
-                            ) { pin ->
-                                PinListItem(
-                                    pin = pin,
-                                    itemTag = "people_screen_pin_item_${pin.id}",
+                            ) {
+                                FeedCard(
+                                    it.toPeopleArticleDisplayItem(),
                                     readingQueueSourceId = readingQueueSourceId,
-                                )
+                                    modifier = Modifier.testTag("people_screen_article_item_${it.id}"),
+                                    horizontalPadding = 4.dp,
+                                ) { _, destination ->
+                                    destination?.let(navigator.onNavigate)
+                                }
                             }
                         }
+                    }
 
-                        6 -> {
-                            // 专栏
-                            PaginatedList(
-                                topBarState = scrollBehavior.state,
-                                items = viewModel.columnsFeedModel.allData,
-                                onLoadMore = { viewModel.columnsFeedModel.loadMore(paginationEnvironment) },
-                                isEnd = { viewModel.columnsFeedModel.isEnd },
-                                footer = ProgressIndicatorFooter,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .testTag(PEOPLE_SCREEN_COLUMNS_LIST_TAG),
-                                key = { it.id },
-                            ) { column ->
-                                ColumnListItem(
-                                    column = column,
-                                    itemTag = "people_screen_column_item_${column.id}",
-                                )
-                            }
-                        }
-
-                        7 -> {
-                            // 粉丝
-                            PaginatedList(
-                                topBarState = scrollBehavior.state,
-                                items = viewModel.followersFeedModel.allData,
-                                onLoadMore = { viewModel.followersFeedModel.loadMore(paginationEnvironment) },
-                                isEnd = { viewModel.followersFeedModel.isEnd },
-                                footer = ProgressIndicatorFooter,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .testTag(PEOPLE_SCREEN_FOLLOWERS_LIST_TAG),
-                                key = { it.id },
-                            ) { people ->
-                                PeopleListItem(
-                                    people = people,
-                                    itemTag = "people_screen_follower_item_${people.id}",
-                                    actionTag = "people_screen_follower_action_${people.id}",
-                                )
-                            }
-                        }
-
-                        8 -> {
-                            // 关注
-                            PaginatedList(
-                                topBarState = scrollBehavior.state,
-                                items = viewModel.followingFeedModel.allData,
-                                onLoadMore = { viewModel.followingFeedModel.loadMore(paginationEnvironment) },
-                                isEnd = { viewModel.followingFeedModel.isEnd },
-                                footer = ProgressIndicatorFooter,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .testTag(PEOPLE_SCREEN_FOLLOWING_LIST_TAG),
-                                key = { it.id },
-                            ) { people ->
-                                PeopleListItem(
-                                    people = people,
-                                    itemTag = "people_screen_following_item_${people.id}",
-                                    actionTag = "people_screen_following_action_${people.id}",
-                                )
-                            }
-                        }
-
-                        9 -> {
-                            FollowingSubscriptionsPage(
-                                viewModel = viewModel,
-                                topBarState = scrollBehavior.state,
-                                onLoadMore = { subscriptionPage ->
-                                    when (subscriptionPage) {
-                                        0 -> viewModel.followingColumnsFeedModel.loadMore(paginationEnvironment)
-                                        1 -> viewModel.followingTopicsFeedModel.loadMore(paginationEnvironment)
-                                        2 -> viewModel.followingQuestionsFeedModel.loadMore(paginationEnvironment)
-                                        3 -> viewModel.followingCollectionsFeedModel.loadMore(paginationEnvironment)
-                                    }
-                                },
-                                modifier = Modifier.testTag("people_screen_page_$page"),
+                    2 -> {
+                        // 动态
+                        PaginatedList(
+                            items = viewModel.activitiesFeedModel.displayItems,
+                            onLoadMore = { viewModel.activitiesFeedModel.loadMore(paginationEnvironment) },
+                            isEnd = { viewModel.activitiesFeedModel.isEnd },
+                            footer = ProgressIndicatorFooter,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .testTag(PEOPLE_SCREEN_ACTIVITIES_LIST_TAG),
+                        ) {
+                            FeedCard(
+                                it,
+                                readingQueueSourceId = readingQueueSourceId,
+                                modifier = Modifier.testTag("people_screen_activity_item_${it.stableKey}"),
+                                horizontalPadding = 4.dp,
                             )
                         }
+                    }
+
+                    3 -> {
+                        // 收藏
+                        PaginatedList(
+                            items = viewModel.collectionsFeedModel.allData,
+                            onLoadMore = { viewModel.collectionsFeedModel.loadMore(paginationEnvironment) },
+                            isEnd = { viewModel.collectionsFeedModel.isEnd },
+                            footer = ProgressIndicatorFooter,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .testTag(PEOPLE_SCREEN_COLLECTIONS_LIST_TAG),
+                            key = { it.id },
+                        ) { collection ->
+                            CollectionListItem(
+                                collection = collection,
+                                itemTag = "people_screen_collection_item_${collection.id}",
+                            )
+                        }
+                    }
+
+                    4 -> {
+                        // 提问
+                        PaginatedList(
+                            items = viewModel.questionsFeedModel.allData,
+                            onLoadMore = { viewModel.questionsFeedModel.loadMore(paginationEnvironment) },
+                            isEnd = { viewModel.questionsFeedModel.isEnd },
+                            footer = ProgressIndicatorFooter,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .testTag(PEOPLE_SCREEN_QUESTIONS_LIST_TAG),
+                            key = { it.id },
+                        ) { question ->
+                            QuestionListItem(
+                                question = question,
+                                itemTag = "people_screen_question_item_${question.id}",
+                            )
+                        }
+                    }
+
+                    5 -> {
+                        // 想法
+                        PaginatedList(
+                            items = viewModel.pinsFeedModel.allData,
+                            onLoadMore = { viewModel.pinsFeedModel.loadMore(paginationEnvironment) },
+                            isEnd = { viewModel.pinsFeedModel.isEnd },
+                            footer = ProgressIndicatorFooter,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .testTag(PEOPLE_SCREEN_PINS_LIST_TAG),
+                            key = { it.id },
+                        ) { pin ->
+                            PinListItem(
+                                pin = pin,
+                                itemTag = "people_screen_pin_item_${pin.id}",
+                                readingQueueSourceId = readingQueueSourceId,
+                            )
+                        }
+                    }
+
+                    6 -> {
+                        // 专栏
+                        PaginatedList(
+                            items = viewModel.columnsFeedModel.allData,
+                            onLoadMore = { viewModel.columnsFeedModel.loadMore(paginationEnvironment) },
+                            isEnd = { viewModel.columnsFeedModel.isEnd },
+                            footer = ProgressIndicatorFooter,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .testTag(PEOPLE_SCREEN_COLUMNS_LIST_TAG),
+                            key = { it.id },
+                        ) { column ->
+                            ColumnListItem(
+                                column = column,
+                                itemTag = "people_screen_column_item_${column.id}",
+                            )
+                        }
+                    }
+
+                    7 -> {
+                        // 粉丝
+                        PaginatedList(
+                            items = viewModel.followersFeedModel.allData,
+                            onLoadMore = { viewModel.followersFeedModel.loadMore(paginationEnvironment) },
+                            isEnd = { viewModel.followersFeedModel.isEnd },
+                            footer = ProgressIndicatorFooter,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .testTag(PEOPLE_SCREEN_FOLLOWERS_LIST_TAG),
+                            key = { it.id },
+                        ) { people ->
+                            PeopleListItem(
+                                people = people,
+                                itemTag = "people_screen_follower_item_${people.id}",
+                                actionTag = "people_screen_follower_action_${people.id}",
+                            )
+                        }
+                    }
+
+                    8 -> {
+                        // 关注
+                        PaginatedList(
+                            items = viewModel.followingFeedModel.allData,
+                            onLoadMore = { viewModel.followingFeedModel.loadMore(paginationEnvironment) },
+                            isEnd = { viewModel.followingFeedModel.isEnd },
+                            footer = ProgressIndicatorFooter,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .testTag(PEOPLE_SCREEN_FOLLOWING_LIST_TAG),
+                            key = { it.id },
+                        ) { people ->
+                            PeopleListItem(
+                                people = people,
+                                itemTag = "people_screen_following_item_${people.id}",
+                                actionTag = "people_screen_following_action_${people.id}",
+                            )
+                        }
+                    }
+
+                    9 -> {
+                        FollowingSubscriptionsPage(
+                            viewModel = viewModel,
+                            onLoadMore = { subscriptionPage ->
+                                when (subscriptionPage) {
+                                    0 -> viewModel.followingColumnsFeedModel.loadMore(paginationEnvironment)
+                                    1 -> viewModel.followingTopicsFeedModel.loadMore(paginationEnvironment)
+                                    2 -> viewModel.followingQuestionsFeedModel.loadMore(paginationEnvironment)
+                                    3 -> viewModel.followingCollectionsFeedModel.loadMore(paginationEnvironment)
+                                }
+                            },
+                            modifier = Modifier.testTag("people_screen_page_$page"),
+                        )
                     }
                 }
             }
@@ -1106,13 +1095,12 @@ fun PeopleScreen(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun FollowingSubscriptionsPage(
     viewModel: PersonViewModel,
     onLoadMore: (Int) -> Unit,
     modifier: Modifier = Modifier,
-    topBarState: TopAppBarState? = null,
 ) {
     var selectedPage by rememberSaveable { mutableIntStateOf(0) }
 
@@ -1152,7 +1140,6 @@ private fun FollowingSubscriptionsPage(
 
         when (selectedPage) {
             0 -> PaginatedList(
-                topBarState = topBarState,
                 items = viewModel.followingColumnsFeedModel.allData,
                 onLoadMore = { onLoadMore(0) },
                 isEnd = { viewModel.followingColumnsFeedModel.isEnd },
@@ -1169,7 +1156,6 @@ private fun FollowingSubscriptionsPage(
             }
 
             1 -> PaginatedList(
-                topBarState = topBarState,
                 items = viewModel.followingTopicsFeedModel.allData,
                 onLoadMore = { onLoadMore(1) },
                 isEnd = { viewModel.followingTopicsFeedModel.isEnd },
@@ -1183,7 +1169,6 @@ private fun FollowingSubscriptionsPage(
             }
 
             2 -> PaginatedList(
-                topBarState = topBarState,
                 items = viewModel.followingQuestionsFeedModel.allData,
                 onLoadMore = { onLoadMore(2) },
                 isEnd = { viewModel.followingQuestionsFeedModel.isEnd },
@@ -1197,7 +1182,6 @@ private fun FollowingSubscriptionsPage(
             }
 
             3 -> PaginatedList(
-                topBarState = topBarState,
                 items = viewModel.followingCollectionsFeedModel.allData,
                 onLoadMore = { onLoadMore(3) },
                 isEnd = { viewModel.followingCollectionsFeedModel.isEnd },

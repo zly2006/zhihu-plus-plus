@@ -91,6 +91,10 @@ actual val isArticleHtmlExportSupported: Boolean = true
 
 actual val isArticleImageExportSupported: Boolean = true
 
+actual val isPageTurnSupported: Boolean = true
+
+actual val isAnswerSwipeSupported: Boolean = true
+
 @Composable
 actual fun rememberSystemUrlOpener(): SystemUrlOpener {
     val context = LocalContext.current

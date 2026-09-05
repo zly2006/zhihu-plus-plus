@@ -153,10 +153,8 @@ import com.github.zly2006.zhihu.reading.ReadingCommentOrder
 import com.github.zly2006.zhihu.reading.loadReadingPreferences
 import com.github.zly2006.zhihu.reading.saveReadingPreferences
 import com.github.zly2006.zhihu.ui.components.PageTurnFab
-import com.github.zly2006.zhihu.ui.components.PageTurnGuideOverlay
-import com.github.zly2006.zhihu.ui.components.PageTurnLazyListEffect
-import com.github.zly2006.zhihu.ui.components.pageTurnEndItems
-import com.github.zly2006.zhihu.ui.components.rememberPageTurnState
+import com.github.zly2006.zhihu.ui.components.pageTurnViewport
+import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.ui.components.replaceSelection
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
@@ -447,14 +445,7 @@ fun CommentScreen(
     listState: LazyListState = rememberLazyListState(),
     initialComment: DataHolder.Comment? = null,
     onInitialChildCommentResolved: (CommentModel, DataHolder.Comment) -> Unit = { _, _ -> },
-    /** 为 true 时跳过翻页效果，用于子评论弹层打开时避免父子两层同时响应翻页。 */
-    skipPageTurn: Boolean = false,
-    /**
-     * 为 true 时在评论页内部渲染悬浮翻页按钮。
-     * 当 ModalBottomSheet 使用 usePlatformWindow=true 时，弹层在独立系统窗口中，
-     * MainActivity 的全局 FAB 被遮挡，需要内部 FAB；反之共享同一窗口，全局 FAB 可见，
-     * 内部不渲染以避免重复。
-     */
+    pageTurnEnabled: Boolean = false,
     showPageTurnFab: Boolean = false,
 ) {
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
@@ -469,6 +460,15 @@ fun CommentScreen(
     var commentPendingDeletion by remember { mutableStateOf<CommentModel?>(null) }
     var isDeletingComment by remember { mutableStateOf(false) }
     var deleteCommentError by remember { mutableStateOf<String?>(null) }
+    var isCommentInputFocused by remember { mutableStateOf(false) }
+    val pageTurnActive = pageTurnEnabled &&
+        !showEmojiPicker &&
+        !isCommentInputFocused &&
+        commentPendingDeletion == null
+    val pageTurnTarget = rememberPageTurnTarget(
+        listState = listState,
+        enabled = pageTurnActive,
+    )
     val initialTargetId = initialCommentId ?: initialComment?.id
     val viewModelKey = resolvedContent.commentThreadKey() + initialTargetId?.let { ":initial:$it" }.orEmpty()
     val focusManager = LocalFocusManager.current
@@ -556,9 +556,6 @@ fun CommentScreen(
     val commentInputBarColor = MaterialTheme.colorScheme.surfaceContainer
     val actionChipColor = MaterialTheme.colorScheme.surfaceContainerHigh
     val actionChipIconColor = MaterialTheme.colorScheme.onSurfaceVariant
-
-    val pageTurnState = rememberPageTurnState()
-    PageTurnLazyListEffect(state = pageTurnState, listState = listState, skip = skipPageTurn)
 
     commentPendingDeletion?.let { target ->
         AlertDialog(
@@ -714,7 +711,7 @@ fun CommentScreen(
                             }
                         }
 
-                        else -> Box {
+                        else -> {
                             @Composable
                             fun Comment(
                                 commentItem: CommentModel,
@@ -831,6 +828,7 @@ fun CommentScreen(
                                 state = listState,
                                 modifier = Modifier
                                     .fillMaxSize()
+                                    .pageTurnViewport(pageTurnTarget)
                                     .testTag(COMMENT_SCREEN_LIST_TAG),
                                 contentPadding = PaddingValues(bottom = 16.dp, start = 16.dp, end = 16.dp, top = 8.dp),
                                 verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -981,10 +979,6 @@ fun CommentScreen(
                                     }
                                 }
 
-                                if (viewModel.isEnd && viewModel.allData.isNotEmpty()) {
-                                    pageTurnEndItems(pageTurnState, listState)
-                                }
-
                                 if (viewModel.isLoading && viewModel.allData.isNotEmpty()) {
                                     item(key = "loading_indicator") {
                                         Box(
@@ -997,14 +991,6 @@ fun CommentScreen(
                                         }
                                     }
                                 }
-                            }
-                            PageTurnGuideOverlay(
-                                state = pageTurnState,
-                                topInsetPx = listState.layoutInfo.beforeContentPadding.toFloat(),
-                                bottomInsetPx = listState.layoutInfo.afterContentPadding.toFloat(),
-                            )
-                            if (showPageTurnFab) {
-                                PageTurnFab(state = pageTurnState)
                             }
                         }
                     }
@@ -1118,6 +1104,7 @@ fun CommentScreen(
                                     .weight(1f)
                                     .focusRequester(commentInputFocusRequester)
                                     .onFocusChanged {
+                                        isCommentInputFocused = it.isFocused
                                         if (it.isFocused) showEmojiPicker = false
                                     }.testTag(COMMENT_INPUT_TAG),
                                 decorationBox = { inner ->
@@ -1230,6 +1217,11 @@ fun CommentScreen(
                     }
                 }
             }
+        }
+        if (showPageTurnFab) {
+            PageTurnFab(
+                preferenceName = "fabPageTurnComment",
+            )
         }
     }
 }

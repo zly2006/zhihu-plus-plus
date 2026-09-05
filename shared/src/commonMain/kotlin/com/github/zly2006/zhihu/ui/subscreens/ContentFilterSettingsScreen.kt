@@ -72,11 +72,9 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.AUTO_REFRESH_HOME_ON_STARTUP_PREFERENCE_KEY
-import com.github.zly2006.zhihu.ui.components.PageTurnScrollContent
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
-import com.github.zly2006.zhihu.ui.components.rememberPageTurnState
 import com.github.zly2006.zhihu.util.Log
 import com.github.zly2006.zhihu.viewmodel.ANSWER_VOTEUP_THRESHOLD_PREFERENCE_KEY
 import com.github.zly2006.zhihu.viewmodel.ARTICLE_FOLLOWERS_THRESHOLD_PREFERENCE_KEY
@@ -113,7 +111,6 @@ fun ContentFilterSettingsScreen(
     val highlightedSetting = setting.orEmpty()
 
     val scrollState = rememberScrollState()
-    val pageTurnState = rememberPageTurnState()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     LaunchedEffect(highlightedSetting) {
@@ -149,573 +146,565 @@ fun ContentFilterSettingsScreen(
             )
         },
     ) { innerPadding ->
-        PageTurnScrollContent(
-            pageTurnState = pageTurnState,
-            scrollState = scrollState,
-            innerPadding = innerPadding,
-            topBarState = scrollBehavior.state,
-        ) { sizeTrackingModifier ->
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .then(sizeTrackingModifier)
-                    .verticalScroll(scrollState)
-                    .testTag("contentFilterSettings:scroll")
-                    .padding(innerPadding)
-                    .padding(vertical = 16.dp),
-            ) {
-                SettingItemGroup {
-                    SettingItem(
-                        title = { Text("推荐算法") },
-                        settingKey = "recommendationMode",
-                        highlightedKey = highlightedSetting,
-                        endAction = {
-                            // 推荐模式
-                            val currentRecommendationMode = remember {
-                                mutableStateOf(
-                                    RecommendationMode.entries.find {
-                                        it.key == settings.getString("recommendationMode", RecommendationMode.MIXED.key)
-                                    } ?: RecommendationMode.MIXED,
-                                )
-                            }
-                            var expanded by remember { mutableStateOf(false) }
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(scrollState)
+                .testTag("contentFilterSettings:scroll")
+                .padding(innerPadding)
+                .padding(vertical = 16.dp),
+        ) {
+            SettingItemGroup {
+                SettingItem(
+                    title = { Text("推荐算法") },
+                    settingKey = "recommendationMode",
+                    highlightedKey = highlightedSetting,
+                    endAction = {
+                        // 推荐模式
+                        val currentRecommendationMode = remember {
+                            mutableStateOf(
+                                RecommendationMode.entries.find {
+                                    it.key == settings.getString("recommendationMode", RecommendationMode.MIXED.key)
+                                } ?: RecommendationMode.MIXED,
+                            )
+                        }
+                        var expanded by remember { mutableStateOf(false) }
 
-                            ExposedDropdownMenuBox(
+                        ExposedDropdownMenuBox(
+                            expanded = expanded,
+                            onExpandedChange = { expanded = !expanded },
+                            modifier = Modifier.width(256.dp),
+                        ) {
+                            OutlinedTextField(
+                                value = currentRecommendationMode.value.displayName,
+                                onValueChange = { },
+                                readOnly = true,
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                                modifier = Modifier
+                                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true)
+                                    .testTag("contentFilterSettings:recommendationModeField"),
+                            )
+                            ExposedDropdownMenu(
                                 expanded = expanded,
-                                onExpandedChange = { expanded = !expanded },
-                                modifier = Modifier.width(256.dp),
+                                onDismissRequest = { expanded = false },
                             ) {
-                                OutlinedTextField(
-                                    value = currentRecommendationMode.value.displayName,
-                                    onValueChange = { },
-                                    readOnly = true,
-                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                                    modifier = Modifier
-                                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true)
-                                        .testTag("contentFilterSettings:recommendationModeField"),
-                                )
-                                ExposedDropdownMenu(
-                                    expanded = expanded,
-                                    onDismissRequest = { expanded = false },
-                                ) {
-                                    RecommendationMode.entries.forEach { mode ->
-                                        DropdownMenuItem(
-                                            text = {
-                                                Column {
-                                                    Text(mode.displayName)
-                                                    Text(mode.description, style = MaterialTheme.typography.bodySmall)
-                                                }
-                                            },
-                                            onClick = {
-                                                currentRecommendationMode.value = mode
-                                                settings.putString("recommendationMode", mode.key)
-                                                expanded = false
-                                            },
-                                        )
-                                    }
-                                }
-                            }
-                        },
-                    )
-
-                    val isLoginForRecommendation = remember {
-                        mutableStateOf(settings.getBoolean("loginForRecommendation", true))
-                    }
-                    SettingItemWithSwitch(
-                        modifier = Modifier.testTag("contentFilterSettings:loginForRecommendation"),
-                        title = { Text("推荐内容时登录") },
-                        description = { Text("获取推荐内容时携带登录凭证") },
-                        checked = isLoginForRecommendation.value,
-                        onCheckedChange = { checked ->
-                            isLoginForRecommendation.value = checked
-                            settings.putBoolean("loginForRecommendation", checked)
-                        },
-                        settingKey = "loginForRecommendation",
-                        highlightedKey = highlightedSetting,
-                    )
-
-                    val autoRefreshHomeOnStartup = remember {
-                        mutableStateOf(settings.getBoolean(AUTO_REFRESH_HOME_ON_STARTUP_PREFERENCE_KEY, true))
-                    }
-                    SettingItemWithSwitch(
-                        modifier = Modifier.testTag("contentFilterSettings:autoRefreshHomeOnStartup"),
-                        title = { Text("启动时自动刷新首页") },
-                        description = { Text("关闭后优先显示上次获取的一批首页推荐；没有缓存时仍会加载新推荐") },
-                        checked = autoRefreshHomeOnStartup.value,
-                        onCheckedChange = { checked ->
-                            autoRefreshHomeOnStartup.value = checked
-                            settings.putBoolean(AUTO_REFRESH_HOME_ON_STARTUP_PREFERENCE_KEY, checked)
-                        },
-                        settingKey = AUTO_REFRESH_HOME_ON_STARTUP_PREFERENCE_KEY,
-                        highlightedKey = highlightedSetting,
-                    )
-                }
-
-                val enableContentFilter = remember { mutableStateOf(settings.getBoolean("enableContentFilter", true)) }
-                SettingItemGroup {
-                    var qualityFilterModeExpanded by remember { mutableStateOf(false) }
-                    val qualityFilterMode = remember {
-                        mutableStateOf(
-                            QualityFilterMode.entries.firstOrNull {
-                                it.name == settings.getString(QUALITY_FILTER_MODE_PREFERENCE_KEY, QualityFilterMode.RULES.name)
-                            } ?: QualityFilterMode.RULES,
-                        )
-                    }
-                    val qualityFilterModeOptions = listOf(
-                        QualityFilterMode.OFF to "不屏蔽",
-                        QualityFilterMode.RULES to "屏蔽规则",
-                        QualityFilterMode.HIDE to "隐藏",
-                    )
-                    SettingItem(
-                        title = { Text("质量屏蔽") },
-                        description = { Text("根据赞同数、关注数等指标处理低质量内容") },
-                        settingKey = QUALITY_FILTER_MODE_PREFERENCE_KEY,
-                        highlightedKey = highlightedSetting,
-                        endAction = {
-                            ExposedDropdownMenuBox(
-                                expanded = qualityFilterModeExpanded,
-                                onExpandedChange = { qualityFilterModeExpanded = it },
-                            ) {
-                                OutlinedTextField(
-                                    value = qualityFilterModeOptions.first { it.first == qualityFilterMode.value }.second,
-                                    onValueChange = {},
-                                    readOnly = true,
-                                    trailingIcon = {
-                                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = qualityFilterModeExpanded)
-                                    },
-                                    modifier = Modifier
-                                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
-                                        .width(160.dp),
-                                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
-                                )
-                                ExposedDropdownMenu(
-                                    expanded = qualityFilterModeExpanded,
-                                    onDismissRequest = { qualityFilterModeExpanded = false },
-                                ) {
-                                    qualityFilterModeOptions.forEach { (mode, label) ->
-                                        DropdownMenuItem(
-                                            text = { Text(label) },
-                                            onClick = {
-                                                qualityFilterMode.value = mode
-                                                settings.putString(QUALITY_FILTER_MODE_PREFERENCE_KEY, mode.name)
-                                                qualityFilterModeExpanded = false
-                                            },
-                                        )
-                                    }
-                                }
-                            }
-                        },
-                    )
-
-                    val thresholdValues = remember {
-                        mutableStateMapOf(
-                            ANSWER_VOTEUP_THRESHOLD_PREFERENCE_KEY to settings.getInt(ANSWER_VOTEUP_THRESHOLD_PREFERENCE_KEY, 10),
-                            ARTICLE_VOTEUP_THRESHOLD_PREFERENCE_KEY to settings.getInt(ARTICLE_VOTEUP_THRESHOLD_PREFERENCE_KEY, 20),
-                            ARTICLE_FOLLOWERS_THRESHOLD_PREFERENCE_KEY to settings.getInt(ARTICLE_FOLLOWERS_THRESHOLD_PREFERENCE_KEY, 50),
-                            VIDEO_VOTE_THRESHOLD_PREFERENCE_KEY to settings.getInt(VIDEO_VOTE_THRESHOLD_PREFERENCE_KEY, 20),
-                            VIDEO_FOLLOWERS_THRESHOLD_PREFERENCE_KEY to settings.getInt(VIDEO_FOLLOWERS_THRESHOLD_PREFERENCE_KEY, 50),
-                            QUESTION_ANSWER_THRESHOLD_PREFERENCE_KEY to settings.getInt(QUESTION_ANSWER_THRESHOLD_PREFERENCE_KEY, 0),
-                            QUESTION_FOLLOWERS_THRESHOLD_PREFERENCE_KEY to settings.getInt(QUESTION_FOLLOWERS_THRESHOLD_PREFERENCE_KEY, 50),
-                        )
-                    }
-                    var thresholdKey by remember { mutableStateOf<String?>(null) }
-                    SettingItem(
-                        title = { Text("回答最低赞数") },
-                        description = { Text("低于此赞同数的未关注作者回答会被过滤") },
-                        settingKey = ANSWER_VOTEUP_THRESHOLD_PREFERENCE_KEY,
-                        highlightedKey = highlightedSetting,
-                        endAction = { Text(thresholdValues[ANSWER_VOTEUP_THRESHOLD_PREFERENCE_KEY].toString(), modifier = Modifier.padding(horizontal = 16.dp)) },
-                        onClick = { thresholdKey = ANSWER_VOTEUP_THRESHOLD_PREFERENCE_KEY },
-                    )
-                    SettingItem(
-                        title = { Text("文章最低赞数") },
-                        description = { Text("低于此赞数或作者粉丝低于对应阈值的文章会被过滤") },
-                        settingKey = ARTICLE_VOTEUP_THRESHOLD_PREFERENCE_KEY,
-                        highlightedKey = highlightedSetting,
-                        endAction = { Text(thresholdValues[ARTICLE_VOTEUP_THRESHOLD_PREFERENCE_KEY].toString(), modifier = Modifier.padding(horizontal = 16.dp)) },
-                        onClick = { thresholdKey = ARTICLE_VOTEUP_THRESHOLD_PREFERENCE_KEY },
-                    )
-                    var advancedThresholdsExpanded by remember {
-                        mutableStateOf(
-                            highlightedSetting in setOf(
-                                ARTICLE_FOLLOWERS_THRESHOLD_PREFERENCE_KEY,
-                                VIDEO_VOTE_THRESHOLD_PREFERENCE_KEY,
-                                VIDEO_FOLLOWERS_THRESHOLD_PREFERENCE_KEY,
-                                QUESTION_ANSWER_THRESHOLD_PREFERENCE_KEY,
-                                QUESTION_FOLLOWERS_THRESHOLD_PREFERENCE_KEY,
-                            ),
-                        )
-                    }
-                    SettingItem(
-                        title = { Text("其他质量过滤阈值") },
-                        description = { Text("文章粉丝数、视频和问题规则") },
-                        endAction = { Text(if (advancedThresholdsExpanded) "收起" else "展开", modifier = Modifier.padding(horizontal = 16.dp)) },
-                        onClick = { advancedThresholdsExpanded = !advancedThresholdsExpanded },
-                    )
-                    AnimatedVisibility(visible = advancedThresholdsExpanded) {
-                        Column {
-                            listOf(
-                                ARTICLE_FOLLOWERS_THRESHOLD_PREFERENCE_KEY to "文章最低粉丝数",
-                                VIDEO_VOTE_THRESHOLD_PREFERENCE_KEY to "视频最低赞数",
-                                VIDEO_FOLLOWERS_THRESHOLD_PREFERENCE_KEY to "视频最低粉丝数",
-                                QUESTION_ANSWER_THRESHOLD_PREFERENCE_KEY to "问题最低回答数",
-                                QUESTION_FOLLOWERS_THRESHOLD_PREFERENCE_KEY to "问题最低关注数",
-                            ).forEach { (key, title) ->
-                                SettingItem(
-                                    title = { Text(title) },
-                                    settingKey = key,
-                                    highlightedKey = highlightedSetting,
-                                    endAction = { Text(thresholdValues[key].toString(), modifier = Modifier.padding(horizontal = 16.dp)) },
-                                    onClick = { thresholdKey = key },
-                                )
-                            }
-                        }
-                    }
-                    if (thresholdKey != null) {
-                        val key = thresholdKey!!
-                        val current = thresholdValues[key] ?: 0
-                        var input by remember(key) { mutableStateOf(current.toString()) }
-                        val thresholdTitle = when (key) {
-                            ANSWER_VOTEUP_THRESHOLD_PREFERENCE_KEY -> "回答最低赞数"
-                            ARTICLE_VOTEUP_THRESHOLD_PREFERENCE_KEY -> "文章最低赞数"
-                            ARTICLE_FOLLOWERS_THRESHOLD_PREFERENCE_KEY -> "文章最低粉丝数"
-                            VIDEO_VOTE_THRESHOLD_PREFERENCE_KEY -> "视频最低赞数"
-                            VIDEO_FOLLOWERS_THRESHOLD_PREFERENCE_KEY -> "视频最低粉丝数"
-                            QUESTION_ANSWER_THRESHOLD_PREFERENCE_KEY -> "问题最低回答数"
-                            QUESTION_FOLLOWERS_THRESHOLD_PREFERENCE_KEY -> "问题最低关注数"
-                            else -> "质量过滤阈值"
-                        }
-                        AlertDialog(
-                            onDismissRequest = { thresholdKey = null },
-                            title = { Text("设置$thresholdTitle") },
-                            text = { OutlinedTextField(value = input, onValueChange = { input = it }, label = { Text("阈值") }, singleLine = true) },
-                            confirmButton = {
-                                TextButton(onClick = {
-                                    input.toIntOrNull()?.takeIf { it >= 0 }?.let { value ->
-                                        thresholdValues[key] = value
-                                        settings.putInt(key, value)
-                                        thresholdKey = null
-                                    } ?: userMessages.showMessage("请输入不小于 0 的整数")
-                                }) { Text("确定") }
-                            },
-                            dismissButton = { TextButton(onClick = { thresholdKey = null }) { Text("取消") } },
-                        )
-                    }
-
-                    SettingItemWithSwitch(
-                        modifier = Modifier.testTag("contentFilterSettings:enableContentFilter"),
-                        title = { Text("启用智能内容过滤") },
-                        description = { Text("自动过滤首页展示超过2次但用户未点击的内容，减少重复推荐") },
-                        checked = enableContentFilter.value,
-                        onCheckedChange = {
-                            enableContentFilter.value = it
-                            settings.putBoolean("enableContentFilter", it)
-                        },
-                        settingKey = "enableContentFilter",
-                        highlightedKey = highlightedSetting,
-                    )
-
-                    val filterFollowedUserContent = remember { mutableStateOf(settings.getBoolean("filterFollowedUserContent", false)) }
-                    SettingItemWithSwitch(
-                        modifier = Modifier.testTag("contentFilterSettings:filterFollowedUserContent"),
-                        title = { Text("过滤已关注用户内容") },
-                        description = { Text("是否对已关注用户的内容也应用过滤规则。关闭此选项可确保关注用户的内容始终显示") },
-                        checked = filterFollowedUserContent.value,
-                        onCheckedChange = {
-                            filterFollowedUserContent.value = it
-                            settings.putBoolean("filterFollowedUserContent", it)
-                        },
-                        enabled = enableContentFilter.value,
-                        settingKey = "filterFollowedUserContent",
-                        highlightedKey = highlightedSetting,
-                    )
-                }
-
-                SettingItemGroup {
-                    val enableKeywordBlocking = remember { mutableStateOf(settings.getBoolean("enableKeywordBlocking", true)) }
-                    SettingItemWithSwitch(
-                        title = { Text("启用关键词屏蔽") },
-                        description = { Text("屏蔽包含特定关键词的内容") },
-                        checked = enableKeywordBlocking.value,
-                        onCheckedChange = {
-                            enableKeywordBlocking.value = it
-                            settings.putBoolean("enableKeywordBlocking", it)
-                        },
-                        settingKey = "enableKeywordBlocking",
-                        highlightedKey = highlightedSetting,
-                    )
-
-                    val enableUserBlocking = remember { mutableStateOf(settings.getBoolean("enableUserBlocking", true)) }
-                    SettingItemWithSwitch(
-                        title = { Text("启用用户屏蔽") },
-                        description = { Text("屏蔽特定用户发布的内容，或由特定用户提出的问题") },
-                        checked = enableUserBlocking.value,
-                        onCheckedChange = {
-                            enableUserBlocking.value = it
-                            settings.putBoolean("enableUserBlocking", it)
-                        },
-                        settingKey = "enableUserBlocking",
-                        highlightedKey = highlightedSetting,
-                    )
-
-                    val enableTopicBlocking = remember { mutableStateOf(settings.getBoolean("enableTopicBlocking", true)) }
-                    SettingItemWithSwitch(
-                        title = { Text("启用主题屏蔽") },
-                        description = { Text("屏蔽包含特定主题的内容") },
-                        checked = enableTopicBlocking.value,
-                        onCheckedChange = {
-                            enableTopicBlocking.value = it
-                            settings.putBoolean("enableTopicBlocking", it)
-                        },
-                        settingKey = "enableTopicBlocking",
-                        highlightedKey = highlightedSetting,
-                    )
-
-                    AnimatedVisibility(visible = enableTopicBlocking.value) {
-                        val topicThreshold = remember { mutableStateOf(settings.getInt("topicBlockingThreshold", 1)) }
-                        var showThresholdDialog by remember { mutableStateOf(false) }
-
-                        SettingItem(
-                            title = { Text("主题屏蔽阈值") },
-                            description = {
-                                Text(
-                                    "当回答的问题包含 >= ${topicThreshold.value} 个被屏蔽主题时，屏蔽该内容",
-                                )
-                            },
-                            settingKey = "topicBlockingThreshold",
-                            highlightedKey = highlightedSetting,
-                            endAction = {
-                                Text(
-                                    topicThreshold.value.toString(),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.padding(horizontal = 16.dp),
-                                )
-                            },
-                            onClick = { showThresholdDialog = true },
-                        )
-                        if (showThresholdDialog) {
-                            var inputValue by remember { mutableStateOf(topicThreshold.value.toString()) }
-
-                            AlertDialog(
-                                onDismissRequest = { showThresholdDialog = false },
-                                title = { Text("设置主题屏蔽阈值") },
-                                text = {
-                                    Column {
-                                        Text("当内容包含的被屏蔽主题数量达到或超过此阈值时，该内容将被屏蔽。")
-                                        Spacer(modifier = Modifier.height(16.dp))
-                                        OutlinedTextField(
-                                            value = inputValue,
-                                            onValueChange = { inputValue = it },
-                                            label = { Text("阈值") },
-                                            singleLine = true,
-                                        )
-                                    }
-                                },
-                                confirmButton = {
-                                    TextButton(
-                                        onClick = {
-                                            val newThreshold = inputValue.toIntOrNull()
-                                            if (newThreshold != null && newThreshold > 0) {
-                                                topicThreshold.value = newThreshold
-                                                settings.putInt("topicBlockingThreshold", newThreshold)
-                                                showThresholdDialog = false
-                                            } else {
-                                                userMessages.showMessage("请输入大于0的整数")
+                                RecommendationMode.entries.forEach { mode ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            Column {
+                                                Text(mode.displayName)
+                                                Text(mode.description, style = MaterialTheme.typography.bodySmall)
                                             }
                                         },
-                                    ) {
-                                        Text("确定")
-                                    }
+                                        onClick = {
+                                            currentRecommendationMode.value = mode
+                                            settings.putString("recommendationMode", mode.key)
+                                            expanded = false
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                    },
+                )
+
+                val isLoginForRecommendation = remember {
+                    mutableStateOf(settings.getBoolean("loginForRecommendation", true))
+                }
+                SettingItemWithSwitch(
+                    modifier = Modifier.testTag("contentFilterSettings:loginForRecommendation"),
+                    title = { Text("推荐内容时登录") },
+                    description = { Text("获取推荐内容时携带登录凭证") },
+                    checked = isLoginForRecommendation.value,
+                    onCheckedChange = { checked ->
+                        isLoginForRecommendation.value = checked
+                        settings.putBoolean("loginForRecommendation", checked)
+                    },
+                    settingKey = "loginForRecommendation",
+                    highlightedKey = highlightedSetting,
+                )
+
+                val autoRefreshHomeOnStartup = remember {
+                    mutableStateOf(settings.getBoolean(AUTO_REFRESH_HOME_ON_STARTUP_PREFERENCE_KEY, true))
+                }
+                SettingItemWithSwitch(
+                    modifier = Modifier.testTag("contentFilterSettings:autoRefreshHomeOnStartup"),
+                    title = { Text("启动时自动刷新首页") },
+                    description = { Text("关闭后优先显示上次获取的一批首页推荐；没有缓存时仍会加载新推荐") },
+                    checked = autoRefreshHomeOnStartup.value,
+                    onCheckedChange = { checked ->
+                        autoRefreshHomeOnStartup.value = checked
+                        settings.putBoolean(AUTO_REFRESH_HOME_ON_STARTUP_PREFERENCE_KEY, checked)
+                    },
+                    settingKey = AUTO_REFRESH_HOME_ON_STARTUP_PREFERENCE_KEY,
+                    highlightedKey = highlightedSetting,
+                )
+            }
+
+            val enableContentFilter = remember { mutableStateOf(settings.getBoolean("enableContentFilter", true)) }
+            SettingItemGroup {
+                var qualityFilterModeExpanded by remember { mutableStateOf(false) }
+                val qualityFilterMode = remember {
+                    mutableStateOf(
+                        QualityFilterMode.entries.firstOrNull {
+                            it.name == settings.getString(QUALITY_FILTER_MODE_PREFERENCE_KEY, QualityFilterMode.RULES.name)
+                        } ?: QualityFilterMode.RULES,
+                    )
+                }
+                val qualityFilterModeOptions = listOf(
+                    QualityFilterMode.OFF to "不屏蔽",
+                    QualityFilterMode.RULES to "屏蔽规则",
+                    QualityFilterMode.HIDE to "隐藏",
+                )
+                SettingItem(
+                    title = { Text("质量屏蔽") },
+                    description = { Text("根据赞同数、关注数等指标处理低质量内容") },
+                    settingKey = QUALITY_FILTER_MODE_PREFERENCE_KEY,
+                    highlightedKey = highlightedSetting,
+                    endAction = {
+                        ExposedDropdownMenuBox(
+                            expanded = qualityFilterModeExpanded,
+                            onExpandedChange = { qualityFilterModeExpanded = it },
+                        ) {
+                            OutlinedTextField(
+                                value = qualityFilterModeOptions.first { it.first == qualityFilterMode.value }.second,
+                                onValueChange = {},
+                                readOnly = true,
+                                trailingIcon = {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = qualityFilterModeExpanded)
                                 },
-                                dismissButton = {
-                                    TextButton(onClick = { showThresholdDialog = false }) {
-                                        Text("取消")
-                                    }
-                                },
+                                modifier = Modifier
+                                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                                    .width(160.dp),
+                                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                            )
+                            ExposedDropdownMenu(
+                                expanded = qualityFilterModeExpanded,
+                                onDismissRequest = { qualityFilterModeExpanded = false },
+                            ) {
+                                qualityFilterModeOptions.forEach { (mode, label) ->
+                                    DropdownMenuItem(
+                                        text = { Text(label) },
+                                        onClick = {
+                                            qualityFilterMode.value = mode
+                                            settings.putString(QUALITY_FILTER_MODE_PREFERENCE_KEY, mode.name)
+                                            qualityFilterModeExpanded = false
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                    },
+                )
+
+                val thresholdValues = remember {
+                    mutableStateMapOf(
+                        ANSWER_VOTEUP_THRESHOLD_PREFERENCE_KEY to settings.getInt(ANSWER_VOTEUP_THRESHOLD_PREFERENCE_KEY, 10),
+                        ARTICLE_VOTEUP_THRESHOLD_PREFERENCE_KEY to settings.getInt(ARTICLE_VOTEUP_THRESHOLD_PREFERENCE_KEY, 20),
+                        ARTICLE_FOLLOWERS_THRESHOLD_PREFERENCE_KEY to settings.getInt(ARTICLE_FOLLOWERS_THRESHOLD_PREFERENCE_KEY, 50),
+                        VIDEO_VOTE_THRESHOLD_PREFERENCE_KEY to settings.getInt(VIDEO_VOTE_THRESHOLD_PREFERENCE_KEY, 20),
+                        VIDEO_FOLLOWERS_THRESHOLD_PREFERENCE_KEY to settings.getInt(VIDEO_FOLLOWERS_THRESHOLD_PREFERENCE_KEY, 50),
+                        QUESTION_ANSWER_THRESHOLD_PREFERENCE_KEY to settings.getInt(QUESTION_ANSWER_THRESHOLD_PREFERENCE_KEY, 0),
+                        QUESTION_FOLLOWERS_THRESHOLD_PREFERENCE_KEY to settings.getInt(QUESTION_FOLLOWERS_THRESHOLD_PREFERENCE_KEY, 50),
+                    )
+                }
+                var thresholdKey by remember { mutableStateOf<String?>(null) }
+                SettingItem(
+                    title = { Text("回答最低赞数") },
+                    description = { Text("低于此赞同数的未关注作者回答会被过滤") },
+                    settingKey = ANSWER_VOTEUP_THRESHOLD_PREFERENCE_KEY,
+                    highlightedKey = highlightedSetting,
+                    endAction = { Text(thresholdValues[ANSWER_VOTEUP_THRESHOLD_PREFERENCE_KEY].toString(), modifier = Modifier.padding(horizontal = 16.dp)) },
+                    onClick = { thresholdKey = ANSWER_VOTEUP_THRESHOLD_PREFERENCE_KEY },
+                )
+                SettingItem(
+                    title = { Text("文章最低赞数") },
+                    description = { Text("低于此赞数或作者粉丝低于对应阈值的文章会被过滤") },
+                    settingKey = ARTICLE_VOTEUP_THRESHOLD_PREFERENCE_KEY,
+                    highlightedKey = highlightedSetting,
+                    endAction = { Text(thresholdValues[ARTICLE_VOTEUP_THRESHOLD_PREFERENCE_KEY].toString(), modifier = Modifier.padding(horizontal = 16.dp)) },
+                    onClick = { thresholdKey = ARTICLE_VOTEUP_THRESHOLD_PREFERENCE_KEY },
+                )
+                var advancedThresholdsExpanded by remember {
+                    mutableStateOf(
+                        highlightedSetting in setOf(
+                            ARTICLE_FOLLOWERS_THRESHOLD_PREFERENCE_KEY,
+                            VIDEO_VOTE_THRESHOLD_PREFERENCE_KEY,
+                            VIDEO_FOLLOWERS_THRESHOLD_PREFERENCE_KEY,
+                            QUESTION_ANSWER_THRESHOLD_PREFERENCE_KEY,
+                            QUESTION_FOLLOWERS_THRESHOLD_PREFERENCE_KEY,
+                        ),
+                    )
+                }
+                SettingItem(
+                    title = { Text("其他质量过滤阈值") },
+                    description = { Text("文章粉丝数、视频和问题规则") },
+                    endAction = { Text(if (advancedThresholdsExpanded) "收起" else "展开", modifier = Modifier.padding(horizontal = 16.dp)) },
+                    onClick = { advancedThresholdsExpanded = !advancedThresholdsExpanded },
+                )
+                AnimatedVisibility(visible = advancedThresholdsExpanded) {
+                    Column {
+                        listOf(
+                            ARTICLE_FOLLOWERS_THRESHOLD_PREFERENCE_KEY to "文章最低粉丝数",
+                            VIDEO_VOTE_THRESHOLD_PREFERENCE_KEY to "视频最低赞数",
+                            VIDEO_FOLLOWERS_THRESHOLD_PREFERENCE_KEY to "视频最低粉丝数",
+                            QUESTION_ANSWER_THRESHOLD_PREFERENCE_KEY to "问题最低回答数",
+                            QUESTION_FOLLOWERS_THRESHOLD_PREFERENCE_KEY to "问题最低关注数",
+                        ).forEach { (key, title) ->
+                            SettingItem(
+                                title = { Text(title) },
+                                settingKey = key,
+                                highlightedKey = highlightedSetting,
+                                endAction = { Text(thresholdValues[key].toString(), modifier = Modifier.padding(horizontal = 16.dp)) },
+                                onClick = { thresholdKey = key },
                             )
                         }
                     }
                 }
-
-                SettingItemGroup {
-                    val blockZhihuAdPlatform = remember { mutableStateOf(settings.getBoolean("blockZhihuAdPlatform", true)) }
-                    SettingItemWithSwitch(
-                        title = { Text("屏蔽知乎广告平台内容") },
-                        description = { Text("匹配并屏蔽包含 xg.zhihu.com 的推广内容") },
-                        checked = blockZhihuAdPlatform.value,
-                        onCheckedChange = {
-                            blockZhihuAdPlatform.value = it
-                            settings.putBoolean("blockZhihuAdPlatform", it)
-                        },
-                        settingKey = "blockZhihuAdPlatform",
-                        highlightedKey = highlightedSetting,
-                    )
-
-                    val blockZhihuSchool = remember { mutableStateOf(settings.getBoolean("blockZhihuSchool", true)) }
-                    SettingItemWithSwitch(
-                        title = { Text("屏蔽知乎学堂内容") },
-                        description = { Text("匹配并屏蔽包含 d.zhihu.com 或 data-edu-card-id 的内容") },
-                        checked = blockZhihuSchool.value,
-                        onCheckedChange = {
-                            blockZhihuSchool.value = it
-                            settings.putBoolean("blockZhihuSchool", it)
-                        },
-                        settingKey = "blockZhihuSchool",
-                        highlightedKey = highlightedSetting,
-                    )
-
-                    val blockWeChatOfficialAccount = remember { mutableStateOf(settings.getBoolean("blockWeChatOfficialAccount", true)) }
-                    SettingItemWithSwitch(
-                        title = { Text("屏蔽微信公众号文章") },
-                        description = { Text("匹配并屏蔽包含 mp.weixin.qq.com 的外链文章") },
-                        checked = blockWeChatOfficialAccount.value,
-                        onCheckedChange = {
-                            blockWeChatOfficialAccount.value = it
-                            settings.putBoolean("blockWeChatOfficialAccount", it)
-                        },
-                        settingKey = "blockWeChatOfficialAccount",
-                        highlightedKey = highlightedSetting,
-                    )
-
-                    val blockPaidContent = remember { mutableStateOf(settings.getBoolean("blockPaidContent", true)) }
-                    SettingItemWithSwitch(
-                        title = { Text("屏蔽知乎盐选付费内容") },
-                        description = { Text("屏蔽知乎盐选会员专享的付费回答和文章") },
-                        checked = blockPaidContent.value,
-                        onCheckedChange = {
-                            blockPaidContent.value = it
-                            settings.putBoolean("blockPaidContent", it)
-                        },
-                        settingKey = "blockPaidContent",
-                        highlightedKey = highlightedSetting,
-                    )
-
-                    val reverseBlock = remember { mutableStateOf(settings.getBoolean("reverseBlock", false)) }
-                    SettingItemWithSwitch(
-                        title = { Text("反向屏蔽（吃\uD83D\uDCA9模式）") },
-                        description = { Text("开启后，首页将只保留广告和付费内容，屏蔽其余所有内容") },
-                        checked = reverseBlock.value,
-                        onCheckedChange = {
-                            reverseBlock.value = it
-                            settings.putBoolean("reverseBlock", it)
-                        },
-                        settingKey = "reverseBlock",
-                        highlightedKey = highlightedSetting,
-                    )
-                }
-
-                SettingItemGroup {
-                    SettingItem(
-                        modifier = Modifier.testTag("contentFilterSettings:blocklist"),
-                        title = { Text("管理屏蔽列表") },
-                        onClick = { navigator.onNavigate(Account.RecommendSettings.Blocklist) },
-                        endAction = {
-                            Icon(
-                                Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        },
-                    )
-                }
-
-                SettingItemGroup {
-                    SettingItem(
-                        modifier = Modifier.testTag("contentFilterSettings:blockedFeedHistory"),
-                        title = { Text("屏蔽记录") },
-                        onClick = { navigator.onNavigate(Account.RecommendSettings.BlockedFeedHistory) },
-                        endAction = {
-                            Icon(
-                                Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        },
-                    )
-                }
-
-                // 过滤统计（简化版）
-                var filterStats by remember { mutableStateOf<ContentFilterStats?>(null) }
-                var showStatsDialog by remember { mutableStateOf(false) }
-
-                LaunchedEffect(Unit) {
-                    try {
-                        filterStats = contentFilterDao.loadFilterStats()
-                    } catch (e: Exception) {
-                        Log.e("ContentFilterSettingsScreen", "Failed to load filter stats", e)
+                if (thresholdKey != null) {
+                    val key = thresholdKey!!
+                    val current = thresholdValues[key] ?: 0
+                    var input by remember(key) { mutableStateOf(current.toString()) }
+                    val thresholdTitle = when (key) {
+                        ANSWER_VOTEUP_THRESHOLD_PREFERENCE_KEY -> "回答最低赞数"
+                        ARTICLE_VOTEUP_THRESHOLD_PREFERENCE_KEY -> "文章最低赞数"
+                        ARTICLE_FOLLOWERS_THRESHOLD_PREFERENCE_KEY -> "文章最低粉丝数"
+                        VIDEO_VOTE_THRESHOLD_PREFERENCE_KEY -> "视频最低赞数"
+                        VIDEO_FOLLOWERS_THRESHOLD_PREFERENCE_KEY -> "视频最低粉丝数"
+                        QUESTION_ANSWER_THRESHOLD_PREFERENCE_KEY -> "问题最低回答数"
+                        QUESTION_FOLLOWERS_THRESHOLD_PREFERENCE_KEY -> "问题最低关注数"
+                        else -> "质量过滤阈值"
                     }
+                    AlertDialog(
+                        onDismissRequest = { thresholdKey = null },
+                        title = { Text("设置$thresholdTitle") },
+                        text = { OutlinedTextField(value = input, onValueChange = { input = it }, label = { Text("阈值") }, singleLine = true) },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                input.toIntOrNull()?.takeIf { it >= 0 }?.let { value ->
+                                    thresholdValues[key] = value
+                                    settings.putInt(key, value)
+                                    thresholdKey = null
+                                } ?: userMessages.showMessage("请输入不小于 0 的整数")
+                            }) { Text("确定") }
+                        },
+                        dismissButton = { TextButton(onClick = { thresholdKey = null }) { Text("取消") } },
+                    )
                 }
 
-                SettingItemGroup {
-                    AnimatedVisibility(visible = enableContentFilter.value && filterStats != null) {
-                        SettingItem(
-                            title = { Text("过滤统计") },
-                            description = {
-                                Text(
-                                    "已累计过滤 ${filterStats?.filteredCount ?: 0} 条内容，点击查看详情",
-                                )
+                SettingItemWithSwitch(
+                    modifier = Modifier.testTag("contentFilterSettings:enableContentFilter"),
+                    title = { Text("启用智能内容过滤") },
+                    description = { Text("自动过滤首页展示超过2次但用户未点击的内容，减少重复推荐") },
+                    checked = enableContentFilter.value,
+                    onCheckedChange = {
+                        enableContentFilter.value = it
+                        settings.putBoolean("enableContentFilter", it)
+                    },
+                    settingKey = "enableContentFilter",
+                    highlightedKey = highlightedSetting,
+                )
+
+                val filterFollowedUserContent = remember { mutableStateOf(settings.getBoolean("filterFollowedUserContent", false)) }
+                SettingItemWithSwitch(
+                    modifier = Modifier.testTag("contentFilterSettings:filterFollowedUserContent"),
+                    title = { Text("过滤已关注用户内容") },
+                    description = { Text("是否对已关注用户的内容也应用过滤规则。关闭此选项可确保关注用户的内容始终显示") },
+                    checked = filterFollowedUserContent.value,
+                    onCheckedChange = {
+                        filterFollowedUserContent.value = it
+                        settings.putBoolean("filterFollowedUserContent", it)
+                    },
+                    enabled = enableContentFilter.value,
+                    settingKey = "filterFollowedUserContent",
+                    highlightedKey = highlightedSetting,
+                )
+            }
+
+            SettingItemGroup {
+                val enableKeywordBlocking = remember { mutableStateOf(settings.getBoolean("enableKeywordBlocking", true)) }
+                SettingItemWithSwitch(
+                    title = { Text("启用关键词屏蔽") },
+                    description = { Text("屏蔽包含特定关键词的内容") },
+                    checked = enableKeywordBlocking.value,
+                    onCheckedChange = {
+                        enableKeywordBlocking.value = it
+                        settings.putBoolean("enableKeywordBlocking", it)
+                    },
+                    settingKey = "enableKeywordBlocking",
+                    highlightedKey = highlightedSetting,
+                )
+
+                val enableUserBlocking = remember { mutableStateOf(settings.getBoolean("enableUserBlocking", true)) }
+                SettingItemWithSwitch(
+                    title = { Text("启用用户屏蔽") },
+                    description = { Text("屏蔽特定用户发布的内容，或由特定用户提出的问题") },
+                    checked = enableUserBlocking.value,
+                    onCheckedChange = {
+                        enableUserBlocking.value = it
+                        settings.putBoolean("enableUserBlocking", it)
+                    },
+                    settingKey = "enableUserBlocking",
+                    highlightedKey = highlightedSetting,
+                )
+
+                val enableTopicBlocking = remember { mutableStateOf(settings.getBoolean("enableTopicBlocking", true)) }
+                SettingItemWithSwitch(
+                    title = { Text("启用主题屏蔽") },
+                    description = { Text("屏蔽包含特定主题的内容") },
+                    checked = enableTopicBlocking.value,
+                    onCheckedChange = {
+                        enableTopicBlocking.value = it
+                        settings.putBoolean("enableTopicBlocking", it)
+                    },
+                    settingKey = "enableTopicBlocking",
+                    highlightedKey = highlightedSetting,
+                )
+
+                AnimatedVisibility(visible = enableTopicBlocking.value) {
+                    val topicThreshold = remember { mutableStateOf(settings.getInt("topicBlockingThreshold", 1)) }
+                    var showThresholdDialog by remember { mutableStateOf(false) }
+
+                    SettingItem(
+                        title = { Text("主题屏蔽阈值") },
+                        description = {
+                            Text(
+                                "当回答的问题包含 >= ${topicThreshold.value} 个被屏蔽主题时，屏蔽该内容",
+                            )
+                        },
+                        settingKey = "topicBlockingThreshold",
+                        highlightedKey = highlightedSetting,
+                        endAction = {
+                            Text(
+                                topicThreshold.value.toString(),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 16.dp),
+                            )
+                        },
+                        onClick = { showThresholdDialog = true },
+                    )
+                    if (showThresholdDialog) {
+                        var inputValue by remember { mutableStateOf(topicThreshold.value.toString()) }
+
+                        AlertDialog(
+                            onDismissRequest = { showThresholdDialog = false },
+                            title = { Text("设置主题屏蔽阈值") },
+                            text = {
+                                Column {
+                                    Text("当内容包含的被屏蔽主题数量达到或超过此阈值时，该内容将被屏蔽。")
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    OutlinedTextField(
+                                        value = inputValue,
+                                        onValueChange = { inputValue = it },
+                                        label = { Text("阈值") },
+                                        singleLine = true,
+                                    )
+                                }
                             },
-                            onClick = { showStatsDialog = true },
+                            confirmButton = {
+                                TextButton(
+                                    onClick = {
+                                        val newThreshold = inputValue.toIntOrNull()
+                                        if (newThreshold != null && newThreshold > 0) {
+                                            topicThreshold.value = newThreshold
+                                            settings.putInt("topicBlockingThreshold", newThreshold)
+                                            showThresholdDialog = false
+                                        } else {
+                                            userMessages.showMessage("请输入大于0的整数")
+                                        }
+                                    },
+                                ) {
+                                    Text("确定")
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showThresholdDialog = false }) {
+                                    Text("取消")
+                                }
+                            },
                         )
                     }
                 }
+            }
 
-                if (showStatsDialog && filterStats != null) {
-                    AlertDialog(
-                        onDismissRequest = { showStatsDialog = false },
-                        title = { Text("过滤统计详情") },
-                        text = {
-                            Column {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                ) {
-                                    Text("总记录数: ${filterStats?.totalRecords}")
-                                    Text("过滤率: ${(filterStats?.filterRate ?: 0f) * 100}%%")
-                                }
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Button(
-                                    onClick = {
-                                        coroutineScope.launch {
-                                            try {
-                                                filterStats = contentFilterDao.cleanupOldData()
-                                                userMessages.showMessage("已清理过期数据")
-                                            } catch (e: Exception) {
-                                                // 忽略导出异常。
-                                            }
-                                        }
-                                    },
-                                    modifier = Modifier.fillMaxWidth(),
-                                ) {
-                                    Text("清理过期数据")
-                                }
-                                Button(
-                                    onClick = {
-                                        coroutineScope.launch {
-                                            try {
-                                                filterStats = contentFilterDao.clearAllData()
-                                                userMessages.showMessage("已重置所有数据")
-                                                showStatsDialog = false
-                                            } catch (e: Exception) {
-                                                // 忽略分享异常。
-                                            }
-                                        }
-                                    },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                                ) {
-                                    Text("重置所有数据")
-                                }
-                            }
+            SettingItemGroup {
+                val blockZhihuAdPlatform = remember { mutableStateOf(settings.getBoolean("blockZhihuAdPlatform", true)) }
+                SettingItemWithSwitch(
+                    title = { Text("屏蔽知乎广告平台内容") },
+                    description = { Text("匹配并屏蔽包含 xg.zhihu.com 的推广内容") },
+                    checked = blockZhihuAdPlatform.value,
+                    onCheckedChange = {
+                        blockZhihuAdPlatform.value = it
+                        settings.putBoolean("blockZhihuAdPlatform", it)
+                    },
+                    settingKey = "blockZhihuAdPlatform",
+                    highlightedKey = highlightedSetting,
+                )
+
+                val blockZhihuSchool = remember { mutableStateOf(settings.getBoolean("blockZhihuSchool", true)) }
+                SettingItemWithSwitch(
+                    title = { Text("屏蔽知乎学堂内容") },
+                    description = { Text("匹配并屏蔽包含 d.zhihu.com 或 data-edu-card-id 的内容") },
+                    checked = blockZhihuSchool.value,
+                    onCheckedChange = {
+                        blockZhihuSchool.value = it
+                        settings.putBoolean("blockZhihuSchool", it)
+                    },
+                    settingKey = "blockZhihuSchool",
+                    highlightedKey = highlightedSetting,
+                )
+
+                val blockWeChatOfficialAccount = remember { mutableStateOf(settings.getBoolean("blockWeChatOfficialAccount", true)) }
+                SettingItemWithSwitch(
+                    title = { Text("屏蔽微信公众号文章") },
+                    description = { Text("匹配并屏蔽包含 mp.weixin.qq.com 的外链文章") },
+                    checked = blockWeChatOfficialAccount.value,
+                    onCheckedChange = {
+                        blockWeChatOfficialAccount.value = it
+                        settings.putBoolean("blockWeChatOfficialAccount", it)
+                    },
+                    settingKey = "blockWeChatOfficialAccount",
+                    highlightedKey = highlightedSetting,
+                )
+
+                val blockPaidContent = remember { mutableStateOf(settings.getBoolean("blockPaidContent", true)) }
+                SettingItemWithSwitch(
+                    title = { Text("屏蔽知乎盐选付费内容") },
+                    description = { Text("屏蔽知乎盐选会员专享的付费回答和文章") },
+                    checked = blockPaidContent.value,
+                    onCheckedChange = {
+                        blockPaidContent.value = it
+                        settings.putBoolean("blockPaidContent", it)
+                    },
+                    settingKey = "blockPaidContent",
+                    highlightedKey = highlightedSetting,
+                )
+
+                val reverseBlock = remember { mutableStateOf(settings.getBoolean("reverseBlock", false)) }
+                SettingItemWithSwitch(
+                    title = { Text("反向屏蔽（吃\uD83D\uDCA9模式）") },
+                    description = { Text("开启后，首页将只保留广告和付费内容，屏蔽其余所有内容") },
+                    checked = reverseBlock.value,
+                    onCheckedChange = {
+                        reverseBlock.value = it
+                        settings.putBoolean("reverseBlock", it)
+                    },
+                    settingKey = "reverseBlock",
+                    highlightedKey = highlightedSetting,
+                )
+            }
+
+            SettingItemGroup {
+                SettingItem(
+                    modifier = Modifier.testTag("contentFilterSettings:blocklist"),
+                    title = { Text("管理屏蔽列表") },
+                    onClick = { navigator.onNavigate(Account.RecommendSettings.Blocklist) },
+                    endAction = {
+                        Icon(
+                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
+                )
+            }
+
+            SettingItemGroup {
+                SettingItem(
+                    modifier = Modifier.testTag("contentFilterSettings:blockedFeedHistory"),
+                    title = { Text("屏蔽记录") },
+                    onClick = { navigator.onNavigate(Account.RecommendSettings.BlockedFeedHistory) },
+                    endAction = {
+                        Icon(
+                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
+                )
+            }
+
+            // 过滤统计（简化版）
+            var filterStats by remember { mutableStateOf<ContentFilterStats?>(null) }
+            var showStatsDialog by remember { mutableStateOf(false) }
+
+            LaunchedEffect(Unit) {
+                try {
+                    filterStats = contentFilterDao.loadFilterStats()
+                } catch (e: Exception) {
+                    Log.e("ContentFilterSettingsScreen", "Failed to load filter stats", e)
+                }
+            }
+
+            SettingItemGroup {
+                AnimatedVisibility(visible = enableContentFilter.value && filterStats != null) {
+                    SettingItem(
+                        title = { Text("过滤统计") },
+                        description = {
+                            Text(
+                                "已累计过滤 ${filterStats?.filteredCount ?: 0} 条内容，点击查看详情",
+                            )
                         },
-                        confirmButton = {
-                            TextButton(onClick = { showStatsDialog = false }) {
-                                Text("关闭")
-                            }
-                        },
+                        onClick = { showStatsDialog = true },
                     )
                 }
+            }
+
+            if (showStatsDialog && filterStats != null) {
+                AlertDialog(
+                    onDismissRequest = { showStatsDialog = false },
+                    title = { Text("过滤统计详情") },
+                    text = {
+                        Column {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                Text("总记录数: ${filterStats?.totalRecords}")
+                                Text("过滤率: ${(filterStats?.filterRate ?: 0f) * 100}%%")
+                            }
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(
+                                onClick = {
+                                    coroutineScope.launch {
+                                        try {
+                                            filterStats = contentFilterDao.cleanupOldData()
+                                            userMessages.showMessage("已清理过期数据")
+                                        } catch (e: Exception) {
+                                            // 忽略导出异常。
+                                        }
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text("清理过期数据")
+                            }
+                            Button(
+                                onClick = {
+                                    coroutineScope.launch {
+                                        try {
+                                            filterStats = contentFilterDao.clearAllData()
+                                            userMessages.showMessage("已重置所有数据")
+                                            showStatsDialog = false
+                                        } catch (e: Exception) {
+                                            // 忽略分享异常。
+                                        }
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                            ) {
+                                Text("重置所有数据")
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { showStatsDialog = false }) {
+                            Text("关闭")
+                        }
+                    },
+                )
             }
         }
     }

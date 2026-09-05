@@ -17,14 +17,12 @@
 
 package com.github.zly2006.zhihu.ui.subscreens
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -56,16 +54,15 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.notification.NotificationType
+import com.github.zly2006.zhihu.platform.isAnswerSwipeSupported
+import com.github.zly2006.zhihu.platform.isPageTurnSupported
 import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.components.DISABLE_BOTTOM_SHEET_ROUNDED_CORNERS_PREFERENCE_KEY
-import com.github.zly2006.zhihu.ui.components.PageTurnGuideOverlay
-import com.github.zly2006.zhihu.ui.components.PageTurnLazyListEffect
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
-import com.github.zly2006.zhihu.ui.components.rememberPageTurnState
 import com.github.zly2006.zhihu.viewmodel.QUALITY_FILTER_MODE_PREFERENCE_KEY
 
 const val SETTINGS_SEARCH_INPUT_TAG = "settingsSearch.input"
@@ -174,7 +171,15 @@ private val settingsSearchEntries = buildList {
     add(appearanceEntry("appearance.autoHideArticleBottomBar", "自动隐藏回答底部按钮", "滚动阅读时自动隐藏底部操作栏。", "autoHideArticleBottomBar"))
     add(appearanceEntry("appearance.buttonSkipAnswer", "显示跳转下一个回答按钮", "在回答页显示快速跳转按钮。", "buttonSkipAnswer", listOf("下一个回答")))
     add(appearanceEntry("appearance.pinAnswerDate", "置顶回答日期", "调整回答日期在正文中的位置。", "pinAnswerDate"))
-    add(appearanceEntry("appearance.answerSwitchMode", "回答切换手势", "设置回答之间的上下或左右切换。", "answerSwitchMode", listOf("手势", "上下滑动", "左右滑动", "切换回答")))
+    if (isAnswerSwipeSupported) {
+        add(appearanceEntry("appearance.answerSwitchMode", "回答切换手势", "设置回答之间的上下或左右切换。", "answerSwitchMode", listOf("手势", "上下滑动", "左右滑动", "切换回答")))
+    }
+    if (isPageTurnSupported) {
+        add(appearanceEntry("appearance.pageTurnVolume", "音量键翻页", "在白名单阅读页面使用物理按键翻页。", PREF_VOLUME_KEY_PAGE_TURN, listOf("电纸书", "翻页")))
+        add(appearanceEntry("appearance.pageTurnFab", "显示翻页悬浮按钮", "在白名单阅读页面显示上下翻页按钮。", PREF_SHOW_PAGE_TURN_FAB, listOf("电纸书", "翻页")))
+        add(appearanceEntry("appearance.pageTurnDistance", "翻页距离", "设置每次滚动占可见区域的比例。", PREF_PAGE_TURN_PERCENT, listOf("电纸书", "翻页", "重叠")))
+        add(appearanceEntry("appearance.pageTurnGuide", "显示翻页位置线", "标记相邻两页的重叠位置。", PREF_SHOW_PAGE_TURN_GUIDE, listOf("电纸书", "翻页", "引导线")))
+    }
     add(appearanceEntry("appearance.answerDoubleTapAction", "双击回答动作", "设置双击正文后的默认动作。", ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY, listOf("双击")))
     add(
         appearanceEntry(
@@ -315,8 +320,6 @@ fun SettingsSearchScreen() {
             .filter { entry -> entry.id != "developer.page" || developerModeEnabled }
             .filter { entry -> entry.matches(query) }
     }
-    val listState = rememberLazyListState()
-    val pageTurnState = rememberPageTurnState()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     Scaffold(
@@ -344,81 +347,73 @@ fun SettingsSearchScreen() {
             )
         },
     ) { innerPadding ->
-        PageTurnLazyListEffect(state = pageTurnState, listState = listState)
-        Box(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
+                .testTag(SETTINGS_SEARCH_RESULTS_TAG)
                 .padding(innerPadding),
         ) {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .testTag(SETTINGS_SEARCH_RESULTS_TAG),
-            ) {
+            item {
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(top = 8.dp, bottom = 16.dp)
+                        .testTag(SETTINGS_SEARCH_INPUT_TAG),
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    placeholder = { Text("搜索设置名称或关键词") },
+                    singleLine = true,
+                )
+            }
+
+            if (results.isEmpty()) {
                 item {
-                    OutlinedTextField(
-                        value = query,
-                        onValueChange = { query = it },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp)
-                            .padding(top = 8.dp, bottom = 16.dp)
-                            .testTag(SETTINGS_SEARCH_INPUT_TAG),
-                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                        placeholder = { Text("搜索设置名称或关键词") },
-                        singleLine = true,
+                    Text(
+                        text = "没有找到相关设置",
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-
-                if (results.isEmpty()) {
-                    item {
-                        Text(
-                            text = "没有找到相关设置",
-                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                } else {
-                    items(
-                        items = results,
-                        key = { it.id },
-                    ) { entry ->
-                        SettingItemGroup {
-                            SettingItem(
-                                modifier = Modifier.testTag("settingsSearch.result.${entry.id}"),
-                                title = {
-                                    Column {
-                                        Text(entry.title)
-                                        Text(
-                                            text = entry.section,
-                                            style = MaterialTheme.typography.labelMedium,
-                                            color = MaterialTheme.colorScheme.primary,
-                                        )
-                                    }
-                                },
-                                description = {
-                                    Text(entry.description)
-                                },
-                                onClick = {
-                                    if (entry.id != "developer.page" || settings.getBoolean("developer", false)) {
-                                        navigator.onNavigate(entry.destination)
-                                    }
-                                },
-                                endAction = {
-                                    Icon(
-                                        Icons.AutoMirrored.Filled.ArrowForward,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            } else {
+                items(
+                    items = results,
+                    key = { it.id },
+                ) { entry ->
+                    SettingItemGroup {
+                        SettingItem(
+                            modifier = Modifier.testTag("settingsSearch.result.${entry.id}"),
+                            title = {
+                                Column {
+                                    Text(entry.title)
+                                    Text(
+                                        text = entry.section,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.primary,
                                     )
-                                },
-                            )
-                        }
+                                }
+                            },
+                            description = {
+                                Text(entry.description)
+                            },
+                            onClick = {
+                                if (entry.id != "developer.page" || settings.getBoolean("developer", false)) {
+                                    navigator.onNavigate(entry.destination)
+                                }
+                            },
+                            endAction = {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            },
+                        )
                     }
                 }
             }
-            PageTurnGuideOverlay(state = pageTurnState)
         }
     }
 }

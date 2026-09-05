@@ -19,15 +19,20 @@ package com.github.zly2006.zhihu
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.graphics.Bitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeUp
@@ -48,12 +53,16 @@ import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_SCROLL_TAG
 import com.github.zly2006.zhihu.ui.subscreens.AppearanceSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEM_ORDER_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.subscreens.PREF_SHOW_PAGE_TURN_FAB
+import com.github.zly2006.zhihu.ui.subscreens.PREF_VOLUME_KEY_PAGE_TURN
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.io.File
+import java.io.FileOutputStream
 
 @RunWith(AndroidJUnit4::class)
 class AppearanceSettingsScreenInstrumentedTest {
@@ -107,6 +116,42 @@ class AppearanceSettingsScreenInstrumentedTest {
         composeRule.onNodeWithTag(APPEARANCE_SETTINGS_COLLECTION_DIRECT_BROWSE_TAG).performClick()
 
         waitUntilBooleanPreference(COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY, expected = true)
+    }
+
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/630
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/728
+     */
+    @Test
+    fun pageTurnSettingsAreAvailableOnAndroidAndProduceReviewScreenshot() {
+        composeRule.resetAppPreferences()
+        preferences
+            .edit()
+            .putBoolean(PREF_VOLUME_KEY_PAGE_TURN, true)
+            .putBoolean(PREF_SHOW_PAGE_TURN_FAB, true)
+            .commit()
+        setUpScreen(setting = PREF_SHOW_PAGE_TURN_FAB, resetPreferences = false)
+
+        waitUntilDisplayed(hasText("显示翻页悬浮按钮"))
+        composeRule.onNodeWithText("电纸书翻页").assertExists()
+        composeRule.onNodeWithText("音量键翻页").assertExists()
+        composeRule.onNodeWithText("翻页距离").assertExists()
+        composeRule.onNodeWithText("显示翻页位置线").assertExists()
+        assertTrue(preferences.getBoolean(PREF_VOLUME_KEY_PAGE_TURN, false))
+        assertTrue(preferences.getBoolean(PREF_SHOW_PAGE_TURN_FAB, false))
+
+        val screenshot = File(
+            requireNotNull(composeRule.activity.getExternalFilesDir(null)),
+            "page-turn-settings.png",
+        )
+        FileOutputStream(screenshot).use { output ->
+            composeRule.onRoot().captureToImage().asAndroidBitmap().compress(
+                Bitmap.CompressFormat.PNG,
+                100,
+                output,
+            )
+        }
+        assertTrue(screenshot.exists() && screenshot.length() > 0)
     }
 
     private fun setUpScreen(setting: String = "", resetPreferences: Boolean = true) {

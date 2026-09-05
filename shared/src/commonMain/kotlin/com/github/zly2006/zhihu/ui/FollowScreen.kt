@@ -384,7 +384,7 @@ fun FollowRecommendScreen(
             PaginatedList(
                 items = viewModel.displayItems,
                 listState = listState,
-                listModifier = Modifier.testTag(FOLLOW_RECOMMEND_LIST_TAG),
+                modifier = Modifier.testTag(FOLLOW_RECOMMEND_LIST_TAG),
                 topContent = {
                     item {
                         FollowingUsersRow()
@@ -532,7 +532,7 @@ fun FollowDynamicScreen(
             PaginatedList(
                 items = viewModel.displayItems,
                 listState = listState,
-                listModifier = Modifier.testTag(FOLLOW_DYNAMIC_LIST_TAG),
+                modifier = Modifier.testTag(FOLLOW_DYNAMIC_LIST_TAG),
                 onLoadMore = { viewModel.loadMore(environment) },
                 topContent = {
                     item {
