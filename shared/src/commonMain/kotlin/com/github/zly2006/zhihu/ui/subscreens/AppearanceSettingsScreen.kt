@@ -138,6 +138,7 @@ const val PREF_PAGE_TURN_SWITCH_ANSWER = "pageTurnSwitchAnswer"
 const val DEFAULT_PAGE_TURN_SWITCH_ANSWER = true
 const val PREF_SHOW_PAGE_TURN_FAB = "showPageTurnFab"
 const val PREF_SHOW_PAGE_TURN_GUIDE = "showPageTurnGuide"
+const val DEFAULT_SHOW_PAGE_TURN_GUIDE = false
 const val PREF_VOLUME_KEY_PAGE_TURN = "volumeKeyPageTurn"
 const val APPEARANCE_SETTINGS_SCROLL_TAG = "appearanceSettings.scroll"
 const val APPEARANCE_SETTINGS_START_DESTINATION_TAG = "appearanceSettings.startDestination"
@@ -1406,7 +1407,7 @@ fun AppearanceSettingsScreen(
                     )
 
                     var showGuide by remember {
-                        mutableStateOf(settings.getBoolean(PREF_SHOW_PAGE_TURN_GUIDE, true))
+                        mutableStateOf(settings.getBoolean(PREF_SHOW_PAGE_TURN_GUIDE, DEFAULT_SHOW_PAGE_TURN_GUIDE))
                     }
                     SettingItemWithSwitch(
                         title = { Text("显示翻页位置线") },

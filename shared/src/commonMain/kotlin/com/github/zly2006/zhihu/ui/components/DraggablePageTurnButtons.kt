@@ -63,6 +63,7 @@ import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.rememberObservedSetting
 import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_FAB_OPACITY
 import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_PAGE_TURN_PERCENT
+import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_SHOW_PAGE_TURN_GUIDE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FAB_OPACITY
 import com.github.zly2006.zhihu.ui.subscreens.PREF_PAGE_TURN_PERCENT
 import com.github.zly2006.zhihu.ui.subscreens.PREF_SHOW_PAGE_TURN_FAB
@@ -144,7 +145,7 @@ fun rememberPageTurnState(): PageTurnState {
             pageTurnPercent = settings
                 .getInt(PREF_PAGE_TURN_PERCENT, DEFAULT_PAGE_TURN_PERCENT)
                 .coerceIn(50, 100),
-            showGuide = settings.getBoolean(PREF_SHOW_PAGE_TURN_GUIDE, true),
+            showGuide = settings.getBoolean(PREF_SHOW_PAGE_TURN_GUIDE, DEFAULT_SHOW_PAGE_TURN_GUIDE),
             guideColor = guideColor,
         )
     }
@@ -157,7 +158,7 @@ fun rememberPageTurnState(): PageTurnState {
                         .coerceIn(50, 100)
                 PREF_SHOW_PAGE_TURN_GUIDE ->
                     state.showGuide =
-                        settings.getBoolean(PREF_SHOW_PAGE_TURN_GUIDE, true).also { showGuide ->
+                        settings.getBoolean(PREF_SHOW_PAGE_TURN_GUIDE, DEFAULT_SHOW_PAGE_TURN_GUIDE).also { showGuide ->
                             if (!showGuide) state.guideLastDirection = 0
                         }
             }
