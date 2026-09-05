@@ -101,12 +101,12 @@ fun MacosZhihuMain(windowChrome: MacosWindowChromeHost? = null) {
     var currentMainTabOpenFrom by remember { mutableStateOf<String?>(null) }
     var currentMainTabDestination by remember { mutableStateOf(preferenceState.startDestination) }
 
-    fun navigateToMainTabs() {
+    fun navigateToMainTabs(clearRouteStack: Boolean = false) {
         navController.navigate(MainTabs) {
             launchSingleTop = true
-            restoreState = true
+            restoreState = !clearRouteStack
             popUpTo(MainTabs) {
-                saveState = true
+                saveState = !clearRouteStack
             }
         }
     }
@@ -268,7 +268,7 @@ fun MacosZhihuMain(windowChrome: MacosWindowChromeHost? = null) {
             val destination = navDestinationFromName(destinationName)
             val action = {
                 mainTabNavigationTarget = destination
-                navigateToMainTabs()
+                navigateToMainTabs(clearRouteStack = true)
             }
             when (destination) {
                 Home -> MacosWindowNavigationItem(Home.name, "首页", "house", "内容", Home == currentMainTabDestination, action)

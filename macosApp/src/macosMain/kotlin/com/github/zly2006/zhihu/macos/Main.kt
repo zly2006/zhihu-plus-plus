@@ -20,7 +20,7 @@
 package com.github.zly2006.zhihu.macos
 
 import androidx.compose.ui.window.Window
-import com.github.zly2006.zhihu.platform.MacosUserMessageHost
+import com.github.zly2006.zhihu.platform.MacosBackNavigationHost
 import com.github.zly2006.zhihu.platform.isMacosQuitOnWindowCloseEnabled
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.MacosZhihuMain
@@ -59,8 +59,8 @@ fun main() {
         ) {
             applicationDelegate.window = window
             window.delegate = applicationDelegate
-            ZhihuTheme {
-                MacosUserMessageHost {
+            MacosBackNavigationHost(window) {
+                ZhihuTheme {
                     MacosZhihuMain { chrome, content ->
                         MacosNativeWindowChrome(
                             window = window,
