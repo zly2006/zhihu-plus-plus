@@ -116,7 +116,6 @@ jobs:
 
   unit-tests:
     name: Unit Tests
-    needs: build_pr
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -127,12 +126,6 @@ jobs:
           distribution: zulu
           java-version: "23"
           cache: gradle
-
-      - name: Restore Gradle build cache
-        uses: actions/download-artifact@v4
-        with:
-          name: PR Gradle build cache
-          path: .gradle/build-cache
 
       - name: Change wrapper permissions
         run: chmod +x ./gradlew
