@@ -19,9 +19,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -31,6 +34,7 @@ import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -47,6 +51,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -58,14 +63,17 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.github.zly2006.zhihu.platform.isPageTurnSupported
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.rememberObservedSetting
 import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_FAB_OPACITY
 import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_PAGE_TURN_PERCENT
+import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_SHOW_CONTENT_END_MARKER
 import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_SHOW_PAGE_TURN_GUIDE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FAB_OPACITY
 import com.github.zly2006.zhihu.ui.subscreens.PREF_PAGE_TURN_PERCENT
+import com.github.zly2006.zhihu.ui.subscreens.PREF_SHOW_CONTENT_END_MARKER
 import com.github.zly2006.zhihu.ui.subscreens.PREF_SHOW_PAGE_TURN_FAB
 import com.github.zly2006.zhihu.ui.subscreens.PREF_SHOW_PAGE_TURN_GUIDE
 import kotlinx.coroutines.channels.Channel
@@ -327,6 +335,34 @@ fun PageTurnFab(
     )
 }
 
+/** A real layout item placed after the final piece of content, so the marker never overlaps it. */
+@Composable
+fun ContentEndMarker(modifier: Modifier = Modifier) {
+    val settings = rememberSettingsStore()
+    val visible by rememberObservedSetting(settings, PREF_SHOW_CONTENT_END_MARKER) {
+        getBoolean(PREF_SHOW_CONTENT_END_MARKER, DEFAULT_SHOW_CONTENT_END_MARKER)
+    }
+    if (!isPageTurnSupported || !visible) return
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = "— · —",
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+            fontSize = 14.sp,
+        )
+    }
+}
+
+/** Appends [ContentEndMarker] as a real lazy-list item after all loaded content. */
+fun LazyListScope.pageTurnContentEndMarker(key: Any = "page_turn_content_end_marker") {
+    item(key = key) { ContentEndMarker() }
+}
+
 /** Couples a page-turn command handler with the measured viewport used to calculate one-page distance. */
 @Stable
 class PageTurnTarget internal constructor(
@@ -344,22 +380,21 @@ fun Modifier.pageTurnViewportWithGuide(target: PageTurnTarget): Modifier =
         drawContent()
         target.viewportHeight = size.height
         val state = target.state
-        if (!state.showGuide || state.lastPageTurnDirection == 0) return@drawWithContent
-        val overlapFraction = 1f - state.pageTurnPercent / 100f
-        val y = if (state.lastPageTurnDirection > 0) {
-            overlapFraction * size.height
-        } else {
-            state.pageTurnPercent / 100f * size.height
+        if (state.showGuide && state.lastPageTurnDirection != 0) {
+            val overlapFraction = 1f - state.pageTurnPercent / 100f
+            val y = if (state.lastPageTurnDirection > 0) {
+                overlapFraction * size.height
+            } else {
+                state.pageTurnPercent / 100f * size.height
+            }
+            drawLine(
+                color = state.guideColor,
+                start = Offset(0f, y),
+                end = Offset(size.width, y),
+                strokeWidth = 1.dp.toPx(),
+                pathEffect = PathEffect.dashPathEffect(floatArrayOf(8.dp.toPx(), 6.dp.toPx())),
+            )
         }
-        drawLine(
-            color = state.guideColor,
-            start = androidx.compose.ui.geometry
-                .Offset(0f, y),
-            end = androidx.compose.ui.geometry
-                .Offset(size.width, y),
-            strokeWidth = 1.dp.toPx(),
-            pathEffect = PathEffect.dashPathEffect(floatArrayOf(8.dp.toPx(), 6.dp.toPx())),
-        )
     }
 
 /**

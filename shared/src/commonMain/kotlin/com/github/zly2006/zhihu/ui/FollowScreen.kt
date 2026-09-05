@@ -125,10 +125,12 @@ fun FollowScreen(
     scrollToTopTrigger: Int = 0,
     innerPadding: PaddingValues,
     parentPagerState: PagerState,
+    isActive: Boolean = true,
 ): Unit = FollowScreenContent(
     scrollToTopTrigger = scrollToTopTrigger,
     innerPadding = innerPadding,
     parentPagerState = parentPagerState,
+    isActive = isActive,
 )
 
 /**
@@ -142,6 +144,7 @@ private fun FollowScreenContent(
     scrollToTopTrigger: Int = 0,
     innerPadding: PaddingValues = PaddingValues(0.dp),
     parentPagerState: PagerState,
+    isActive: Boolean,
 ) {
     val viewModel = viewModel { FollowScreenData() }
     val titles = listOf("推荐", "动态")
@@ -186,12 +189,12 @@ private fun FollowScreenContent(
             when (page) {
                 0 -> FollowRecommendScreen(
                     scrollToTopTrigger = scrollToTopTrigger,
-                    isActive = pagerState.currentPage == 0,
+                    isActive = isActive && pagerState.currentPage == 0,
                 )
 
                 1 -> FollowDynamicScreen(
                     scrollToTopTrigger = scrollToTopTrigger,
-                    isActive = pagerState.currentPage == 1,
+                    isActive = isActive && pagerState.currentPage == 1,
                 )
             }
         }

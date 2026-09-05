@@ -53,6 +53,7 @@ import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_SCROLL_TAG
 import com.github.zly2006.zhihu.ui.subscreens.AppearanceSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEM_ORDER_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.subscreens.PREF_SHOW_CONTENT_END_MARKER
 import com.github.zly2006.zhihu.ui.subscreens.PREF_SHOW_PAGE_TURN_FAB
 import com.github.zly2006.zhihu.ui.subscreens.PREF_VOLUME_KEY_PAGE_TURN
 import org.junit.Assert.assertEquals
@@ -138,6 +139,8 @@ class AppearanceSettingsScreenInstrumentedTest {
         composeRule.onNodeWithText("翻页切换回答").assertExists()
         composeRule.onNodeWithText("翻页距离").assertExists()
         composeRule.onNodeWithText("显示翻页位置线").assertExists()
+        composeRule.onNodeWithText("显示内容结束标记").assertExists()
+        assertFalse(preferences.getBoolean(PREF_SHOW_CONTENT_END_MARKER, false))
         assertTrue(preferences.getBoolean(PREF_VOLUME_KEY_PAGE_TURN, false))
         assertTrue(preferences.getBoolean(PREF_SHOW_PAGE_TURN_FAB, false))
 

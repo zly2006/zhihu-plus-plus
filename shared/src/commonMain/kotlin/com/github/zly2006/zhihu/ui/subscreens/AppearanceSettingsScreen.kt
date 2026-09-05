@@ -139,6 +139,8 @@ const val DEFAULT_PAGE_TURN_SWITCH_ANSWER = true
 const val PREF_SHOW_PAGE_TURN_FAB = "showPageTurnFab"
 const val PREF_SHOW_PAGE_TURN_GUIDE = "showPageTurnGuide"
 const val DEFAULT_SHOW_PAGE_TURN_GUIDE = false
+const val PREF_SHOW_CONTENT_END_MARKER = "showContentEndMarker"
+const val DEFAULT_SHOW_CONTENT_END_MARKER = false
 const val PREF_VOLUME_KEY_PAGE_TURN = "volumeKeyPageTurn"
 const val APPEARANCE_SETTINGS_SCROLL_TAG = "appearanceSettings.scroll"
 const val APPEARANCE_SETTINGS_START_DESTINATION_TAG = "appearanceSettings.startDestination"
@@ -1420,6 +1422,27 @@ fun AppearanceSettingsScreen(
                         settingKey = PREF_SHOW_PAGE_TURN_GUIDE,
                         highlightedKey = settingKey,
                         bringIntoViewRequester = requesterFor(PREF_SHOW_PAGE_TURN_GUIDE),
+                    )
+
+                    var showContentEndMarker by remember {
+                        mutableStateOf(
+                            settings.getBoolean(
+                                PREF_SHOW_CONTENT_END_MARKER,
+                                DEFAULT_SHOW_CONTENT_END_MARKER,
+                            ),
+                        )
+                    }
+                    SettingItemWithSwitch(
+                        title = { Text("显示内容结束标记") },
+                        description = { Text("方便电纸书用户确定内容结束了，再向下翻页将跳转下一个内容或无效果。") },
+                        checked = showContentEndMarker,
+                        onCheckedChange = {
+                            showContentEndMarker = it
+                            settings.putBoolean(PREF_SHOW_CONTENT_END_MARKER, it)
+                        },
+                        settingKey = PREF_SHOW_CONTENT_END_MARKER,
+                        highlightedKey = settingKey,
+                        bringIntoViewRequester = requesterFor(PREF_SHOW_CONTENT_END_MARKER),
                     )
                 }
             }

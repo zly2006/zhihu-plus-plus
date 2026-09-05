@@ -153,6 +153,7 @@ import com.github.zly2006.zhihu.reading.ReadingCommentOrder
 import com.github.zly2006.zhihu.reading.loadReadingPreferences
 import com.github.zly2006.zhihu.reading.saveReadingPreferences
 import com.github.zly2006.zhihu.ui.components.PageTurnFab
+import com.github.zly2006.zhihu.ui.components.pageTurnContentEndMarker
 import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.ui.components.replaceSelection
@@ -977,6 +978,10 @@ fun CommentScreen(
                                             }
                                         }
                                     }
+                                }
+
+                                if (viewModel.isEnd && viewModel.allData.isNotEmpty()) {
+                                    pageTurnContentEndMarker()
                                 }
 
                                 if (viewModel.isLoading && viewModel.allData.isNotEmpty()) {

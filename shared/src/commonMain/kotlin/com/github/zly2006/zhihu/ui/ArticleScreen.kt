@@ -137,6 +137,7 @@ import com.github.zly2006.zhihu.ui.components.AnswerVerticalOverscroll
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.CollectionDialogComponent
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
+import com.github.zly2006.zhihu.ui.components.ContentEndMarker
 import com.github.zly2006.zhihu.ui.components.DEFAULT_ANSWER_SWITCH_SENSITIVITY
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.ExportDialogComponent
@@ -1092,6 +1093,7 @@ fun ArticleScreen(
                                                 )
                                             }
                                         }
+                                        ContentEndMarker()
                                         Spacer(modifier = Modifier.height((16 + 36).dp))
                                     },
                                 )

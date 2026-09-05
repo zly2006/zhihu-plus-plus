@@ -41,6 +41,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.ui.rememberObservedSetting
+import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_SHOW_CONTENT_END_MARKER
+import com.github.zly2006.zhihu.ui.subscreens.PREF_SHOW_CONTENT_END_MARKER
 import kotlinx.coroutines.delay
 
 val ProgressIndicatorFooter: @Composable (LazyListState) -> Unit = { state ->
@@ -125,6 +129,10 @@ fun <T> PaginatedList(
     bottomContent: LazyListScope.() -> Unit = {},
     itemContent: @Composable LazyItemScope.(T) -> Unit,
 ) {
+    val settings = rememberSettingsStore()
+    val showContentEndMarker by rememberObservedSetting(settings, PREF_SHOW_CONTENT_END_MARKER) {
+        getBoolean(PREF_SHOW_CONTENT_END_MARKER, DEFAULT_SHOW_CONTENT_END_MARKER)
+    }
     val shouldLoadMore by remember {
         derivedStateOf {
             val layoutInfo = listState.layoutInfo
@@ -169,20 +177,25 @@ fun <T> PaginatedList(
 
         item {
             if (isEnd()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = "已经到底啦",
-                        textAlign = TextAlign.Center,
-                    )
+                if (!showContentEndMarker) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = "已经到底啦",
+                            textAlign = TextAlign.Center,
+                        )
+                    }
                 }
             } else {
                 footer?.invoke(listState)
             }
+        }
+        if (isEnd() && items.isNotEmpty() && showContentEndMarker) {
+            pageTurnContentEndMarker()
         }
     }
 }

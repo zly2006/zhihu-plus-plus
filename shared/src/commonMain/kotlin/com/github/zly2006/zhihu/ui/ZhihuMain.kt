@@ -814,6 +814,7 @@ private fun MainTabsPager(
                 scrollToTopTrigger = scrollToTopTrigger,
                 innerPadding = innerPadding,
                 parentPagerState = pagerState,
+                isActive = pagerState.currentPage == pageIndex,
             )
             MainTabPage.HotListPage -> HotListScreen(
                 innerPadding = innerPadding,

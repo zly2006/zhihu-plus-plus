@@ -13,6 +13,10 @@ import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
@@ -89,5 +93,33 @@ class PageTurnViewportInstrumentedTest {
         composeRule.runOnIdle { enabled.value = false }
         composeRule.waitUntil(5_000) { !dispatcher.hasActiveTarget }
         assertFalse(dispatcher.dispatch(PageTurnCommand.PageDown))
+    }
+
+    @Test
+    fun lazyListTargetScrollsTheMeasuredViewport() {
+        composeRule.resetAppPreferences()
+        val dispatcher = PageTurnDispatcher()
+        lateinit var listState: LazyListState
+
+        composeRule.setScreenContent {
+            CompositionLocalProvider(LocalPageTurnDispatcher provides dispatcher) {
+                listState = rememberLazyListState()
+                val target = rememberPageTurnTarget(listState = listState, enabled = true)
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(300.dp)
+                        .pageTurnViewportWithGuide(target),
+                ) {
+                    items((0 until 80).toList()) { Text("第 $it 行", fontSize = 20.sp) }
+                }
+            }
+        }
+
+        assertTrue(dispatcher.dispatch(PageTurnCommand.PageDown))
+        composeRule.waitUntil(5_000) {
+            listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0
+        }
     }
 }

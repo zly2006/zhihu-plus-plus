@@ -183,6 +183,7 @@ private val settingsSearchEntries = buildList {
         add(appearanceEntry("appearance.pageTurnFab", "显示翻页悬浮按钮", "在支持翻页的可滚动页面显示上下翻页按钮。", PREF_SHOW_PAGE_TURN_FAB, listOf("电纸书", "翻页")))
         add(appearanceEntry("appearance.pageTurnDistance", "翻页距离", "设置每次滚动占可见区域的比例。", PREF_PAGE_TURN_PERCENT, listOf("电纸书", "翻页", "重叠")))
         add(appearanceEntry("appearance.pageTurnGuide", "显示翻页位置线", "标记相邻两页的重叠位置。", PREF_SHOW_PAGE_TURN_GUIDE, listOf("电纸书", "翻页", "引导线")))
+        add(appearanceEntry("appearance.contentEndMarker", "显示内容结束标记", "方便电纸书用户确定内容结束。", PREF_SHOW_CONTENT_END_MARKER, listOf("电纸书", "翻页", "阅读结束", "内容末尾")))
     }
     add(appearanceEntry("appearance.answerDoubleTapAction", "双击回答动作", "设置双击正文后的默认动作。", ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY, listOf("双击")))
     add(
