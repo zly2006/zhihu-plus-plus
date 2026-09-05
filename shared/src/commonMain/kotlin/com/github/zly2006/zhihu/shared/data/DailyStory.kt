@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.shared.data
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -33,6 +34,19 @@ data class DailyStory(
     val hint: String,
     val images: List<String>,
     val type: Int,
+)
+
+@Serializable
+data class DailyStoryDetail(
+    val id: Long,
+    val title: String,
+    val image: String = "",
+    @SerialName("image_source")
+    val imageSource: String = "",
+    val body: String,
+    val css: List<String> = emptyList(),
+    @SerialName("share_url")
+    val shareUrl: String = "",
 )
 
 data class DailySection(
