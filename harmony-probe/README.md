@@ -60,19 +60,19 @@ Harmony 应用壳直接沿用 Android 正式版元数据：
 
 ## 本机配置
 
-复制配置样例，并把路径改成实际的 DevEco Studio 或 SDK 路径：
+本机依赖两个用户环境变量（已在系统设置中配置，新开的终端会自动继承）：
+
+- `DEVECO_CLI_STUDIO_PATH`：DevEco Studio 安装目录，`devecocli` 据此定位 CLI 与 Hvigor。
+- `DEVECO_SDK_HOME`：DevEco 安装内的 `sdk` 目录，Hvigor 构建与 `hdc` 都从这里取工具链。
+
+PowerShell 中可随时确认取值：
 
 ```powershell
-Copy-Item local.properties.example local.properties
+[Environment]::GetEnvironmentVariable('DEVECO_CLI_STUDIO_PATH', 'User')
+[Environment]::GetEnvironmentVariable('DEVECO_SDK_HOME', 'User')
 ```
 
-`local.properties` 不提交到版本控制。当前机器的 CPF 编译使用：
-
-```properties
-local.deveco.path=C\:\\Users\\zhuoyi\\App\\DevEco Studio
-```
-
-完整 DevEco Studio CLI 位于 `C:\Users\zhuoyi\App\Huawei\DevEco Studio`。Hvigor 构建时需要把该安装中的 `sdk` 目录传给 `DEVECO_SDK_HOME`。探针的调试签名配置引用本机 `.ohos/config` 中由 DevEco 生成的加密凭据，换机器后需要重新生成。
+探针的调试签名配置引用本机 `.ohos/config` 中由 DevEco 生成的加密凭据，换机器后需要重新生成。
 
 `harmonyApp/build-profile.json5` 包含本机签名信息，已从版本控制排除。首次配置可以复制 `harmonyApp/build-profile.json5.example`，然后通过 DevEco Studio 生成或填写本机签名配置。
 
@@ -103,8 +103,6 @@ devecocli signature generate --force --product default
 
 ~~~powershell
 Push-Location harmonyApp
-$env:DEVECO_CLI_STUDIO_PATH = 'C:\Users\zhuoyi\App\Huawei\DevEco Studio'
-$env:DEVECO_SDK_HOME = 'C:\Users\zhuoyi\App\Huawei\DevEco Studio\sdk'
 devecocli build
 Pop-Location
 ~~~
@@ -116,7 +114,7 @@ Pop-Location
 ```powershell
 devecocli emulator start ZhihuPlus_API23
 
-$hdc = 'C:\Users\zhuoyi\App\Huawei\DevEco Studio\sdk\default\openharmony\toolchains\hdc.exe'
+$hdc = "$env:DEVECO_SDK_HOME\default\openharmony\toolchains\hdc.exe"
 & $hdc list targets
 & $hdc install -r 'harmonyApp\entry\build\default\outputs\default\entry-default-signed.hap'
 & $hdc shell aa start -a EntryAbility -b com.github.zly2006.zhplus -m entry
