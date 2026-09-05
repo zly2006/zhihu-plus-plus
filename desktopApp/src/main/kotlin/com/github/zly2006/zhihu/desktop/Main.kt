@@ -20,6 +20,7 @@ package com.github.zly2006.zhihu.desktop
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
+import com.github.zly2006.zhihu.platform.DesktopBackDispatcherHost
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.DesktopZhihuMain
 
@@ -31,8 +32,10 @@ fun main() {
             title = "Zhihu++",
             icon = painterResource("desktop-icon.png"),
         ) {
-            ZhihuTheme {
-                DesktopZhihuMain()
+            DesktopBackDispatcherHost {
+                ZhihuTheme {
+                    DesktopZhihuMain()
+                }
             }
         }
     }

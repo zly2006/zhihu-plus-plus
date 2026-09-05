@@ -17,13 +17,31 @@
 
 package com.github.zly2006.zhihu.platform
 
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.InternalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.backhandler.BackHandler
+import androidx.compose.ui.backhandler.LocalCompatNavigationEventDispatcherOwner
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.navigationevent.NavigationEventDispatcher
+import androidx.navigationevent.NavigationEventDispatcherOwner
+import androidx.navigationevent.NavigationEventInput
 import com.github.zly2006.zhihu.account.ZhihuAccountStore
 import com.github.zly2006.zhihu.account.defaultNativeAccountStore
 import io.ktor.client.call.body
@@ -145,6 +163,49 @@ actual fun PlatformPredictiveBackHandler(
 actual fun rememberSettingsStore(): SettingsStore = remember { nativeSettingsStore("settings.properties") }
 
 actual fun Modifier.exportTestTagsForUiAutomation(): Modifier = this
+
+private class DesktopEscapeInput : NavigationEventInput() {
+    fun dispatchBack() = dispatchOnBackCompleted()
+}
+
+@OptIn(InternalComposeUiApi::class)
+@Composable
+actual fun DesktopBackDispatcherHost(content: @Composable () -> Unit) {
+    val dispatcher = remember { NavigationEventDispatcher() }
+    val owner = remember(dispatcher) {
+        object : NavigationEventDispatcherOwner {
+            override val navigationEventDispatcher: NavigationEventDispatcher = dispatcher
+        }
+    }
+    val escapeInput = remember { DesktopEscapeInput() }
+    val focusRequester = remember { FocusRequester() }
+    // Keep a root focus target so window key events still enter Compose when no child is focusable.
+    LaunchedEffect(focusRequester) {
+        focusRequester.requestFocus()
+    }
+    DisposableEffect(dispatcher, escapeInput) {
+        dispatcher.addInput(escapeInput)
+        onDispose { dispatcher.dispose() }
+    }
+    CompositionLocalProvider(LocalCompatNavigationEventDispatcherOwner provides owner) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .focusRequester(focusRequester)
+                .focusable()
+                .onPreviewKeyEvent { event ->
+                    if (event.key == Key.Escape && event.type == KeyEventType.KeyUp) {
+                        escapeInput.dispatchBack()
+                        true
+                    } else {
+                        false
+                    }
+                },
+        ) {
+            content()
+        }
+    }
+}
 
 @Composable
 actual fun rememberAppPrivateDirectory(): Path = remember { Path(nativeAppPrivateDirectoryPath()) }
