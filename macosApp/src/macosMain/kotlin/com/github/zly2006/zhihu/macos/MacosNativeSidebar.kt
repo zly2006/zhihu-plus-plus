@@ -70,6 +70,20 @@ import platform.darwin.NSObject
 
 private const val SIDEBAR_WIDTH = 240.0
 private const val SIDEBAR_COLUMN_IDENTIFIER = "com.github.zly2006.zhihu.macos.sidebar.column"
+private const val MACOS_ESCAPE_KEY_CODE = 53
+
+private class MacosNavigationOutlineView :
+    NSOutlineView(
+        frame = CGRectMake(0.0, 0.0, 0.0, 0.0),
+    ) {
+    override fun keyDown(event: platform.AppKit.NSEvent) {
+        if (event.keyCode.toInt() == MACOS_ESCAPE_KEY_CODE) {
+            nextResponder?.keyDown(event)
+        } else {
+            super.keyDown(event)
+        }
+    }
+}
 
 @Composable
 internal fun MacosNativeWindowChrome(
@@ -169,7 +183,7 @@ internal class MacosNativeSidebarController(
     private var sidebarVisible = false
 
     private val tableColumn = NSTableColumn(SIDEBAR_COLUMN_IDENTIFIER)
-    internal val outlineView = NSOutlineView().apply {
+    internal val outlineView: NSOutlineView = MacosNavigationOutlineView().apply {
         addTableColumn(tableColumn)
         outlineTableColumn = tableColumn
         headerView = null

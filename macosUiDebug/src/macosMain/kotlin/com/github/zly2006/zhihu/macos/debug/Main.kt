@@ -55,7 +55,6 @@ import androidx.navigationevent.NavigationEventDispatcherOwner
 import com.github.zly2006.zhihu.account.LoginScreen
 import com.github.zly2006.zhihu.data.BACKGROUND_UI_DEBUG_DATA_HOME_ENV
 import com.github.zly2006.zhihu.data.macosBackgroundUiDebugDataDirectoryPath
-import com.github.zly2006.zhihu.platform.DesktopBackDispatcherHost
 import com.github.zly2006.zhihu.platform.MacosUserMessageHost
 import com.github.zly2006.zhihu.platform.UserMessageDuration
 import com.github.zly2006.zhihu.platform.showMacosUserMessage
@@ -154,28 +153,26 @@ fun main(args: Array<String>) {
         try {
             uiTest.runTest {
                 setContent {
-                    DesktopBackDispatcherHost {
-                        val navigationEventDispatcherOwner =
-                            checkNotNull(LocalCompatNavigationEventDispatcherOwner.current) {
-                                "Compose navigation event dispatcher is unavailable"
-                            }
-                        SideEffect {
-                            backController.connect(navigationEventDispatcherOwner)
+                    val navigationEventDispatcherOwner =
+                        checkNotNull(LocalCompatNavigationEventDispatcherOwner.current) {
+                            "Compose navigation event dispatcher is unavailable"
                         }
-                        if (rootName == "login") {
-                            ZhihuTheme {
-                                MacosUserMessageHost {
-                                    LoginScreen(
-                                        onLoginComplete = {},
-                                        onOpenTelemetrySettings = {},
-                                    )
-                                }
+                    SideEffect {
+                        backController.connect(navigationEventDispatcherOwner)
+                    }
+                    if (rootName == "login") {
+                        ZhihuTheme {
+                            MacosUserMessageHost {
+                                LoginScreen(
+                                    onLoginComplete = {},
+                                    onOpenTelemetrySettings = {},
+                                )
                             }
-                        } else {
-                            ZhihuTheme {
-                                MacosUserMessageHost {
-                                    MacosZhihuMain()
-                                }
+                        }
+                    } else {
+                        ZhihuTheme {
+                            MacosUserMessageHost {
+                                MacosZhihuMain()
                             }
                         }
                     }
@@ -398,10 +395,7 @@ private class BackgroundBackController {
     }
 
     fun close() {
-        // DesktopBackDispatcherHost owns the dispatcher lifecycle and disposes it
-        // when the test composition is torn down. Removing after that point throws
-        // "NavigationEventDispatcher has already been disposed"; detaching our
-        // reference is sufficient because dispose() removes all registered inputs.
+        dispatcher?.removeInput(input)
         dispatcher = null
     }
 }

@@ -179,10 +179,6 @@ actual fun rememberSettingsStore(): SettingsStore {
     return remember(context) { androidSettingsStore(context) }
 }
 
-@Composable
-actual fun DesktopBackDispatcherHost(content: @Composable () -> Unit): Unit =
-    error("Desktop back dispatcher host is not supported on Android")
-
 actual fun Modifier.exportTestTagsForUiAutomation(): Modifier = semantics { testTagsAsResourceId = true }
 
 @Composable
