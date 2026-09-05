@@ -113,6 +113,13 @@ const val FOLLOW_RECOMMEND_REFRESH_BUTTON_TAG = "follow_recommend_refresh_button
 const val FOLLOW_DYNAMIC_LIST_TAG = "follow_dynamic_list"
 const val FOLLOW_DYNAMIC_REFRESH_BUTTON_TAG = "follow_dynamic_refresh_button"
 
+/** A preloaded inner page may own page-turn input only while the outer Follow page is visible. */
+internal fun isFollowPageTurnTargetActive(
+    followScreenActive: Boolean,
+    selectedPage: Int,
+    page: Int,
+): Boolean = followScreenActive && selectedPage == page
+
 /**
  * 关注顶层页的生产入口。
  *
@@ -189,12 +196,12 @@ private fun FollowScreenContent(
             when (page) {
                 0 -> FollowRecommendScreen(
                     scrollToTopTrigger = scrollToTopTrigger,
-                    isActive = isActive && pagerState.currentPage == 0,
+                    isActive = isFollowPageTurnTargetActive(isActive, pagerState.currentPage, 0),
                 )
 
                 1 -> FollowDynamicScreen(
                     scrollToTopTrigger = scrollToTopTrigger,
-                    isActive = isActive && pagerState.currentPage == 1,
+                    isActive = isFollowPageTurnTargetActive(isActive, pagerState.currentPage, 1),
                 )
             }
         }

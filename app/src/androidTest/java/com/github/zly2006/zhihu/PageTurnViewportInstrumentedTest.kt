@@ -95,6 +95,10 @@ class PageTurnViewportInstrumentedTest {
         assertFalse(dispatcher.dispatch(PageTurnCommand.PageDown))
     }
 
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/630
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/732
+     */
     @Test
     fun lazyListTargetScrollsTheMeasuredViewport() {
         composeRule.resetAppPreferences()

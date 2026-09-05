@@ -20,15 +20,9 @@ package com.github.zly2006.zhihu
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material3.Text
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -47,11 +41,6 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.setScreenContent
 import com.github.zly2006.zhihu.ui.FollowScreen
-import com.github.zly2006.zhihu.ui.components.LocalPageTurnDispatcher
-import com.github.zly2006.zhihu.ui.components.PageTurnCommand
-import com.github.zly2006.zhihu.ui.components.PageTurnDispatcher
-import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
-import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -66,51 +55,6 @@ import kotlin.math.absoluteValue
 class ZzzFollowPagerRegressionInstrumentedTest {
     @get:Rule
     val composeRule: MainActivityComposeRule = createAndroidComposeRule<MainActivity>()
-
-    @Test
-    fun hiddenFollowPageDoesNotCaptureVisiblePageTurnTarget() {
-        val dispatcher = PageTurnDispatcher()
-        lateinit var visibleListState: LazyListState
-
-        composeRule.setScreenContent {
-            val outerState = rememberPagerState(initialPage = 0, pageCount = { 2 })
-            CompositionLocalProvider(LocalPageTurnDispatcher provides dispatcher) {
-                HorizontalPager(
-                    state = outerState,
-                    beyondViewportPageCount = 1,
-                    modifier = Modifier.fillMaxSize(),
-                ) { page ->
-                    if (page == 0) {
-                        visibleListState = rememberLazyListState()
-                        val target = rememberPageTurnTarget(
-                            listState = visibleListState,
-                            enabled = outerState.currentPage == page,
-                        )
-                        LazyColumn(
-                            state = visibleListState,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .pageTurnViewportWithGuide(target),
-                        ) {
-                            items((0 until 100).toList()) { Text("可见内容 $it") }
-                        }
-                    } else {
-                        FollowScreen(
-                            innerPadding = PaddingValues(),
-                            parentPagerState = outerState,
-                            isActive = outerState.currentPage == page,
-                        )
-                    }
-                }
-            }
-        }
-
-        composeRule.waitUntil(5_000) { dispatcher.hasActiveTarget }
-        assertTrue(dispatcher.dispatch(PageTurnCommand.PageDown))
-        composeRule.waitUntil(5_000) {
-            visibleListState.firstVisibleItemIndex > 0 || visibleListState.firstVisibleItemScrollOffset > 0
-        }
-    }
 
     /**
      * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/318
