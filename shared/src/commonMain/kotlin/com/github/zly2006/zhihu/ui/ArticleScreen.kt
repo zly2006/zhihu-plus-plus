@@ -300,10 +300,11 @@ fun ArticleScreen(
     val pageTurnTarget = rememberPageTurnTarget(
         scrollState = scrollState,
         enabled = pageTurnActive,
+        maxScrollValue = effectiveScrollMaxValue,
         onPageUpAtStart = (answerNavigationState::navigateToPrevious)
-            .takeIf { usesVerticalAnswerSwitch && pageTurnSwitchAnswer },
+            .takeIf { article.type == ArticleType.Answer && pageTurnSwitchAnswer },
         onPageDownAtEnd = (answerNavigationState::navigateToNext)
-            .takeIf { usesVerticalAnswerSwitch && pageTurnSwitchAnswer },
+            .takeIf { article.type == ArticleType.Answer && pageTurnSwitchAnswer },
     )
     val hapticFeedback = LocalHapticFeedback.current
     val readingPlayerOverlayRouteId = articleNavController?.currentBackStackEntry?.id

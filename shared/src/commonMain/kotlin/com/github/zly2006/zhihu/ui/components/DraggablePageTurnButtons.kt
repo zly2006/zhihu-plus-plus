@@ -358,6 +358,7 @@ fun Modifier.pageTurnViewport(target: PageTurnTarget): Modifier =
 fun rememberPageTurnTarget(
     scrollState: ScrollState,
     enabled: Boolean,
+    maxScrollValue: Int = scrollState.maxValue,
     onPageUpAtStart: (() -> Unit)? = null,
     onPageDownAtEnd: (() -> Unit)? = null,
 ): PageTurnTarget {
@@ -365,6 +366,7 @@ fun rememberPageTurnTarget(
     val target = remember(state) { PageTurnTarget(state) }
     val currentOnPageUpAtStart by rememberUpdatedState(onPageUpAtStart)
     val currentOnPageDownAtEnd by rememberUpdatedState(onPageDownAtEnd)
+    val currentMaxScrollValue by rememberUpdatedState(maxScrollValue)
     LaunchedEffect(state, scrollState) {
         snapshotFlow { scrollState.isScrollInProgress }.collect { scrolling ->
             if (scrolling && !state.guideIsScrolling) state.guideLastDirection = 0
@@ -376,14 +378,14 @@ fun rememberPageTurnTarget(
         try {
             when (command) {
                 PageTurnCommand.JumpToTop -> scrollState.scrollTo(0)
-                PageTurnCommand.JumpToBottom -> scrollState.scrollTo(scrollState.maxValue)
+                PageTurnCommand.JumpToBottom -> scrollState.scrollTo(currentMaxScrollValue)
                 PageTurnCommand.PageUp,
                 PageTurnCommand.PageDown,
                 -> {
                     val reachedStart = command == PageTurnCommand.PageUp && scrollState.value <= 0
                     val reachedEnd = command == PageTurnCommand.PageDown &&
-                        scrollState.maxValue != Int.MAX_VALUE &&
-                        scrollState.value >= scrollState.maxValue
+                        currentMaxScrollValue != Int.MAX_VALUE &&
+                        scrollState.value >= currentMaxScrollValue
                     when {
                         reachedStart && currentOnPageUpAtStart != null -> currentOnPageUpAtStart?.invoke()
                         reachedEnd && currentOnPageDownAtEnd != null -> currentOnPageDownAtEnd?.invoke()
