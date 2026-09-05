@@ -35,6 +35,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
+import com.github.zly2006.zhihu.account.accountHttpClientEngineForTesting
 import com.github.zly2006.zhihu.account.androidZhihuAccountStore
 import com.github.zly2006.zhihu.data.AIGC_MARKING_ENABLED_PREFERENCE_KEY
 import com.github.zly2006.zhihu.data.AccountData
@@ -80,6 +81,7 @@ import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
 import com.github.zly2006.zhihu.viewmodel.local.buildLocalRecommendationEngine
 import com.github.zly2006.zhihu.viewmodel.local.getLocalContentDatabase
 import io.ktor.client.HttpClient
+import io.ktor.client.HttpClientConfig
 import io.ktor.client.plugins.UserAgent
 import io.ktor.client.plugins.api.createClientPlugin
 import io.ktor.client.plugins.cache.HttpCache
@@ -154,8 +156,7 @@ open class SharedAndroidPaginationEnvironment(
 
     override fun mobileHomeFeedHttpClient(): HttpClient {
         val loginForRecommendation = settingsStore.getBoolean("loginForRecommendation", true)
-
-        return HttpClient {
+        val configure: HttpClientConfig<*>.() -> Unit = {
             install(ContentNegotiation) {
                 json(json)
             }
@@ -171,6 +172,7 @@ open class SharedAndroidPaginationEnvironment(
                 }
             }
         }
+        return accountHttpClientEngineForTesting?.let { HttpClient(it, configure) } ?: HttpClient(configure)
     }
 
     override fun isAigcVoteEnabled(): Boolean =

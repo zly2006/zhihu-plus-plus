@@ -59,6 +59,23 @@ data class MobileNotificationMessageOverview(
     val columnHead: List<MobileNotificationColumnHead> = emptyList(),
     val data: List<MobileNotificationTimelineItem> = emptyList(),
     val paging: ZhihuPaging? = null,
+    val unread: MobileNotificationUnread = MobileNotificationUnread(),
+) {
+    val totalUnreadCount: Int
+        get() = unread.message.count
+}
+
+const val MOBILE_NOTIFICATION_MESSAGE_URL = "https://api.zhihu.com/notifications/v3/message/v3"
+
+@Serializable
+data class MobileNotificationUnread(
+    val message: MobileNotificationUnreadCount = MobileNotificationUnreadCount(),
+)
+
+@Serializable
+data class MobileNotificationUnreadCount(
+    val count: Int = 0,
+    val showCount: Boolean = false,
 )
 
 @Serializable
