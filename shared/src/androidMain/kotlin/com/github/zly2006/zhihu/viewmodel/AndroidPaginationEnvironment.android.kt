@@ -43,6 +43,7 @@ import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.FeedDisplayItem
 import com.github.zly2006.zhihu.data.HistoryStorage
+import com.github.zly2006.zhihu.data.QualityFilterSettings
 import com.github.zly2006.zhihu.data.ZhihuCookieStorage
 import com.github.zly2006.zhihu.data.ZhihuJson.json
 import com.github.zly2006.zhihu.data.asApiEnvironment
@@ -238,6 +239,15 @@ open class SharedAndroidPaginationEnvironment(
         qualityFilterMode = QualityFilterMode.entries.firstOrNull {
             it.name == settingsStore.getString(QUALITY_FILTER_MODE_PREFERENCE_KEY, QualityFilterMode.RULES.name)
         } ?: QualityFilterMode.RULES,
+        qualityFilter = QualityFilterSettings(
+            answerVoteupCount = settingsStore.getInt(ANSWER_VOTEUP_THRESHOLD_PREFERENCE_KEY, 10).coerceAtLeast(0),
+            articleVoteupCount = settingsStore.getInt(ARTICLE_VOTEUP_THRESHOLD_PREFERENCE_KEY, 20).coerceAtLeast(0),
+            articleFollowersCount = settingsStore.getInt(ARTICLE_FOLLOWERS_THRESHOLD_PREFERENCE_KEY, 50).coerceAtLeast(0),
+            videoVoteCount = settingsStore.getInt(VIDEO_VOTE_THRESHOLD_PREFERENCE_KEY, 20).coerceAtLeast(0),
+            videoFollowersCount = settingsStore.getInt(VIDEO_FOLLOWERS_THRESHOLD_PREFERENCE_KEY, 50).coerceAtLeast(0),
+            questionAnswerCount = settingsStore.getInt(QUESTION_ANSWER_THRESHOLD_PREFERENCE_KEY, 0).coerceAtLeast(0),
+            questionFollowersCount = settingsStore.getInt(QUESTION_FOLLOWERS_THRESHOLD_PREFERENCE_KEY, 50).coerceAtLeast(0),
+        ),
         reverseBlock = settingsStore.getBoolean("reverseBlock", false),
     )
 

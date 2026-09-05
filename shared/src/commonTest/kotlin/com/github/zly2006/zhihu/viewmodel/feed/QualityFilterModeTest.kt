@@ -20,6 +20,7 @@ package com.github.zly2006.zhihu.viewmodel.feed
 import com.github.zly2006.zhihu.data.CommonFeed
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.Person
+import com.github.zly2006.zhihu.data.QualityFilterSettings
 import com.github.zly2006.zhihu.viewmodel.FeedDisplayEnvironment
 import com.github.zly2006.zhihu.viewmodel.FeedDisplaySettings
 import com.github.zly2006.zhihu.viewmodel.QualityFilterMode
@@ -76,5 +77,20 @@ class QualityFilterModeTest {
             assertTrue(item.isFiltered)
             assertTrue(item.isQualityFiltered)
         }
+    }
+
+    @Test
+    fun customArticleVoteupThresholdIsApplied() {
+        val item = HomeFeedViewModel().createDisplayItem(
+            object : FeedDisplayEnvironment {
+                override fun feedDisplaySettings() = FeedDisplaySettings(
+                    qualityFilter = QualityFilterSettings(articleVoteupCount = 1000),
+                )
+            },
+            lowQualityArticle.copy(target = (lowQualityArticle.target as Feed.ArticleTarget).copy(voteupCount = 500)),
+        )
+
+        assertTrue(item.isQualityFiltered)
+        assertTrue(item.summary.orEmpty().contains("1000"))
     }
 }

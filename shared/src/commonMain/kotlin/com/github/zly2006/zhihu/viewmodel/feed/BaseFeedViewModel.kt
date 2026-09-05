@@ -83,6 +83,7 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
         return feed.toDisplayItem(
             enableQualityFilter = settings.qualityFilterMode != QualityFilterMode.OFF,
             reverseBlock = settings.reverseBlock,
+            qualityFilterSettings = settings.qualityFilter,
         )
     }
 

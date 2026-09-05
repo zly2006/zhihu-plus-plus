@@ -53,6 +53,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -75,8 +76,15 @@ import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
 import com.github.zly2006.zhihu.util.Log
+import com.github.zly2006.zhihu.viewmodel.ANSWER_VOTEUP_THRESHOLD_PREFERENCE_KEY
+import com.github.zly2006.zhihu.viewmodel.ARTICLE_FOLLOWERS_THRESHOLD_PREFERENCE_KEY
+import com.github.zly2006.zhihu.viewmodel.ARTICLE_VOTEUP_THRESHOLD_PREFERENCE_KEY
 import com.github.zly2006.zhihu.viewmodel.QUALITY_FILTER_MODE_PREFERENCE_KEY
+import com.github.zly2006.zhihu.viewmodel.QUESTION_ANSWER_THRESHOLD_PREFERENCE_KEY
+import com.github.zly2006.zhihu.viewmodel.QUESTION_FOLLOWERS_THRESHOLD_PREFERENCE_KEY
 import com.github.zly2006.zhihu.viewmodel.QualityFilterMode
+import com.github.zly2006.zhihu.viewmodel.VIDEO_FOLLOWERS_THRESHOLD_PREFERENCE_KEY
+import com.github.zly2006.zhihu.viewmodel.VIDEO_VOTE_THRESHOLD_PREFERENCE_KEY
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -288,6 +296,101 @@ fun ContentFilterSettingsScreen(
                         }
                     },
                 )
+
+                val thresholdValues = remember {
+                    mutableStateMapOf(
+                        ANSWER_VOTEUP_THRESHOLD_PREFERENCE_KEY to settings.getInt(ANSWER_VOTEUP_THRESHOLD_PREFERENCE_KEY, 10),
+                        ARTICLE_VOTEUP_THRESHOLD_PREFERENCE_KEY to settings.getInt(ARTICLE_VOTEUP_THRESHOLD_PREFERENCE_KEY, 20),
+                        ARTICLE_FOLLOWERS_THRESHOLD_PREFERENCE_KEY to settings.getInt(ARTICLE_FOLLOWERS_THRESHOLD_PREFERENCE_KEY, 50),
+                        VIDEO_VOTE_THRESHOLD_PREFERENCE_KEY to settings.getInt(VIDEO_VOTE_THRESHOLD_PREFERENCE_KEY, 20),
+                        VIDEO_FOLLOWERS_THRESHOLD_PREFERENCE_KEY to settings.getInt(VIDEO_FOLLOWERS_THRESHOLD_PREFERENCE_KEY, 50),
+                        QUESTION_ANSWER_THRESHOLD_PREFERENCE_KEY to settings.getInt(QUESTION_ANSWER_THRESHOLD_PREFERENCE_KEY, 0),
+                        QUESTION_FOLLOWERS_THRESHOLD_PREFERENCE_KEY to settings.getInt(QUESTION_FOLLOWERS_THRESHOLD_PREFERENCE_KEY, 50),
+                    )
+                }
+                var thresholdKey by remember { mutableStateOf<String?>(null) }
+                SettingItem(
+                    title = { Text("回答最低赞数") },
+                    description = { Text("低于此赞同数的未关注作者回答会被过滤") },
+                    settingKey = ANSWER_VOTEUP_THRESHOLD_PREFERENCE_KEY,
+                    highlightedKey = highlightedSetting,
+                    endAction = { Text(thresholdValues[ANSWER_VOTEUP_THRESHOLD_PREFERENCE_KEY].toString(), modifier = Modifier.padding(horizontal = 16.dp)) },
+                    onClick = { thresholdKey = ANSWER_VOTEUP_THRESHOLD_PREFERENCE_KEY },
+                )
+                SettingItem(
+                    title = { Text("文章最低赞数") },
+                    description = { Text("低于此赞数或作者粉丝低于对应阈值的文章会被过滤") },
+                    settingKey = ARTICLE_VOTEUP_THRESHOLD_PREFERENCE_KEY,
+                    highlightedKey = highlightedSetting,
+                    endAction = { Text(thresholdValues[ARTICLE_VOTEUP_THRESHOLD_PREFERENCE_KEY].toString(), modifier = Modifier.padding(horizontal = 16.dp)) },
+                    onClick = { thresholdKey = ARTICLE_VOTEUP_THRESHOLD_PREFERENCE_KEY },
+                )
+                var advancedThresholdsExpanded by remember {
+                    mutableStateOf(
+                        highlightedSetting in setOf(
+                            ARTICLE_FOLLOWERS_THRESHOLD_PREFERENCE_KEY,
+                            VIDEO_VOTE_THRESHOLD_PREFERENCE_KEY,
+                            VIDEO_FOLLOWERS_THRESHOLD_PREFERENCE_KEY,
+                            QUESTION_ANSWER_THRESHOLD_PREFERENCE_KEY,
+                            QUESTION_FOLLOWERS_THRESHOLD_PREFERENCE_KEY,
+                        ),
+                    )
+                }
+                SettingItem(
+                    title = { Text("其他质量过滤阈值") },
+                    description = { Text("文章粉丝数、视频和问题规则") },
+                    endAction = { Text(if (advancedThresholdsExpanded) "收起" else "展开", modifier = Modifier.padding(horizontal = 16.dp)) },
+                    onClick = { advancedThresholdsExpanded = !advancedThresholdsExpanded },
+                )
+                AnimatedVisibility(visible = advancedThresholdsExpanded) {
+                    Column {
+                        listOf(
+                            ARTICLE_FOLLOWERS_THRESHOLD_PREFERENCE_KEY to "文章最低粉丝数",
+                            VIDEO_VOTE_THRESHOLD_PREFERENCE_KEY to "视频最低赞数",
+                            VIDEO_FOLLOWERS_THRESHOLD_PREFERENCE_KEY to "视频最低粉丝数",
+                            QUESTION_ANSWER_THRESHOLD_PREFERENCE_KEY to "问题最低回答数",
+                            QUESTION_FOLLOWERS_THRESHOLD_PREFERENCE_KEY to "问题最低关注数",
+                        ).forEach { (key, title) ->
+                            SettingItem(
+                                title = { Text(title) },
+                                settingKey = key,
+                                highlightedKey = highlightedSetting,
+                                endAction = { Text(thresholdValues[key].toString(), modifier = Modifier.padding(horizontal = 16.dp)) },
+                                onClick = { thresholdKey = key },
+                            )
+                        }
+                    }
+                }
+                if (thresholdKey != null) {
+                    val key = thresholdKey!!
+                    val current = thresholdValues[key] ?: 0
+                    var input by remember(key) { mutableStateOf(current.toString()) }
+                    val thresholdTitle = when (key) {
+                        ANSWER_VOTEUP_THRESHOLD_PREFERENCE_KEY -> "回答最低赞数"
+                        ARTICLE_VOTEUP_THRESHOLD_PREFERENCE_KEY -> "文章最低赞数"
+                        ARTICLE_FOLLOWERS_THRESHOLD_PREFERENCE_KEY -> "文章最低粉丝数"
+                        VIDEO_VOTE_THRESHOLD_PREFERENCE_KEY -> "视频最低赞数"
+                        VIDEO_FOLLOWERS_THRESHOLD_PREFERENCE_KEY -> "视频最低粉丝数"
+                        QUESTION_ANSWER_THRESHOLD_PREFERENCE_KEY -> "问题最低回答数"
+                        QUESTION_FOLLOWERS_THRESHOLD_PREFERENCE_KEY -> "问题最低关注数"
+                        else -> "质量过滤阈值"
+                    }
+                    AlertDialog(
+                        onDismissRequest = { thresholdKey = null },
+                        title = { Text("设置$thresholdTitle") },
+                        text = { OutlinedTextField(value = input, onValueChange = { input = it }, label = { Text("阈值") }, singleLine = true) },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                input.toIntOrNull()?.takeIf { it >= 0 }?.let { value ->
+                                    thresholdValues[key] = value
+                                    settings.putInt(key, value)
+                                    thresholdKey = null
+                                } ?: userMessages.showMessage("请输入不小于 0 的整数")
+                            }) { Text("确定") }
+                        },
+                        dismissButton = { TextButton(onClick = { thresholdKey = null }) { Text("取消") } },
+                    )
+                }
 
                 SettingItemWithSwitch(
                     modifier = Modifier.testTag("contentFilterSettings:enableContentFilter"),
