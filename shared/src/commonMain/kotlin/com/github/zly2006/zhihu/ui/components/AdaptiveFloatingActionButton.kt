@@ -1,6 +1,7 @@
 package com.github.zly2006.zhihu.ui.components
 
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.FloatingActionButtonDefaults
@@ -30,4 +31,31 @@ fun AdaptiveFloatingActionButton(
         return
     }
     androidx.compose.material3.FloatingActionButton(onClick, modifier, shape, containerColor, contentColor, elevation, interactionSource, content)
+}
+
+@Composable
+fun AdaptiveExtendedFloatingActionButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    containerColor: Color = FloatingActionButtonDefaults.containerColor,
+    contentColor: Color = contentColorFor(containerColor),
+    icon: @Composable () -> Unit,
+    text: @Composable () -> Unit,
+) {
+    if (LocalLiquidGlass.current) {
+        CatalogButton(onClick, modifier.heightIn(min = 56.dp), enabled, containerColor, contentColor) {
+            icon()
+            text()
+        }
+    } else {
+        androidx.compose.material3.ExtendedFloatingActionButton(
+            onClick = { if (enabled) onClick() },
+            modifier = modifier,
+            containerColor = containerColor,
+            contentColor = contentColor,
+            icon = icon,
+            text = text,
+        )
+    }
 }

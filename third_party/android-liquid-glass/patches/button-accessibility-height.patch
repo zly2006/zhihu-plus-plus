@@ -1,0 +1,25 @@
+diff --git a/third_party/android-liquid-glass/src/com/kyant/backdrop/catalog/components/LiquidButton.kt b/third_party/android-liquid-glass/src/com/kyant/backdrop/catalog/components/LiquidButton.kt
+index 47b84099..929818d2 100644
+--- a/third_party/android-liquid-glass/src/com/kyant/backdrop/catalog/components/LiquidButton.kt
++++ b/third_party/android-liquid-glass/src/com/kyant/backdrop/catalog/components/LiquidButton.kt
+@@ -5,7 +5,7 @@ import androidx.compose.foundation.clickable
+ import androidx.compose.foundation.layout.Arrangement
+ import androidx.compose.foundation.layout.Row
+ import androidx.compose.foundation.layout.RowScope
+-import androidx.compose.foundation.layout.height
++import androidx.compose.foundation.layout.heightIn
+ import androidx.compose.foundation.layout.padding
+ import androidx.compose.runtime.Composable
+ import androidx.compose.runtime.remember
+@@ -113,8 +113,9 @@ fun LiquidButton(
+                     Modifier
+                 }
+             )
+-            .height(48f.dp)
+-            .padding(horizontal = 16f.dp),
++            // Keep multiline accessibility labels inside the official glass surface.
++            .heightIn(min = 48f.dp)
++            .padding(horizontal = 16f.dp, vertical = 12f.dp),
+         horizontalArrangement = Arrangement.spacedBy(8f.dp, Alignment.CenterHorizontally),
+         verticalAlignment = Alignment.CenterVertically,
+         content = content

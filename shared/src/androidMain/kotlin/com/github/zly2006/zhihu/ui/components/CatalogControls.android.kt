@@ -115,7 +115,7 @@ actual fun LiquidSwitch(checked: Boolean, onCheckedChange: ((Boolean) -> Unit)?,
                 .clickable(interactionSource = null, indication = null, enabled = enabled, onClick = {}),
             contentAlignment = Alignment.Center,
         ) {
-            LiquidToggle(selected = readValue, onSelect = select, backdrop = backdrop)
+            LiquidToggle(selected = readValue, onSelect = select, backdrop = backdrop, modifier = Modifier.size(64.dp, 48.dp))
             if (!enabled || onCheckedChange == null) BlockControlInput(Modifier.matchParentSize())
         }
     }

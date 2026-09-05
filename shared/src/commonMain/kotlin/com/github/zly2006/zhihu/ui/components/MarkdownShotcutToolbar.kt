@@ -37,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.github.zly2006.zhihu.theme.LocalLiquidGlass
 import com.github.zly2006.zhihu.ui.components.AdaptiveIconButton as IconButton
 
 enum class MarkdownShortcut(
@@ -98,6 +99,12 @@ private fun ShortcutButton(
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
+    if (LocalLiquidGlass.current) {
+        AdaptiveTextButton(onClick = onClick, enabled = enabled) {
+            Text(label, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+        }
+        return
+    }
     IconButton(
         onClick = onClick,
         enabled = enabled,

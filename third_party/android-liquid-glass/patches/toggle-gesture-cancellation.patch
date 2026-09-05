@@ -1,0 +1,69 @@
+diff --git a/third_party/android-liquid-glass/src/com/kyant/backdrop/catalog/components/LiquidToggle.kt b/third_party/android-liquid-glass/src/com/kyant/backdrop/catalog/components/LiquidToggle.kt
+index dcc6531a..c6f70686 100644
+--- a/third_party/android-liquid-glass/src/com/kyant/backdrop/catalog/components/LiquidToggle.kt
++++ b/third_party/android-liquid-glass/src/com/kyant/backdrop/catalog/components/LiquidToggle.kt
+@@ -84,6 +84,11 @@ fun LiquidToggle(
+                     onSelect(fraction == 1f)
+                 }
+             },
++            // A parent scroll cancelling the gesture must not commit a toggle.
++            onDragCancelled = {
++                didDrag = false
++                fraction = if (selected()) 1f else 0f
++            },
+             onDrag = { _, dragAmount ->
+                 if (!didDrag) {
+                     didDrag = dragAmount.x != 0f
+@@ -115,7 +120,7 @@ fun LiquidToggle(
+     val trackBackdrop = rememberLayerBackdrop()
+
+     Box(
+-        modifier,
++        modifier.then(dampedDragAnimation.modifier),
+         contentAlignment = Alignment.CenterStart
+     ) {
+         Box(
+@@ -141,7 +146,6 @@ fun LiquidToggle(
+                 .semantics {
+                     role = Role.Switch
+                 }
+-                .then(dampedDragAnimation.modifier)
+                 .drawBackdrop(
+                     backdrop = rememberCombinedBackdrop(
+                         backdrop,
+diff --git a/third_party/android-liquid-glass/src/com/kyant/backdrop/catalog/utils/DampedDragAnimation.kt b/third_party/android-liquid-glass/src/com/kyant/backdrop/catalog/utils/DampedDragAnimation.kt
+index 8926cf6e..cf91c6ab 100644
+--- a/third_party/android-liquid-glass/src/com/kyant/backdrop/catalog/utils/DampedDragAnimation.kt
++++ b/third_party/android-liquid-glass/src/com/kyant/backdrop/catalog/utils/DampedDragAnimation.kt
+@@ -26,6 +26,7 @@ class DampedDragAnimation(
+     val onDragStarted: DampedDragAnimation.(position: Offset) -> Unit,
+     val onDragStopped: DampedDragAnimation.() -> Unit,
+     val onDrag: DampedDragAnimation.(size: IntSize, dragAmount: Offset) -> Unit,
++    val onDragCancelled: DampedDragAnimation.() -> Unit = onDragStopped,
+ ) {
+
+     private val valueAnimationSpec =
+@@ -73,7 +74,7 @@ class DampedDragAnimation(
+                 release()
+             },
+             onDragCancel = {
+-                onDragStopped()
++                onDragCancelled()
+                 release()
+             }
+         ) { change, dragAmount ->
+diff --git a/third_party/android-liquid-glass/src/com/kyant/backdrop/catalog/utils/DragGestureInspector.kt b/third_party/android-liquid-glass/src/com/kyant/backdrop/catalog/utils/DragGestureInspector.kt
+index d3ae410d..a01deca8 100644
+--- a/third_party/android-liquid-glass/src/com/kyant/backdrop/catalog/utils/DragGestureInspector.kt
++++ b/third_party/android-liquid-glass/src/com/kyant/backdrop/catalog/utils/DragGestureInspector.kt
+@@ -57,6 +57,10 @@ private suspend inline fun AwaitPointerEventScope.drag(
+             return change
+         }
+         onDrag(change)
++        // A scrollable ancestor consumes movement after this child in the Main pass.
++        val finalChange = awaitPointerEvent(PointerEventPass.Final)
++            .changes.fastFirstOrNull { it.id == change.id }
++        if (finalChange?.isConsumed == true) return null
+         pointer = change.id
+     }
+ }

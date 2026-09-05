@@ -86,7 +86,8 @@ fun AdaptiveScaffold(
                     }) { measurables, constraints ->
                         val margin = 12.dp.roundToPx()
                         val child = measurables.single().measure(constraints.copy(minWidth = 0, minHeight = 0, maxWidth = (constraints.maxWidth - margin * 2).coerceAtLeast(0)))
-                        val height = if (child.height == 0) 0 else child.height + bottomInset.roundToPx() + 8.dp.roundToPx()
+                        // Scaffold treats a measured empty slot as a bottom bar; preserve its system inset.
+                        val height = bottomInset.roundToPx() + if (child.height == 0) 0 else child.height + 8.dp.roundToPx()
                         layout(constraints.maxWidth, height) { child.placeRelative(margin, 0) }
                     }
                 }

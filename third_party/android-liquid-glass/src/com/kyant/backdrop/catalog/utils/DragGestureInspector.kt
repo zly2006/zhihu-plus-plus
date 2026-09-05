@@ -57,6 +57,10 @@ private suspend inline fun AwaitPointerEventScope.drag(
             return change
         }
         onDrag(change)
+        // A scrollable ancestor consumes movement after this child in the Main pass.
+        val finalChange = awaitPointerEvent(PointerEventPass.Final)
+            .changes.fastFirstOrNull { it.id == change.id }
+        if (finalChange?.isConsumed == true) return null
         pointer = change.id
     }
 }

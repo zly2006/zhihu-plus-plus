@@ -82,6 +82,8 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
@@ -221,6 +223,8 @@ fun HomeScreen(
     showTopActions: Boolean = true,
 ) {
     val readingPlayerOverlayPadding = LocalReadingPlayerOverlayPadding.current
+    val density = LocalDensity.current
+    var createFabHeight by remember { mutableStateOf(0.dp) }
     val navigator = LocalNavigator.current
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = true)
     val settings = rememberSettingsStore()
@@ -882,7 +886,7 @@ fun HomeScreen(
                                 userMessages.showShortMessage("已复制调试数据")
                             },
                             preferenceName = "copyAll",
-                            bottomAvoidance = readingPlayerOverlayPadding,
+                            bottomAvoidance = readingPlayerOverlayPadding + if (LocalLiquidGlass.current) createFabHeight + 12.dp else 0.dp,
                         ) {
                             Icon(Icons.Default.CopyAll, contentDescription = "复制")
                         }
@@ -1001,7 +1005,7 @@ fun HomeScreen(
                 settings.getInt(PREF_FAB_OPACITY, DEFAULT_FAB_OPACITY).coerceIn(10, 100) / 100f
             }
             FloatingActionButton(
-                modifier = Modifier.testTag(HOME_CREATE_FAB_TAG),
+                modifier = Modifier.testTag(HOME_CREATE_FAB_TAG).onSizeChanged { createFabHeight = with(density) { it.height.toDp() } },
                 onClick = { showCreateMenu = !showCreateMenu },
                 shape = CircleShape,
                 containerColor = (if (LocalLiquidGlass.current) MaterialTheme.colorScheme.primary else FloatingActionButtonDefaults.containerColor).copy(alpha = createFabOpacity),

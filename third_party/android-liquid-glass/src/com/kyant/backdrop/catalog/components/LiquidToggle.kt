@@ -84,6 +84,11 @@ fun LiquidToggle(
                     onSelect(fraction == 1f)
                 }
             },
+            // A parent scroll cancelling the gesture must not commit a toggle.
+            onDragCancelled = {
+                didDrag = false
+                fraction = if (selected()) 1f else 0f
+            },
             onDrag = { _, dragAmount ->
                 if (!didDrag) {
                     didDrag = dragAmount.x != 0f
@@ -115,7 +120,7 @@ fun LiquidToggle(
     val trackBackdrop = rememberLayerBackdrop()
 
     Box(
-        modifier,
+        modifier.then(dampedDragAnimation.modifier),
         contentAlignment = Alignment.CenterStart
     ) {
         Box(
@@ -141,7 +146,6 @@ fun LiquidToggle(
                 .semantics {
                     role = Role.Switch
                 }
-                .then(dampedDragAnimation.modifier)
                 .drawBackdrop(
                     backdrop = rememberCombinedBackdrop(
                         backdrop,

@@ -34,7 +34,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -54,6 +53,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.github.zly2006.zhihu.ui.components.AdaptiveCircularProgressIndicator as CircularProgressIndicator
+import com.github.zly2006.zhihu.ui.components.AdaptiveExtendedFloatingActionButton as ExtendedFloatingActionButton
 
 @Composable
 fun WriteContentMarkdownEditor(
@@ -162,7 +162,8 @@ fun WriteContentFabColumn(
         horizontalAlignment = Alignment.End,
     ) {
         ExtendedFloatingActionButton(
-            onClick = { if (previewEnabled) onPreview() },
+            onClick = onPreview,
+            enabled = previewEnabled,
             containerColor =
                 if (previewEnabled) {
                     MaterialTheme.colorScheme.primaryContainer
@@ -185,7 +186,8 @@ fun WriteContentFabColumn(
         )
         if (showImageButton) {
             ExtendedFloatingActionButton(
-                onClick = { if (imageEnabled) onImage() },
+                onClick = onImage,
+                enabled = imageEnabled,
                 containerColor =
                     if (imageEnabled) {
                         MaterialTheme.colorScheme.primaryContainer
@@ -215,7 +217,8 @@ fun WriteContentFabColumn(
             )
         }
         ExtendedFloatingActionButton(
-            onClick = { if (saveEnabled) onSave() },
+            onClick = onSave,
+            enabled = saveEnabled,
             containerColor =
                 if (saveEnabled) {
                     MaterialTheme.colorScheme.primaryContainer

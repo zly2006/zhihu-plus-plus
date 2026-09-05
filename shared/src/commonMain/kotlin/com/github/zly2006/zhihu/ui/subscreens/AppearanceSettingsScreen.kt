@@ -26,7 +26,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -77,6 +79,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
@@ -399,7 +402,7 @@ fun AppearanceSettingsScreen(
                         highlightedKey = settingKey,
                         bringIntoViewRequester = requesterFor(UI_STYLE_PREFERENCE_KEY),
                         bottomAction = {
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 listOf("material" to "Material", "liquid_glass" to "Liquid Glass").forEach { (value, label) ->
                                     OutlinedButton(
                                         onClick = {
@@ -407,11 +410,15 @@ fun AppearanceSettingsScreen(
                                             selectedStyle = value
                                             userMessages.showShortMessage("重新启动应用后使用 $label")
                                         },
-                                        modifier = Modifier.weight(1f).testTag("appearance.style.$value").semantics { selected = selectedStyle == value },
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .fillMaxHeight()
+                                            .testTag("appearance.style.$value")
+                                            .semantics { selected = selectedStyle == value },
                                         colors = ButtonDefaults.outlinedButtonColors(
                                             containerColor = if (selectedStyle == value) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
                                         ),
-                                    ) { Text(label) }
+                                    ) { Text(label, textAlign = TextAlign.Center) }
                                 }
                             }
                         },
