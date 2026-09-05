@@ -123,6 +123,10 @@ After edits:
 
 Do not describe an in-progress check as green or a compiled test as behaviorally executed.
 
+Removing or migrating the test that emitted the visible ANR/error does not by itself fix a stalled shard. Inspect the shard's last `START`/`PASS`, active workflow step, and runner/process teardown state to distinguish a test-body hang from Activity focus cleanup or runner-shell deadlock, then require the replacement run to reach a terminal result.
+
+When a regression contract does not depend on Android framework or device behavior, migrate it to the cheapest common/JVM layer and remove the redundant instrument test. Preserve historical device regressions unless equivalent coverage is demonstrated; never delete them merely to make the shard terminate.
+
 ### 6. Publish an auditable cleanup PR
 
 The Chinese PR body must include:
