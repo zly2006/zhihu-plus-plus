@@ -116,7 +116,7 @@ import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemOverall
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
 import com.github.zly2006.zhihu.ui.components.normalizedAnswerSwitchSensitivity
-import com.github.zly2006.zhihu.ui.components.pageTurnViewport
+import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.ui.isLegacyWebViewSupported
 import kotlinx.coroutines.delay
@@ -385,7 +385,7 @@ fun AppearanceSettingsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .pageTurnViewport(pageTurnTarget)
+                .pageTurnViewportWithGuide(pageTurnTarget)
                 .verticalScroll(scrollState)
                 .testTag(APPEARANCE_SETTINGS_SCROLL_TAG)
                 .padding(innerPadding)

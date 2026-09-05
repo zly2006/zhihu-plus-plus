@@ -81,7 +81,7 @@ import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
-import com.github.zly2006.zhihu.ui.components.pageTurnViewport
+import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.util.ContinuousUsageReminderPolicy
 import kotlinx.coroutines.launch
@@ -149,7 +149,7 @@ fun SystemAndUpdateSettingsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .pageTurnViewport(pageTurnTarget)
+                .pageTurnViewportWithGuide(pageTurnTarget)
                 .verticalScroll(scrollState)
                 .padding(innerPadding)
                 .padding(vertical = 16.dp),

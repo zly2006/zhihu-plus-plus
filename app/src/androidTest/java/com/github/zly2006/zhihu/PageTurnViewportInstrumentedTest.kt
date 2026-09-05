@@ -30,7 +30,7 @@ import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.components.LocalPageTurnDispatcher
 import com.github.zly2006.zhihu.ui.components.PageTurnCommand
 import com.github.zly2006.zhihu.ui.components.PageTurnDispatcher
-import com.github.zly2006.zhihu.ui.components.pageTurnViewport
+import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.ui.subscreens.PREF_PAGE_TURN_PERCENT
 import org.junit.Assert.assertEquals
@@ -72,7 +72,7 @@ class PageTurnViewportInstrumentedTest {
                     Modifier
                         .fillMaxWidth()
                         .height(300.dp)
-                        .pageTurnViewport(target)
+                        .pageTurnViewportWithGuide(target)
                         .verticalScroll(scrollState),
                 ) {
                     repeat(80) { Text("第 $it 行", fontSize = 20.sp) }

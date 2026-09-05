@@ -59,7 +59,7 @@ import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.components.CreateCollectionDialog
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
-import com.github.zly2006.zhihu.ui.components.pageTurnViewport
+import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.viewmodel.CollectionsViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
@@ -147,7 +147,7 @@ fun CollectionScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .pageTurnViewport(pageTurnTarget)
+                .pageTurnViewportWithGuide(pageTurnTarget)
                 .testTag(COLLECTION_SCREEN_LIST_TAG),
             footer = ProgressIndicatorFooter,
         ) { collection ->

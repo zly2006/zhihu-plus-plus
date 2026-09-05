@@ -96,7 +96,7 @@ import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.ui.components.ShareDialog
 import com.github.zly2006.zhihu.ui.components.getShareText
 import com.github.zly2006.zhihu.ui.components.handleShareAction
-import com.github.zly2006.zhihu.ui.components.pageTurnViewport
+import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.ui.components.rememberShareActionExecutor
 import com.github.zly2006.zhihu.util.raiseForStatus
@@ -474,7 +474,7 @@ fun TopicScreen(topic: Topic) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .pageTurnViewport(pageTurnTarget),
+                .pageTurnViewportWithGuide(pageTurnTarget),
             contentPadding = PaddingValues(bottom = 24.dp),
             footer = { listState ->
                 if (viewModel.errorMessage == null) {

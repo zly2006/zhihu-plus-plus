@@ -43,7 +43,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.navigation.LocalNavigator
-import com.github.zly2006.zhihu.ui.components.pageTurnViewport
+import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 
 /**
@@ -77,7 +77,7 @@ fun ColorSchemeScreen() {
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
-                .pageTurnViewport(pageTurnTarget)
+                .pageTurnViewportWithGuide(pageTurnTarget)
                 .verticalScroll(scrollState)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),

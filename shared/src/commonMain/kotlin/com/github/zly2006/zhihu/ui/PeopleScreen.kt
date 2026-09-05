@@ -110,7 +110,7 @@ import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.PageTurnTarget
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
-import com.github.zly2006.zhihu.ui.components.pageTurnViewport
+import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.util.Log
 import com.github.zly2006.zhihu.util.raiseForStatus
@@ -899,7 +899,7 @@ fun PeopleScreen(
                                 footer = ProgressIndicatorFooter,
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .pageTurnViewport(pageTurnTarget)
+                                    .pageTurnViewportWithGuide(pageTurnTarget)
                                     .testTag(PEOPLE_SCREEN_ANSWERS_LIST_TAG),
                                 key = { it.id },
                             ) {
@@ -936,7 +936,7 @@ fun PeopleScreen(
                                 footer = ProgressIndicatorFooter,
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .pageTurnViewport(pageTurnTarget)
+                                    .pageTurnViewportWithGuide(pageTurnTarget)
                                     .testTag(PEOPLE_SCREEN_ARTICLES_LIST_TAG),
                                 key = { it.id },
                             ) {
@@ -962,7 +962,7 @@ fun PeopleScreen(
                             footer = ProgressIndicatorFooter,
                             modifier = Modifier
                                 .fillMaxSize()
-                                .pageTurnViewport(pageTurnTarget)
+                                .pageTurnViewportWithGuide(pageTurnTarget)
                                 .testTag(PEOPLE_SCREEN_ACTIVITIES_LIST_TAG),
                         ) {
                             FeedCard(
@@ -984,7 +984,7 @@ fun PeopleScreen(
                             footer = ProgressIndicatorFooter,
                             modifier = Modifier
                                 .fillMaxSize()
-                                .pageTurnViewport(pageTurnTarget)
+                                .pageTurnViewportWithGuide(pageTurnTarget)
                                 .testTag(PEOPLE_SCREEN_COLLECTIONS_LIST_TAG),
                             key = { it.id },
                         ) { collection ->
@@ -1005,7 +1005,7 @@ fun PeopleScreen(
                             footer = ProgressIndicatorFooter,
                             modifier = Modifier
                                 .fillMaxSize()
-                                .pageTurnViewport(pageTurnTarget)
+                                .pageTurnViewportWithGuide(pageTurnTarget)
                                 .testTag(PEOPLE_SCREEN_QUESTIONS_LIST_TAG),
                             key = { it.id },
                         ) { question ->
@@ -1026,7 +1026,7 @@ fun PeopleScreen(
                             footer = ProgressIndicatorFooter,
                             modifier = Modifier
                                 .fillMaxSize()
-                                .pageTurnViewport(pageTurnTarget)
+                                .pageTurnViewportWithGuide(pageTurnTarget)
                                 .testTag(PEOPLE_SCREEN_PINS_LIST_TAG),
                             key = { it.id },
                         ) { pin ->
@@ -1048,7 +1048,7 @@ fun PeopleScreen(
                             footer = ProgressIndicatorFooter,
                             modifier = Modifier
                                 .fillMaxSize()
-                                .pageTurnViewport(pageTurnTarget)
+                                .pageTurnViewportWithGuide(pageTurnTarget)
                                 .testTag(PEOPLE_SCREEN_COLUMNS_LIST_TAG),
                             key = { it.id },
                         ) { column ->
@@ -1069,7 +1069,7 @@ fun PeopleScreen(
                             footer = ProgressIndicatorFooter,
                             modifier = Modifier
                                 .fillMaxSize()
-                                .pageTurnViewport(pageTurnTarget)
+                                .pageTurnViewportWithGuide(pageTurnTarget)
                                 .testTag(PEOPLE_SCREEN_FOLLOWERS_LIST_TAG),
                             key = { it.id },
                         ) { people ->
@@ -1091,7 +1091,7 @@ fun PeopleScreen(
                             footer = ProgressIndicatorFooter,
                             modifier = Modifier
                                 .fillMaxSize()
-                                .pageTurnViewport(pageTurnTarget)
+                                .pageTurnViewportWithGuide(pageTurnTarget)
                                 .testTag(PEOPLE_SCREEN_FOLLOWING_LIST_TAG),
                             key = { it.id },
                         ) { people ->
@@ -1179,7 +1179,7 @@ private fun FollowingSubscriptionsPage(
                 footer = ProgressIndicatorFooter,
                 modifier = Modifier
                     .fillMaxSize()
-                    .pageTurnViewport(pageTurnTarget)
+                    .pageTurnViewportWithGuide(pageTurnTarget)
                     .testTag(PEOPLE_SCREEN_SUBSCRIPTIONS_LIST_TAG),
                 key = { it.id },
             ) { column ->
@@ -1197,7 +1197,7 @@ private fun FollowingSubscriptionsPage(
                 footer = ProgressIndicatorFooter,
                 modifier = Modifier
                     .fillMaxSize()
-                    .pageTurnViewport(pageTurnTarget)
+                    .pageTurnViewportWithGuide(pageTurnTarget)
                     .testTag(PEOPLE_SCREEN_SUBSCRIPTIONS_LIST_TAG),
                 key = { it.displayId },
             ) { topic ->
@@ -1212,7 +1212,7 @@ private fun FollowingSubscriptionsPage(
                 footer = ProgressIndicatorFooter,
                 modifier = Modifier
                     .fillMaxSize()
-                    .pageTurnViewport(pageTurnTarget)
+                    .pageTurnViewportWithGuide(pageTurnTarget)
                     .testTag(PEOPLE_SCREEN_SUBSCRIPTIONS_LIST_TAG),
                 key = { it.id },
             ) { question ->
@@ -1227,7 +1227,7 @@ private fun FollowingSubscriptionsPage(
                 footer = ProgressIndicatorFooter,
                 modifier = Modifier
                     .fillMaxSize()
-                    .pageTurnViewport(pageTurnTarget)
+                    .pageTurnViewportWithGuide(pageTurnTarget)
                     .testTag(PEOPLE_SCREEN_SUBSCRIPTIONS_LIST_TAG),
                 key = { it.id },
             ) { collection ->

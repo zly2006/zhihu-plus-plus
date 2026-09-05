@@ -67,7 +67,7 @@ import com.github.zly2006.zhihu.notification.rememberNotificationSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
-import com.github.zly2006.zhihu.ui.components.pageTurnViewport
+import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.viewmodel.MobileNotificationCategory
 import com.github.zly2006.zhihu.viewmodel.NotificationTimelineViewModel
@@ -132,7 +132,7 @@ fun NotificationTimelineScreen(
                 listState = listState,
                 modifier = Modifier
                     .fillMaxSize()
-                    .pageTurnViewport(pageTurnTarget),
+                    .pageTurnViewportWithGuide(pageTurnTarget),
                 footer = ProgressIndicatorFooter,
                 key = { it.stableId },
             ) { notification ->

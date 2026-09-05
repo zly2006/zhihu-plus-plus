@@ -52,7 +52,7 @@ import com.github.zly2006.zhihu.ui.TopLevelReselectAction
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
-import com.github.zly2006.zhihu.ui.components.pageTurnViewport
+import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.ui.topLevelReselectAction
 import com.github.zly2006.zhihu.viewmodel.feed.OnlineHistoryViewModel
@@ -191,7 +191,7 @@ fun OnlineHistoryScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
-                    .pageTurnViewport(pageTurnTarget)
+                    .pageTurnViewportWithGuide(pageTurnTarget)
                     .testTag("online_history_list"),
                 items = viewModel.displayItems,
                 listState = listState,

@@ -105,7 +105,7 @@ import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
-import com.github.zly2006.zhihu.ui.components.pageTurnViewport
+import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.util.parseEmphasizedHtmlTextWithTheme
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
@@ -442,7 +442,7 @@ fun SearchScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .pageTurnViewport(pageTurnTarget)
+                            .pageTurnViewportWithGuide(pageTurnTarget)
                             .verticalScroll(suggestionScrollState)
                             .padding(16.dp)
                             .testTag("search_hot_list"),
@@ -613,7 +613,7 @@ fun SearchScreen(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
-                        .pageTurnViewport(pageTurnTarget),
+                        .pageTurnViewportWithGuide(pageTurnTarget),
                     state = resultListState,
                 ) {
                     items(viewModel.entities, key = SearchEntity::id) { result ->
@@ -698,7 +698,7 @@ fun SearchScreen(
                         listState = generalListState,
                         onLoadMore = { viewModel.loadMore(paginationEnvironment) },
                         modifier = Modifier
-                            .pageTurnViewport(pageTurnTarget)
+                            .pageTurnViewportWithGuide(pageTurnTarget)
                             .testTag("search_general_results"),
                         topContent = {
                             item {

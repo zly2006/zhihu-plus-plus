@@ -71,7 +71,7 @@ import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
 import com.github.zly2006.zhihu.ui.components.SwitchWithIcon
-import com.github.zly2006.zhihu.ui.components.pageTurnViewport
+import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 
 const val READING_SETTINGS_SCROLL_TAG = "readingSettings.scroll"
@@ -163,7 +163,7 @@ fun ReadingSettingsScreen() {
                 .padding(innerPadding)
                 .consumeWindowInsets(innerPadding)
                 .imePadding()
-                .pageTurnViewport(pageTurnTarget)
+                .pageTurnViewportWithGuide(pageTurnTarget)
                 .verticalScroll(scrollState)
                 .testTag(READING_SETTINGS_SCROLL_TAG)
                 .padding(vertical = 16.dp),

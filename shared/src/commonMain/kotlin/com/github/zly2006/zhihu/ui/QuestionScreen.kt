@@ -117,7 +117,7 @@ import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.ui.components.ShareDialog
 import com.github.zly2006.zhihu.ui.components.getShareText
 import com.github.zly2006.zhihu.ui.components.handleShareAction
-import com.github.zly2006.zhihu.ui.components.pageTurnViewport
+import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.ui.components.rememberShareActionExecutor
 import com.github.zly2006.zhihu.viewmodel.ContentLoadEnvironment
@@ -277,7 +277,7 @@ fun QuestionScreen(
                 listState = listState,
                 modifier = Modifier
                     .padding(innerPadding)
-                    .pageTurnViewport(pageTurnTarget)
+                    .pageTurnViewportWithGuide(pageTurnTarget)
                     .testTag(QUESTION_SCREEN_LIST_TAG),
                 contentPadding = PaddingValues(bottom = readingPlayerOverlayPadding),
                 footer = ProgressIndicatorFooter,

@@ -91,7 +91,7 @@ import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.NoOpPagerNestedScrollConnection
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
-import com.github.zly2006.zhihu.ui.components.pageTurnViewport
+import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberNestedHorizontalPagerConnection
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.ui.topLevelReselectAction
@@ -391,7 +391,7 @@ fun FollowRecommendScreen(
                 items = viewModel.displayItems,
                 listState = listState,
                 modifier = Modifier
-                    .pageTurnViewport(pageTurnTarget)
+                    .pageTurnViewportWithGuide(pageTurnTarget)
                     .testTag(FOLLOW_RECOMMEND_LIST_TAG),
                 topContent = {
                     item {
@@ -545,7 +545,7 @@ fun FollowDynamicScreen(
                 items = viewModel.displayItems,
                 listState = listState,
                 modifier = Modifier
-                    .pageTurnViewport(pageTurnTarget)
+                    .pageTurnViewportWithGuide(pageTurnTarget)
                     .testTag(FOLLOW_DYNAMIC_LIST_TAG),
                 onLoadMore = { viewModel.loadMore(environment) },
                 topContent = {

@@ -153,7 +153,7 @@ import com.github.zly2006.zhihu.reading.ReadingCommentOrder
 import com.github.zly2006.zhihu.reading.loadReadingPreferences
 import com.github.zly2006.zhihu.reading.saveReadingPreferences
 import com.github.zly2006.zhihu.ui.components.PageTurnFab
-import com.github.zly2006.zhihu.ui.components.pageTurnViewport
+import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.ui.components.replaceSelection
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
@@ -828,7 +828,7 @@ fun CommentScreen(
                                 state = listState,
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .pageTurnViewport(pageTurnTarget)
+                                    .pageTurnViewportWithGuide(pageTurnTarget)
                                     .testTag(COMMENT_SCREEN_LIST_TAG),
                                 contentPadding = PaddingValues(bottom = 16.dp, start = 16.dp, end = 16.dp, top = 8.dp),
                                 verticalArrangement = Arrangement.spacedBy(16.dp),

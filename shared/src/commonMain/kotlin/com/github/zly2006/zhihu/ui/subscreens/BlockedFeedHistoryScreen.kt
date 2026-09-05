@@ -55,7 +55,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.NavDestination
-import com.github.zly2006.zhihu.ui.components.pageTurnViewport
+import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.util.twoDigitString
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedFeedRecord
@@ -119,7 +119,7 @@ fun BlockedFeedHistoryScreen() {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .pageTurnViewport(pageTurnTarget)
+                    .pageTurnViewportWithGuide(pageTurnTarget)
                     .padding(innerPadding)
                     .testTag("blocked_feed_history_list"),
                 state = listState,

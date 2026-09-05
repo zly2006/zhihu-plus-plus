@@ -47,7 +47,7 @@ import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
-import com.github.zly2006.zhihu.ui.components.pageTurnViewport
+import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.viewmodel.feed.HotListViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
@@ -117,7 +117,7 @@ fun HotListScreen(
                 onLoadMore = { viewModel.loadMore(environment) },
                 modifier = Modifier
                     .padding(innerPadding)
-                    .pageTurnViewport(pageTurnTarget)
+                    .pageTurnViewportWithGuide(pageTurnTarget)
                     .testTag(HOT_LIST_LIST_TAG),
                 isEnd = { viewModel.isEnd },
                 footer = ProgressIndicatorFooter,

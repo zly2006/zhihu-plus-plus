@@ -84,7 +84,7 @@ import com.github.zly2006.zhihu.navigation.requestLoginNavigation
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
-import com.github.zly2006.zhihu.ui.components.pageTurnViewport
+import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import io.ktor.client.request.get
 import io.ktor.client.request.post
@@ -279,7 +279,7 @@ fun IdentityManagementScreen() {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .pageTurnViewport(pageTurnTarget)
+                .pageTurnViewportWithGuide(pageTurnTarget)
                 .verticalScroll(scrollState)
                 .padding(innerPadding)
                 .padding(vertical = 16.dp),

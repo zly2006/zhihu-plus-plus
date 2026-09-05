@@ -105,7 +105,7 @@ import com.github.zly2006.zhihu.ui.components.ShareDialog
 import com.github.zly2006.zhihu.ui.components.VotersSheet
 import com.github.zly2006.zhihu.ui.components.getShareText
 import com.github.zly2006.zhihu.ui.components.handleShareAction
-import com.github.zly2006.zhihu.ui.components.pageTurnViewport
+import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.ui.components.rememberShareActionExecutor
 import com.github.zly2006.zhihu.util.formatCompactCount
@@ -509,7 +509,7 @@ private fun PinContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .pageTurnViewport(pageTurnTarget)
+            .pageTurnViewportWithGuide(pageTurnTarget)
             .verticalScroll(scrollState)
             .testTag(PIN_SCREEN_SCROLL_TAG)
             .padding(16.dp),

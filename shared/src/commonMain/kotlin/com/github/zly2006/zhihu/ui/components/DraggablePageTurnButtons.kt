@@ -79,7 +79,7 @@ enum class PageTurnCommand {
     JumpToBottom,
 }
 
-/** Routes each command to exactly one explicitly registered reading surface. */
+/** Routes each command to the most recently registered eligible scroll surface. */
 class PageTurnDispatcher {
     private val targets = mutableListOf<PageTurnTargetRegistration>()
 
@@ -122,7 +122,8 @@ internal class PageTurnTargetRegistration(
 
 val LocalPageTurnDispatcher = staticCompositionLocalOf(::PageTurnDispatcher)
 
-class PageTurnState(
+/** Shared runtime configuration and optional guide state for targets under one dispatcher. */
+internal class PageTurnRuntimeState(
     val dispatcher: PageTurnDispatcher,
     pageTurnPercent: Int,
     showGuide: Boolean,
@@ -130,17 +131,17 @@ class PageTurnState(
 ) {
     var pageTurnPercent by mutableIntStateOf(pageTurnPercent)
     var showGuide by mutableStateOf(showGuide)
-    var guideLastDirection by mutableIntStateOf(0)
-    var guideIsScrolling by mutableStateOf(false)
+    var lastPageTurnDirection by mutableIntStateOf(0)
+    var pageTurnScrollInProgress by mutableStateOf(false)
 }
 
 @Composable
-fun rememberPageTurnState(): PageTurnState {
+internal fun rememberPageTurnRuntimeState(): PageTurnRuntimeState {
     val dispatcher = LocalPageTurnDispatcher.current
     val settings = rememberSettingsStore()
     val guideColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)
     val state = remember(dispatcher, guideColor) {
-        PageTurnState(
+        PageTurnRuntimeState(
             dispatcher = dispatcher,
             pageTurnPercent = settings
                 .getInt(PREF_PAGE_TURN_PERCENT, DEFAULT_PAGE_TURN_PERCENT)
@@ -159,7 +160,7 @@ fun rememberPageTurnState(): PageTurnState {
                 PREF_SHOW_PAGE_TURN_GUIDE ->
                     state.showGuide =
                         settings.getBoolean(PREF_SHOW_PAGE_TURN_GUIDE, DEFAULT_SHOW_PAGE_TURN_GUIDE).also { showGuide ->
-                            if (!showGuide) state.guideLastDirection = 0
+                            if (!showGuide) state.lastPageTurnDirection = 0
                         }
             }
         }
@@ -168,8 +169,9 @@ fun rememberPageTurnState(): PageTurnState {
     return state
 }
 
+/** Registers the target only while its owning page is active and consumes commands in composition scope. */
 @Composable
-private fun RegisterPageTurnTarget(
+private fun PageTurnTargetRegistrationEffect(
     dispatcher: PageTurnDispatcher,
     active: Boolean,
     onCommand: suspend (PageTurnCommand) -> Unit,
@@ -211,7 +213,7 @@ fun DraggablePageTurnButtons(
     var offsetX by remember(preferenceName) { mutableFloatStateOf(settings.getFloat("$preferenceName-x", 0f)) }
     var offsetY by remember(preferenceName) { mutableFloatStateOf(settings.getFloat("$preferenceName-y", defaultY)) }
 
-    fun adjustPosition() {
+    fun clampPositionToViewport() {
         with(density) {
             val maxX = (screenSize.width - buttonSize.toPx()).coerceAtLeast(0f)
             val maxY = (screenSize.height - columnHeight.toPx()).coerceAtLeast(0f)
@@ -221,7 +223,7 @@ fun DraggablePageTurnButtons(
     }
 
     LaunchedEffect(screenSize, density, preferenceName) {
-        adjustPosition()
+        clampPositionToViewport()
     }
     val hapticFeedback = LocalHapticFeedback.current
     val fabOpacityValue by rememberObservedSetting(settings, PREF_FAB_OPACITY) {
@@ -243,7 +245,7 @@ fun DraggablePageTurnButtons(
                     },
                     onDragEnd = {
                         dragging = false
-                        adjustPosition()
+                        clampPositionToViewport()
                         offsetX = if (offsetX < screenSize.width / 2f) {
                             0f
                         } else {
@@ -257,7 +259,7 @@ fun DraggablePageTurnButtons(
                         if (dragging) {
                             offsetX += dragAmount.x
                             offsetY += dragAmount.y
-                            adjustPosition()
+                            clampPositionToViewport()
                         }
                     },
                 )
@@ -325,21 +327,26 @@ fun PageTurnFab(
     )
 }
 
+/** Couples a page-turn command handler with the measured viewport used to calculate one-page distance. */
 @Stable
 class PageTurnTarget internal constructor(
-    internal val state: PageTurnState,
+    internal val state: PageTurnRuntimeState,
 ) {
     internal var viewportHeight = 0f
 }
 
-fun Modifier.pageTurnViewport(target: PageTurnTarget): Modifier =
+/**
+ * Reports this scroll surface's visible height to [target] and, when enabled in settings, draws the
+ * overlap guide left by the latest page turn. This modifier must wrap the actual scrolling viewport.
+ */
+fun Modifier.pageTurnViewportWithGuide(target: PageTurnTarget): Modifier =
     drawWithContent {
         drawContent()
         target.viewportHeight = size.height
         val state = target.state
-        if (!state.showGuide || state.guideLastDirection == 0) return@drawWithContent
+        if (!state.showGuide || state.lastPageTurnDirection == 0) return@drawWithContent
         val overlapFraction = 1f - state.pageTurnPercent / 100f
-        val y = if (state.guideLastDirection > 0) {
+        val y = if (state.lastPageTurnDirection > 0) {
             overlapFraction * size.height
         } else {
             state.pageTurnPercent / 100f * size.height
@@ -355,6 +362,10 @@ fun Modifier.pageTurnViewport(target: PageTurnTarget): Modifier =
         )
     }
 
+/**
+ * Creates a target for a continuous [ScrollState]. Boundary callbacks optionally turn an extra page command at the
+ * start or end into navigation to adjacent content.
+ */
 @Composable
 fun rememberPageTurnTarget(
     scrollState: ScrollState,
@@ -363,19 +374,19 @@ fun rememberPageTurnTarget(
     onPageUpAtStart: (() -> Unit)? = null,
     onPageDownAtEnd: (() -> Unit)? = null,
 ): PageTurnTarget {
-    val state = rememberPageTurnState()
+    val state = rememberPageTurnRuntimeState()
     val target = remember(state) { PageTurnTarget(state) }
     val currentOnPageUpAtStart by rememberUpdatedState(onPageUpAtStart)
     val currentOnPageDownAtEnd by rememberUpdatedState(onPageDownAtEnd)
     val currentMaxScrollValue by rememberUpdatedState(maxScrollValue)
     LaunchedEffect(state, scrollState) {
         snapshotFlow { scrollState.isScrollInProgress }.collect { scrolling ->
-            if (scrolling && !state.guideIsScrolling) state.guideLastDirection = 0
+            if (scrolling && !state.pageTurnScrollInProgress) state.lastPageTurnDirection = 0
         }
     }
-    RegisterPageTurnTarget(state.dispatcher, enabled && isPageTurnSupported) { command ->
-        state.guideLastDirection = command.direction.takeIf { state.showGuide } ?: 0
-        state.guideIsScrolling = true
+    PageTurnTargetRegistrationEffect(state.dispatcher, enabled && isPageTurnSupported) { command ->
+        state.lastPageTurnDirection = command.scrollDirection.takeIf { state.showGuide } ?: 0
+        state.pageTurnScrollInProgress = true
         try {
             when (command) {
                 PageTurnCommand.JumpToTop -> scrollState.scrollTo(0)
@@ -392,34 +403,35 @@ fun rememberPageTurnTarget(
                         reachedEnd && currentOnPageDownAtEnd != null -> currentOnPageDownAtEnd?.invoke()
                         target.viewportHeight > 0f -> {
                             scrollState.scrollBy(
-                                target.viewportHeight * state.pageTurnPercent / 100f * command.direction,
+                                target.viewportHeight * state.pageTurnPercent / 100f * command.scrollDirection,
                             )
                         }
                     }
                 }
             }
         } finally {
-            state.guideIsScrolling = false
+            state.pageTurnScrollInProgress = false
         }
     }
     return target
 }
 
+/** Creates a target for a lazy list while preserving ownership of [listState] in the calling page. */
 @Composable
 fun rememberPageTurnTarget(
     listState: LazyListState,
     enabled: Boolean,
 ): PageTurnTarget {
-    val state = rememberPageTurnState()
+    val state = rememberPageTurnRuntimeState()
     val target = remember(state) { PageTurnTarget(state) }
     LaunchedEffect(state, listState) {
         snapshotFlow { listState.isScrollInProgress }.collect { scrolling ->
-            if (scrolling && !state.guideIsScrolling) state.guideLastDirection = 0
+            if (scrolling && !state.pageTurnScrollInProgress) state.lastPageTurnDirection = 0
         }
     }
-    RegisterPageTurnTarget(state.dispatcher, enabled && isPageTurnSupported) { command ->
-        state.guideLastDirection = command.direction.takeIf { state.showGuide } ?: 0
-        state.guideIsScrolling = true
+    PageTurnTargetRegistrationEffect(state.dispatcher, enabled && isPageTurnSupported) { command ->
+        state.lastPageTurnDirection = command.scrollDirection.takeIf { state.showGuide } ?: 0
+        state.pageTurnScrollInProgress = true
         try {
             when (command) {
                 PageTurnCommand.JumpToTop -> listState.scrollToItem(0)
@@ -432,19 +444,19 @@ fun rememberPageTurnTarget(
                 -> {
                     if (target.viewportHeight > 0f) {
                         listState.scrollBy(
-                            target.viewportHeight * state.pageTurnPercent / 100f * command.direction,
+                            target.viewportHeight * state.pageTurnPercent / 100f * command.scrollDirection,
                         )
                     }
                 }
             }
         } finally {
-            state.guideIsScrolling = false
+            state.pageTurnScrollInProgress = false
         }
     }
     return target
 }
 
-private val PageTurnCommand.direction: Int
+private val PageTurnCommand.scrollDirection: Int
     get() = when (this) {
         PageTurnCommand.PageUp -> -1
         PageTurnCommand.PageDown -> 1

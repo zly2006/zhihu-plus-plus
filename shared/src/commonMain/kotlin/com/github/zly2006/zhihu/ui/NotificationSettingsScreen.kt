@@ -46,7 +46,7 @@ import com.github.zly2006.zhihu.notification.NotificationType
 import com.github.zly2006.zhihu.notification.rememberNotificationSettingsStore
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
-import com.github.zly2006.zhihu.ui.components.pageTurnViewport
+import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.notification.matchNotificationType as sharedMatchNotificationType
 
@@ -119,7 +119,7 @@ fun NotificationSettingsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .pageTurnViewport(pageTurnTarget)
+                .pageTurnViewportWithGuide(pageTurnTarget)
                 .verticalScroll(scrollState)
                 .padding(innerPadding)
                 .padding(vertical = 16.dp),

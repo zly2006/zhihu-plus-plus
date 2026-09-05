@@ -145,7 +145,7 @@ import com.github.zly2006.zhihu.ui.components.VerticalReadingProgressBar
 import com.github.zly2006.zhihu.ui.components.VotersSheet
 import com.github.zly2006.zhihu.ui.components.ZhihuTwoRowsTopAppBar
 import com.github.zly2006.zhihu.ui.components.normalizedAnswerSwitchSensitivity
-import com.github.zly2006.zhihu.ui.components.pageTurnViewport
+import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.ui.components.rememberPreferCollapsedExitUntilCollapsedScrollBehavior
 import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_PAGE_TURN_SWITCH_ANSWER
@@ -1102,7 +1102,7 @@ fun ArticleScreen(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(innerPadding)
-                            .pageTurnViewport(pageTurnTarget),
+                            .pageTurnViewportWithGuide(pageTurnTarget),
                     )
                     // 状态栏渐变遮罩，仅 duo3 路径需要；主视觉路径不绘制。
                     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()

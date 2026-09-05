@@ -66,7 +66,7 @@ import com.github.zly2006.zhihu.reading.RegisterReadingQueueSource
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
-import com.github.zly2006.zhihu.ui.components.pageTurnViewport
+import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.viewmodel.CollectionContentEnvironment
 import com.github.zly2006.zhihu.viewmodel.CollectionContentViewModel
@@ -179,7 +179,7 @@ fun CollectionContentScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .pageTurnViewport(pageTurnTarget),
+                .pageTurnViewportWithGuide(pageTurnTarget),
             listState = listState,
             tagPrefix = "collection_content",
         )

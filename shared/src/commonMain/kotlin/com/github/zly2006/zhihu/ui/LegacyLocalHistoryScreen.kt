@@ -28,7 +28,7 @@ import com.github.zly2006.zhihu.reading.RegisterReadingQueueSource
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
-import com.github.zly2006.zhihu.ui.components.pageTurnViewport
+import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.viewmodel.feed.HistoryViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
@@ -57,7 +57,7 @@ fun LegacyLocalHistoryScreen(
         PaginatedList(
             modifier = Modifier
                 .padding(innerPadding)
-                .pageTurnViewport(pageTurnTarget),
+                .pageTurnViewportWithGuide(pageTurnTarget),
             items = viewModel.displayItems,
             listState = listState,
             onLoadMore = { /* 不需要加载更多 */ },
