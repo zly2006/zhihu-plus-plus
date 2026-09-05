@@ -1,0 +1,13 @@
+.gradle/
+build/
+probe/build/
+
+harmonyApp/.hvigor/
+harmonyApp/oh_modules/
+harmonyApp/build-profile.json5
+harmonyApp/entry/.cxx/
+harmonyApp/entry/build/
+harmonyApp/entry/libs/*/libkn.so
+harmonyApp/entry/src/main/cpp/include/*/libkn_api.h
+local.properties
+.validation/

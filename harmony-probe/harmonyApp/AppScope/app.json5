@@ -1,0 +1,13 @@
+{
+  "app": {
+    "bundleName": "com.github.zly2006.zhplus",
+    "vendor": "zly2006",
+    "versionCode": 222,
+    "versionName": "0.24.4",
+    "icon": "$media:app_icon",
+    "label": "$string:app_name",
+    "configuration": "$profile:configuration"
+    //"hwasanEnabled": true
+    //"asanEnabled": true
+  }
+}

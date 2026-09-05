@@ -1,0 +1,20 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "知乎++ HarmonyOS 模块"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "知乎++ HarmonyOS 主页面"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "知乎++"
+    },
+    {
+      "name": "vibrate_permission_reason",
+      "value": "用于触控反馈功能"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "name": "entry",
+  "version": "1.0.0",
+  "description": "Zhihu++ CPF-KMP-CMP toolchain probe entry.",
+  "main": "",
+  "author": "",
+  "license": "",
+  "dependencies": {
+    "libentry.so": "file:./src/main/cpp/types/libentry",
+    "@cpf-kmp-cmp/compose": "1.9.2-1.0.0"
+  }
+}
