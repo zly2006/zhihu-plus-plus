@@ -17,6 +17,15 @@
 
 package com.github.zly2006.zhihu
 
+import android.content.pm.ActivityInfo
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Button
+import androidx.compose.material3.Text
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
@@ -31,6 +40,7 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
 import androidx.core.content.edit
+import androidx.navigation.compose.rememberNavController
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.filter.ContentOpenFrom
 import com.github.zly2006.zhihu.navigation.Account
@@ -39,19 +49,27 @@ import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.Daily
 import com.github.zly2006.zhihu.navigation.Follow
 import com.github.zly2006.zhihu.navigation.Home
+import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.MainTabs
 import com.github.zly2006.zhihu.navigation.MyCollections
 import com.github.zly2006.zhihu.navigation.OnlineHistory
+import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setZhihuMainContent
+import com.github.zly2006.zhihu.theme.ThemeManager
+import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.AndroidArticleNavigationHandoff
 import com.github.zly2006.zhihu.ui.FOLLOW_SCREEN_PAGER_TAG
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.ui.QUESTION_SCREEN_LIST_TAG
+import com.github.zly2006.zhihu.ui.ZhihuMain
+import com.github.zly2006.zhihu.ui.rememberAndroidZhihuMainPreferenceState
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.START_DESTINATION_PREFERENCE_KEY
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -146,6 +164,87 @@ class ZhihuMainNavigationInstrumentedTest {
         assertEquals(ContentOpenFrom.HOME_FEED, openFrom)
     }
 
+    @Test
+    fun questionOpenedFromArticleRemainsInLandscapeListPane() {
+        composeRule.activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        composeRule.launchZhihuMainWithFakeArticle()
+
+        val article = Article(type = ArticleType.Answer, id = 318L)
+        composeRule.runOnIdle {
+            composeRule.activity.navigate(article)
+        }
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule
+                .onAllNodes(hasTestTag("article_question_link"))
+                .fetchSemanticsNodes()
+                .isNotEmpty()
+        }
+
+        composeRule.onNodeWithTag("article_question_link").performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule
+                .onAllNodes(hasTestTag(QUESTION_SCREEN_LIST_TAG))
+                .fetchSemanticsNodes()
+                .isNotEmpty()
+        }
+
+        val listPaneBounds = composeRule
+            .onNodeWithTag("list_pane")
+            .fetchSemanticsNode()
+            .boundsInRoot
+        val questionBounds = composeRule
+            .onNodeWithTag(QUESTION_SCREEN_LIST_TAG)
+            .fetchSemanticsNode()
+            .boundsInRoot
+        val articleBounds = composeRule
+            .onNodeWithTag("article_content")
+            .fetchSemanticsNode()
+            .boundsInRoot
+        assertTrue(
+            "Question answer list should be in the left pane: question=$questionBounds list=$listPaneBounds",
+            questionBounds.right <= listPaneBounds.right + 0.5f,
+        )
+        assertTrue(
+            "Article content should start in the right pane: article=$articleBounds list=$listPaneBounds",
+            articleBounds.left >= listPaneBounds.right,
+        )
+        composeRule.onNodeWithTag("article_content").assertIsDisplayed()
+    }
+
+    @Test
+    fun questionUsesSinglePaneWhenPortrait() {
+        composeRule.activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        composeRule.launchZhihuMainWithFakeArticle()
+
+        composeRule.runOnIdle {
+            composeRule.activity.navigate(Article(type = ArticleType.Answer, id = 318L))
+        }
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule
+                .onAllNodes(hasTestTag("article_question_link"))
+                .fetchSemanticsNodes()
+                .isNotEmpty()
+        }
+        composeRule.onNodeWithTag("article_question_link").performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule
+                .onAllNodes(hasTestTag(QUESTION_SCREEN_LIST_TAG))
+                .fetchSemanticsNodes()
+                .isNotEmpty()
+        }
+
+        val listPaneBounds = composeRule
+            .onNodeWithTag("list_pane")
+            .fetchSemanticsNode()
+            .boundsInRoot
+        val questionBounds = composeRule
+            .onNodeWithTag(QUESTION_SCREEN_LIST_TAG)
+            .fetchSemanticsNode()
+            .boundsInRoot
+        assertEquals(listPaneBounds.left, questionBounds.left, 0.5f)
+        assertEquals(listPaneBounds.right, questionBounds.right, 0.5f)
+    }
+
     /**
      * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/609
      * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/611
@@ -193,6 +292,52 @@ class ZhihuMainNavigationInstrumentedTest {
             putBoolean(COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY, collectionDirectBrowseEnabled)
         }
         setZhihuMainContent()
+    }
+
+    private fun MainActivityComposeRule.launchZhihuMainWithFakeArticle() {
+        activity.getSharedPreferences(PREFERENCE_NAME, android.content.Context.MODE_PRIVATE).edit(commit = true) {
+            putString(START_DESTINATION_PREFERENCE_KEY, Home.name)
+            putStringSet(BOTTOM_BAR_ITEMS_PREFERENCE_KEY, deterministicBottomBarItems)
+            putBoolean("duo3_home_account", false)
+            putBoolean("bottomBarTapScrollToTop", false)
+            putBoolean("autoHideBottomBar", false)
+            putBoolean(COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY, false)
+        }
+        activity.setContent { }
+        waitForIdle()
+        activity.setContent {
+            ZhihuTheme {
+                val navController = rememberNavController()
+                LaunchedEffect(navController) {
+                    activity.navController = navController
+                }
+                ZhihuMain(
+                    navController = navController,
+                    mainTabNavigationTarget = activity.mainTabNavigationTarget,
+                    navigate = activity::navigate,
+                    navigateContent = activity::navigateIn,
+                    enableLandscapeListDetail = true,
+                    setCurrentMainTabOpenFrom = activity::setCurrentMainTabOpenFrom,
+                    consumeMainTabNavigationTarget = activity::consumeMainTabNavigationTarget,
+                    preferenceState = rememberAndroidZhihuMainPreferenceState(),
+                    isDarkTheme = ThemeManager.isDarkTheme,
+                    articleContent = { _, _ ->
+                        val navigator = LocalNavigator.current
+                        Box(Modifier.fillMaxSize().testTag("article_content")) {
+                            Button(
+                                onClick = {
+                                    navigator.onNavigate(Question(318L, "测试问题"))
+                                },
+                                modifier = Modifier.testTag("article_question_link"),
+                            ) {
+                                Text("打开问题")
+                            }
+                        }
+                    },
+                )
+            }
+        }
+        waitForIdle()
     }
 
     private val collectionBottomBarItems = linkedSetOf(
