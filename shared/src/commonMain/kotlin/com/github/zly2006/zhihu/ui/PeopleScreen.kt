@@ -1736,6 +1736,14 @@ private fun UserInfoHeader(
             OutlinedButton(
                 onClick = onFollowToggle,
                 modifier = Modifier.testTag(PEOPLE_SCREEN_FOLLOW_BUTTON_TAG),
+                colors = if (com.github.zly2006.zhihu.theme.LocalLiquidGlass.current && !viewModel.isFollowing) {
+                    ButtonDefaults.outlinedButtonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                    )
+                } else {
+                    ButtonDefaults.outlinedButtonColors()
+                },
             ) {
                 Text(if (viewModel.isFollowing) "取消关注" else "关注")
             }

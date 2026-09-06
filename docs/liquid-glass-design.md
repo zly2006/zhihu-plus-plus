@@ -106,3 +106,11 @@ catalog 没有提供输入框、复选框、菜单、工具栏或弹层。这些
 底栏按每次新获取的节点边界点击，共 16 次（含最远标签往返及重复点击当前页），16/16 最终选中态与目标一致，未复现上一轮偶发目标不一致。脚本主动删除旧 XML，并要求新 dump 成功，避免旧快照误判。`nav-click-audit.py` 与 `nav-click-results.json` 保存在 `/tmp/zhihu-glass-evidence/`。暗色下账号→主页四秒连续拖动录像 `nav-dark-drag.mp4`，中间帧 `nav-dark-drag-mid.png` 可见官方水滴放大、折射，最终 XML 断言选中主页。无需修改官方底栏。
 
 本轮同时保存 `nav-gfxinfo.txt`：off SwiftShader 模拟器累计 420 帧、417 janky（99.29%）、p50 125 ms。这是包含页面切换的软件渲染诊断，不能当成手机性能结论，也不能忽略。后续必须在同一设备、同一点击序列下对比 Material，并区分首帧/网络页面与稳定拖动成本；目前性能尚未通过验收。
+
+## 后续验收：2026-09-06 08:55 起
+
+在同一 off API35 SwiftShader 模拟器、同一暗色/字号下，对两种风格分别重启、按固定导航序列预热，再 reset gfxinfo 后执行相同 8 次导航，每次断言最终选中态。玻璃 84 帧、70 janky（83.33%）、p50 125 ms / p90 200 ms；Material 276 帧、167 janky（60.51%）、p50 36 ms / p90 69 ms。两种模式均有明显环境卡顿，但玻璃额外成本真实可见，性能尚不能验收通过。不同帧数与动画路径使结果不能解释为单帧特效的纯成本，更不能外推手机；下一步应对稳定页面拖动做阶段分析。脚本 `nav-performance-compare.py` 与结果 `nav-performance-comparison.json` 在证据目录，结束后恢复 Liquid Glass。
+
+按项目 picky-user 技能进行了独立截图评审（报告 `visual-review.md`），仅确认个人页主次动作同色导致关注入口层级不足。其余候选中的旧搜索重叠已修复，大字号合理换行和官方透镜中间态不作为缺陷。此次只对玻璃模式未关注状态的关注按钮传入主题主色/主色文字色；已关注状态继续低强调，保留官方组件与动作入口。
+
+关注层级调整已完成 Android APK、JVM 编译及 shared/app ktlint 检查，并安装到 off 验证真实已加载个人页。`profile-actions-dark-red.png` / `profile-actions-dark-green.png` 保留暗色前后对照，主操作清晰，其他三个入口位置不变；没有执行关注或屏蔽操作。
