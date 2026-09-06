@@ -40,7 +40,6 @@ import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.CommentHolder
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Pin
-import com.github.zly2006.zhihu.navigation.Question
 import org.jetbrains.compose.resources.painterResource
 import zhihu.shared.generated.resources.Res
 import zhihu.shared.generated.resources.ic_launcher_foreground
@@ -53,8 +52,8 @@ internal val LIST_DETAIL_DIVIDER_WIDTH = 16.dp
 
 internal val LocalSelectedContentDestination = compositionLocalOf<NavDestination?> { null }
 
-internal fun NavDestination.isReadingDestination(): Boolean =
-    this is Article || this is Question || this is Pin || this is CommentHolder
+internal fun NavDestination.isDetailPaneDestination(): Boolean =
+    this is Article || this is Pin || this is CommentHolder
 
 internal fun normalizedListPaneWidth(
     availableWidth: Dp,

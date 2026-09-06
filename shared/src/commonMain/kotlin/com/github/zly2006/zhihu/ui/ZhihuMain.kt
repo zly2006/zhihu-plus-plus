@@ -495,7 +495,7 @@ fun ZhihuMain(
             LocalNavigator provides Navigator(
                 onNavigate = { destination ->
                     if (
-                        destination.isReadingDestination() ||
+                        destination.isDetailPaneDestination() ||
                         (currentMainTabDestination == Account && destination.isAccountDetailDestination())
                     ) {
                         openListDetail(destination)
@@ -521,9 +521,6 @@ fun ZhihuMain(
             ) {
                 composable<EmptyDetail> {
                     EmptyDetailPane()
-                }
-                composable<Question> { entry ->
-                    QuestionScreen(entry.toRoute())
                 }
                 composable<Article>(
                     typeMap = mapOf(typeOf<ArticleType>() to ArticleTypeNavType),
@@ -711,7 +708,7 @@ fun ZhihuMain(
                         if (
                             useSecondaryContentNavigation &&
                             (
-                                destination.isReadingDestination() ||
+                                destination.isDetailPaneDestination() ||
                                     (currentMainTabDestination == Account && destination.isAccountDetailDestination())
                             )
                         ) {
@@ -1135,7 +1132,6 @@ internal fun NavBackStackEntry?.hasRoute(cls: KClass<out NavDestination>): Boole
 
 private fun NavBackStackEntry?.readingDestinationOrNull(): NavDestination? = when {
     this?.destination?.hasRoute<Article>() == true -> runCatching { toRoute<Article>() }.getOrNull()
-    this?.destination?.hasRoute<Question>() == true -> runCatching { toRoute<Question>() }.getOrNull()
     this?.destination?.hasRoute<Pin>() == true -> runCatching { toRoute<Pin>() }.getOrNull()
     else -> null
 }
@@ -1164,6 +1160,7 @@ private fun NavBackStackEntry?.isListPaneDestination(): Boolean = when {
     destination.hasRoute<History>() -> true
     destination.hasRoute<Collections>() -> true
     destination.hasRoute<CollectionContent>() -> true
+    destination.hasRoute<Question>() -> true
     destination.hasRoute<Person>() -> true
     destination.hasRoute<Topic>() -> true
     destination.hasRoute<Notification>() -> true

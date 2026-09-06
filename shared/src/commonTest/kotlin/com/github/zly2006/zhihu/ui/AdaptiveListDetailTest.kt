@@ -28,10 +28,10 @@ class AdaptiveListDetailTest {
     }
 
     @Test
-    fun readingDestinationClassificationOnlyIncludesReadingSurfaces() {
-        assertTrue(Article(type = ArticleType.Article, id = 1).isReadingDestination())
-        assertTrue(Question(questionId = 2).isReadingDestination())
-        assertTrue(Pin(id = 3).isReadingDestination())
-        assertFalse(Search().isReadingDestination())
+    fun detailPaneDestinationClassificationExcludesQuestionLists() {
+        assertTrue(Article(type = ArticleType.Article, id = 1).isDetailPaneDestination())
+        assertTrue(Pin(id = 3).isDetailPaneDestination())
+        assertFalse(Question(questionId = 2).isDetailPaneDestination())
+        assertFalse(Search().isDetailPaneDestination())
     }
 }
