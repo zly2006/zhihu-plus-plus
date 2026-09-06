@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.systemGestureExclusion
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
@@ -157,7 +158,7 @@ internal actual fun CatalogSlider(
     val readValue = remember { { currentValue } }
     OfficialLiquidAppearance {
         Box(
-            modifier.heightIn(min = 48.dp).alpha(if (enabled) 1f else 0.4f).semantics {
+            modifier.heightIn(min = 48.dp).then(if (enabled) Modifier.systemGestureExclusion() else Modifier).alpha(if (enabled) 1f else 0.4f).semantics {
                 progressBarRangeInfo = ProgressBarRangeInfo(value.coerceIn(valueRange), valueRange, steps)
                 if (!enabled) disabled()
                 setProgress { proposed ->

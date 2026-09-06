@@ -433,7 +433,12 @@ private fun VideoPlayerView(
                                         lastTapTime = now
                                         if (tapCount >= 2) {
                                             val pl = mediaPlayer ?: return@awaitPointerEventScope
-                                            if (pl.isPlaying) pl.pause() else resumeOrRestart()
+                                            if (pl.isPlaying) {
+                                                pl.pause()
+                                                isPlayingState.value = false
+                                            } else {
+                                                resumeOrRestart()
+                                            }
                                             tapCount = 0
                                         } else {
                                             controlsVisible = !controlsVisible
@@ -501,7 +506,12 @@ private fun VideoPlayerView(
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         IconButton(onClick = {
                             val p = mediaPlayer ?: return@IconButton
-                            if (p.isPlaying) p.pause() else resumeOrRestart()
+                            if (p.isPlaying) {
+                                p.pause()
+                                isPlayingState.value = false
+                            } else {
+                                resumeOrRestart()
+                            }
                         }, modifier = Modifier.size(36.dp)) {
                             Icon(if (isPlayingState.value) Icons.Default.Pause else Icons.Default.PlayArrow, if (isPlayingState.value) "暂停" else "播放", tint = Color.White, modifier = Modifier.size(20.dp))
                         }

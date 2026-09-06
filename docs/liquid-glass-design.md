@@ -120,3 +120,13 @@ catalog 没有提供输入框、复选框、菜单、工具栏或弹层。这些
 进一步隔离为同一账号页静止 6 秒，以及在当前选中底栏内做三次 2 秒的小范围按住拖动（结束仍为账号，不触发页面切换）。两种风格静止都为 0 新帧，gfxinfo 此时的 4950 ms 空桶值没有统计意义。玻璃拖动 37 帧、p50 200 ms，Material 约 150 帧、p50 53 ms。原始数据和脚本为 `glass-phase-profile.py`、`*-held_drag-framestats.txt`、`glass-phase-results.json`。
 
 对 Flags=0 且完成时间有效的帧拆分阶段：玻璃 37 条，布局中位 0.05 ms、UI draw 1.29 ms、渲染队列等待 98.88 ms、绘制命令 82.28 ms；Material 有效样本 22 条，分别 0.04/0.23/21.09/7.52 ms。阶段可能重叠，不能相加当作完整帧时长；两种模式有效样本数不同。`glass-frame-stages.json` 和 `summarize-frame-stages.py` 可复算。证据指向当前 SwiftShader 渲染执行/排队成本，未证明业务布局是瓶颈，故不裁剪正文、不改导航状态或重写官方组件。手机硬件上的效果成本仍需真实验收，当前不能承诺流畅。实验后已恢复 Liquid Glass 暗色。
+
+## 后续验收：2026-09-06 10:08 起
+
+通过一次性 instrumentation 启动真实 VideoPlayerActivity，播放带时间码的本地 30 秒 H.264 视频。截图中的画面时间实际前进，证明解码与播放；这不覆盖远端视频 URL 提取、网络下载或鉴权。探针仅负责启动并保持 Activity，`OK (1 test)` 不作为交互断言；具体状态由真实输入、XML 和截图核对。临时探针与 runner 配置已从工作树移除，使用标准 runner 避免项目测试 runner 重置账号。
+
+- 暂停按钮和双击暂停只调用播放器 pause，未同步播放状态，导致视频停住但控制栏仍按播放态在三秒后隐藏。两个入口都同步更新播放状态。`video-pause-red.xml` 无播放按钮；修正后 `video-pause-green.xml` 保持播放按钮与暂停时间。`video-doubletap.xml` 另行验证恢复播放后双击暂停，四秒后仍有播放按钮。
+- 在稳定暂停状态下，从滑杆右端向左拖动，基线触发系统返回并离开播放器（`video-edge-confirmed-red.xml`）。启用的玻璃滑杆仅在自身触摸区域声明系统手势排除；同一脚本复测 `video-edge-green.xml` / PNG 仍在播放器。另从当前滑块位置拖动，播放进度 25 秒→11 秒，`slider-thumb-after.xml` / PNG 保存实际画面。官方 LiquidSlider 源码没有改写。
+- 最初立即截屏曾呈现旧画面，临时事件诊断确认抬起事件未被消费；等待渲染后控制栏正常出现，因此没有添加输入消费补丁，诊断日志已删除。
+
+Android APK、JVM 编译与 shared/app ktlint 全部通过。证据在 `/tmp/zhihu-glass-evidence/`，构建日志 `/tmp/zhihu-glass-video-final-build.log`。本轮验证不等于全应用或手机硬件性能验收完成。
