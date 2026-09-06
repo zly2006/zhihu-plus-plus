@@ -114,3 +114,9 @@ catalog 没有提供输入框、复选框、菜单、工具栏或弹层。这些
 按项目 picky-user 技能进行了独立截图评审（报告 `visual-review.md`），仅确认个人页主次动作同色导致关注入口层级不足。其余候选中的旧搜索重叠已修复，大字号合理换行和官方透镜中间态不作为缺陷。此次只对玻璃模式未关注状态的关注按钮传入主题主色/主色文字色；已关注状态继续低强调，保留官方组件与动作入口。
 
 关注层级调整已完成 Android APK、JVM 编译及 shared/app ktlint 检查，并安装到 off 验证真实已加载个人页。`profile-actions-dark-red.png` / `profile-actions-dark-green.png` 保留暗色前后对照，主操作清晰，其他三个入口位置不变；没有执行关注或屏蔽操作。
+
+## 后续验收：2026-09-06 09:34 起
+
+进一步隔离为同一账号页静止 6 秒，以及在当前选中底栏内做三次 2 秒的小范围按住拖动（结束仍为账号，不触发页面切换）。两种风格静止都为 0 新帧，gfxinfo 此时的 4950 ms 空桶值没有统计意义。玻璃拖动 37 帧、p50 200 ms，Material 约 150 帧、p50 53 ms。原始数据和脚本为 `glass-phase-profile.py`、`*-held_drag-framestats.txt`、`glass-phase-results.json`。
+
+对 Flags=0 且完成时间有效的帧拆分阶段：玻璃 37 条，布局中位 0.05 ms、UI draw 1.29 ms、渲染队列等待 98.88 ms、绘制命令 82.28 ms；Material 有效样本 22 条，分别 0.04/0.23/21.09/7.52 ms。阶段可能重叠，不能相加当作完整帧时长；两种模式有效样本数不同。`glass-frame-stages.json` 和 `summarize-frame-stages.py` 可复算。证据指向当前 SwiftShader 渲染执行/排队成本，未证明业务布局是瓶颈，故不裁剪正文、不改导航状态或重写官方组件。手机硬件上的效果成本仍需真实验收，当前不能承诺流畅。实验后已恢复 Liquid Glass 暗色。
