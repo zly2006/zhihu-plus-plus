@@ -407,18 +407,6 @@ class MainActivity : ComponentActivity() {
             }
             return
         }
-        if (route == History) {
-            // History is a legacy standalone page even though it remains a top-level tab target.
-            targetController.navigate(route)
-            return
-        }
-        if (route is TopLevelDestination) {
-            // Top-level destinations select a page in the main pager instead of being pushed as
-            // standalone routes, which keeps the landscape list pane and its pager offset stable.
-            mainTabNavigationTarget = route
-            navigateToMainTabs()
-            return
-        }
         if (route == MainTabs) {
             mainTabNavigationTarget = Home
             navigateToMainTabs()
