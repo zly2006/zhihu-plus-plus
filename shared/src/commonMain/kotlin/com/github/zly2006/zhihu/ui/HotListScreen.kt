@@ -55,6 +55,8 @@ import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
+import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
+import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.viewmodel.feed.HotListViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.launch
@@ -96,6 +98,7 @@ fun HotListScreen(
     val settings = rememberSettingsStore()
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
+    val pageTurnTarget = rememberPageTurnTarget(listState = listState, enabled = isActive)
     var cachedScrollToTopTrigger by remember { mutableIntStateOf(scrollToTopTrigger) }
 
     LaunchedEffect(Unit) {
@@ -146,6 +149,7 @@ fun HotListScreen(
                             .overScrollVertical()
                             .scrollEndHaptic()
                             .then(if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier)
+                            .pageTurnViewportWithGuide(pageTurnTarget)
                             .testTag(HOT_LIST_LIST_TAG),
                         // 底部走 contentPadding 而非 Modifier.padding：miuix 底栏是 layerBackdrop 磨砂层，
                         // 内容必须能滚到它下面，只靠内边距把最后一条顶出遮挡范围。
@@ -186,7 +190,10 @@ fun HotListScreen(
                     items = viewModel.displayItems,
                     listState = listState,
                     onLoadMore = { viewModel.loadMore(environment) },
-                    modifier = Modifier.padding(innerPadding).testTag(HOT_LIST_LIST_TAG),
+                    modifier = Modifier
+                        .padding(innerPadding)
+                        .pageTurnViewportWithGuide(pageTurnTarget)
+                        .testTag(HOT_LIST_LIST_TAG),
                     isEnd = { viewModel.isEnd },
                     footer = ProgressIndicatorFooter,
                 ) { item ->

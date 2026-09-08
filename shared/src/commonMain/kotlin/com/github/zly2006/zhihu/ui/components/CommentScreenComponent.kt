@@ -48,6 +48,7 @@ import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.CommentHolder
 import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.theme.Typography
 import com.github.zly2006.zhihu.ui.CommentScreen
@@ -167,6 +168,11 @@ fun CommentScreenComponent(
                 commentInput = commentDrafts[contentStateKey].orEmpty(),
                 onCommentInputChange = { updateCommentDraft(contentStateKey, it) },
                 listState = rootListState,
+                pageTurnEnabled =
+                    (content is Article || content is Pin) &&
+                        activeChildComment == null &&
+                        (authorCommentPolicyAcknowledged || !isZhPlusAuthorContent),
+                showPageTurnFab = content is Pin,
                 onInitialChildCommentResolved = { rootComment, childComment ->
                     pendingChildComment = childComment
                     activeChildComment = rootComment
@@ -199,6 +205,8 @@ fun CommentScreenComponent(
                 onCommentInputChange = { updateCommentDraft(childDraftKey, it) },
                 listState = childListState,
                 initialComment = pendingChildComment,
+                pageTurnEnabled = childTarget.article is Article || childTarget.article is Pin,
+                showPageTurnFab = childTarget.article is Pin,
             )
         }
     }

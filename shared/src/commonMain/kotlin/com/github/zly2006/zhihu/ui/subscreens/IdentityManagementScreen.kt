@@ -77,6 +77,8 @@ import com.github.zly2006.zhihu.navigation.requestLoginNavigation
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
+import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
+import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
@@ -135,6 +137,11 @@ fun IdentityManagementScreen() {
     var switchLoginAccount by remember { mutableStateOf<ZhihuSavedAccount?>(null) }
     var removeLoginAccount by remember { mutableStateOf<ZhihuSavedAccount?>(null) }
     val savedAccounts by accountStore.accountsState.collectAsState()
+    val scrollState = rememberScrollState()
+    val pageTurnTarget = rememberPageTurnTarget(
+        scrollState = scrollState,
+        enabled = !showCreateDialog && switchTarget == null && switchLoginAccount == null && removeLoginAccount == null,
+    )
 
     suspend fun refresh() {
         if (state.switchingToAccountId != null || state.creating) return
@@ -187,7 +194,8 @@ fun IdentityManagementScreen() {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .pageTurnViewportWithGuide(pageTurnTarget)
+                .verticalScroll(scrollState)
                 .padding(innerPadding)
                 .padding(vertical = 16.dp),
         ) {

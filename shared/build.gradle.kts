@@ -112,18 +112,6 @@ kotlin {
         }
     }
 
-    // 编译目标保持 JVM 17（Android 也用这份产物），但 jvmTest 必须跑在 21 上：
-    // io.github.zly2006:latex-* 发布的是 class file 65（Java 21）的字节码，
-    // 17 的运行时加载它会 UnsupportedClassVersionError，公式相关的 markdown 测试全部起不来。
-    // Android 侧不受影响，D8/R8 会脱糖。
-    val jvmTestLauncher =
-        javaToolchains.launcherFor {
-            languageVersion.set(JavaLanguageVersion.of(21))
-        }
-    tasks.named<Test>("jvmTest") {
-        javaLauncher.set(jvmTestLauncher)
-    }
-
     listOf(
         iosArm64(),
         iosSimulatorArm64(),
@@ -204,6 +192,8 @@ kotlin {
             kotlin.srcDir("src/tiqianMarkdownMain/kotlin")
         }
         jvmMain.dependencies {
+            implementation("org.jetbrains.compose.ui:ui-backhandler-desktop:1.11.1")
+            implementation("androidx.navigationevent:navigationevent:1.0.1")
             implementation("org.tiqian:markdown-compose:0.1.0-SNAPSHOT")
             implementation("org.tiqian:math-font-stix:0.1.0-SNAPSHOT")
             implementation("io.coil-kt.coil3:coil-network-ktor3:3.5.0")

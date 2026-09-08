@@ -26,11 +26,12 @@ import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.core.content.edit
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import com.github.zly2006.zhihu.data.ZHIHU_ME_URL
+import com.github.zly2006.zhihu.data.MOBILE_NOTIFICATION_MESSAGE_URL
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.ZhihuMockApi
 import com.github.zly2006.zhihu.test.resetAppPreferences
@@ -62,13 +63,16 @@ class HomeNotificationPixelInstrumentedTest {
         composeRule.resetAppPreferences()
         ZhihuMockApi.mockJson(
             method = HttpMethod.Get,
-            url = ZHIHU_ME_URL,
+            url = "$MOBILE_NOTIFICATION_MESSAGE_URL?limit=20",
             body =
                 """
                 {
-                  "defaultNotificationsCount": 99,
-                  "followNotificationsCount": 99,
-                  "voteThankNotificationsCount": 99
+                  "head": [{"detail_title": "评论转发@", "unread_count": 2}],
+                  "column_head": [{"title": "邀请回答", "unread_count": 3}],
+                  "data": [{"id": "messages", "unread_count": 4}],
+                  "unread": {
+                    "message": {"count": 9, "show_count": true}
+                  }
                 }
                 """.trimIndent(),
         )
@@ -93,9 +97,10 @@ class HomeNotificationPixelInstrumentedTest {
     @Test
     fun unreadNotificationBadgeIsRenderedWithoutParentClipping() {
         composeRule.waitUntil("Expected unread count request", timeoutMillis = 5_000) {
-            ZhihuMockApi.requestCount(HttpMethod.Get, ZHIHU_ME_URL) > 0
+            ZhihuMockApi.requestCount(HttpMethod.Get, "$MOBILE_NOTIFICATION_MESSAGE_URL?limit=20") > 0
         }
         composeRule.waitForIdle()
+        composeRule.onNodeWithText("9", useUnmergedTree = true).assertExists()
 
         val badgeBounds = composeRule
             .onNodeWithTag(HOME_NOTIFICATION_BADGE_TAG, useUnmergedTree = true)

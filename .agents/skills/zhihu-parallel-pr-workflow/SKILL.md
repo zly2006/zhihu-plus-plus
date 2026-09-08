@@ -5,6 +5,10 @@ description: Coordinate Zhihu++ issue implementation and pull requests when the 
 
 # Zhihu++ Parallel PR Workflow
 
+## 变更边界与验收
+
+先确认真实数据面和既有协议，不得擅自新增未授权 action、字段或 seed。回归修复需保留基线红测和修复绿测证据，单调用 helper 应在调用点内联；证据齐全后才能创建 PR。
+
 Use this workflow to shorten independent Zhihu++ issue work without weakening evidence or ownership boundaries.
 
 ## Decide whether to delegate

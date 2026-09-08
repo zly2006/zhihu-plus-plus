@@ -35,6 +35,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
+import com.github.zly2006.zhihu.account.accountHttpClientEngineForTesting
 import com.github.zly2006.zhihu.account.androidZhihuAccountStore
 import com.github.zly2006.zhihu.data.AIGC_MARKING_ENABLED_PREFERENCE_KEY
 import com.github.zly2006.zhihu.data.AccountData
@@ -43,6 +44,7 @@ import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.FeedDisplayItem
 import com.github.zly2006.zhihu.data.HistoryStorage
+import com.github.zly2006.zhihu.data.QualityFilterSettings
 import com.github.zly2006.zhihu.data.ZhihuCookieStorage
 import com.github.zly2006.zhihu.data.ZhihuJson.json
 import com.github.zly2006.zhihu.data.asApiEnvironment
@@ -79,6 +81,7 @@ import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
 import com.github.zly2006.zhihu.viewmodel.local.buildLocalRecommendationEngine
 import com.github.zly2006.zhihu.viewmodel.local.getLocalContentDatabase
 import io.ktor.client.HttpClient
+import io.ktor.client.HttpClientConfig
 import io.ktor.client.plugins.UserAgent
 import io.ktor.client.plugins.api.createClientPlugin
 import io.ktor.client.plugins.cache.HttpCache
@@ -153,8 +156,7 @@ open class SharedAndroidPaginationEnvironment(
 
     override fun mobileHomeFeedHttpClient(): HttpClient {
         val loginForRecommendation = settingsStore.getBoolean("loginForRecommendation", true)
-
-        return HttpClient {
+        val configure: HttpClientConfig<*>.() -> Unit = {
             install(ContentNegotiation) {
                 json(json)
             }
@@ -170,6 +172,7 @@ open class SharedAndroidPaginationEnvironment(
                 }
             }
         }
+        return accountHttpClientEngineForTesting?.let { HttpClient(it, configure) } ?: HttpClient(configure)
     }
 
     override fun isAigcVoteEnabled(): Boolean =
@@ -246,6 +249,15 @@ open class SharedAndroidPaginationEnvironment(
         qualityFilterMode = QualityFilterMode.entries.firstOrNull {
             it.name == settingsStore.getString(QUALITY_FILTER_MODE_PREFERENCE_KEY, QualityFilterMode.RULES.name)
         } ?: QualityFilterMode.RULES,
+        qualityFilter = QualityFilterSettings(
+            answerVoteupCount = settingsStore.getInt(ANSWER_VOTEUP_THRESHOLD_PREFERENCE_KEY, 10).coerceAtLeast(0),
+            articleVoteupCount = settingsStore.getInt(ARTICLE_VOTEUP_THRESHOLD_PREFERENCE_KEY, 20).coerceAtLeast(0),
+            articleFollowersCount = settingsStore.getInt(ARTICLE_FOLLOWERS_THRESHOLD_PREFERENCE_KEY, 50).coerceAtLeast(0),
+            videoVoteCount = settingsStore.getInt(VIDEO_VOTE_THRESHOLD_PREFERENCE_KEY, 20).coerceAtLeast(0),
+            videoFollowersCount = settingsStore.getInt(VIDEO_FOLLOWERS_THRESHOLD_PREFERENCE_KEY, 50).coerceAtLeast(0),
+            questionAnswerCount = settingsStore.getInt(QUESTION_ANSWER_THRESHOLD_PREFERENCE_KEY, 0).coerceAtLeast(0),
+            questionFollowersCount = settingsStore.getInt(QUESTION_FOLLOWERS_THRESHOLD_PREFERENCE_KEY, 50).coerceAtLeast(0),
+        ),
         reverseBlock = settingsStore.getBoolean("reverseBlock", false),
     )
 

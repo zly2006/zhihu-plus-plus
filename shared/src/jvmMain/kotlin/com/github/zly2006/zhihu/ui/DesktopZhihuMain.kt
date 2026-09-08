@@ -18,13 +18,17 @@
 package com.github.zly2006.zhihu.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.InternalComposeUiApi
+import androidx.compose.ui.backhandler.LocalCompatNavigationEventDispatcherOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
 import com.github.zly2006.zhihu.data.fetchHighestQualityZhihuVideoUrl
 import com.github.zly2006.zhihu.desktop.defaultDesktopAccountStore
 import com.github.zly2006.zhihu.desktop.openDesktopExternalUrl
@@ -84,6 +88,7 @@ private val desktopMainPreferenceKeys = setOf(
  * 这里创建桌面 NavController、账号存储、HTTP 客户端和视频/文章等平台行为，再注入共享 [ZhihuMain]。
  * 设计上尽量复用 common 页面结构，只把浏览器打开、签名请求、回答切换状态和桌面账号读取留在 JVM 侧。
  */
+@OptIn(InternalComposeUiApi::class)
 @Composable
 fun DesktopZhihuMain() {
     val navController = rememberNavController<NavDestination>(MainTabs)
@@ -176,26 +181,31 @@ fun DesktopZhihuMain() {
         }
     }
 
-    ZhihuMain(
-        navController = navController,
-        mainTabNavigationTarget = mainTabNavigationTarget,
-        navigate = ::navigate,
-        setCurrentMainTabOpenFrom = { currentMainTabOpenFrom = it },
-        consumeMainTabNavigationTarget = { destination ->
-            if (mainTabNavigationTarget == destination) {
-                mainTabNavigationTarget = null
-            }
-        },
-        preferenceState = rememberDesktopZhihuMainPreferenceState(),
-        isDarkTheme = ThemeManager.isDarkTheme(),
-        articleContent = { article ->
-            // 同一回答链共用一个导航 entry 的 store，故按回答 id 区分 ViewModel（见 ArticleAnswerSlot）。
-            val articleViewModel: ArticleViewModel = viewModel(key = "article-${article.id}") {
-                ArticleViewModel(article, httpClient, userMessages)
-            }
-            ArticleScreen(article, articleViewModel)
-        },
-    )
+    // miuix 导航与窗口 ESC、弹层共用同一个 Compose dispatcher。
+    CompositionLocalProvider(
+        LocalNavigationEventDispatcherOwner provides checkNotNull(LocalCompatNavigationEventDispatcherOwner.current),
+    ) {
+        ZhihuMain(
+            navController = navController,
+            mainTabNavigationTarget = mainTabNavigationTarget,
+            navigate = ::navigate,
+            setCurrentMainTabOpenFrom = { currentMainTabOpenFrom = it },
+            consumeMainTabNavigationTarget = { destination ->
+                if (mainTabNavigationTarget == destination) {
+                    mainTabNavigationTarget = null
+                }
+            },
+            preferenceState = rememberDesktopZhihuMainPreferenceState(),
+            isDarkTheme = ThemeManager.isDarkTheme(),
+            articleContent = { article ->
+                // 同一回答链共用一个导航 entry 的 store，故按回答 id 区分 ViewModel（见 ArticleAnswerSlot）。
+                val articleViewModel: ArticleViewModel = viewModel(key = "article-${article.id}") {
+                    ArticleViewModel(article, httpClient, userMessages)
+                }
+                ArticleScreen(article, articleViewModel)
+            },
+        )
+    }
 }
 
 /**

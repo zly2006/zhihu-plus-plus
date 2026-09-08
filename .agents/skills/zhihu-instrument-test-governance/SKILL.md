@@ -5,6 +5,10 @@ description: Audit, add, migrate, or remove Zhihu++ Android instrument tests und
 
 # Zhihu++ Instrument Test Governance
 
+## 回归与数据边界
+
+新增回归用例前必须在基线得到可复现失败，再在修复版本用同一用例验证通过。不得为注入时间或伪造后端数据新增一次性生产 helper；线上数据变更必须走真实服务端写入与读回，不能用 seed 冒充。
+
 Treat emulator time as a recurring maintenance cost. Keep it only where a real product contract or historical regression needs Android, Compose, window, lifecycle, accessibility, or device integration to prove the behavior.
 
 ## Non-negotiable Rules
@@ -118,6 +122,10 @@ After edits:
 6. Let GitHub CI run the complete suite and follow it to a terminal result when CI is the acceptance boundary.
 
 Do not describe an in-progress check as green or a compiled test as behaviorally executed.
+
+Removing or migrating the test that emitted the visible ANR/error does not by itself fix a stalled shard. Inspect the shard's last `START`/`PASS`, active workflow step, and runner/process teardown state to distinguish a test-body hang from Activity focus cleanup or runner-shell deadlock, then require the replacement run to reach a terminal result.
+
+When a regression contract does not depend on Android framework or device behavior, migrate it to the cheapest common/JVM layer and remove the redundant instrument test. Preserve historical device regressions unless equivalent coverage is demonstrated; never delete them merely to make the shard terminate.
 
 ### 6. Publish an auditable cleanup PR
 

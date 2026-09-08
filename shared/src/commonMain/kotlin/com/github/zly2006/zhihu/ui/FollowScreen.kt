@@ -92,7 +92,9 @@ import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.NoOpPagerNestedScrollConnection
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
+import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberNestedHorizontalPagerConnection
+import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.ui.topLevelReselectAction
 import com.github.zly2006.zhihu.viewmodel.feed.FollowRecommendViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.FollowViewModel
@@ -112,6 +114,13 @@ const val FOLLOW_RECOMMEND_REFRESH_BUTTON_TAG = "follow_recommend_refresh_button
 const val FOLLOW_DYNAMIC_LIST_TAG = "follow_dynamic_list"
 const val FOLLOW_DYNAMIC_REFRESH_BUTTON_TAG = "follow_dynamic_refresh_button"
 
+/** A preloaded inner page may own page-turn input only while the outer Follow page is visible. */
+internal fun isFollowPageTurnTargetActive(
+    followScreenActive: Boolean,
+    selectedPage: Int,
+    page: Int,
+): Boolean = followScreenActive && selectedPage == page
+
 /**
  * 关注顶层页的生产入口。
  *
@@ -124,10 +133,12 @@ fun FollowScreen(
     scrollToTopTrigger: Int = 0,
     innerPadding: PaddingValues,
     parentPagerState: PagerState,
+    isActive: Boolean = true,
 ): Unit = FollowScreenContent(
     scrollToTopTrigger = scrollToTopTrigger,
     innerPadding = innerPadding,
     parentPagerState = parentPagerState,
+    isActive = isActive,
 )
 
 /**
@@ -141,6 +152,7 @@ private fun FollowScreenContent(
     scrollToTopTrigger: Int = 0,
     innerPadding: PaddingValues = PaddingValues(0.dp),
     parentPagerState: PagerState,
+    isActive: Boolean,
 ) {
     val viewModel = viewModel { FollowScreenData() }
     val titles = listOf("推荐", "动态")
@@ -185,12 +197,12 @@ private fun FollowScreenContent(
             when (page) {
                 0 -> FollowRecommendScreen(
                     scrollToTopTrigger = scrollToTopTrigger,
-                    isActive = pagerState.currentPage == 0,
+                    isActive = isFollowPageTurnTargetActive(isActive, pagerState.currentPage, 0),
                 )
 
                 1 -> FollowDynamicScreen(
                     scrollToTopTrigger = scrollToTopTrigger,
-                    isActive = pagerState.currentPage == 1,
+                    isActive = isFollowPageTurnTargetActive(isActive, pagerState.currentPage, 1),
                 )
             }
         }
@@ -379,13 +391,19 @@ fun FollowRecommendScreen(
     }
 
     var feedAuthorBlockRequest by remember { mutableStateOf<FeedAuthorBlockRequest?>(null) }
+    val pageTurnTarget = rememberPageTurnTarget(
+        listState = listState,
+        enabled = isActive && feedAuthorBlockRequest == null,
+    )
 
     Column {
         FeedPullToRefresh(viewModel, environment) {
             PaginatedList(
                 items = viewModel.displayItems,
                 listState = listState,
-                modifier = Modifier.testTag(FOLLOW_RECOMMEND_LIST_TAG),
+                modifier = Modifier
+                    .pageTurnViewportWithGuide(pageTurnTarget)
+                    .testTag(FOLLOW_RECOMMEND_LIST_TAG),
                 topContent = {
                     item {
                         FollowingUsersRow()
@@ -527,13 +545,19 @@ fun FollowDynamicScreen(
     }
 
     var feedAuthorBlockRequest by remember { mutableStateOf<FeedAuthorBlockRequest?>(null) }
+    val pageTurnTarget = rememberPageTurnTarget(
+        listState = listState,
+        enabled = isActive && feedAuthorBlockRequest == null,
+    )
 
     Column {
         FeedPullToRefresh(viewModel, environment) {
             PaginatedList(
                 items = viewModel.displayItems,
                 listState = listState,
-                modifier = Modifier.testTag(FOLLOW_DYNAMIC_LIST_TAG),
+                modifier = Modifier
+                    .pageTurnViewportWithGuide(pageTurnTarget)
+                    .testTag(FOLLOW_DYNAMIC_LIST_TAG),
                 onLoadMore = { viewModel.loadMore(environment) },
                 topContent = {
                     item {

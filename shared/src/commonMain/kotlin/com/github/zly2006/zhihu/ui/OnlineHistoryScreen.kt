@@ -53,6 +53,8 @@ import com.github.zly2006.zhihu.ui.components.AutoHideTopBar
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
+import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
+import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.ui.topLevelReselectAction
 import com.github.zly2006.zhihu.viewmodel.feed.OnlineHistoryViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
@@ -88,6 +90,11 @@ fun OnlineHistoryScreen(
     val listState = rememberLazyListState()
     var cachedScrollToTopTrigger by remember { mutableIntStateOf(scrollToTopTrigger) }
     var showClearHistoryDialog by remember { mutableStateOf(false) }
+    var showActionsMenu by remember { mutableStateOf(false) }
+    val pageTurnTarget = rememberPageTurnTarget(
+        listState = listState,
+        enabled = isActive && !showClearHistoryDialog && !showActionsMenu,
+    )
 
     LaunchedEffect(Unit) {
         if (viewModel.displayItems.isEmpty()) {
@@ -121,7 +128,6 @@ fun OnlineHistoryScreen(
                 TopAppBar(
                     title = { Text("历史记录") },
                     actions = {
-                        var showActionsMenu by remember { mutableStateOf(false) }
                         PlatformBackHandler(enabled = showActionsMenu) {
                             showActionsMenu = false
                         }
@@ -188,6 +194,7 @@ fun OnlineHistoryScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
+                    .pageTurnViewportWithGuide(pageTurnTarget)
                     .testTag("online_history_list"),
                 items = viewModel.displayItems,
                 listState = listState,

@@ -14,7 +14,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -63,7 +62,6 @@ import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
-import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.ui.components.ANSWER_SWITCH_SENSITIVITY_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.components.DEFAULT_ANSWER_SWITCH_SENSITIVITY
@@ -75,7 +73,6 @@ import com.github.zly2006.zhihu.ui.miuix.components.MiuixColorPickerSheet
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixExpandableArrowPreference
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixSliderRow
-import com.github.zly2006.zhihu.ui.miuix.components.MiuixWebViewCustomFontSettings
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEM_ORDER_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY
@@ -84,7 +81,6 @@ import com.github.zly2006.zhihu.ui.subscreens.DUO3_CARD_LARGE_TITLE_PREFERENCE_K
 import com.github.zly2006.zhihu.ui.subscreens.DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.DUO3_TIQIAN_MATH_FONT_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.PREF_BLOCK_SPACING
-import com.github.zly2006.zhihu.ui.subscreens.PREF_CUSTOM_CONTENT_FONT_NAME
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FAB_OPACITY
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
@@ -92,7 +88,6 @@ import com.github.zly2006.zhihu.ui.subscreens.START_DESTINATION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.bottomBarItemOrderFromPreference
 import com.github.zly2006.zhihu.ui.subscreens.bottomBarItemOrderPreferenceValue
 import com.github.zly2006.zhihu.ui.subscreens.defaultBottomBarSelectionKeys
-import com.github.zly2006.zhihu.ui.subscreens.isWebViewCustomFontSupported
 import com.github.zly2006.zhihu.ui.subscreens.normalizeBottomBarItemOrder
 import com.github.zly2006.zhihu.ui.subscreens.normalizeBottomBarSelection
 import com.github.zly2006.zhihu.ui.subscreens.resolveValidStartDestinationKey
@@ -161,7 +156,6 @@ fun MiuixAppearanceSettingsScreen(
     var showFontSlider by remember { mutableStateOf(false) }
     var showLineSlider by remember { mutableStateOf(false) }
     var showBlockSpacingSlider by remember { mutableStateOf(false) }
-    val showWebViewFontSettings = remember { mutableStateOf(false) }
 
     // 信息流
     val showFeedThumbnail = remember { mutableStateOf(settings.getBoolean("showFeedThumbnail", true)) }
@@ -169,9 +163,6 @@ fun MiuixAppearanceSettingsScreen(
     val feedCardStyle = remember { mutableStateOf(settings.getString("feedCardStyle", "card")) }
 
     // 回答页
-    val articleUseWebview = remember { mutableStateOf(settings.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false)) }
-    val customWebViewFontName = remember { mutableStateOf(settings.getStringOrNull(PREF_CUSTOM_CONTENT_FONT_NAME)) }
-    val webViewHardwareAcceleration = remember { mutableStateOf(settings.getBoolean("webviewHardwareAcceleration", true)) }
     val titleAutoHide = remember { mutableStateOf(settings.getBoolean("titleAutoHide", false)) }
     val autoHideBottomBar = remember { mutableStateOf(settings.getBoolean("autoHideArticleBottomBar", false)) }
     val buttonSkipAnswer = remember { mutableStateOf(settings.getBoolean("buttonSkipAnswer", true)) }
@@ -467,48 +458,6 @@ fun MiuixAppearanceSettingsScreen(
             item { SmallTitle(text = "回答页") }
             item {
                 Card(Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
-                    SwitchPreference(
-                        checked = articleUseWebview.value,
-                        onCheckedChange = {
-                            articleUseWebview.value = it
-                            settings.putBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, it)
-                        },
-                        title = "使用 WebView 显示文章",
-                        summary = "关闭后使用 Compose 渲染，支持代码高亮",
-                    )
-                    if (isWebViewCustomFontSupported) {
-                        MiuixExpandableArrowPreference(
-                            title = "正文自定义字体",
-                            summary = customWebViewFontName.value ?: "未设置",
-                            expanded = showWebViewFontSettings.value,
-                            onExpandedChange = { showWebViewFontSettings.value = !showWebViewFontSettings.value },
-                        ) {
-                            Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                                MiuixWebViewCustomFontSettings(
-                                    customFontName = customWebViewFontName.value,
-                                    onCustomFontNameChange = { name ->
-                                        if (name == null) {
-                                            settings.remove(PREF_CUSTOM_CONTENT_FONT_NAME)
-                                        } else {
-                                            settings.putString(PREF_CUSTOM_CONTENT_FONT_NAME, name)
-                                        }
-                                        customWebViewFontName.value = name
-                                    },
-                                )
-                            }
-                        }
-                    }
-                    if (articleUseWebview.value) {
-                        SwitchPreference(
-                            checked = webViewHardwareAcceleration.value,
-                            onCheckedChange = {
-                                webViewHardwareAcceleration.value = it
-                                settings.putBoolean("webviewHardwareAcceleration", it)
-                            },
-                            title = "WebView 硬件加速",
-                            summary = "提高渲染性能，可能导致兼容性问题",
-                        )
-                    }
                     SwitchPreference(
                         checked = titleAutoHide.value,
                         onCheckedChange = {

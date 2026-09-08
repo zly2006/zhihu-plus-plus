@@ -5,7 +5,15 @@ description: Review and fix Zhihu++ functional regressions caused by performance
 
 # Zhihu++ 性能回归复核
 
+## 交付门禁
+
+回归修复必须先在相对基线运行同一测试并确认失败，再验证修复后通过；不得用编译成功、静态推理或只覆盖新 helper 的测试替代红到绿证据。一次性逻辑应留在真实调用点。
+
 把“功能正确”和“性能不回退”作为同一个验收目标。不要默认保留现有优化实现，也不要默认恢复旧实现；先用真实生命周期和测量结果选择改动最小、契约最完整的方案。
+
+### LazyColumn 列表动画边界
+
+`animateItem` 只有挂在 `LazyColumn` 的直接 item 根节点上，才能观察到 item 重排或移除后的位移动画。把它放在 item 内部卡片、`AnimatedVisibility` 或卡片自身上，只会影响子树布局，不能驱动兄弟 item 的列表动画。排查时先确认 `item(key)` 的根节点和稳定 key，再检查状态列表是否以不可变新列表触发重组。
 
 ## 1. 固定基线
 

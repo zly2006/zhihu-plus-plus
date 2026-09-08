@@ -43,6 +43,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
+import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 
 /**
  * Material 3 配色调试页。
@@ -55,6 +57,8 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 fun ColorSchemeScreen() {
     val navigator = LocalNavigator.current
     val cs = MaterialTheme.colorScheme
+    val scrollState = rememberScrollState()
+    val pageTurnTarget = rememberPageTurnTarget(scrollState, enabled = true)
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -73,7 +77,8 @@ fun ColorSchemeScreen() {
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .pageTurnViewportWithGuide(pageTurnTarget)
+                .verticalScroll(scrollState)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {

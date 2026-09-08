@@ -20,7 +20,9 @@ package com.github.zly2006.zhihu.platform
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.backhandler.BackHandler
 import com.github.zly2006.zhihu.desktop.DesktopPropertiesFile
 import com.github.zly2006.zhihu.desktop.copyDesktopPlainText
 import com.github.zly2006.zhihu.desktop.defaultDesktopAccountStore
@@ -78,6 +80,11 @@ fun desktopSettingsStore(): SettingsStore {
             propertiesFile.save()
         }
 
+        override fun removeByPrefix(prefix: String) {
+            properties.stringPropertyNames().filter { it.startsWith(prefix) }.forEach(properties::remove)
+            propertiesFile.save()
+        }
+
         private fun write(key: String, value: String) {
             properties.setProperty(key, value)
             propertiesFile.save()
@@ -88,6 +95,15 @@ fun desktopSettingsStore(): SettingsStore {
 @Composable
 actual fun rememberExternalUrlOpener(): ExternalUrlOpener = remember {
     object : ExternalUrlOpener {
+        override fun invoke(url: String) {
+            openDesktopExternalUrl(url)
+        }
+    }
+}
+
+@Composable
+actual fun rememberWebViewUrlOpener(): WebViewUrlOpener = remember {
+    object : WebViewUrlOpener {
         override fun invoke(url: String) {
             openDesktopExternalUrl(url)
         }
@@ -194,11 +210,12 @@ actual fun rememberUserMessageSink(): UserMessageSink = remember {
     }
 }
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 actual fun PlatformBackHandler(
     enabled: Boolean,
     onBack: () -> Unit,
-) = Unit // TODO: desktop back handler
+) = BackHandler(enabled = enabled, onBack = onBack)
 
 @Composable
 actual fun PlatformPredictiveBackHandler(
@@ -228,3 +245,7 @@ actual val isSentenceSimilaritySupported: Boolean = false
 actual val isArticleHtmlExportSupported: Boolean = true
 
 actual val isArticleImageExportSupported: Boolean = true
+
+actual val isPageTurnSupported: Boolean = false
+
+actual val isAnswerSwipeSupported: Boolean = false

@@ -40,6 +40,10 @@ expect val isArticleHtmlExportSupported: Boolean
 
 expect val isArticleImageExportSupported: Boolean
 
+expect val isPageTurnSupported: Boolean
+
+expect val isAnswerSwipeSupported: Boolean
+
 enum class UserMessageDuration {
     Short,
     Long,
@@ -93,6 +97,8 @@ interface SettingsStore {
 
     fun remove(key: String)
 
+    fun removeByPrefix(prefix: String) = Unit
+
     fun observeKeyChanges(onChanged: (String) -> Unit): AutoCloseable = AutoCloseable { }
 }
 
@@ -112,6 +118,11 @@ interface ExternalUrlOpener :
     SystemUrlOpener,
     ZhihuWebUrlOpener,
     ImagePreviewOpener
+
+/** Opens a third-party page inside the app's embedded WebView. */
+interface WebViewUrlOpener {
+    operator fun invoke(url: String)
+}
 
 interface ImageGalleryOpener {
     operator fun invoke(urls: List<String>, initialIndex: Int)
@@ -165,6 +176,9 @@ fun rememberSettingInt(
 
 @Composable
 expect fun rememberExternalUrlOpener(): ExternalUrlOpener
+
+@Composable
+expect fun rememberWebViewUrlOpener(): WebViewUrlOpener
 
 @Composable
 expect fun rememberSystemUrlOpener(): SystemUrlOpener

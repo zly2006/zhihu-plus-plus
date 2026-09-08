@@ -46,6 +46,15 @@ actual fun rememberExternalUrlOpener(): ExternalUrlOpener = remember {
 }
 
 @Composable
+actual fun rememberWebViewUrlOpener(): WebViewUrlOpener = remember {
+    object : WebViewUrlOpener {
+        override fun invoke(url: String) {
+            NSURL.URLWithString(url)?.let(UIApplication.sharedApplication::openURL)
+        }
+    }
+}
+
+@Composable
 actual fun rememberImageGalleryOpener(): ImageGalleryOpener {
     val openExternalUrl = rememberExternalUrlOpener()
     return remember(openExternalUrl) {

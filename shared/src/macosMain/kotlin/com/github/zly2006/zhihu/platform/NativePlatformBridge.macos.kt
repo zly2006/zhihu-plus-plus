@@ -51,6 +51,16 @@ actual fun rememberExternalUrlOpener(): ExternalUrlOpener = remember {
     }
 }
 
+@Composable
+@OptIn(ExperimentalForeignApi::class)
+actual fun rememberWebViewUrlOpener(): WebViewUrlOpener = remember {
+    object : WebViewUrlOpener {
+        override fun invoke(url: String) {
+            NSURL.URLWithString(url)?.let(NSWorkspace.sharedWorkspace::openURL)
+        }
+    }
+}
+
 @OptIn(ExperimentalForeignApi::class)
 internal actual fun copyNativePlainText(text: String) {
     NSPasteboard.generalPasteboard.apply {

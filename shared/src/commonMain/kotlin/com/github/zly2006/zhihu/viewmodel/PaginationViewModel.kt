@@ -30,6 +30,7 @@ import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.FeedDisplayItem
 import com.github.zly2006.zhihu.data.OnlineHistoryDeletePair
+import com.github.zly2006.zhihu.data.QualityFilterSettings
 import com.github.zly2006.zhihu.data.ZhihuJson.decodeJson
 import com.github.zly2006.zhihu.data.ZhihuPaging
 import com.github.zly2006.zhihu.data.executeZhihuAuthenticatedRequest
@@ -539,6 +540,7 @@ interface PaginationEnvironment :
 
 data class FeedDisplaySettings(
     val qualityFilterMode: QualityFilterMode = QualityFilterMode.RULES,
+    val qualityFilter: QualityFilterSettings = QualityFilterSettings(),
     val reverseBlock: Boolean = false,
 )
 
@@ -549,6 +551,13 @@ enum class QualityFilterMode {
 }
 
 const val QUALITY_FILTER_MODE_PREFERENCE_KEY = "qualityFilterMode"
+const val ANSWER_VOTEUP_THRESHOLD_PREFERENCE_KEY = "answerVoteupThreshold"
+const val ARTICLE_VOTEUP_THRESHOLD_PREFERENCE_KEY = "articleVoteupThreshold"
+const val ARTICLE_FOLLOWERS_THRESHOLD_PREFERENCE_KEY = "articleFollowersThreshold"
+const val VIDEO_VOTE_THRESHOLD_PREFERENCE_KEY = "videoVoteThreshold"
+const val VIDEO_FOLLOWERS_THRESHOLD_PREFERENCE_KEY = "videoFollowersThreshold"
+const val QUESTION_ANSWER_THRESHOLD_PREFERENCE_KEY = "questionAnswerThreshold"
+const val QUESTION_FOLLOWERS_THRESHOLD_PREFERENCE_KEY = "questionFollowersThreshold"
 
 data class HomeFeedFilterResult(
     val foregroundItems: List<FeedDisplayItem>,

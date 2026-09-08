@@ -22,6 +22,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateMap
+import com.github.zly2006.zhihu.data.MOBILE_NOTIFICATION_MESSAGE_URL
 import com.github.zly2006.zhihu.data.MobileNotificationAuthor
 import com.github.zly2006.zhihu.data.MobileNotificationColumnHead
 import com.github.zly2006.zhihu.data.MobileNotificationMessageOverview
@@ -397,7 +398,6 @@ class PrivateMessageViewModel(
 }
 
 private const val INVITATION_ENTRY_NAME = "invite"
-private const val MOBILE_NOTIFICATION_MESSAGE_URL = "https://api.zhihu.com/notifications/v3/message/v3"
 private const val MOBILE_NOTIFICATION_TIMELINE_URL = "https://api.zhihu.com/notifications/v3/timeline/entry"
 private const val MOBILE_PRIVATE_MESSAGE_URL = "https://api.zhihu.com/messages"
 private const val MOBILE_PRIVATE_MESSAGE_USER_URL = "https://api.zhihu.com/messages/user"

@@ -114,9 +114,27 @@ jobs:
           path: app/build/instrument-apks/
           retention-days: 1
 
+  desktop-jar:
+    name: Desktop Release Jar
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set Up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: "17"
+          cache: gradle
+
+      - name: Change wrapper permissions
+        run: chmod +x ./gradlew
+
+      - name: Build Desktop Release Jar
+        run: ./gradlew :desktopApp:packageReleaseUberJarForCurrentOS --max-workers=2
+
   unit-tests:
     name: Unit Tests
-    needs: build_pr
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -127,12 +145,6 @@ jobs:
           distribution: zulu
           java-version: "23"
           cache: gradle
-
-      - name: Restore Gradle build cache
-        uses: actions/download-artifact@v4
-        with:
-          name: PR Gradle build cache
-          path: .gradle/build-cache
 
       - name: Change wrapper permissions
         run: chmod +x ./gradlew

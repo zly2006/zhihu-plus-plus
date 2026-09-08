@@ -26,6 +26,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.asPaddingValues
@@ -73,6 +74,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -164,6 +167,7 @@ import com.github.zly2006.zhihu.ui.subscreens.OpenSourceLicensesScreen
 import com.github.zly2006.zhihu.ui.subscreens.ReadingSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.SettingsSearchScreen
 import com.github.zly2006.zhihu.ui.subscreens.SystemAndUpdateSettingsScreen
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
 import top.yukonga.miuix.kmp.blur.layerBackdrop
@@ -619,7 +623,27 @@ fun ZhihuMain(
             ) {
                 NavDisplay(
                     navController,
-                    modifier = Modifier,
+                    modifier = Modifier.pointerInput(Unit) {
+                        while (true) {
+                            awaitPointerEventScope {
+                                awaitFirstDown(
+                                    requireUnconsumed = false,
+                                    pass = PointerEventPass.Initial,
+                                )
+                                while (
+                                    awaitPointerEvent(PointerEventPass.Final)
+                                        .changes
+                                        .any { it.pressed }
+                                ) {
+                                    // 等手势完成后再重组，避免取消同一次背景点击或滚动。
+                                }
+                            }
+                            if (shouldCompactPlayerOnBackgroundInteraction) {
+                                delay(100)
+                                isReadingPlayerExpandedByUser = false
+                            }
+                        }
+                    },
                     onBack = { navController.pop() },
                     // M3 用 AOSP 风格预测性返回（手势中缩放+圆角+跟随边），miuix 保持自有横滑转场。
                     transition = if (useMiuix) NavTransitions.MiuixDefault else AospPredictiveBackTransition,
@@ -941,6 +965,7 @@ private fun MainTabsPager(
                     scrollToTopTrigger = scrollToTopTrigger,
                     innerPadding = innerPadding,
                     showTopActions = showHomeTopActions,
+                    isActive = pagerState.currentPage == pageIndex,
                 )
             }
             // 上游把关注的「推荐/动态」两个 pager 页合并成一页，页内自带 tab 并接管父 pager 手势。
@@ -955,6 +980,7 @@ private fun MainTabsPager(
                     scrollToTopTrigger = scrollToTopTrigger,
                     innerPadding = innerPadding,
                     parentPagerState = pagerState,
+                    isActive = pagerState.currentPage == pageIndex,
                 )
             }
             MainTabPage.HotListPage -> if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
@@ -1001,7 +1027,7 @@ private fun MainTabsPager(
             MainTabPage.AccountPage -> if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
                 MiuixAccountSettingScreen(innerPadding)
             } else {
-                AccountSettingScreen(innerPadding)
+                AccountSettingScreen(innerPadding, isActive = pagerState.currentPage == pageIndex)
             }
         }
     }
