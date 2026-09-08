@@ -79,3 +79,23 @@ suspend fun fetchNightlyZhihuRelease(
         }
     }.raiseForStatus()
     .body<GithubRelease>()
+
+internal data class AndroidReleaseDownloadInfo(
+    val browserDownloadUrl: String,
+    val cnDownloadUrl: String? = null,
+    val opensExternally: Boolean = false,
+)
+
+internal fun GithubRelease.extractAndroidDownloadInfo(isLiteVariant: Boolean): AndroidReleaseDownloadInfo {
+    val apkAssets = assets.filter { it.contentType == "application/vnd.android.package-archive" }
+    val variant = if (isLiteVariant) "lite" else "full"
+    val selectedAsset = apkAssets.firstOrNull { it.name.contains(variant, ignoreCase = true) } ?: apkAssets.firstOrNull()
+    if (selectedAsset != null) {
+        return AndroidReleaseDownloadInfo(selectedAsset.browserDownloadUrl, selectedAsset.cnDownloadUrl)
+    }
+    val quarkUrl = Regex("""https://pan\.quark\.cn/s/[A-Za-z0-9_-]+(?:\?[A-Za-z0-9._~%!$&*+,;=:@/?-]+)?""")
+        .find(body.orEmpty())
+        ?.value
+        ?: error("发布中未找到 APK 或夸克网盘下载链接")
+    return AndroidReleaseDownloadInfo(browserDownloadUrl = quarkUrl, opensExternally = true)
+}

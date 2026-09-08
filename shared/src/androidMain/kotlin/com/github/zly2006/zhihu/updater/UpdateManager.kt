@@ -21,6 +21,7 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import androidx.core.content.FileProvider
+import androidx.core.net.toUri
 import com.github.zly2006.zhihu.account.androidZhihuAccountStore
 import com.github.zly2006.zhihu.platform.androidSettingsStore
 import com.github.zly2006.zhihu.platform.isAndroidLiteVariantPackageName
@@ -41,18 +42,12 @@ import java.net.URI
 
 object UpdateManager {
     private const val AUTO_CHECK_INTERVAL_MILLIS = 3 * 60 * 60 * 1000L
-    private const val ANDROID_APK_CONTENT_TYPE = "application/vnd.android.package-archive"
 
     /**
      * 自动检查更新要跳过的版本
      */
     private const val PREF_SKIPPED_VERSION = "skippedVersion"
     private const val PREF_LAST_UPDATE_CHECK = "lastUpdateCheck"
-
-    data class DownloadInfo(
-        val browserDownloadUrl: String,
-        val cnDownloadUrl: String? = null,
-    )
 
     sealed class UpdateState {
         object NoUpdate : UpdateState()
@@ -67,6 +62,7 @@ object UpdateManager {
             val releaseNotes: String?,
             val downloadUrl: String,
             val cnDownloadUrl: String?,
+            val opensExternally: Boolean = false,
         ) : UpdateState()
 
         object Downloading : UpdateState()
@@ -103,18 +99,6 @@ object UpdateManager {
         return (System.currentTimeMillis() - settings.getLong(PREF_LAST_UPDATE_CHECK, 0)) >= AUTO_CHECK_INTERVAL_MILLIS
     }
 
-    private fun GithubRelease.extractDownloadInfo(context: Context): DownloadInfo {
-        val apkAssets = assets.filter {
-            it.contentType == ANDROID_APK_CONTENT_TYPE
-        }
-
-        val selectedAsset = selectApkAsset(apkAssets, isAndroidLiteVariantPackageName(context.packageName)) ?: apkAssets.first()
-        return DownloadInfo(
-            browserDownloadUrl = selectedAsset.browserDownloadUrl,
-            cnDownloadUrl = selectedAsset.cnDownloadUrl,
-        )
-    }
-
     suspend fun getLatestVersion(context: Context): GithubRelease {
         val client = androidZhihuAccountStore(context).client.httpClient()
         return fetchLatestZhihuRelease(client, getGitHubToken(context))
@@ -140,7 +124,7 @@ object UpdateManager {
             val latestResponse = getLatestVersion(context)
             Log.i("UpdateManager", "Latest version response: $latestResponse")
             latestVersion = latestResponse.tagName.takeIf { it.isNotBlank() }?.let { SchematicVersion.fromString(it) }
-            val latestDownloadInfo = latestResponse.extractDownloadInfo(context)
+            val latestDownloadInfo = latestResponse.extractAndroidDownloadInfo(isAndroidLiteVariantPackageName(context.packageName))
 
             if (latestVersion != null && latestVersion > currentVersion) {
                 val versionString = latestVersion.toString()
@@ -152,6 +136,7 @@ object UpdateManager {
                         latestResponse.body?.let(::extractGithubReleaseNotes),
                         latestDownloadInfo.browserDownloadUrl,
                         latestDownloadInfo.cnDownloadUrl,
+                        latestDownloadInfo.opensExternally,
                     )
                     return true // 有可用更新且未被跳过
                 } else {
@@ -185,7 +170,7 @@ object UpdateManager {
             val latestResponse = getLatestVersion(context)
             latestVersion = latestResponse.tagName.takeIf { it.isNotBlank() }?.let { SchematicVersion.fromString(it) }
             releaseNotes = latestResponse.body?.let(::extractGithubReleaseNotes)
-            var downloadInfo = latestResponse.extractDownloadInfo(context)
+            var downloadInfo = latestResponse.extractAndroidDownloadInfo(isAndroidLiteVariantPackageName(context.packageName))
 
             // 如果启用了nightly检查，也检查nightly版本
             if (checkNightly) {
@@ -201,7 +186,7 @@ object UpdateManager {
                         )
                         isNightly = true
                         releaseNotes = nightlyResponse.body?.let(::extractGithubReleaseNotes)
-                        downloadInfo = nightlyResponse.extractDownloadInfo(context)
+                        downloadInfo = nightlyResponse.extractAndroidDownloadInfo(isAndroidLiteVariantPackageName(context.packageName))
                     }
                 } catch (e: Exception) {
                     // nightly版本检查失败时，继续使用正式版本
@@ -216,6 +201,7 @@ object UpdateManager {
                     releaseNotes,
                     downloadInfo.browserDownloadUrl,
                     downloadInfo.cnDownloadUrl,
+                    downloadInfo.opensExternally,
                 )
             } else {
                 updateState.value = UpdateState.Latest
@@ -229,6 +215,12 @@ object UpdateManager {
         val state = updateState.value
         if (state !is UpdateState.UpdateAvailable) return
         try {
+            if (state.opensExternally) {
+                context.startActivity(
+                    Intent(Intent.ACTION_VIEW, downloadUrl.toUri()).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                )
+                return
+            }
             updateState.value = Downloading
 
             val file = withContext(Dispatchers.IO) {
@@ -244,14 +236,6 @@ object UpdateManager {
         } catch (e: Exception) {
             updateState.value = UpdateState.Error(e.message ?: "Unknown error")
         }
-    }
-
-    private fun selectApkAsset(apkAssets: List<GithubAsset>, isLiteVariant: Boolean): GithubAsset? = if (isLiteVariant) {
-        // Lite version: strictly look for "lite" in filename
-        apkAssets.firstOrNull { it.name.contains("lite", ignoreCase = true) }
-    } else {
-        // Full version: prefer "full" in filename
-        apkAssets.firstOrNull { it.name.contains("full", ignoreCase = true) }
     }
 
     fun installUpdate(context: Context, file: File) {
