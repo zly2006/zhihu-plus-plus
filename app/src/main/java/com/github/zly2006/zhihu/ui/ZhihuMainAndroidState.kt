@@ -19,11 +19,9 @@
 
 package com.github.zly2006.zhihu.ui
 
-import androidx.activity.compose.LocalActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
-import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Daily
 import com.github.zly2006.zhihu.navigation.Follow
@@ -104,6 +102,3 @@ fun rememberAndroidZhihuMainPreferenceState(): ZhihuMainPreferenceState {
         },
     )
 }
-
-@Composable
-fun rememberAndroidZhihuMainActivity(): MainActivity = LocalActivity.current as MainActivity

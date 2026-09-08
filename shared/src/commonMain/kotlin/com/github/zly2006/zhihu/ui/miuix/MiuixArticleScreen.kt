@@ -107,15 +107,14 @@ import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.AnswerDoubleTapAction
-import com.github.zly2006.zhihu.ui.ArticleAnswerTransitionDirection
 import com.github.zly2006.zhihu.ui.ArticleImmersiveModeEffect
-import com.github.zly2006.zhihu.ui.LocalArticleAnswerSwitcher
 import com.github.zly2006.zhihu.ui.LocalArticleNavController
 import com.github.zly2006.zhihu.ui.LocalReadingPlayerOverlayOffsetState
 import com.github.zly2006.zhihu.ui.LocalReadingPlayerOverlayPadding
 import com.github.zly2006.zhihu.ui.TtsState
 import com.github.zly2006.zhihu.ui.article.ArticleVideoAttachmentContent
 import com.github.zly2006.zhihu.ui.article.articleReadingQueueItem
+import com.github.zly2006.zhihu.ui.article.rememberArticleAnswerNavigationState
 import com.github.zly2006.zhihu.ui.article.startArticleReading
 import com.github.zly2006.zhihu.ui.article.voteUpNeutralContent
 import com.github.zly2006.zhihu.ui.articleActionText
@@ -186,8 +185,6 @@ fun MiuixArticleScreen(
     viewModel: ArticleViewModel,
 ) {
     val navigator = LocalNavigator.current
-    // 回答切换在单个导航 entry 内进行（见 ArticleAnswerSlot）；无 slot 时回退到 push 导航。
-    val answerSwitch = LocalArticleAnswerSwitcher.current
     val environment = rememberPaginationEnvironment(allowGuestAccess = false)
     val ttsState = rememberArticleTtsState()
     val toggleSpeech = rememberArticleSpeechToggler()
@@ -252,6 +249,15 @@ fun MiuixArticleScreen(
     val latestEffectiveScrollMaxValue by rememberUpdatedState(effectiveScrollMaxValue)
     val readingPlayerOverlayRouteId = article.readingQueueSourceId ?: "${article.type}:${article.id}"
     val usesVerticalAnswerSwitch = article.type == ArticleType.Answer && answerSwitchMode == "vertical"
+    // 回答切换（预填充、上一条/下一条、栈内替换）与 M3 共用同一个状态机，不再各维护一份。
+    val answerNavigationState = rememberArticleAnswerNavigationState(
+        switchState = sharedData,
+        viewModel = viewModel,
+        navigator = navigator,
+        navController = articleNavController,
+        answerSwitchMode = answerSwitchMode,
+        readingQueueSourceId = article.readingQueueSourceId,
+    )
     DisposableEffect(readingPlayerOverlayOffsetState, readingPlayerOverlayRouteId, usesVerticalAnswerSwitch) {
         if (usesVerticalAnswerSwitch) {
             readingPlayerOverlayOffsetState?.beginRoute(readingPlayerOverlayRouteId)
@@ -384,81 +390,16 @@ fun MiuixArticleScreen(
     }
 
     LaunchedEffect(article.id) {
-        // 答案切换时用 pendingInitialContent 预填充，消除空白帧（逻辑同 M3 ArticleScreen）。
-        if (sharedData != null) {
-            if (!sharedData.navigatingFromAnswerSwitch) sharedData.reset()
-            sharedData.navigatingFromAnswerSwitch = false
-            sharedData.answerTransitionDirection = ArticleAnswerTransitionDirection.DEFAULT
-            sharedData.pendingInitialContent?.let { pending ->
-                viewModel.title = pending.title
-                viewModel.authorName = pending.authorName
-                viewModel.authorBio = pending.authorBio
-                viewModel.authorAvatarSrc = pending.authorAvatarUrl
-                viewModel.content = pending.content
-                viewModel.voteUpCount = pending.voteUpCount
-                viewModel.commentCount = pending.commentCount
-                sharedData.pendingInitialContent = null
-            }
-        }
+        // 答案切换时用 pendingInitialContent 预填充，消除空白帧；与 M3 共用同一份切换状态机。
+        answerNavigationState.prepareArticle()
         viewModel.loadArticle(environment)
         viewModel.loadCollections(environment)
         viewModel.loadAigcFlagStatus(environment)
     }
 
-    val nav = sharedData?.navigator
-    val navigateToPrevious: () -> Unit = {
-        sharedData?.answerTransitionDirection = if (answerSwitchMode == "horizontal") {
-            ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS
-        } else {
-            ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS
-        }
-        sharedData?.navigatingFromAnswerSwitch = true
-        sharedData?.navigator?.pushAnswer(viewModel.toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: "此问题"))
-        val prev = sharedData?.navigator?.goToPrevious()
-        if (prev != null) {
-            sharedData.pendingInitialContent = prev
-            sharedData.promoteForNavigation(sharedData.answerTransitionDirection)
-            answerSwitch?.invoke(prev.article, sharedData.answerTransitionDirection)
-                ?: navigator.onNavigate(prev.article)
-        } else {
-            sharedData?.pendingInitialContent = sharedData.navigator?.previousAnswerPreview
-            sharedData?.promoteForNavigation(sharedData.answerTransitionDirection)
-            coroutineScope.launch {
-                val prevCached = sharedData?.navigator?.loadPrevious()
-                if (prevCached != null) {
-                    sharedData.pendingInitialContent = prevCached
-                    answerSwitch?.invoke(prevCached.article, sharedData.answerTransitionDirection)
-                        ?: navigator.onNavigate(prevCached.article)
-                }
-            }
-        }
-    }
-    val navigateToNext: () -> Unit = {
-        sharedData?.answerTransitionDirection = if (answerSwitchMode == "horizontal") {
-            ArticleAnswerTransitionDirection.HORIZONTAL_NEXT
-        } else {
-            ArticleAnswerTransitionDirection.VERTICAL_NEXT
-        }
-        sharedData?.navigatingFromAnswerSwitch = true
-        sharedData?.navigator?.pushAnswer(viewModel.toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: "此问题"))
-        val historyNext = sharedData?.navigator?.goToNext()
-        if (historyNext != null) {
-            sharedData.pendingInitialContent = historyNext
-            sharedData.promoteForNavigation(sharedData.answerTransitionDirection)
-            answerSwitch?.invoke(historyNext.article, sharedData.answerTransitionDirection)
-                ?: navigator.onNavigate(historyNext.article)
-        } else {
-            sharedData?.pendingInitialContent = sharedData.navigator?.nextAnswer
-            sharedData?.promoteForNavigation(sharedData.answerTransitionDirection)
-            coroutineScope.launch {
-                val nextArticle = sharedData?.navigator?.loadNext()
-                if (nextArticle != null) {
-                    answerSwitch?.invoke(nextArticle, sharedData.answerTransitionDirection)
-                        ?: navigator.onNavigate(nextArticle)
-                }
-            }
-        }
-    }
+    val nav = answerNavigationState.answerNavigator
+    val navigateToPrevious: () -> Unit = answerNavigationState::navigateToPrevious
+    val navigateToNext: () -> Unit = answerNavigationState::navigateToNext
 
     val articleScaffold: @Composable () -> Unit = {
         Scaffold(

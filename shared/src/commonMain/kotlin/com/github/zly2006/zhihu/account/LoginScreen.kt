@@ -345,8 +345,8 @@ private fun LoginNoticeScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            // 不透明背景兜底：NavDisplay 会保留被覆盖层，登录页不自己铺底就会透出下面的首页信息流。
-            // miuix 分支由 MiuixScaffold 铺底，M3 分支是裸 Column，必须显式补上（同 ArticleAnswerSlot）。
+            // 不透明背景兜底：转场期间下层页面仍在组合，登录页不自己铺底就会透出下面的首页信息流。
+            // miuix 分支由 MiuixScaffold 铺底，M3 分支是裸 Column，必须显式补上。
             .background(MaterialTheme.colorScheme.background)
             .testTag(stepTag),
     ) {

@@ -17,18 +17,24 @@
 
 package com.github.zly2006.zhihu.ui
 
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.InternalComposeUiApi
-import androidx.compose.ui.backhandler.LocalCompatNavigationEventDispatcherOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import com.github.zly2006.zhihu.data.fetchHighestQualityZhihuVideoUrl
 import com.github.zly2006.zhihu.desktop.defaultDesktopAccountStore
 import com.github.zly2006.zhihu.desktop.openDesktopExternalUrl
@@ -66,10 +72,10 @@ import com.github.zly2006.zhihu.ui.subscreens.resolveValidStartDestinationKey
 import com.github.zly2006.zhihu.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.prepareDesktopPendingContentOpen
+import com.github.zly2006.zhihu.viewmodel.sharedArticleAnswerSwitchState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import top.yukonga.miuix.kmp.nav.core.rememberNavController
 
 private val desktopMainPreferenceKeys = setOf(
     "duo3_home_account",
@@ -88,10 +94,9 @@ private val desktopMainPreferenceKeys = setOf(
  * 这里创建桌面 NavController、账号存储、HTTP 客户端和视频/文章等平台行为，再注入共享 [ZhihuMain]。
  * 设计上尽量复用 common 页面结构，只把浏览器打开、签名请求、回答切换状态和桌面账号读取留在 JVM 侧。
  */
-@OptIn(InternalComposeUiApi::class)
 @Composable
 fun DesktopZhihuMain() {
-    val navController = rememberNavController<NavDestination>(MainTabs)
+    val navController = rememberNavController()
     val accountStore = defaultDesktopAccountStore
     val accounts by accountStore.accountsState.collectAsState()
     val accountSession = accounts.session
@@ -102,30 +107,45 @@ fun DesktopZhihuMain() {
     var currentMainTabOpenFrom by remember { mutableStateOf<String?>(null) }
 
     fun navigateToMainTabs() {
-        navController.popUntil { it is MainTabs }
+        navController.navigate(MainTabs) {
+            launchSingleTop = true
+            restoreState = true
+            popUpTo(MainTabs) {
+                saveState = true
+            }
+        }
     }
 
-    fun currentMainTabOpenFrom(): String? = if (navController.backStack.lastOrNull() is MainTabs) {
-        currentMainTabOpenFrom
-    } else {
-        null
-    }
-
-    fun currentContentOpenSource(): NavDestination? = when (val top = navController.backStack.lastOrNull()) {
-        is Article, is Question, is Pin, is CollectionContent, is History, is Notification -> top
-        else -> null
+    fun currentContentOpenSource(): NavDestination? {
+        val currentEntry = navController.currentBackStackEntry
+        return runCatching {
+            currentEntry?.toRoute<Article>()
+        }.getOrNull() ?: runCatching {
+            currentEntry?.toRoute<Question>()
+        }.getOrNull() ?: runCatching {
+            currentEntry?.toRoute<Pin>()
+        }.getOrNull() ?: runCatching {
+            currentEntry?.toRoute<CollectionContent>()
+        }.getOrNull() ?: runCatching {
+            currentEntry?.toRoute<History>()
+        }.getOrNull() ?: runCatching {
+            currentEntry?.toRoute<Notification>()
+        }.getOrNull()
     }
 
     fun navigate(route: NavDestination) {
         when (route) {
-            History -> navController.push(route)
+            History -> navController.navigate(route)
             is TopLevelDestination -> {
                 mainTabNavigationTarget = route
                 navigateToMainTabs()
             }
             is Video -> {
-                val top = navController.backStack.lastOrNull()
-                val current = top as? Article ?: top as? Question
+                val current = runCatching {
+                    navController.currentBackStackEntry?.toRoute<Article>()
+                }.getOrNull() ?: runCatching {
+                    navController.currentBackStackEntry?.toRoute<Question>()
+                }.getOrNull()
                 if (current == null) {
                     userMessages.showMessage("无法打开视频：未知的内容类型")
                     return
@@ -168,7 +188,7 @@ fun DesktopZhihuMain() {
                 prepareDesktopPendingContentOpen(
                     target = route,
                     currentMainTabOpenFrom = if (
-                        navController.backStack.lastOrNull() is MainTabs
+                        runCatching { navController.currentBackStackEntry?.toRoute<MainTabs>() }.getOrNull() != null
                     ) {
                         currentMainTabOpenFrom
                     } else {
@@ -176,36 +196,56 @@ fun DesktopZhihuMain() {
                     },
                     source = currentContentOpenSource(),
                 )
-                navController.push(route)
+                navController.navigate(route)
             }
         }
     }
 
-    // miuix 导航与窗口 ESC、弹层共用同一个 Compose dispatcher。
-    CompositionLocalProvider(
-        LocalNavigationEventDispatcherOwner provides checkNotNull(LocalCompatNavigationEventDispatcherOwner.current),
-    ) {
-        ZhihuMain(
-            navController = navController,
-            mainTabNavigationTarget = mainTabNavigationTarget,
-            navigate = ::navigate,
-            setCurrentMainTabOpenFrom = { currentMainTabOpenFrom = it },
-            consumeMainTabNavigationTarget = { destination ->
-                if (mainTabNavigationTarget == destination) {
-                    mainTabNavigationTarget = null
-                }
-            },
-            preferenceState = rememberDesktopZhihuMainPreferenceState(),
-            isDarkTheme = ThemeManager.isDarkTheme(),
-            articleContent = { article ->
-                // 同一回答链共用一个导航 entry 的 store，故按回答 id 区分 ViewModel（见 ArticleAnswerSlot）。
-                val articleViewModel: ArticleViewModel = viewModel(key = "article-${article.id}") {
-                    ArticleViewModel(article, httpClient, userMessages)
-                }
-                ArticleScreen(article, articleViewModel)
-            },
-        )
-    }
+    ZhihuMain(
+        navController = navController,
+        mainTabNavigationTarget = mainTabNavigationTarget,
+        navigate = ::navigate,
+        setCurrentMainTabOpenFrom = { currentMainTabOpenFrom = it },
+        consumeMainTabNavigationTarget = { destination ->
+            if (mainTabNavigationTarget == destination) {
+                mainTabNavigationTarget = null
+            }
+        },
+        preferenceState = rememberDesktopZhihuMainPreferenceState(),
+        isDarkTheme = ThemeManager.isDarkTheme(),
+        articleEnterTransition = {
+            when (sharedArticleAnswerSwitchState.answerTransitionDirection) {
+                ArticleAnswerTransitionDirection.VERTICAL_NEXT ->
+                    slideInVertically(tween(300)) { it } + fadeIn(tween(300))
+                ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS ->
+                    slideInVertically(tween(300)) { -it } + fadeIn(tween(300))
+                ArticleAnswerTransitionDirection.HORIZONTAL_NEXT ->
+                    slideInHorizontally(tween(300)) { it } + fadeIn(tween(300))
+                ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS ->
+                    slideInHorizontally(tween(300)) { -it } + fadeIn(tween(300))
+                else -> slideInHorizontally(tween(300)) { it }
+            }
+        },
+        articleExitTransition = {
+            when (sharedArticleAnswerSwitchState.answerTransitionDirection) {
+                ArticleAnswerTransitionDirection.VERTICAL_NEXT ->
+                    slideOutVertically(tween(300)) { -it } + fadeOut(tween(300))
+                ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS ->
+                    slideOutVertically(tween(300)) { it } + fadeOut(tween(300))
+                ArticleAnswerTransitionDirection.HORIZONTAL_NEXT ->
+                    slideOutHorizontally(tween(300)) { -it } + fadeOut(tween(300))
+                ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS ->
+                    slideOutHorizontally(tween(300)) { it } + fadeOut(tween(300))
+                else -> ExitTransition.None
+            }
+        },
+        articleContent = { article: Article, navEntry ->
+            val articleViewModel: ArticleViewModel = viewModel(navEntry) {
+                ArticleViewModel(article, httpClient, userMessages)
+            }
+            ArticleScreen(article, articleViewModel)
+        },
+    )
 }
 
 /**

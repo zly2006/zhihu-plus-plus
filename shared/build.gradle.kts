@@ -29,9 +29,9 @@ plugins {
 }
 
 // Force material3 to 1.10.0-alpha05 across all configurations.
-// 根因：material-kolor 在 commonMain 用 strictly 约束强制 1.10.0-alpha05。
+// 根因：material-kolor 在 commonMain 用 strictly 约束强制 1.10.0-alpha05，
 // 但该约束仅作用于 KMP 元数据配置，不会传播到 jvmMain/androidMain 平台配置。
-// 平台配置仍然被 Compose 插件解析到 1.9.0，导致 commonMain 代码（如 MyModalBottomSheet.kt）
+// 平台配置仍然从 Compose 插件解析到 1.9.0，导致 commonMain 代码（如 MyModalBottomSheet.kt）
 // 编译时用 1.10.0-alpha05 的 API，而平台编译时看到的是 1.9.0，产生 HIDDEN/invisible 编译错误。
 configurations.configureEach {
     resolutionStrategy {
@@ -52,7 +52,7 @@ ktlint {
         exclude("build/generated/**")
         exclude("**/build/generated/ksp/**")
         exclude("**/ksp/**")
-        exclude { it.file.invariantSeparatorsPath.contains("/build/generated/") }
+        exclude { it.file.absolutePath.contains("/build/generated/") }
     }
 }
 
@@ -61,7 +61,7 @@ tasks.withType<KtLintFormatTask>().configureEach {
     exclude("build/generated/**")
     exclude("**/build/generated/ksp/**")
     exclude("**/ksp/**")
-    exclude { it.file.invariantSeparatorsPath.contains("/build/generated/") }
+    exclude { it.file.absolutePath.contains("/build/generated/") }
 }
 
 tasks
@@ -152,16 +152,14 @@ kotlin {
             implementation("com.mikepenz:aboutlibraries-compose-m3:15.0.0")
             // miuix (KMP) —— Maven Central 发布，含 android/jvm/ios 变体。
             // 用基础坐标（不带 -android），由 Gradle 按 target 解析对应变体。
+            // 版本锁在 0.9.3：其发布元数据要求 kotlin-stdlib 2.4.0 + compose.foundation 1.11.1，
+            // 与本项目工具链一致；0.9.4-rc01 要求 2.4.10 / 1.12.0-rc01，升级需连同根 build 一起做。
             val miuixVersion = "0.9.3"
             implementation("top.yukonga.miuix.kmp:miuix-core:$miuixVersion")
             implementation("top.yukonga.miuix.kmp:miuix-ui:$miuixVersion")
             implementation("top.yukonga.miuix.kmp:miuix-preference:$miuixVersion")
             implementation("top.yukonga.miuix.kmp:miuix-icons:$miuixVersion")
             implementation("top.yukonga.miuix.kmp:miuix-blur:$miuixVersion")
-            // Navigation: vendored miuix-nav (standalone v1) source under
-            // top.yukonga.miuix.kmp.nav (+ a minimal squircle shim). Only external runtime dep is
-            // the predictive-back event source; lifecycle/serialization come from the deps above.
-            implementation("org.jetbrains.androidx.navigationevent:navigationevent-compose:1.1.0")
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

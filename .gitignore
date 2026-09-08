@@ -59,7 +59,7 @@ __pycache__/
 app/lite
 app/full
 
-# IDE / build output
+# Eclipse/VS Code Java 插件在模块下生成的 bin/ 编译输出，不属于源码。
 bin/
 
 # Local replay corpus contains complete third-party Zhihu responses.

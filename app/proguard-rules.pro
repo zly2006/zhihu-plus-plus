@@ -67,8 +67,8 @@
 }
 
 -keepnames class ** implements com.github.zly2006.zhihu.data.Feed$Target
-# Keep app's own enums (used via kotlinx.serialization / reflection)
--keep enum com.github.zly2006.** {
+# Keep all enums
+-keep enum ** {
     <fields>;
     public static **[] values();
     public static ** valueOf(java.lang.String);
