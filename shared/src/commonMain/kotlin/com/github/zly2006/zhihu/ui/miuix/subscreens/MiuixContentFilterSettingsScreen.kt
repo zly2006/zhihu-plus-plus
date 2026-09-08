@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -46,7 +47,14 @@ import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixSheetInsideMargin
 import com.github.zly2006.zhihu.ui.miuix.components.miuixSheetBottomInsets
 import com.github.zly2006.zhihu.ui.miuix.components.miuixSheetCornerRadius
+import com.github.zly2006.zhihu.viewmodel.ANSWER_VOTEUP_THRESHOLD_PREFERENCE_KEY
+import com.github.zly2006.zhihu.viewmodel.ARTICLE_FOLLOWERS_THRESHOLD_PREFERENCE_KEY
+import com.github.zly2006.zhihu.viewmodel.ARTICLE_VOTEUP_THRESHOLD_PREFERENCE_KEY
 import com.github.zly2006.zhihu.viewmodel.QUALITY_FILTER_MODE_PREFERENCE_KEY
+import com.github.zly2006.zhihu.viewmodel.QUESTION_ANSWER_THRESHOLD_PREFERENCE_KEY
+import com.github.zly2006.zhihu.viewmodel.QUESTION_FOLLOWERS_THRESHOLD_PREFERENCE_KEY
+import com.github.zly2006.zhihu.viewmodel.VIDEO_FOLLOWERS_THRESHOLD_PREFERENCE_KEY
+import com.github.zly2006.zhihu.viewmodel.VIDEO_VOTE_THRESHOLD_PREFERENCE_KEY
 import com.github.zly2006.zhihu.viewmodel.QualityFilterMode
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import kotlinx.coroutines.launch
@@ -87,6 +95,13 @@ fun MiuixContentFilterSettingsScreen(
     val showStatsSheet = remember { mutableStateOf(false) }
     var topicThreshold by remember { mutableStateOf(settings.getInt("topicBlockingThreshold", 1)) }
     val showThresholdSheet = remember { mutableStateOf(false) }
+    // 质量过滤的各项阈值：默认值必须与 QualityFilterRules 的读取端一致，否则页面显示的和实际生效的不是同一套。
+    val qualityThresholds = remember {
+        mutableStateMapOf<String, Int>().apply {
+            QUALITY_THRESHOLD_ITEMS.forEach { item -> put(item.key, settings.getInt(item.key, item.defaultValue)) }
+        }
+    }
+    var editingQualityThreshold by remember { mutableStateOf<QualityThresholdItem?>(null) }
 
     LaunchedEffect(Unit) {
         try {
@@ -158,6 +173,14 @@ fun MiuixContentFilterSettingsScreen(
             item {
                 Card(Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
                     QualityFilterModeSpinner(settings)
+
+                    QUALITY_THRESHOLD_ITEMS.forEach { item ->
+                        ArrowPreference(
+                            title = item.title,
+                            summary = "当前 ${qualityThresholds[item.key] ?: item.defaultValue}；${item.summary}",
+                            onClick = { editingQualityThreshold = item },
+                        )
+                    }
 
                     val enableContentFilter = remember { mutableStateOf(settings.getBoolean("enableContentFilter", true)) }
                     SwitchPreference(
@@ -375,6 +398,48 @@ fun MiuixContentFilterSettingsScreen(
         }
     }
 
+    val editingThreshold = editingQualityThreshold
+    WindowBottomSheet(
+        cornerRadius = miuixSheetCornerRadius(),
+        show = editingThreshold != null,
+        onDismissRequest = { editingQualityThreshold = null },
+        title = editingThreshold?.let { "设置${it.title}" } ?: "",
+        insideMargin = MiuixSheetInsideMargin,
+    ) {
+        if (editingThreshold != null) {
+            var inputValue by remember(editingThreshold) {
+                mutableStateOf((qualityThresholds[editingThreshold.key] ?: editingThreshold.defaultValue).toString())
+            }
+            Column(modifier = Modifier.miuixSheetBottomInsets().padding(bottom = 16.dp)) {
+                Text(editingThreshold.summary, color = MiuixTheme.colorScheme.onSurfaceSecondary)
+                Spacer(modifier = Modifier.height(12.dp))
+                TextField(
+                    value = inputValue,
+                    onValueChange = { inputValue = it },
+                    label = "阈值",
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    TextButton(text = "取消", onClick = { editingQualityThreshold = null }, modifier = Modifier.weight(1f))
+                    Button(
+                        onClick = {
+                            val value = inputValue.toIntOrNull()
+                            if (value != null && value >= 0) {
+                                qualityThresholds[editingThreshold.key] = value
+                                settings.putInt(editingThreshold.key, value)
+                                editingQualityThreshold = null
+                            } else {
+                                userMessages.showShortMessage("请输入不小于 0 的整数")
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                    ) { Text("确定") }
+                }
+            }
+        }
+    }
+
     WindowBottomSheet(
         cornerRadius = miuixSheetCornerRadius(),
         show = showThresholdSheet.value,
@@ -422,6 +487,23 @@ fun MiuixContentFilterSettingsScreen(
  * 过滤链路读的是 [QUALITY_FILTER_MODE_PREFERENCE_KEY]（OFF/RULES/HIDE），不是早期的
  * `enableQualityFilter` 布尔值；后者已经没有任何读取方，写了也不会生效。
  */
+private data class QualityThresholdItem(
+    val key: String,
+    val title: String,
+    val summary: String,
+    val defaultValue: Int,
+)
+
+private val QUALITY_THRESHOLD_ITEMS = listOf(
+    QualityThresholdItem(ANSWER_VOTEUP_THRESHOLD_PREFERENCE_KEY, "回答最低赞数", "低于此赞同数的未关注作者回答会被过滤", 10),
+    QualityThresholdItem(ARTICLE_VOTEUP_THRESHOLD_PREFERENCE_KEY, "文章最低赞数", "低于此赞数的文章会被过滤", 20),
+    QualityThresholdItem(ARTICLE_FOLLOWERS_THRESHOLD_PREFERENCE_KEY, "文章最低粉丝数", "作者粉丝低于此数量的文章会被过滤", 50),
+    QualityThresholdItem(VIDEO_VOTE_THRESHOLD_PREFERENCE_KEY, "视频最低赞数", "低于此赞数的视频会被过滤", 20),
+    QualityThresholdItem(VIDEO_FOLLOWERS_THRESHOLD_PREFERENCE_KEY, "视频最低粉丝数", "作者粉丝低于此数量的视频会被过滤", 50),
+    QualityThresholdItem(QUESTION_ANSWER_THRESHOLD_PREFERENCE_KEY, "问题最低回答数", "回答数低于此数量的问题会被过滤", 0),
+    QualityThresholdItem(QUESTION_FOLLOWERS_THRESHOLD_PREFERENCE_KEY, "问题最低关注数", "关注数低于此数量的问题会被过滤", 50),
+)
+
 @Composable
 private fun QualityFilterModeSpinner(settings: SettingsStore) {
     val options = remember {

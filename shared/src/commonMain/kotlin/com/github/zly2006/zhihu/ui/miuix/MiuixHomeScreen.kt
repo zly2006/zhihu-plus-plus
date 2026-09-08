@@ -81,9 +81,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.data.RecommendationMode
-import com.github.zly2006.zhihu.data.ZHIHU_ME_URL
-import com.github.zly2006.zhihu.data.ZhihuJson
-import com.github.zly2006.zhihu.data.ZhihuMeNotifications
+import com.github.zly2006.zhihu.data.fetchTotalUnreadCount
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
@@ -401,14 +399,12 @@ fun MiuixHomeScreen(
         }
     }
 
-    // 拉取未读通知数（与 M3 HomeScreen 行为一致）
+    // 拉取未读通知数：与 M3 首页共用移动端消息中心接口，不再各读一份。
     LaunchedEffect(Unit) {
         try {
-            unreadCount = paginationEnvironment
-                .fetchJson(ZHIHU_ME_URL, "")
-                ?.let { ZhihuJson.decodeJson<ZhihuMeNotifications>(it) }
-                ?.totalCount ?: 0
+            unreadCount = paginationEnvironment.fetchTotalUnreadCount()
         } catch (_: Exception) {
+            // 忽略错误
         }
     }
 

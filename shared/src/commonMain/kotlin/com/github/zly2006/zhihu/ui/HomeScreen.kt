@@ -98,10 +98,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
-import com.github.zly2006.zhihu.data.MOBILE_NOTIFICATION_MESSAGE_URL
-import com.github.zly2006.zhihu.data.MobileNotificationMessageOverview
 import com.github.zly2006.zhihu.data.RecommendationMode
 import com.github.zly2006.zhihu.data.ZhihuJson
+import com.github.zly2006.zhihu.data.fetchTotalUnreadCount
 import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Article
@@ -131,8 +130,6 @@ import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.platform.rememberWebViewUrlOpener
 import com.github.zly2006.zhihu.reading.RegisterReadingQueueSource
-import com.github.zly2006.zhihu.theme.ThemeManager
-import com.github.zly2006.zhihu.theme.ThemeStyle
 import com.github.zly2006.zhihu.ui.components.AnnouncementCard
 import com.github.zly2006.zhihu.ui.components.AnnouncementCardDefaults
 import com.github.zly2006.zhihu.ui.components.AutoHideTopBar
@@ -149,7 +146,6 @@ import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.ui.components.feedKeywordExtractionAvailable
 import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
-import com.github.zly2006.zhihu.ui.miuix.components.MiuixAccountSheet
 import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_FAB_OPACITY
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FAB_OPACITY
 import com.github.zly2006.zhihu.ui.subscreens.SystemUpdateState
@@ -165,8 +161,6 @@ import com.github.zly2006.zhihu.viewmodel.local.LocalHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.za.AndroidHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.za.MixedHomeFeedViewModel
-import io.ktor.client.call.body
-import io.ktor.client.request.get
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -177,7 +171,6 @@ import kotlinx.io.files.SystemFileSystem
 import kotlinx.io.readString
 import kotlinx.io.writeString
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
@@ -316,12 +309,7 @@ fun HomeScreen(
     var unreadCount by remember { mutableIntStateOf(0) }
     LaunchedEffect(Unit) {
         try {
-            unreadCount = paginationEnvironment
-                .mobileHomeFeedHttpClient()
-                .get("$MOBILE_NOTIFICATION_MESSAGE_URL?limit=20")
-                .body<JsonObject>()
-                .let { ZhihuJson.decodeJson<MobileNotificationMessageOverview>(it) }
-                .totalUnreadCount
+            unreadCount = paginationEnvironment.fetchTotalUnreadCount()
         } catch (_: Exception) {
             // 忽略错误
         }
@@ -639,24 +627,16 @@ fun HomeScreen(
             },
         ) { scaffoldPadding ->
             if (duo3HomeAccount && showAccountBottomSheet) {
-                if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
-                    MiuixAccountSheet(
-                        show = showAccountBottomSheet,
+                MyModalBottomSheet(
+                    onDismissRequest = { showAccountBottomSheet = false },
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                ) {
+                    AccountSettingScreen(
+                        innerPadding = PaddingValues(0.dp),
                         unreadCount = unreadCount,
-                        onDismiss = { showAccountBottomSheet = false },
-                    )
-                } else {
-                    MyModalBottomSheet(
+                        showUnreadBadge = showUnreadBadge,
                         onDismissRequest = { showAccountBottomSheet = false },
-                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    ) {
-                        AccountSettingScreen(
-                            innerPadding = PaddingValues(0.dp),
-                            unreadCount = unreadCount,
-                            showUnreadBadge = showUnreadBadge,
-                            onDismissRequest = { showAccountBottomSheet = false },
-                        )
-                    }
+                    )
                 }
             }
 
