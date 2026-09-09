@@ -78,6 +78,7 @@ import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.platform.UserMessageDuration
+import com.github.zly2006.zhihu.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.reading.RegisterReadingQueueSource
@@ -358,7 +359,7 @@ fun FollowRecommendScreen(
     val environment = rememberPaginationEnvironment(allowGuestAccess = viewModel.allowGuestAccess)
     val settings = rememberSettingsStore()
     val userMessages = rememberUserMessageSink()
-    val showRefreshFab = remember { settings.getBoolean("showRefreshFab", true) }
+    val showRefreshFab = rememberSettingBoolean("showRefreshFab", true, settings)
     val listState = rememberLazyListState()
     var cachedScrollToTopTrigger by remember { mutableIntStateOf(scrollToTopTrigger) }
 
@@ -512,7 +513,7 @@ fun FollowDynamicScreen(
     val environment = rememberPaginationEnvironment(allowGuestAccess = viewModel.allowGuestAccess)
     val settings = rememberSettingsStore()
     val userMessages = rememberUserMessageSink()
-    val showRefreshFab = remember { settings.getBoolean("showRefreshFab", true) }
+    val showRefreshFab = rememberSettingBoolean("showRefreshFab", true, settings)
     val listState = rememberLazyListState()
     var cachedScrollToTopTrigger by remember { mutableIntStateOf(scrollToTopTrigger) }
 

@@ -33,14 +33,18 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Comment
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -71,28 +75,40 @@ internal fun CachedAnswerPreview(cached: CachedAnswerContent, useTiqianMarkdown:
     Scaffold(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp)
             .background(
                 color = MaterialTheme.colorScheme.background,
                 shape = RectangleShape,
             ),
         topBar = {
-            Box(
+            // 与正文页 ZhihuTwoRowsTopAppBar 展开态对齐：整宽，上行图标(返回/分享) + 下方完整大标题(headlineMedium)。
+            // 预览是占位骨架，图标不接任何动作，只为让切换到真正正文页时顶部不跳变。
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.background),
+                    .background(MaterialTheme.colorScheme.background)
+                    .statusBarsPadding(),
             ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    IconButton(onClick = {}) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                    }
+                    Spacer(Modifier.weight(1f))
+                    IconButton(onClick = {}) {
+                        Icon(Icons.Default.Share, contentDescription = "分享")
+                    }
+                }
                 Text(
                     text = cached.title,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    lineHeight = 32.sp,
-                    modifier = Modifier.padding(bottom = 8.dp),
+                    style = MaterialTheme.typography.headlineMedium,
+                    modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
                 )
             }
         },
         bottomBar = {
-            Column {
+            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()

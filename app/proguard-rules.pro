@@ -16,6 +16,11 @@
 # debugging stack traces.
 -keepattributes SourceFile,LineNumberTable
 
+# WebviewComp.navigateInMainActivity 仍通过反射查找 MainActivity.navigate，防止 R8 重命名。
+-keepclassmembers class com.github.zly2006.zhihu.MainActivity {
+    public void navigate(...);
+}
+
 ##
 ## Kotlin Serialization
 ##

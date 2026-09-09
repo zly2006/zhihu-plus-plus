@@ -29,12 +29,15 @@ import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedInteractionViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class LocalHomeFeedViewModel :
     BaseFeedViewModel(),
     HomeFeedInteractionViewModel {
     private lateinit var recommendationEngine: LocalRecommendationEngine
-    private val recommendationResults = mutableMapOf<String, CrawlingResult>()
+
+    // 存整个 entry 而不只是 result：负反馈要按 LocalFeed.id 回写 userFeedback，只有 entry 带得到这个 id。
+    private val recommendationEntries = mutableMapOf<String, LocalRecommendationEntry>()
 
     override val initialUrl: String
         get() = error("LocalHomeFeedViewModel should not be used directly. Use LocalFeedViewModel instead.")
@@ -49,7 +52,7 @@ class LocalHomeFeedViewModel :
         try {
             val engine = ensureEngine(environment)
             val recommendations = engine.generateRecommendations(20)
-            recommendationResults.clear()
+            recommendationEntries.clear()
 
             if (recommendations.isEmpty()) {
                 generateFallbackContent()
@@ -63,7 +66,7 @@ class LocalHomeFeedViewModel :
                         navDestinationJson = entry.navDestination?.toFeedDisplayItemNavDestinationJson(),
                         isFiltered = false,
                     ).also { item ->
-                        recommendationResults[item.stableKey] = entry.result
+                        recommendationEntries[item.stableKey] = entry
                     }
                 }
                 addDisplayItems(loadedItems)
@@ -81,12 +84,37 @@ class LocalHomeFeedViewModel :
     }
 
     fun onLocalItemOpened(item: FeedDisplayItem) {
-        val result = recommendationResults[item.stableKey] ?: return
+        val result = recommendationEntries[item.stableKey]?.result ?: return
         if (!::recommendationEngine.isInitialized) {
             return
         }
         viewModelScope.launch(Dispatchers.Default) {
             recommendationEngine.recordContentOpened(result.contentId, result.reason)
+        }
+    }
+
+    /**
+     * 记录用户对本地推荐条目的显式反馈（miuix 信息流卡片的上滑喜欢 / 下滑不喜欢）。
+     *
+     * 负反馈同时把卡片移出当前列表，否则用户滑完还要继续看到它。
+     */
+    fun onLocalItemFeedback(item: FeedDisplayItem, feedback: Double) {
+        val entry = recommendationEntries[item.stableKey] ?: return
+        if (!::recommendationEngine.isInitialized) {
+            return
+        }
+        viewModelScope.launch(Dispatchers.Default) {
+            recommendationEngine.recordRecommendationFeedback(
+                feedId = entry.feed.id,
+                contentId = entry.result.contentId,
+                reason = entry.result.reason,
+                feedback = feedback,
+            )
+            if (feedback < 0) {
+                withContext(Dispatchers.Main) {
+                    displayItems.remove(item)
+                }
+            }
         }
     }
 

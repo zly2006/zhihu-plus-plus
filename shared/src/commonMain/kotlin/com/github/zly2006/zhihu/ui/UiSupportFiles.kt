@@ -314,6 +314,7 @@ data class ZhihuMainPreferenceSnapshot(
     val duo3HomeAccount: Boolean,
     val tapToScrollToTopEnabled: Boolean,
     val autoHideBottomBar: Boolean,
+    val autoHideTopBar: Boolean,
     val collectionDirectBrowseEnabled: Boolean,
     val selectedBottomBarItemKeys: List<String>,
     val startDestination: TopLevelDestination,
@@ -333,6 +334,7 @@ class ZhihuMainPreferenceState(
     val duo3HomeAccount: Boolean get() = snapshot.duo3HomeAccount
     val tapToScrollToTopEnabled: Boolean get() = snapshot.tapToScrollToTopEnabled
     val autoHideBottomBar: Boolean get() = snapshot.autoHideBottomBar
+    val autoHideTopBar: Boolean get() = snapshot.autoHideTopBar
     val collectionDirectBrowseEnabled: Boolean get() = snapshot.collectionDirectBrowseEnabled
     val selectedBottomBarItemKeys: List<String> get() = snapshot.selectedBottomBarItemKeys
     val startDestination: TopLevelDestination get() = snapshot.startDestination
@@ -345,7 +347,24 @@ class ZhihuMainPreferenceState(
 @Composable
 fun rememberZhihuMainPreferenceState(
     readSnapshot: () -> ZhihuMainPreferenceSnapshot,
-): ZhihuMainPreferenceState = remember { ZhihuMainPreferenceState(readSnapshot) }
+    settings: SettingsStore? = null,
+    observedKeys: Set<String> = emptySet(),
+): ZhihuMainPreferenceState {
+    val state = remember { ZhihuMainPreferenceState(readSnapshot) }
+    DisposableEffect(settings, observedKeys, state) {
+        if (settings == null || observedKeys.isEmpty()) {
+            onDispose {}
+        } else {
+            val unregister = settings.observeKeyChanges { key ->
+                if (key in observedKeys) {
+                    state.reload()
+                }
+            }
+            onDispose(unregister::close)
+        }
+    }
+    return state
+}
 
 data class AccountSettingsAccountState(
     val login: Boolean = false,

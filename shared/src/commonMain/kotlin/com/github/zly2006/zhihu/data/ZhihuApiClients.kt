@@ -60,8 +60,15 @@ suspend fun executeZhihuAuthenticatedRequest(
     if (Clock.System.now().toEpochMilliseconds() - lastRefreshMillis < 10_000) {
         return response
     }
-    val refreshToken = ZhihuCredentialRefresher.fetchRefreshToken(client)
-    ZhihuCredentialRefresher.refreshZhihuToken(refreshToken, client)
+    try {
+        val refreshToken = ZhihuCredentialRefresher.fetchRefreshToken(client)
+        ZhihuCredentialRefresher.refreshZhihuToken(refreshToken, client)
+    } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        // token 刷新失败（过期/响应异常/缺字段等），给出明确提示而非崩溃或 NPE。
+        throw IllegalStateException("登录状态已失效，请重新登录", e)
+    }
     lastRefreshMillis = Clock.System.now().toEpochMilliseconds()
     return client
         .request(url) {
@@ -115,7 +122,8 @@ data class ZhihuPaging(
     val isStart: Boolean = false,
     val previous: String? = null,
     val totals: Int = 0,
-    val next: String,
+    // 知乎在最后一页/部分 api.zhihu.com 端点会省略 next，缺省值避免 MissingFieldException 直接崩掉分页
+    val next: String = "",
     val prev: String? = null,
 )
 
