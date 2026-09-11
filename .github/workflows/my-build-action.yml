@@ -131,14 +131,15 @@ jobs:
           chmod +x "$appdir/AppRun"
 
           out="desktopApp/build/upload/zhihu++-desktop-${{ steps.desktop_suffix.outputs.suffix }}.AppImage"
+          abs_out="$PWD/$out"
           appimagetool="$RUNNER_TEMP/appimagetool-x86_64.AppImage"
           curl -fsSL -o "$appimagetool" \
             "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
           chmod +x "$appimagetool"
-          "$appimagetool" --appimage-extract-and-run "$appdir" "$out"
+          "$appimagetool" --appimage-extract-and-run "$appdir" "$abs_out"
 
           # 产物自检：能 --appimage-extract 说明 squashfs 完整
-          (cd "$RUNNER_TEMP" && "$out" --appimage-extract >/dev/null 2>&1)
+          (cd "$RUNNER_TEMP" && "$abs_out" --appimage-extract >/dev/null 2>&1)
           rm -rf "$RUNNER_TEMP/squashfs-root"
 
       - name: Upload desktop package
