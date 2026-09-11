@@ -104,9 +104,10 @@ jobs:
           cp -a "$app_dir/." "$appdir/"
 
           icon_name="com.github.zly2006.zhihu"
-          icon_path="usr/share/icons/hicolor/512x512/apps/$icon_name.png"
-          cp desktopApp/src/main/resources/desktop-icon.png "$appdir/$icon_path"
-          ln -s "$icon_path" "$appdir/.DirIcon"
+          # 根目录那份是给 appimagetool 校验用的（它不认 hicolor 子目录），hicolor 那份用于安装后的桌面集成
+          cp desktopApp/src/main/resources/desktop-icon.png "$appdir/$icon_name.png"
+          cp desktopApp/src/main/resources/desktop-icon.png "$appdir/usr/share/icons/hicolor/512x512/apps/$icon_name.png"
+          ln -s "$icon_name.png" "$appdir/.DirIcon"
 
           launcher_name="$(basename "$(find "$appdir/bin" -maxdepth 1 -type f -perm -u+x | head -n 1)")"
           test -n "$launcher_name"
