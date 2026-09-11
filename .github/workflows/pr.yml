@@ -115,7 +115,7 @@ jobs:
           retention-days: 1
 
   desktop-jar:
-    name: Desktop Release Jar
+    name: Desktop Release Package
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -130,8 +130,8 @@ jobs:
       - name: Change wrapper permissions
         run: chmod +x ./gradlew
 
-      - name: Build Desktop Release Jar
-        run: ./gradlew :desktopApp:packageReleaseUberJarForCurrentOS --max-workers=2
+      - name: Build Desktop Release Package
+        run: ./gradlew :desktopApp:packageReleaseDistributionForCurrentOS --max-workers=2
 
   unit-tests:
     name: Unit Tests

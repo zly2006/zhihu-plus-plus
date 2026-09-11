@@ -72,24 +72,81 @@ jobs:
           esac
           echo "suffix=$os-$arch" >> "$GITHUB_OUTPUT"
 
-      - name: Build Desktop Jar
+      - name: Build desktop distribution
         if: runner.os != 'macOS'
         shell: bash
-        run: ./gradlew ${{ inputs.args }} :desktopApp:packageReleaseUberJarForCurrentOS
+        run: ./gradlew ${{ inputs.args }} :desktopApp:packageReleaseDistributionForCurrentOS
 
-      - name: Move desktop jar
-        if: runner.os != 'macOS'
+      - name: Package Windows MSI
+        if: runner.os == 'Windows'
         shell: bash
         run: |
           mkdir -p desktopApp/build/upload
-          mv desktopApp/build/compose/jars/*-release.jar desktopApp/build/upload/zhihu++-desktop-${{ steps.desktop_suffix.outputs.suffix }}.jar
+          msi="$(find desktopApp/build/compose/binaries -name '*.msi' | head -n 1)"
+          test -n "$msi"
+          cp "$msi" "desktopApp/build/upload/zhihu++-desktop-${{ steps.desktop_suffix.outputs.suffix }}.msi"
 
-      - name: Upload Desktop Jar
+      - name: Package Linux AppImage
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          mkdir -p desktopApp/build/upload
+          # Compose 的 TargetFormat.AppImage 只产出 jpackage 的 app-image 目录，
+          # 需要再用 appimagetool 封装成单文件 .AppImage
+          images_dir="$(find desktopApp/build/compose/binaries -type d -name app -mindepth 2 -maxdepth 2 | head -n 1)"
+          test -n "$images_dir"
+          app_dir="$(find "$images_dir" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+          test -d "$app_dir/bin"
+
+          appdir="$RUNNER_TEMP/zhihu-appdir"
+          rm -rf "$appdir"
+          mkdir -p "$appdir/usr/share/icons/hicolor/512x512/apps"
+          cp -a "$app_dir/." "$appdir/"
+
+          icon_name="com.github.zly2006.zhihu"
+          icon_path="usr/share/icons/hicolor/512x512/apps/$icon_name.png"
+          cp desktopApp/src/main/resources/desktop-icon.png "$appdir/$icon_path"
+          ln -s "$icon_path" "$appdir/.DirIcon"
+
+          launcher_name="$(basename "$(find "$appdir/bin" -maxdepth 1 -type f -perm -u+x | head -n 1)")"
+          test -n "$launcher_name"
+
+          cat > "$appdir/zhihu-plus-plus.desktop" <<EOF
+          [Desktop Entry]
+          Type=Application
+          Name=Zhihu++
+          Comment=自由、无广告的知乎第三方客户端
+          Exec=AppRun
+          Icon=$icon_name
+          Terminal=false
+          Categories=Network;
+          EOF
+
+          cat > "$appdir/AppRun" <<EOF
+          #!/bin/sh
+          HERE="\$(dirname "\$(readlink -f "\$0")")"
+          exec "\$HERE/bin/$launcher_name" "\$@"
+          EOF
+          chmod +x "$appdir/AppRun"
+
+          out="desktopApp/build/upload/zhihu++-desktop-${{ steps.desktop_suffix.outputs.suffix }}.AppImage"
+          appimagetool="$RUNNER_TEMP/appimagetool-x86_64.AppImage"
+          curl -fsSL -o "$appimagetool" \
+            "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
+          chmod +x "$appimagetool"
+          "$appimagetool" --appimage-extract-and-run "$appdir" "$out"
+
+          # 产物自检：能 --appimage-extract 说明 squashfs 完整
+          (cd "$RUNNER_TEMP" && "$out" --appimage-extract >/dev/null 2>&1)
+          rm -rf "$RUNNER_TEMP/squashfs-root"
+
+      - name: Upload desktop package
         if: runner.os != 'macOS'
         uses: actions/upload-artifact@v4
         with:
           name: zhihu++-desktop-${{ steps.desktop_suffix.outputs.suffix }}
-          path: desktopApp/build/upload/zhihu++-desktop-${{ steps.desktop_suffix.outputs.suffix }}.jar
+          path: desktopApp/build/upload/*
+          if-no-files-found: error
 
       - name: Build and package macOS Kotlin/Native app
         if: runner.os == 'macOS'
@@ -333,7 +390,8 @@ jobs:
             app/build/upload/zhihu++-lite.apk
             app/build/upload/mapping-lite.zip
             app/build/upload/zhihu++-full.apk
-            app/build/upload/zhihu++-desktop-*.jar
+            app/build/upload/zhihu++-desktop-*.AppImage
+            app/build/upload/zhihu++-desktop-*.msi
             app/build/upload/zhihu++-desktop-*.app.zip
           fail_on_unmatched_files: true
           prerelease: true
@@ -361,6 +419,7 @@ jobs:
           name: ${{ github.ref_name }}
           body: |
             如果要使用，请下载最新的 APK 文件进行安装。不需要下载 mapping.zip，除非你是开发人员且需要调试混淆后的代码。
+            桌面端提供 Windows MSI 安装包与 Linux AppImage，内置 Java 运行时，下载安装即可使用，无需另外安装 Java。
             Full 版本包含 AI 功能和 AI 模型，可处理NLP任务；Lite 版本体积更小，只有不到 4 MB 的大小。
 
             > 关于Full和Lite两个版本的说明：
@@ -373,7 +432,8 @@ jobs:
             app/build/upload/zhihu++-lite.apk
             app/build/upload/mapping-lite.zip
             app/build/upload/zhihu++-full.apk
-            app/build/upload/zhihu++-desktop-*.jar
+            app/build/upload/zhihu++-desktop-*.AppImage
+            app/build/upload/zhihu++-desktop-*.msi
             app/build/upload/zhihu++-desktop-*.app.zip
           fail_on_unmatched_files: true
           prerelease: false
