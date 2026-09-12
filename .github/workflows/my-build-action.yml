@@ -133,8 +133,11 @@ jobs:
           out="desktopApp/build/upload/zhihu++-desktop-${{ steps.desktop_suffix.outputs.suffix }}.AppImage"
           abs_out="$PWD/$out"
           appimagetool="$RUNNER_TEMP/appimagetool-x86_64.AppImage"
+          appimagetool_version="1.9.1"
+          appimagetool_sha256="ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0"
           curl -fsSL -o "$appimagetool" \
-            "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
+            "https://github.com/AppImage/appimagetool/releases/download/$appimagetool_version/appimagetool-x86_64.AppImage"
+          printf '%s  %s\n' "$appimagetool_sha256" "$appimagetool" | sha256sum --check --status -
           chmod +x "$appimagetool"
           "$appimagetool" --appimage-extract-and-run "$appdir" "$abs_out"
 
