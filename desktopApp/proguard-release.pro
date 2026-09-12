@@ -1,5 +1,18 @@
 -dontwarn com.hrm.latex.parser.tokenizer.LatexTokenizer$Companion
 
+# JavaFX 的工具包和原生窗口栈只能反射加载（javafx.toolkit 属性默认指向
+# com.sun.javafx.tk.quantum.QuantumToolkit，glass/prism 同理），静态分析不可达；
+# 缺失时运行时报 "No toolkit found"。JavaFX 内部反射遍布，按整包保留。
+-keep class javafx.** { *; }
+-keep class com.sun.javafx.** { *; }
+-keep class com.sun.glass.** { *; }
+-keep class com.sun.prism.** { *; }
+-keep class com.sun.scenario.** { *; }
+-keep class com.sun.pisces.** { *; }
+-keep class com.sun.media.** { *; }
+-keep class com.sun.openjfx.** { *; }
+-keep class netscape.javascript.** { *; }
+
 -keep class * implements io.ktor.client.HttpClientEngineContainer {
     *;
 }
