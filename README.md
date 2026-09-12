@@ -28,7 +28,7 @@ Zhihu++独创本地推荐算法，把内容推荐完全放在本地进行，为�
 
 [下载最新开发版本](https://github.com/zly2006/zhihu-plus-plus/releases/tag/nightly)
 
-Release 页面还提供实验性桌面版 jar（macOS arm64 / Linux x64 / Windows x64），需要本机安装 Java 17 或更高版本。
+桌面版提供 Windows MSI 安装包与 Linux AppImage（均内置 Java 运行时，下载安装即可使用，无需另外安装 Java），macOS 提供 arm64 原生应用。
 
 > 关于Full和Lite两个版本的说明：
 > Full版本包含了一个onnx框架，可以在端侧进行离线AI推理，支持基于LLM embedding的智能内容过滤功能，

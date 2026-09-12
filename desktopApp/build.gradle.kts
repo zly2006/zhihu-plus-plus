@@ -124,11 +124,41 @@ compose.desktop {
         }
 
         nativeDistributions {
-            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "com.github.zly2006.zhihu"
+            // 对外发布的安装形式：Windows 用 MSI，Linux 用 AppImage（由 CI 用 appimagetool
+            // 把 jpackage 的 app-image 目录封装成单文件）。macOS 走 macosApp 的 Kotlin/Native 构建。
+            targetFormats(TargetFormat.AppImage, TargetFormat.Msi)
+            packageName = "Zhihu++"
             packageVersion = desktopPackageVersion
+            description = "Free and ad-free third-party Zhihu client"
+            vendor = "zly2006"
+
+            // jlink 裁剪内嵌运行时：默认只含 java.base/java.desktop/java.logging/jdk.crypto.ec，
+            // 其余模块按依赖补齐（JavaFX WebView 的 JS 互操作、JDBC、HTTP、中文扩展字符集等）。
+            // 依赖变化后用 ./gradlew :desktopApp:suggestModules 校对；注意 checkRuntime 不会
+            // 校验模块是否齐全，缺模块只会在启动时报错，改完列表要实际跑一次安装包。
+            modules(
+                "java.management",
+                "java.naming",
+                "java.net.http",
+                "java.prefs",
+                "java.security.jgss",
+                "java.sql",
+                "java.xml",
+                "jdk.charsets",
+                "jdk.jsobject",
+                "jdk.unsupported",
+                "jdk.zipfs",
+            )
+
             linux {
                 iconFile.set(project.file("src/main/resources/desktop-icon.png"))
+            }
+            windows {
+                iconFile.set(project.file("desktop-icon.ico"))
+                menu = true
+                menuGroup = "Zhihu++"
+                shortcut = true
+                upgradeUuid = "84FED2C6-8F40-4FDA-B84A-616602D7A888"
             }
         }
     }
