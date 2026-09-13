@@ -24,6 +24,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.ExperimentalTextApi
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.platform.asComposeFontFamily
 import com.github.zly2006.zhihu.account.ZhihuAccountStore
 import com.github.zly2006.zhihu.data.toCookieHeaderString
@@ -55,6 +56,10 @@ actual fun rememberMarkdownMathFont(): MathFont? {
 
     return mathFont
 }
+
+// 该平台没有选择字体文件的入口（isWebViewCustomFontSupported = false），正文沿用系统字体。
+@Composable
+actual fun rememberMarkdownContentFont(): FontFamily? = null
 
 @Composable
 actual fun rememberMarkdownImageRequestHeaders(): MarkdownImageRequestHeaders {

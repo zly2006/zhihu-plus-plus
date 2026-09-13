@@ -19,6 +19,7 @@ package com.github.zly2006.zhihu.markdown
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.text.font.FontFamily
 import coil3.compose.LocalPlatformContext
 import coil3.network.NetworkHeaders
 import coil3.network.httpHeaders
@@ -27,6 +28,15 @@ import com.hrm.latex.renderer.font.MathFont
 
 @Composable
 expect fun rememberMarkdownMathFont(): MathFont?
+
+/**
+ * 用户在"正文自定义字体"里选择的字体（偏好键
+ * [com.github.zly2006.zhihu.ui.subscreens.PREF_CUSTOM_CONTENT_FONT_NAME]）。
+ *
+ * 返回 null 表示未设置、字体文件已失效，或该平台不支持自选字体文件；此时正文沿用平台默认字体。
+ */
+@Composable
+expect fun rememberMarkdownContentFont(): FontFamily?
 
 @Composable
 fun rememberMarkdownImageModel(url: String): Any {

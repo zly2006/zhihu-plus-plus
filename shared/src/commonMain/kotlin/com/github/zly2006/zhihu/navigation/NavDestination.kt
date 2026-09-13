@@ -95,7 +95,12 @@ data object History : NavDestination, TopLevelDestination {
  * 主 pager 的历史顶层 tab 目标。
  */
 @Serializable
-data object OnlineHistory : TopLevelDestination {
+data object OnlineHistory :
+    TopLevelDestination,
+    // 同时实现 NavDestination：既能作底栏 tab，也能被 navigator.onNavigate 作为独立页面 push
+    // （composable<OnlineHistory> 路由已注册）。这样账号页/面板的"浏览历史"入口在
+    // OnlineHistory 不在底栏时也能打开，而不是 selectMainTab 回退到首页。
+    NavDestination {
     override val name: String
         get() = "OnlineHistory"
 }
@@ -149,6 +154,9 @@ data object Account : TopLevelDestination {
 
     @Serializable
     data object OpenSourceLicenses : NavDestination
+
+    @Serializable
+    data object About : NavDestination
 
     @Serializable
     data object DeveloperSettings : NavDestination {
@@ -237,7 +245,7 @@ data class Article(
     var excerpt: String? = null,
     val readingQueueSourceId: String? = null,
 ) : NavDestination {
-    override fun hashCode(): Int = id.hashCode()
+    override fun hashCode(): Int = 31 * type.hashCode() + id.hashCode()
 
     override fun equals(other: Any?): Boolean = other is Article && other.id == id && other.type == type
 }

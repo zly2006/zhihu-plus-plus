@@ -266,4 +266,12 @@ dependencies {
     androidTestImplementation("androidx.test.ext:junit:1.3.0")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
     androidTestImplementation("io.ktor:ktor-client-mock:$ktor")
+
+    // ===== miuix 0.9.3 =====
+    val miuixVersion = "0.9.3"
+    implementation("top.yukonga.miuix.kmp:miuix-core-android:$miuixVersion")
+    implementation("top.yukonga.miuix.kmp:miuix-ui-android:$miuixVersion")
+    implementation("top.yukonga.miuix.kmp:miuix-preference-android:$miuixVersion")
+    implementation("top.yukonga.miuix.kmp:miuix-icons-android:$miuixVersion")
+    implementation("top.yukonga.miuix.kmp:miuix-blur:$miuixVersion")
 }

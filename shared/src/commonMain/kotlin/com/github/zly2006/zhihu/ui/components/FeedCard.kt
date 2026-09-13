@@ -79,6 +79,8 @@ import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Navigator
 import com.github.zly2006.zhihu.navigation.withReadingQueueSource
 import com.github.zly2006.zhihu.platform.UserMessageDuration
+import com.github.zly2006.zhihu.platform.rememberSettingBoolean
+import com.github.zly2006.zhihu.platform.rememberSettingString
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
@@ -116,15 +118,13 @@ fun FeedCard(
     val userMessages = rememberUserMessageSink()
     val settings = rememberSettingsStore()
     var showMenu by remember { mutableStateOf(false) }
-    val showFeedThumbnail = remember {
-        settings.getBoolean("showFeedThumbnail", true)
-    }
-    val feedCardStyle = remember {
-        settings.getString("feedCardStyle", "divider")
-    }
-    val duo3CardAppearance = remember { settings.getBoolean("duo3_card_appearance", false) }
-    val duo3CardLayout = remember { settings.getBoolean("duo3_card_layout", false) }
-    val duo3CardLargeTitle = remember { settings.getBoolean("duo3_card_large_title", true) }
+    // 用 rememberSettingBoolean/String 而非 remember{}：这些开关改完返回信息流要立刻生效，
+    // remember 会把首次读到的值缓存住，直到卡片被整体重建。
+    val showFeedThumbnail = rememberSettingBoolean("showFeedThumbnail", true, settings)
+    val feedCardStyle = rememberSettingString("feedCardStyle", "divider", settings)
+    val duo3CardAppearance = rememberSettingBoolean("duo3_card_appearance", false, settings)
+    val duo3CardLayout = rememberSettingBoolean("duo3_card_layout", false, settings)
+    val duo3CardLargeTitle = rememberSettingBoolean("duo3_card_large_title", true, settings)
     val pinImages = (item.feed?.target as? Feed.PinTarget)
         ?.content
         ?.filterIsInstance<DataHolder.Pin.ContentImage>()

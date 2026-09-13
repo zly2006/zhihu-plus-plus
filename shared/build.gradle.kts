@@ -150,6 +150,16 @@ kotlin {
             implementation("org.jetbrains.kotlinx:kotlinx-io-core:0.8.1")
             implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
             implementation("com.mikepenz:aboutlibraries-compose-m3:15.0.0")
+            // miuix (KMP) —— Maven Central 发布，含 android/jvm/ios 变体。
+            // 用基础坐标（不带 -android），由 Gradle 按 target 解析对应变体。
+            // 版本锁在 0.9.3：其发布元数据要求 kotlin-stdlib 2.4.0 + compose.foundation 1.11.1，
+            // 与本项目工具链一致；0.9.4-rc01 要求 2.4.10 / 1.12.0-rc01，升级需连同根 build 一起做。
+            val miuixVersion = "0.9.3"
+            implementation("top.yukonga.miuix.kmp:miuix-core:$miuixVersion")
+            implementation("top.yukonga.miuix.kmp:miuix-ui:$miuixVersion")
+            implementation("top.yukonga.miuix.kmp:miuix-preference:$miuixVersion")
+            implementation("top.yukonga.miuix.kmp:miuix-icons:$miuixVersion")
+            implementation("top.yukonga.miuix.kmp:miuix-blur:$miuixVersion")
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

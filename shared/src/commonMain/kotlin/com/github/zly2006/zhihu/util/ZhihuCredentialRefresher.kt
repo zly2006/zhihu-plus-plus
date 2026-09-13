@@ -65,7 +65,8 @@ object ZhihuCredentialRefresher {
                 header("x-requested-with", "fetch")
             }.raiseForStatus()
             .body<JsonObject>()
-        return jojo["refresh_token"]!!.jsonPrimitive.content
+        return jojo["refresh_token"]?.jsonPrimitive?.content
+            ?: throw IllegalStateException("刷新失败：响应缺少 refresh_token，请重新登录")
     }
 
     /**
@@ -94,7 +95,8 @@ object ZhihuCredentialRefresher {
             }.raiseForStatus()
             .body<JsonObject>()
 
-        return jojo["access_token"]!!.jsonPrimitive.content
+        return jojo["access_token"]?.jsonPrimitive?.content
+            ?: throw IllegalStateException("刷新失败：响应缺少 access_token，请重新登录")
     }
 }
 

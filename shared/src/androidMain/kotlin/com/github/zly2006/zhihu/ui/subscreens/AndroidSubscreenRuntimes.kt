@@ -39,6 +39,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.markdown.CUSTOM_CONTENT_FONT_FILE_NAME
 import com.github.zly2006.zhihu.platform.androidUserMessageSink
 import com.github.zly2006.zhihu.platform.rememberIsLiteVariant
 import com.github.zly2006.zhihu.reading.AndroidReadingPlayerBridge
@@ -114,7 +115,7 @@ actual fun WebViewCustomFontSettings(
     ) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         val name = uri.lastPathSegment?.substringAfterLast('/') ?: uri.toString()
-        val destFile = File(context.filesDir, "custom_font")
+        val destFile = File(context.filesDir, CUSTOM_CONTENT_FONT_FILE_NAME)
         context.contentResolver.openInputStream(uri)?.use { input ->
             destFile.outputStream().use { output -> input.copyTo(output) }
         }
@@ -141,7 +142,7 @@ actual fun WebViewCustomFontSettings(
             if (customFontName != null) {
                 OutlinedButton(
                     onClick = {
-                        File(context.filesDir, "custom_font").delete()
+                        File(context.filesDir, CUSTOM_CONTENT_FONT_FILE_NAME).delete()
                         onCustomFontNameChange(null)
                         userMessages.showShortMessage("已清除自定义字体")
                     },

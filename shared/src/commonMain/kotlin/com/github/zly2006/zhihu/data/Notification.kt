@@ -17,6 +17,9 @@
 
 package com.github.zly2006.zhihu.data
 
+import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
+import io.ktor.client.call.body
+import io.ktor.client.request.get
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -25,6 +28,7 @@ import kotlinx.serialization.builtins.nullable
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonObject
 
 class TrySerializer<T : Any>(
     val serializer: KSerializer<T>,
@@ -66,6 +70,19 @@ data class MobileNotificationMessageOverview(
 }
 
 const val MOBILE_NOTIFICATION_MESSAGE_URL = "https://api.zhihu.com/notifications/v3/message/v3"
+
+/**
+ * 首页消息角标的未读总数。
+ *
+ * 走移动端消息中心接口，两套皮肤的首页共用同一份契约（URL、limit 与"总未读数"取自哪个字段），
+ * 避免一边改了接口另一边还在读旧的 Web 通知数。
+ */
+suspend fun PaginationEnvironment.fetchTotalUnreadCount(): Int =
+    mobileHomeFeedHttpClient()
+        .get("$MOBILE_NOTIFICATION_MESSAGE_URL?limit=20")
+        .body<JsonObject>()
+        .let { ZhihuJson.decodeJson<MobileNotificationMessageOverview>(it) }
+        .totalUnreadCount
 
 @Serializable
 data class MobileNotificationUnread(

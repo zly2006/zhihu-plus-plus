@@ -603,7 +603,7 @@ internal fun MobileNotificationTimelineItem.navDestination(): NavDestination? {
 }
 
 @OptIn(ExperimentalTime::class)
-private fun MobileNotificationTimelineItem.notificationListDate(): String {
+internal fun MobileNotificationTimelineItem.notificationListDate(): String {
     val epochSeconds = created.takeIf { it > 0 } ?: createdStr.toLongOrNull()
         ?: return createdStr
     val dateTime = Instant.fromEpochSeconds(epochSeconds).toLocalDateTime(TimeZone.currentSystemDefault())

@@ -65,11 +65,13 @@ import androidx.webkit.WebViewClientCompat
 import com.github.zly2006.zhihu.account.androidZhihuAccountStore
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.fetchHighestQualityZhihuVideoUrl
+import com.github.zly2006.zhihu.markdown.CUSTOM_CONTENT_FONT_FILE_NAME
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Video
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.platform.androidSettingsStore
 import com.github.zly2006.zhihu.theme.ThemeManager
+import com.github.zly2006.zhihu.ui.subscreens.PREF_CUSTOM_CONTENT_FONT_NAME
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
 import com.github.zly2006.zhihu.util.blacklist
@@ -326,8 +328,8 @@ class CustomWebView : WebView {
         val settings = androidSettingsStore(context)
         val fontSize = settings.getInt(PREF_FONT_SIZE, 100)
         val lineHeight = settings.getInt(PREF_LINE_HEIGHT, 160)
-        val customFontFile = java.io.File(context.filesDir, "custom_font")
-        val customFontName = settings.getStringOrNull("webviewCustomFontName")
+        val customFontFile = java.io.File(context.filesDir, CUSTOM_CONTENT_FONT_FILE_NAME)
+        val customFontName = settings.getStringOrNull(PREF_CUSTOM_CONTENT_FONT_NAME)
         val customFontCss = if (customFontName != null && customFontFile.exists()) {
             val fontName = customFontName
             val format = if (fontName.endsWith(".otf", ignoreCase = true)) "opentype" else "truetype"
@@ -507,8 +509,8 @@ private class UserFilesPathHandler(
         if (!file.exists() || !file.isFile) return null
         val settings = androidSettingsStore(context)
         val mimeType = when {
-            path == "custom_font" -> {
-                val fontName = settings.getString("webviewCustomFontName", "")
+            path == CUSTOM_CONTENT_FONT_FILE_NAME -> {
+                val fontName = settings.getString(PREF_CUSTOM_CONTENT_FONT_NAME, "")
                 if (fontName.endsWith(".otf", ignoreCase = true)) "font/otf" else "font/ttf"
             }
             else -> "application/octet-stream"
