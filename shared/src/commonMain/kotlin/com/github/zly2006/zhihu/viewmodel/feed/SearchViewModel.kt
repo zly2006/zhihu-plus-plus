@@ -38,6 +38,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 const val ZHIHU_HOT_SEARCH_URL = "https://www.zhihu.com/api/v4/search/hot_search"
+const val ZHIHU_SEARCH_SUGGEST_URL = "https://www.zhihu.com/api/v4/search/suggest"
 private const val SEARCH_VERTICAL_INFO = "0,0,0,0,0,0,0,0,0,0,0,0"
 
 open class SearchViewModel(
@@ -217,6 +218,41 @@ open class SearchViewModel(
                     ?.let { SearchEntity.Content(it) }
             }
             if (entity != null && existingIds.add(entity.id)) entities += entity
+        }
+    }
+}
+
+/**
+ * 搜索建议词，来自 `ZHIHU_SEARCH_SUGGEST_URL`。
+ *
+ * `label == "hot"` 的建议带热搜图标（[iconUrl] 非空），普通建议 [label] 为空字符串。
+ * 该接口只需要设备 cookie（d_c0），不要求登录令牌和 zse96 签名，可容忍单次失败静默降级。
+ */
+@Serializable
+data class SearchSuggestItem(
+    val query: String,
+    val label: String = "",
+    val iconUrl: String = "",
+)
+
+/**
+ * 拉取搜索建议词。服务端偶发返回 `code: 10003`（实测重试即恢复）；
+ * 网络或解码失败时静默返回空列表，UI 回落到热搜/历史建议。
+ */
+suspend fun fetchSearchSuggest(
+    environment: PaginationEnvironment,
+    query: String,
+): List<SearchSuggestItem> {
+    val json = runCatching {
+        environment.fetchJson("$ZHIHU_SEARCH_SUGGEST_URL?q=${query.encodeURLParameter()}", "")
+    }.getOrNull() ?: return emptyList()
+    val suggest = json["suggest"] as? JsonArray ?: return emptyList()
+    return suggest.mapNotNull { element ->
+        try {
+            ZhihuJson.decodeJson<SearchSuggestItem>(element)
+        } catch (e: Exception) {
+            environment.logDecodeFailure("SearchSuggest", element, e)
+            null
         }
     }
 }

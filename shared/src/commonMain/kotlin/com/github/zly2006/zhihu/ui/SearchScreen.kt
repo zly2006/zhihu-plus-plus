@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -70,6 +71,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -112,11 +114,17 @@ import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.feed.SearchContentType
 import com.github.zly2006.zhihu.viewmodel.feed.SearchEntity
 import com.github.zly2006.zhihu.viewmodel.feed.SearchSortOption
+import com.github.zly2006.zhihu.viewmodel.feed.SearchSuggestItem
 import com.github.zly2006.zhihu.viewmodel.feed.SearchTab
 import com.github.zly2006.zhihu.viewmodel.feed.SearchTimeRange
 import com.github.zly2006.zhihu.viewmodel.feed.SearchViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.ZHIHU_HOT_SEARCH_URL
+import com.github.zly2006.zhihu.viewmodel.feed.fetchSearchSuggest
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.yield
 import kotlinx.serialization.Serializable
@@ -153,7 +161,7 @@ private fun saveSearchHistory(
  * 页面由搜索输入框、热搜/历史建议和结果列表组成。空查询时是否显示热搜、是否记录并展示搜索历史分别由
  * `showSearchHotSearch` 和 `showSearchHistory` 控制；执行搜索后会进入分页结果模式，并通过 [LocalNavigator] 打开条目详情。
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, FlowPreview::class)
 @Composable
 fun SearchScreen(
     search: Search,
@@ -233,6 +241,20 @@ fun SearchScreen(
         queries.take(15).forEach { item ->
             hotSearchItems.add(ZhihuJson.decodeJson(item))
         }
+    }
+
+    val suggestItems = remember { mutableStateListOf<SearchSuggestItem>() }
+
+    // 输入防抖后拉取搜索建议词；query 为空、未变化或单次请求失败时静默清空回落到热搜/历史。
+    LaunchedEffect(Unit) {
+        snapshotFlow { searchText }
+            .debounce(300)
+            .mapLatest { text ->
+                if (text.isBlank() || isMemberSearch) emptyList() else fetchSearchSuggest(paginationEnvironment, text.trim())
+            }.collectLatest { items ->
+                suggestItems.clear()
+                suggestItems.addAll(items)
+            }
     }
 
     @Composable
@@ -432,9 +454,57 @@ fun SearchScreen(
                 }
             }
             if (viewModel.displayItems.isEmpty() && !viewModel.isLoading && viewModel.searchQuery.isEmpty()) {
-                val shouldShowHistory = showSearchHistory.value && searchHistoryItems.isNotEmpty()
-                val shouldShowHotSearch = showHotSearch.value && hotSearchItems.isNotEmpty()
-                if (shouldShowHistory || shouldShowHotSearch) {
+                if (suggestItems.isNotEmpty()) {
+                    // 输入中的搜索建议词，点击直接提交搜索；优先于热搜/历史展示。
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("search_suggest_list"),
+                    ) {
+                        // 同一建议词可能在响应中重复出现，key 必须包含索引避免冲突。
+                        itemsIndexed(suggestItems, key = { index, item -> "$index:${item.query}" }) { _, item ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        keyboardController?.hide()
+                                        submitSearch(item.query)
+                                    }.padding(horizontal = 16.dp, vertical = 10.dp)
+                                    .testTag("search_suggest_${item.query}"),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(
+                                    Icons.Default.Search,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier
+                                        .width(28.dp)
+                                        .size(18.dp),
+                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = item.query,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                    )
+                                    if (item.iconUrl.isNotEmpty()) {
+                                        // 服务端徽标图（如 "hot" 热搜火焰、盐选 "小说" 标签），紧贴文字右侧，固定高度等比展示。
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        AsyncImage(
+                                            model = item.iconUrl,
+                                            contentDescription = item.label,
+                                            modifier = Modifier.height(14.dp),
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
+                        }
+                    }
+                } else if (
+                    showSearchHistory.value && searchHistoryItems.isNotEmpty() || showHotSearch.value && hotSearchItems.isNotEmpty()
+                ) {
+                    val shouldShowHistory = showSearchHistory.value && searchHistoryItems.isNotEmpty()
+                    val shouldShowHotSearch = showHotSearch.value && hotSearchItems.isNotEmpty()
                     val pageTurnTarget = rememberPageTurnTarget(
                         scrollState = suggestionScrollState,
                         enabled = !historyMoreMenuExpanded && !hotSearchMoreMenuExpanded,
