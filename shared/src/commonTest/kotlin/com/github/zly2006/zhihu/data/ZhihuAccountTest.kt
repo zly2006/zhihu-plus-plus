@@ -17,8 +17,8 @@
 
 package com.github.zly2006.zhihu.data
 
+import com.github.zly2006.zhihu.util.jsonObject
 import io.ktor.client.HttpClient
-import io.ktor.client.call.body
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.http.HttpHeaders
@@ -181,7 +181,7 @@ class ZhihuAccountTest {
         assertEquals(HttpStatusCode.OK, response.status)
         assertEquals(
             "42",
-            response.body<kotlinx.serialization.json.JsonObject>()["follower_count"]?.jsonPrimitive?.content,
+            response.jsonObject()["follower_count"]?.jsonPrimitive?.content,
         )
         assertEquals(
             listOf(

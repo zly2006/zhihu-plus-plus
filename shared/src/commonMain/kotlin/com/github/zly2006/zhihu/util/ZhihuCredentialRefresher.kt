@@ -17,10 +17,7 @@
 
 package com.github.zly2006.zhihu.util
 
-import com.github.zly2006.zhihu.util.ZseSigner
-import com.github.zly2006.zhihu.util.raiseForStatus
 import io.ktor.client.HttpClient
-import io.ktor.client.call.body
 import io.ktor.client.plugins.cookies.HttpCookies
 import io.ktor.client.plugins.cookies.get
 import io.ktor.client.plugins.pluginOrNull
@@ -29,7 +26,6 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.Url
 import io.ktor.http.encodeURLParameter
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.time.Clock
 
@@ -64,7 +60,7 @@ object ZhihuCredentialRefresher {
                 header("Referer", "https://www.zhihu.com/signin")
                 header("x-requested-with", "fetch")
             }.raiseForStatus()
-            .body<JsonObject>()
+            .jsonObject()
         return jojo["refresh_token"]!!.jsonPrimitive.content
     }
 
@@ -92,8 +88,7 @@ object ZhihuCredentialRefresher {
                 header("x-requested-with", "fetch")
                 setBody(encryptedData.encodeToByteArray())
             }.raiseForStatus()
-            .body<JsonObject>()
-
+            .jsonObject()
         return jojo["access_token"]!!.jsonPrimitive.content
     }
 }

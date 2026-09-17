@@ -58,6 +58,7 @@ import com.github.zly2006.zhihu.data.SegmentInfoMeta
 import com.github.zly2006.zhihu.navigation.SegmentCommentHolder
 import com.github.zly2006.zhihu.platform.rememberPlainTextClipboard
 import com.github.zly2006.zhihu.util.SegmentHighlightSpan
+import com.github.zly2006.zhihu.util.json
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.deleteSigned
 import com.github.zly2006.zhihu.viewmodel.postSigned
@@ -67,13 +68,11 @@ import com.hrm.markdown.parser.ast.Document
 import com.hrm.markdown.parser.ast.Node
 import com.hrm.markdown.parser.ast.SegmentHighlight
 import com.hrm.markdown.renderer.LocalOnSegmentHighlightClick
-import io.ktor.client.call.body
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
@@ -252,7 +251,7 @@ private suspend fun toggleSegmentLike(
         }
         updateSegmentMetaAfterLike(
             highlight,
-            if (response.status == HttpStatusCode.NoContent) null else response.body<JsonElement>() as? JsonObject,
+            if (response.status == HttpStatusCode.NoContent) null else response.json() as? JsonObject,
         )
     }
 }
