@@ -28,6 +28,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlin.jvm.JvmName
 import kotlin.math.roundToInt
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
@@ -134,4 +135,5 @@ suspend fun HttpResponse.json() = this.body<JsonElement>()
 
 suspend fun HttpResponse.jsonObject() = this.body<JsonObject>()
 
+@JvmName("jsonTyped")
 suspend inline fun <reified T> HttpResponse.json() = ZhihuJson.decodeJson<T>(this.json())
