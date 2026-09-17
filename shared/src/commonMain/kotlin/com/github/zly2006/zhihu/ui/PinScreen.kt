@@ -110,6 +110,7 @@ import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.ui.components.rememberShareActionExecutor
 import com.github.zly2006.zhihu.util.formatCompactCount
+import com.github.zly2006.zhihu.util.jsonObject
 import com.github.zly2006.zhihu.util.twoDigitString
 import com.github.zly2006.zhihu.viewmodel.ContentLoadEnvironment
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
@@ -120,14 +121,12 @@ import com.github.zly2006.zhihu.viewmodel.nextUrlOrNull
 import com.github.zly2006.zhihu.viewmodel.postSigned
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.replaceOrAppendUniqueVoters
-import io.ktor.client.call.body
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.intOrNull
@@ -153,9 +152,9 @@ private suspend fun togglePinLike(
 ): PinLikeResult {
     val endpoint = "https://www.zhihu.com/api/v4/pins/${pin.id}/voters/up"
     val jojo = if (isLiked) {
-        environment.deleteSigned(endpoint).body<JsonObject>()
+        environment.deleteSigned(endpoint).jsonObject()
     } else {
-        environment.postSigned(endpoint).body<JsonObject>()
+        environment.postSigned(endpoint).jsonObject()
     }
     return PinLikeResult(
         isLiked = !isLiked,

@@ -91,11 +91,11 @@ import com.github.zly2006.zhihu.ui.components.WriteContentFabColumn
 import com.github.zly2006.zhihu.ui.components.WriteContentMarkdownEditor
 import com.github.zly2006.zhihu.ui.components.WriteContentPreviewSheet
 import com.github.zly2006.zhihu.ui.components.replaceSelection
+import com.github.zly2006.zhihu.util.json
 import com.github.zly2006.zhihu.util.raiseForStatus
 import com.github.zly2006.zhihu.viewmodel.fetchContentDetail
 import com.github.zly2006.zhihu.viewmodel.postSigned
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
-import io.ktor.client.call.body
 import io.ktor.client.request.header
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
@@ -103,7 +103,6 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.yield
-import kotlinx.serialization.json.JsonElement
 
 const val WRITE_ANSWER_CONTENT_TAG = "WriteAnswerContent"
 const val WRITE_ANSWER_FAB_PREVIEW_TAG = "WriteAnswerFabPreview"
@@ -222,7 +221,7 @@ fun WriteAnswerScreen(
                         )
                     }.raiseForStatus(dumpRequest = true)
                 if (publish) {
-                    val responseElement = environment
+                    val response = environment
                         .postSigned("https://www.zhihu.com/api/v4/content/publish") {
                             contentType(ContentType.Application.Json)
                             header("x-xsrftoken", xsrf)
@@ -244,16 +243,12 @@ fun WriteAnswerScreen(
                                 ),
                             )
                         }.raiseForStatus(dumpRequest = true)
-                        .body<JsonElement>()
-                    val response = ZhihuJson.decodeJson(
-                        DataHolder.ContentPublishResponse.serializer(),
-                        responseElement,
-                    )
+                        .json<DataHolder.ContentPublishResponse>()
                     if (response.message != "success") {
                         if (response.code == 103003) {
                             error(response.message ?: "已回答过该问题，创建回答失败")
                         }
-                        error("发布失败: ${response.message ?: "unknown"}\n$responseElement")
+                        error("发布失败: ${response.message ?: "unknown"}\n$response")
                     }
                     parsePublishContentId(response.data?.result ?: error("发布成功但返回缺少 data.result"))
                         ?: error("发布成功但无法解析 publish.id")

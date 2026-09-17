@@ -49,6 +49,7 @@ import com.github.zly2006.zhihu.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
 import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
 import io.ktor.client.HttpClient
+import io.ktor.client.call.NoTransformationFoundException
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.delete
 import io.ktor.client.request.post
@@ -154,8 +155,11 @@ abstract class PaginationViewModel<T : Any>(
             if ("paging" in json) {
                 lastPaging = decodeJson(json["paging"]!!)
             }
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+            throw e
+        } catch (_: NoTransformationFoundException) {
+            throw RuntimeException("您可能已被风控，请重新登录。")
         } catch (e: Exception) {
-            if (e is kotlin.coroutines.cancellation.CancellationException) throw e
             environment.handleFetchFailure(this::class.simpleName, e)
             errorHandle(e)
         } finally {

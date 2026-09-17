@@ -25,9 +25,9 @@ import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.util.jsonObject
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
-import io.ktor.client.call.body
 import io.ktor.client.engine.HttpClientEngineConfig
 import io.ktor.client.plugins.UserAgent
 import io.ktor.client.plugins.cache.HttpCache
@@ -95,7 +95,7 @@ suspend fun fetchVerifiedZhihuAccount(client: HttpClient): JsonObject? {
     if (response.status != HttpStatusCode.OK) {
         return null
     }
-    return response.body<JsonObject>()
+    return response.jsonObject()
 }
 
 suspend fun fetchVerifiedZhihuSession(

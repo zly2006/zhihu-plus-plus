@@ -17,6 +17,8 @@
 
 package com.github.zly2006.zhihu.util
 
+import com.github.zly2006.zhihu.data.ZhihuJson
+import io.ktor.client.call.body
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.client.statement.request
@@ -24,6 +26,8 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.Url
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 import kotlin.math.roundToInt
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
@@ -125,3 +129,9 @@ fun extractImageUrl(attribute: (String) -> String): String? =
         ?: attribute("data-actualsrc").takeIf { it.isNotBlank() }
         ?: attribute("data-thumbnail").takeIf { it.isNotBlank() }
         ?: attribute("src").takeIf { it.isNotBlank() }
+
+suspend fun HttpResponse.json() = this.body<JsonElement>()
+
+suspend fun HttpResponse.jsonObject() = this.body<JsonObject>()
+
+suspend inline fun <reified T> HttpResponse.json() = ZhihuJson.decodeJson<T>(this.json())

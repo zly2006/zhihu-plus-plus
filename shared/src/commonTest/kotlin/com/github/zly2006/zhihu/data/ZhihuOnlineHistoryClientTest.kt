@@ -17,8 +17,8 @@
 
 package com.github.zly2006.zhihu.data
 
+import com.github.zly2006.zhihu.util.jsonObject
 import io.ktor.client.HttpClient
-import io.ktor.client.call.body
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.request.get
@@ -26,7 +26,6 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import kotlinx.coroutines.test.runTest
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -38,7 +37,7 @@ class ZhihuOnlineHistoryClientTest {
             assertEquals("https://api.zhihu.com/unify-consumption/read_history?offset=0&limit=10", url)
         }
 
-        val response = client.get("https://api.zhihu.com/unify-consumption/read_history?offset=0&limit=10").body<JsonObject>()
+        val response = client.get("https://api.zhihu.com/unify-consumption/read_history?offset=0&limit=10").jsonObject()
         val items = response["data"]!!.jsonArray.map { ZhihuJson.decodeJson<OnlineHistoryItem>(it) }
 
         assertEquals("read_history", items.single().cardType)

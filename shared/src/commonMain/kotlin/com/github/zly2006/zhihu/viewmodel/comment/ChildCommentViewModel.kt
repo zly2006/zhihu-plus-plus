@@ -19,22 +19,20 @@ package com.github.zly2006.zhihu.viewmodel.comment
 
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.data.DataHolder
-import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.navigation.CommentHolder
 import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.util.json
 import com.github.zly2006.zhihu.viewmodel.CommentItem
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import com.github.zly2006.zhihu.viewmodel.comment.RootCommentViewModel.Companion.submitCommentUrl
 import com.github.zly2006.zhihu.viewmodel.postSigned
-import io.ktor.client.call.body
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
@@ -100,7 +98,7 @@ class ChildCommentViewModel(
 
                 if (response.status.isSuccess()) {
                     // 评论成功后，把它添加到第一个。
-                    val model = ZhihuJson.decodeJson<DataHolder.Comment>(response.body<JsonObject>())
+                    val model = response.json<DataHolder.Comment>()
                     allData.add(0, model)
                     onSuccess()
                 } else {

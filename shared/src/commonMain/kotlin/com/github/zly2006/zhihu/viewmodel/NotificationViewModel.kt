@@ -35,7 +35,7 @@ import com.github.zly2006.zhihu.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.notification.matchNotificationType
 import com.github.zly2006.zhihu.util.Log
 import com.github.zly2006.zhihu.util.ZhihuMessageBodyEncryptor
-import io.ktor.client.call.body
+import com.github.zly2006.zhihu.util.jsonObject
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
@@ -49,7 +49,6 @@ import io.ktor.http.isSuccess
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -115,7 +114,7 @@ class NotificationViewModel :
             val json = environment
                 .mobileHomeFeedHttpClient()
                 .get(url.replace("http://", "https://"))
-                .body<JsonObject>()
+                .jsonObject()
             val page = ZhihuJson.decodeJson<MobileNotificationMessageOverview>(json)
             val rawData = json["data"]?.jsonArray ?: JsonArray(emptyList())
 
@@ -221,7 +220,7 @@ class NotificationTimelineViewModel(
             val json = environment
                 .mobileHomeFeedHttpClient()
                 .get(url.replace("http://", "https://"))
-                .body<JsonObject>()
+                .jsonObject()
             val rawData = json["data"]?.jsonArray ?: JsonArray(emptyList())
             val data = rawData.mapNotNull {
                 try {
@@ -357,7 +356,7 @@ class PrivateMessageViewModel(
                     async {
                         client
                             .get("$MOBILE_PRIVATE_MESSAGE_USER_URL/$peerId")
-                            .body<JsonObject>()
+                            .jsonObject()
                     }
                 } else {
                     null
@@ -365,7 +364,7 @@ class PrivateMessageViewModel(
                 val pageRequest = async {
                     client
                         .get((lastPaging?.next ?: initialUrl).replace("http://", "https://"))
-                        .body<JsonObject>()
+                        .jsonObject()
                 }
 
                 val json = pageRequest.await()

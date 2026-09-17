@@ -62,6 +62,7 @@ import com.github.zly2006.zhihu.util.buildArticleExportFileName
 import com.github.zly2006.zhihu.util.buildZhidaSummaryRequest
 import com.github.zly2006.zhihu.util.decodeZhidaAnswerData
 import com.github.zly2006.zhihu.util.decodeZhidaStreamErrorMessage
+import com.github.zly2006.zhihu.util.jsonObject
 import com.github.zly2006.zhihu.util.mergeSummaryChunk
 import com.github.zly2006.zhihu.util.parseZhidaSsePayload
 import com.github.zly2006.zhihu.util.prepareArticleExportComment
@@ -92,7 +93,6 @@ import kotlinx.datetime.number
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.int
@@ -621,7 +621,7 @@ class ArticleViewModel(
                             ArticleType.Article -> setBody(mapOf("voting" to if (newState == VoteUpState.Up) 1 else 0))
                         }
                         contentType(ContentType.Application.Json)
-                    }.body<JsonObject>()
+                    }.jsonObject()
 
                 voteUpState = newState
                 voteUpCount = response["voteup_count"]!!.jsonPrimitive.int

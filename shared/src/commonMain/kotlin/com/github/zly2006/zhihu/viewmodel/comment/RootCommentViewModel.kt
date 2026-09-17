@@ -31,11 +31,11 @@ import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.SegmentCommentHolder
 import com.github.zly2006.zhihu.util.Log
+import com.github.zly2006.zhihu.util.jsonObject
 import com.github.zly2006.zhihu.viewmodel.CommentItem
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import com.github.zly2006.zhihu.viewmodel.postSigned
-import io.ktor.client.call.body
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
@@ -195,7 +195,7 @@ class RootCommentViewModel(
 
                 if (response.status.isSuccess()) {
                     // 评论成功后，把它添加到第一个。
-                    val model = ZhihuJson.decodeJson<DataHolder.Comment>(response.body<JsonObject>())
+                    val model = ZhihuJson.decodeJson<DataHolder.Comment>(response.jsonObject())
                     allData.add(0, model)
                     onSuccess()
                 } else {
