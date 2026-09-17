@@ -19,6 +19,7 @@ package com.github.zly2006.zhihu.editor
 
 import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.util.ZhihuFetchSignature
+import com.github.zly2006.zhihu.util.json
 import com.github.zly2006.zhihu.util.raiseForStatus
 import com.github.zly2006.zhihu.util.twoDigitString
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
@@ -37,7 +38,6 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonElement
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.math.min
@@ -123,7 +123,7 @@ private suspend fun requestImageUpload(
             contentType(ContentType.Application.Json)
             setBody(body)
         }.raiseForStatus(dumpRequest = true)
-        .body<JsonElement>()
+        .json()
     return ZhihuJson.decodeJson(ApplyImageUploadResponse.serializer(), response)
 }
 
@@ -335,7 +335,7 @@ private suspend fun fetchImageStatus(
     val response = client
         .get("https://api.zhihu.com/images/$imageId")
         .raiseForStatus(dumpRequest = true)
-        .body<JsonElement>()
+        .json()
     return ZhihuJson.decodeJson(ImageStatus.serializer(), response)
 }
 

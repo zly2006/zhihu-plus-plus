@@ -82,22 +82,19 @@ import com.github.zly2006.zhihu.data.DailySection
 import com.github.zly2006.zhihu.data.DailyStory
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.resolveContent
-import com.github.zly2006.zhihu.ui.TopLevelReselectAction
 import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
-import com.github.zly2006.zhihu.ui.topLevelReselectAction
 import com.github.zly2006.zhihu.util.formatDailyDate
+import com.github.zly2006.zhihu.util.jsonObject
 import com.github.zly2006.zhihu.util.twoDigitString
 import com.github.zly2006.zhihu.viewmodel.DailyViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
-import io.ktor.client.call.body
 import io.ktor.client.request.get
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
@@ -363,10 +360,10 @@ fun DailyScreen(
                                     modifier = Modifier.testTag("daily_screen_story_${story.id}"),
                                     onClick = {
                                         scope.launch {
-                                            val response: JsonObject = withContext(Dispatchers.Default) {
+                                            val response = withContext(Dispatchers.Default) {
                                                 httpClient
                                                     .get("https://daily.zhihu.com/api/7/story/${story.id}")
-                                                    .body()
+                                                    .jsonObject()
                                             }
                                             val body = response["body"]?.jsonPrimitive?.content
                                             if (body == null) {

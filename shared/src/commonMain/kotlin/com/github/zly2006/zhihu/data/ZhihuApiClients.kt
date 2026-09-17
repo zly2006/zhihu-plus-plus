@@ -18,9 +18,9 @@
 package com.github.zly2006.zhihu.data
 
 import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
+import com.github.zly2006.zhihu.util.json
 import com.github.zly2006.zhihu.util.raiseForStatus
 import io.ktor.client.HttpClient
-import io.ktor.client.call.body
 import io.ktor.client.plugins.cookies.CookiesStorage
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.request
@@ -30,7 +30,6 @@ import io.ktor.http.CookieEncoding
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Url
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlin.time.Clock
 
@@ -82,8 +81,7 @@ suspend fun fetchZhihuAuthenticatedJson(
     if (response.status == HttpStatusCode.NoContent) {
         return null
     }
-    val body = response.body<JsonElement>()
-    return body as? JsonObject
+    return response.json() as? JsonObject
 }
 
 class ZhihuCookieStorage(

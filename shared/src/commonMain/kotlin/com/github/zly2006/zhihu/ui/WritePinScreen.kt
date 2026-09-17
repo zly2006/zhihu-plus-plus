@@ -69,7 +69,6 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.data.DataHolder
-import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.editor.PinContentTopicItem
 import com.github.zly2006.zhihu.editor.PinContentTopicMarker
 import com.github.zly2006.zhihu.editor.PinTopicSuggestion
@@ -98,10 +97,10 @@ import com.github.zly2006.zhihu.ui.components.MarkdownShortcut
 import com.github.zly2006.zhihu.ui.components.WriteContentFabColumn
 import com.github.zly2006.zhihu.ui.components.WriteContentMarkdownEditor
 import com.github.zly2006.zhihu.ui.components.WriteContentPreviewSheet
+import com.github.zly2006.zhihu.util.json
 import com.github.zly2006.zhihu.util.raiseForStatus
 import com.github.zly2006.zhihu.viewmodel.postSigned
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
-import io.ktor.client.call.body
 import io.ktor.client.request.header
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
@@ -113,7 +112,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.yield
-import kotlinx.serialization.json.JsonElement
+import kotlin.time.Duration.Companion.milliseconds
 
 const val WRITE_PIN_TITLE_TAG = "WritePinTitle"
 const val WRITE_PIN_CONTENT_TAG = "WritePinContent"
@@ -262,11 +261,11 @@ fun WritePinScreen(destination: WritePin = WritePin()) {
             return
         }
         topicSearchJob = coroutineScope.launch {
-            delay(180)
+            delay(180.milliseconds)
             val contentHtml = compilePinMarkdownToZhihuHtml(newValue.text, selectedTopics)
             topicSuggestionError = null
             try {
-                val responseElement = environment
+                val pinTopicSuggestion = environment
                     .postSigned(
                         "https://api.zhihu.com/content/publish/topics/recommend?" +
                             "recommend_type=pin&key_word=${query.query.encodeURLParameter(spaceToPlus = true)}",
@@ -274,10 +273,9 @@ fun WritePinScreen(destination: WritePin = WritePin()) {
                         contentType(ContentType.Application.Json)
                         setBody(PinTopicSuggestionRequest(title = title.text, content = contentHtml))
                     }.raiseForStatus(dumpRequest = true)
-                    .body<JsonElement>()
-                val suggestions = ZhihuJson.decodeJson<PinTopicSuggestionResponse>(responseElement).data.list
+                    .json<PinTopicSuggestionResponse>()
                 if (activePinTopicQuery(content, selectedTopics) == query) {
-                    topicSuggestions = suggestions
+                    topicSuggestions = pinTopicSuggestion.data.list
                 }
             } catch (error: Throwable) {
                 if (error is CancellationException) throw error
@@ -344,20 +342,16 @@ fun WritePinScreen(destination: WritePin = WritePin()) {
                 val xsrf = environment.authenticatedCookies()["_xsrf"]
                     ?: error("缺少 _xsrf Cookie，无法${if (publish) "发布" else "保存"}想法；请先确保已登录。")
                 if (publish) {
-                    val responseElement = environment
+                    val response = environment
                         .postSigned("https://www.zhihu.com/api/v4/content/publish") {
                             contentType(ContentType.Application.Json)
                             header(HttpHeaders.Referrer, "https://www.zhihu.com/")
                             header("x-xsrftoken", xsrf)
                             setBody(PublishPinRequest(data = payload))
                         }.raiseForStatus(dumpRequest = true)
-                        .body<JsonElement>()
-                    val response = ZhihuJson.decodeJson(
-                        DataHolder.ContentPublishResponse.serializer(),
-                        responseElement,
-                    )
+                        .json<DataHolder.ContentPublishResponse>()
                     if (response.message != "success") {
-                        error("发布失败: ${response.message ?: "unknown"}\n$responseElement")
+                        error("发布失败: ${response.message ?: "unknown"}\n$response")
                     }
                     parsePublishContentId(response.data?.result ?: error("发布成功但返回缺少 data.result"))
                         ?: error("发布成功但无法解析 publish.id")

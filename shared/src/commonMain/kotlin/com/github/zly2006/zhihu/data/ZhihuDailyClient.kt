@@ -17,8 +17,8 @@
 
 package com.github.zly2006.zhihu.data
 
+import com.github.zly2006.zhihu.util.jsonObject
 import io.ktor.client.HttpClient
-import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.util.network.UnresolvedAddressException
 import kotlinx.coroutines.CancellationException
@@ -37,17 +37,18 @@ suspend fun HttpClient.fetchLatestDailyStories(): DailyStoriesResponse =
 suspend fun HttpClient.fetchDailyStoriesBefore(date: String): DailyStoriesResponse =
     fetchDailyStories("/before/$date")
 
-private suspend fun HttpClient.fetchDailyStories(path: String): DailyStoriesResponse =
+private suspend fun HttpClient.fetchDailyStories(path: String): DailyStoriesResponse = ZhihuJson.decodeJson(
     try {
-        get("$DAILY_PRIMARY_API_BASE$path").body()
+        get("$DAILY_PRIMARY_API_BASE$path").jsonObject()
     } catch (e: Exception) {
         if (e is CancellationException || !e.isHostResolutionFailure()) {
             throw e
         }
         // Do not broaden this to arbitrary network failures: the fallback is
         // only for Zhihu's broken primary-host resolution, not a retry policy.
-        get("$DAILY_FALLBACK_API_BASE$path").body()
-    }
+        get("$DAILY_FALLBACK_API_BASE$path").jsonObject()
+    },
+)
 
 private fun Throwable.isHostResolutionFailure(): Boolean =
     this is UnresolvedAddressException ||

@@ -21,7 +21,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.github.zly2006.zhihu.data.Collection
-import io.ktor.client.call.body
+import com.github.zly2006.zhihu.util.jsonObject
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
@@ -74,7 +74,7 @@ class CollectionsViewModel(
             if (!response.status.isSuccess()) {
                 error("创建收藏夹失败：${response.status}")
             }
-            val responseBody = response.body<JsonObject>()
+            val responseBody = response.jsonObject()
             val collectionId = (responseBody["collection"] as? JsonObject)
                 ?.get("id")
                 ?.jsonPrimitive
@@ -117,7 +117,7 @@ class CollectionsViewModel(
             if (!response.status.isSuccess()) {
                 error("删除收藏夹失败：${response.status}")
             }
-            val responseBody = response.body<JsonObject>()
+            val responseBody = response.jsonObject()
             if (responseBody["success"]?.jsonPrimitive?.booleanOrNull != true) {
                 error(
                     responseBody["message"]
