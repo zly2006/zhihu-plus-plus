@@ -415,7 +415,8 @@ class ZhihuMainNavigationInstrumentedTest {
             composeRule.onNodeWithTag("reading_queue_sheet").assertIsDisplayed()
             Espresso.pressBack()
             composeRule.waitUntil(timeoutMillis = 5_000) {
-                composeRule.onAllNodesWithTag("reading_queue_sheet")
+                composeRule
+                    .onAllNodesWithTag("reading_queue_sheet")
                     .fetchSemanticsNodes(atLeastOneRootRequired = false)
                     .isEmpty()
             }
