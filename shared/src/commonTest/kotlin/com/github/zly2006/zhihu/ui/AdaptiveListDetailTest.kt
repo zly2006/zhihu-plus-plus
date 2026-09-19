@@ -11,6 +11,7 @@ package com.github.zly2006.zhihu.ui
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
+import com.github.zly2006.zhihu.navigation.CommentHolder
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.Search
@@ -33,5 +34,7 @@ class AdaptiveListDetailTest {
         assertTrue(Pin(id = 3).isDetailPaneDestination())
         assertFalse(Question(questionId = 2).isDetailPaneDestination())
         assertFalse(Search().isDetailPaneDestination())
+        assertTrue(CommentHolder("comment", Article(type = ArticleType.Answer, id = 1)).isDetailPaneDestination())
+        assertFalse(CommentHolder("comment", Question(questionId = 2)).isDetailPaneDestination())
     }
 }

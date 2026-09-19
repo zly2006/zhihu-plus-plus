@@ -87,7 +87,7 @@ import kotlinx.coroutines.withContext
  */
 @Composable
 fun MacosZhihuMain(windowChrome: MacosWindowChromeHost? = null) {
-    /** Primary NavHost for macOS tabs and the default content pane. */
+    /** 主返回栈控制器，承载 MainTabs 主壳和单栏页面。 */
     val navController = rememberNavController()
     val accountStore = defaultNativeAccountStore
     val accounts by accountStore.accountsState.collectAsState()
@@ -112,9 +112,9 @@ fun MacosZhihuMain(windowChrome: MacosWindowChromeHost? = null) {
     }
 
     /**
-     * Reads the content-open source from the selected NavHost, including the secondary detail pane.
+     * 从指定返回栈的当前页面读取内容打开来源，支持右侧详情栏。
      *
-     * @param controller NavHost whose current entry should be inspected
+     * @param controller 提供来源页面的返回栈控制器
      */
     fun currentContentOpenSource(controller: NavHostController = navController): NavDestination? {
         val currentEntry = controller.currentBackStackEntry
@@ -134,18 +134,13 @@ fun MacosZhihuMain(windowChrome: MacosWindowChromeHost? = null) {
     }
 
     /**
-     * Routes [route] through the primary or secondary NavHost selected by [targetController].
+     * 通过 [targetController] 指定的主返回栈或详情返回栈打开 [route]。
      *
-     * @param route destination to open
-     * @param targetController NavHost that owns the destination's back stack
+     * @param route 要打开的页面
+     * @param targetController 持有目标页面返回栈的控制器
      */
     fun navigate(route: NavDestination, targetController: NavHostController = navController) {
         when (route) {
-            History -> targetController.navigate(route)
-            is TopLevelDestination -> {
-                mainTabNavigationTarget = route
-                navigateToMainTabs()
-            }
             is Video -> {
                 val current = runCatching {
                     targetController.currentBackStackEntry?.toRoute<Article>()

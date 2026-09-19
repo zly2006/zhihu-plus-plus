@@ -52,8 +52,11 @@ internal val LIST_DETAIL_DIVIDER_WIDTH = 16.dp
 
 internal val LocalSelectedContentDestination = compositionLocalOf<NavDestination?> { null }
 
-internal fun NavDestination.isDetailPaneDestination(): Boolean =
-    this is Article || this is Pin || this is CommentHolder
+internal fun NavDestination.isDetailPaneDestination(): Boolean = when (this) {
+    is Article, is Pin -> true
+    is CommentHolder -> article.isDetailPaneDestination()
+    else -> false
+}
 
 internal fun normalizedListPaneWidth(
     availableWidth: Dp,

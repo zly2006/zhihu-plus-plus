@@ -40,6 +40,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -55,7 +56,6 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.Newspaper
 import androidx.compose.material.icons.filled.Whatshot
-import androidx.compose.material3.FabPosition
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -75,6 +75,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
@@ -92,9 +94,13 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.rememberLifecycleOwner
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -130,6 +136,7 @@ import com.github.zly2006.zhihu.navigation.Search
 import com.github.zly2006.zhihu.navigation.SentenceSimilarityTest
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.navigation.Topic
+import com.github.zly2006.zhihu.navigation.Video
 import com.github.zly2006.zhihu.navigation.WriteAnswer
 import com.github.zly2006.zhihu.navigation.WritePin
 import com.github.zly2006.zhihu.navigation.loginNavigationRequestFlow
@@ -222,7 +229,9 @@ fun ZhihuMain(
     },
     articleEnterTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition?)? = null,
     articleExitTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition?)? = null,
-) {
+) = BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+    val containerWidth = maxWidth
+    val isLargeLandscape = enableLandscapeListDetail && containerWidth >= 840.dp && containerWidth > maxHeight
     val bottomPadding = ScaffoldDefaults.contentWindowInsets.asPaddingValues().calculateBottomPadding()
     val duo3HomeAccount = preferenceState.duo3HomeAccount
     val tapToScrollToTopEnabled = preferenceState.tapToScrollToTopEnabled
@@ -234,10 +243,12 @@ fun ZhihuMain(
     val readingPlayer = rememberReadingPlayerController()
     val readingPlayerState by readingPlayer.state
     val settings = rememberSettingsStore()
+
+    /** 右侧详情独立持有返回栈；栏内导航保留上级，从左侧重新选项时清空。 */
+    val paneStateHolder = rememberSaveableStateHolder()
     val detailNavController = rememberNavController()
     val detailEntry by detailNavController.currentBackStackEntryAsState()
     val selectedContentDestination = detailEntry.readingDestinationOrNull()
-    val hasOpenDetail = selectedContentDestination != null
     val hasOpenSecondaryDetail = detailEntry?.destination?.hasRoute<EmptyDetail>() == false
     var showReadingQueue by remember { mutableStateOf(false) }
     var isReadingPlayerExpandedByUser by remember { mutableStateOf(false) }
@@ -248,6 +259,51 @@ fun ZhihuMain(
 
     val navEntry by navController.currentBackStackEntryAsState()
     val showMainNavigation = navEntry?.destination?.hasRoute<MainTabs>() == true
+    val isListPaneContext = navEntry.isListPaneDestination()
+    // 窄屏从详情进入主栈页面时隐藏详情；返回原列表项后恢复同一详情和页面状态。
+    var detailOwnerEntryId by rememberSaveable { mutableStateOf<String?>(null) }
+    val showListDetail = isLargeLandscape && isListPaneContext
+    val showDetailPane = hasOpenSecondaryDetail &&
+        (showListDetail || navEntry?.id == detailOwnerEntryId)
+    val hasOpenDetail = showDetailPane && selectedContentDestination != null
+    val useSecondaryContentNavigation = enableLandscapeListDetail && isListPaneContext
+    val detailLifecycleOwner = rememberLifecycleOwner(
+        maxLifecycle = if (showListDetail || showDetailPane) Lifecycle.State.RESUMED else Lifecycle.State.CREATED,
+    )
+    val listLifecycleOwner = rememberLifecycleOwner(
+        maxLifecycle = if (showDetailPane && !showListDetail) Lifecycle.State.CREATED else Lifecycle.State.RESUMED,
+    )
+
+    LaunchedEffect(isLargeLandscape, navEntry) {
+        if (showListDetail) detailOwnerEntryId = navEntry?.id
+    }
+
+    fun openListDetail(destination: NavDestination) {
+        detailOwnerEntryId = navController.currentBackStackEntry?.id
+        detailNavController.popBackStack(detailNavController.graph.startDestinationId, inclusive = false)
+        navigateContent(destination, detailNavController)
+    }
+
+    fun openReadingDestination(destination: NavDestination, onlyIfReading: Boolean = false) {
+        val current = if (hasOpenDetail) selectedContentDestination else navEntry.readingDestinationOrNull()
+        if (current == destination || (onlyIfReading && current == null)) return
+        val opensInDetail = useSecondaryContentNavigation && destination.isDetailPaneDestination()
+        if (hasOpenDetail) {
+            if (opensInDetail) {
+                detailNavController.popBackStack()
+            } else {
+                detailNavController.popBackStack(detailNavController.graph.startDestinationId, inclusive = false)
+            }
+        } else if (current != null && !opensInDetail) {
+            navController.popBackStack()
+        }
+        if (opensInDetail) {
+            detailOwnerEntryId = navController.currentBackStackEntry?.id
+            navigateContent(destination, detailNavController)
+        } else {
+            navigate(destination)
+        }
+    }
     val isOnReadingDetail = hasOpenDetail ||
         navEntry?.destination?.hasRoute<Article>() == true ||
         navEntry?.destination?.hasRoute<Question>() == true ||
@@ -278,42 +334,12 @@ fun ZhihuMain(
         val itemChanged = previousReadingItemKey != null && previousReadingItemKey != currentItemKey
         previousReadingItemKey = currentItemKey
         if (itemChanged && currentItem != null) {
-            val currentDestination = when {
-                detailEntry?.destination?.hasRoute<Article>() == true -> runCatching {
-                    detailEntry?.toRoute<Article>()
-                }.getOrNull()
-                detailEntry?.destination?.hasRoute<Pin>() == true -> runCatching {
-                    detailEntry?.toRoute<Pin>()
-                }.getOrNull()
-                detailEntry?.destination?.hasRoute<Question>() == true -> runCatching {
-                    detailEntry?.toRoute<Question>()
-                }.getOrNull()
-                navEntry?.destination?.hasRoute<Article>() == true -> runCatching {
-                    navEntry?.toRoute<Article>()
-                }.getOrNull()
-                navEntry?.destination?.hasRoute<Pin>() == true -> runCatching {
-                    navEntry?.toRoute<Pin>()
-                }.getOrNull()
-                navEntry?.destination?.hasRoute<Question>() == true -> runCatching {
-                    navEntry?.toRoute<Question>()
-                }.getOrNull()
-                else -> null
-            }
-            val destination = currentItem.toDestination(readingPlayerState.sourceId)
-            if (currentDestination != null && currentDestination != destination) {
-                if (hasOpenDetail) {
-                    detailNavController.popBackStack()
-                    navigateContent(destination, detailNavController)
-                } else {
-                    navController.popBackStack()
-                    navigate(destination)
-                }
-            }
+            openReadingDestination(currentItem.toDestination(readingPlayerState.sourceId), onlyIfReading = true)
         }
     }
 
     // 离开文章页时恢复系统状态栏（只在实际切换时触发）
-    val isOnArticle = detailEntry?.destination?.hasRoute<Article>() == true ||
+    val isOnArticle = (hasOpenDetail && detailEntry?.destination?.hasRoute<Article>() == true) ||
         navEntry?.destination?.hasRoute<Article>() == true
     LaunchedEffect(navEntry) {
         isReadingPlayerExpandedByUser = false
@@ -385,14 +411,12 @@ fun ZhihuMain(
     val coroutineScope = rememberCoroutineScope()
 
     var currentMainTabDestination by remember { mutableStateOf(startDestination) }
-    val isListPaneContext = navEntry.isListPaneDestination()
-    val isAccountSurface = currentMainTabDestination == Account ||
-        navEntry?.destination?.hasRoute<Account>() == true
+    val isAccountSurface = currentMainTabDestination == Account
 
-    PlatformBackHandler(enabled = navEntry != null && !showMainNavigation && !hasOpenSecondaryDetail) {
+    PlatformBackHandler(enabled = navEntry != null && !showMainNavigation && !showDetailPane) {
         navController.popBackStack()
     }
-    PlatformBackHandler(enabled = hasOpenSecondaryDetail && isListPaneContext) {
+    PlatformBackHandler(enabled = showDetailPane) {
         detailNavController.popBackStack()
     }
 
@@ -439,7 +463,7 @@ fun ZhihuMain(
     PlatformBackHandler(
         showMainNavigation &&
             mainPagerState.currentPage != 0 &&
-            !(hasOpenSecondaryDetail && isListPaneContext),
+            !showDetailPane,
     ) {
         coroutineScope.launch {
             mainPagerState.animateScrollToPage(0)
@@ -478,27 +502,17 @@ fun ZhihuMain(
         )
     }
 
-    fun openListDetail(destination: NavDestination) {
-        if (hasOpenSecondaryDetail) {
-            detailNavController.popBackStack(
-                detailNavController.graph.startDestinationId,
-                inclusive = false,
-            )
-        }
-        navigateContent(destination, detailNavController)
-    }
-
     @Composable
     fun DetailPane(modifier: Modifier) {
         CompositionLocalProvider(
+            LocalLifecycleOwner provides detailLifecycleOwner,
             LocalArticleNavController provides detailNavController,
             LocalNavigator provides Navigator(
                 onNavigate = { destination ->
                     if (
-                        destination.isDetailPaneDestination() ||
-                        (currentMainTabDestination == Account && destination.isAccountDetailDestination())
+                        destination is Video || destination.isDetailPaneDestination() || destination.isAccountDetailDestination()
                     ) {
-                        openListDetail(destination)
+                        navigateContent(destination, detailNavController)
                     } else {
                         navigate(destination)
                     }
@@ -532,58 +546,12 @@ fun ZhihuMain(
                 composable<Pin> { entry ->
                     PinScreen(entry.toRoute())
                 }
-                composable<Account.RecommendSettings.Blocklist> {
-                    BlocklistSettingsScreen(blocklistSettingsNlpContent)
-                }
-                composable<Account.RecommendSettings.BlockedFeedHistory> {
-                    BlockedFeedHistoryScreen()
-                }
-                composable<Account.AppearanceSettings> { entry ->
-                    val args = entry.toRoute<Account.AppearanceSettings>()
-                    AppearanceSettingsScreen(
-                        setting = args.setting,
-                        onExit = reloadBottomBarPreferences,
-                    )
-                }
-                composable<Account.RecommendSettings> { entry ->
-                    val args = entry.toRoute<Account.RecommendSettings>()
-                    ContentFilterSettingsScreen(args.setting)
-                }
-                composable<Account.IdentityManagement> {
-                    IdentityManagementScreen()
-                }
-                composable<Account.SystemAndUpdateSettings> { entry ->
-                    SystemAndUpdateSettingsScreen(
-                        setting = entry.toRoute<Account.SystemAndUpdateSettings>().setting,
-                    )
-                }
-                composable<Account.ReadingSettings> {
-                    ReadingSettingsScreen()
-                }
-                composable<Account.SettingsSearch> {
-                    SettingsSearchScreen()
-                }
-                composable<Account.OpenSourceLicenses> {
-                    OpenSourceLicensesScreen()
-                }
-                composable<Account.DeveloperSettings> {
-                    DeveloperSettingsScreen()
-                }
-                composable<Account.DeveloperSettings.ColorScheme> {
-                    ColorSchemeScreen()
-                }
+                accountSettings(reloadBottomBarPreferences, blocklistSettingsNlpContent)
             }
         }
     }
 
-    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        val containerWidth = maxWidth
-        val isLargeLandscape = enableLandscapeListDetail &&
-            containerWidth >= 840.dp &&
-            containerWidth > maxHeight
-        val showListDetail = isLargeLandscape && isListPaneContext
-        val showDetailPane = hasOpenSecondaryDetail && isListPaneContext
-        val useSecondaryContentNavigation = isListPaneContext && (isLargeLandscape || hasOpenSecondaryDetail)
+    Box(Modifier.fillMaxSize()) {
         val listPaneWidth = if (showListDetail) {
             normalizedListPaneWidth(containerWidth, listPaneRatio)
         } else {
@@ -595,375 +563,352 @@ fun ZhihuMain(
             Modifier.fillMaxSize()
         }
         LaunchedEffect(navEntry, isLargeLandscape, hasOpenSecondaryDetail, isListPaneContext) {
-            val directReadingDestination = navEntry.readingDestinationOrNull()
-            if ((isLargeLandscape || (hasOpenDetail && isListPaneContext)) && directReadingDestination != null) {
-                val needsDefaultList =
-                    !navController.previousBackStackEntry.isListPaneDestination()
-                detailNavController.navigate(directReadingDestination) {
-                    launchSingleTop = false
-                }
+            val directReadingDestination = navEntry.readingDestinationOrNull()?.takeIf { it.isDetailPaneDestination() }
+            if (enableLandscapeListDetail && directReadingDestination != null) {
                 navController.popBackStack()
-                if (isLargeLandscape && needsDefaultList) navigate(MainTabs)
+                if (navController.currentBackStackEntry == null) navController.navigate(MainTabs)
+                detailOwnerEntryId = navController.currentBackStackEntry?.id
+                detailNavController.popBackStack(detailNavController.graph.startDestinationId, inclusive = false)
+                // 平台入口已经处理历史、评论交接等副作用，这里只转移页面归属。
+                detailNavController.navigate(directReadingDestination)
             }
         }
-        Scaffold(
-            modifier = listPaneModifier
-                .testTag("list_pane")
-                .nestedScroll(bottomBarScrollConnection),
-            floatingActionButton = {
-                AnimatedVisibility(
-                    visible = isReadingPlayerExpanded,
-                    enter = fadeIn(tween(220)) + scaleIn(tween(220), initialScale = 0.92f),
-                    exit = fadeOut(tween(160)) + scaleOut(tween(160), targetScale = 0.92f),
-                ) {
-                    ReadingPlayerBar(
-                        state = readingPlayerState,
-                        onPrevious = readingPlayer::playPrevious,
-                        onTogglePlayPause = readingPlayer::togglePlayPause,
-                        onNext = readingPlayer::playNext,
-                        onStop = readingPlayer::stop,
-                        onOpenQueue = { showReadingQueue = true },
-                        onPlaybackSpeedChange = { speed ->
-                            saveReadingPlaybackSpeed(settings, speed)
-                            readingPlayer.setPlaybackSpeed(speed)
-                        },
-                        onBackgroundInteraction = {
-                            if (!isOnReadingDetail) isReadingPlayerExpandedByUser = false
-                        },
-                        modifier = Modifier
-                            .onSizeChanged { readingPlayerHeightPx = it.height }
-                            .graphicsLayer {
-                                translationY = readingPlayerOverlayOffsetState.verticalOffsetPx
-                            },
-                    )
-                }
-            },
-            floatingActionButtonPosition = FabPosition.Center,
-            bottomBar = {
-                if (showMainNavigationBar && navEntry != null) {
-                    // 页面切换时重置底部导航栏可见状态
-                    LaunchedEffect(navEntry) { isBottomBarVisible = true }
-                    val currentBottomDestination = mainTabPages
-                        .getOrNull(mainPagerState.targetPage)
-                        ?.bottomDestination
-                    AnimatedVisibility(
-                        visible = showMainNavigation && (!autoHideBottomBar || isBottomBarVisible),
-                        enter = slideInVertically(tween(200)) { it },
-                        exit = slideOutVertically(tween(200)) { it },
-                    ) {
-                        NavigationBar(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            modifier = Modifier.height(
-                                64.dp + bottomPadding,
-                            ),
-                        ) {
-                            @Composable
-                            fun Item(
-                                destination: TopLevelDestination,
-                                label: String,
-                                icon: ImageVector,
+        if (showListDetail || !showDetailPane) {
+            paneStateHolder.SaveableStateProvider("list") {
+                Scaffold(
+                    modifier = listPaneModifier
+                        .testTag("list_pane")
+                        .nestedScroll(bottomBarScrollConnection),
+                    bottomBar = {
+                        if (showMainNavigationBar && navEntry != null) {
+                            // 页面切换时重置底部导航栏可见状态
+                            LaunchedEffect(navEntry) { isBottomBarVisible = true }
+                            val currentBottomDestination = mainTabPages
+                                .getOrNull(mainPagerState.targetPage)
+                                ?.bottomDestination
+                            AnimatedVisibility(
+                                visible = showMainNavigation && (!autoHideBottomBar || isBottomBarVisible),
+                                enter = slideInVertically(tween(200)) { it },
+                                exit = slideOutVertically(tween(200)) { it },
                             ) {
-                                val tag = "nav_tab_${destination.name.lowercase()}"
-                                NavigationBarItem(
-                                    currentBottomDestination?.let { it::class == destination::class } == true,
-                                    onClick = {
-                                        isReadingPlayerExpandedByUser = false
-                                        if (currentBottomDestination?.let { it::class == destination::class } != true) {
-                                            navigateTopLevel(destination)
-                                        } else if (tapToScrollToTopEnabled) {
-                                            scrollToTopTrigger++
-                                        }
-                                    },
-                                    label = { Text(label) },
-                                    alwaysShowLabel = true,
-                                    colors = if (!isDarkTheme) {
-                                        NavigationBarItemDefaults.colors().copy(
-                                            selectedIndicatorColor =
-                                                MaterialTheme.colorScheme.secondaryContainer
-                                                    .copy(alpha = 0.92f)
-                                                    .compositeOver(MaterialTheme.colorScheme.secondary),
-                                        )
-                                    } else {
-                                        NavigationBarItemDefaults.colors()
-                                    },
-                                    icon = {
-                                        Icon(icon, contentDescription = label)
-                                    },
-                                    modifier = Modifier.padding(top = 4.dp).testTag(tag),
-                                )
-                            }
-
-                            bottomBarItems.forEach { item ->
-                                Item(item.first, item.second, item.third)
-                            }
-                        }
-                    }
-                }
-            },
-        ) { innerPadding ->
-            CompositionLocalProvider(
-                LocalArticleNavController provides navController,
-                LocalNavigator provides Navigator(
-                    onNavigate = { destination ->
-                        if (
-                            useSecondaryContentNavigation &&
-                            (
-                                destination.isDetailPaneDestination() ||
-                                    (currentMainTabDestination == Account && destination.isAccountDetailDestination())
-                            )
-                        ) {
-                            openListDetail(destination)
-                        } else {
-                            navigate(destination)
-                        }
-                    },
-                    onNavigateBack = navController::popBackStack,
-                    onNavigateTopLevel = ::navigateTopLevel,
-                ),
-                LocalReadingPlayerOverlayPadding provides readingPlayerOverlayPadding,
-                LocalReadingPlayerOverlayOffsetState provides readingPlayerOverlayOffsetState,
-                LocalSelectedContentDestination provides selectedContentDestination,
-            ) {
-                NavHost(
-                    navController,
-                    modifier = Modifier.pointerInput(Unit) {
-                        while (true) {
-                            awaitPointerEventScope {
-                                awaitFirstDown(
-                                    requireUnconsumed = false,
-                                    pass = PointerEventPass.Initial,
-                                )
-                                while (
-                                    awaitPointerEvent(PointerEventPass.Final)
-                                        .changes
-                                        .any { it.pressed }
+                                NavigationBar(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    modifier = Modifier.height(
+                                        64.dp + bottomPadding,
+                                    ),
                                 ) {
-                                    // 等手势完成后再重组，避免取消同一次背景点击或滚动。
+                                    @Composable
+                                    fun Item(
+                                        destination: TopLevelDestination,
+                                        label: String,
+                                        icon: ImageVector,
+                                    ) {
+                                        val tag = "nav_tab_${destination.name.lowercase()}"
+                                        NavigationBarItem(
+                                            currentBottomDestination?.let { it::class == destination::class } == true,
+                                            onClick = {
+                                                isReadingPlayerExpandedByUser = false
+                                                if (currentBottomDestination?.let { it::class == destination::class } != true) {
+                                                    navigateTopLevel(destination)
+                                                } else if (tapToScrollToTopEnabled) {
+                                                    scrollToTopTrigger++
+                                                }
+                                            },
+                                            label = { Text(label) },
+                                            alwaysShowLabel = true,
+                                            colors = if (!isDarkTheme) {
+                                                NavigationBarItemDefaults.colors().copy(
+                                                    selectedIndicatorColor =
+                                                        MaterialTheme.colorScheme.secondaryContainer
+                                                            .copy(alpha = 0.92f)
+                                                            .compositeOver(MaterialTheme.colorScheme.secondary),
+                                                )
+                                            } else {
+                                                NavigationBarItemDefaults.colors()
+                                            },
+                                            icon = {
+                                                Icon(icon, contentDescription = label)
+                                            },
+                                            modifier = Modifier.padding(top = 4.dp).testTag(tag),
+                                        )
+                                    }
+
+                                    bottomBarItems.forEach { item ->
+                                        Item(item.first, item.second, item.third)
+                                    }
                                 }
                             }
-                            if (shouldCompactPlayerOnBackgroundInteraction) {
-                                delay(100)
-                                isReadingPlayerExpandedByUser = false
-                            }
                         }
                     },
-                    startDestination = MainTabs,
-                    enterTransition = {
-                        slideInHorizontally(tween(300)) { it }
-                    },
-                    exitTransition = {
-                        ExitTransition.None
-                    },
-                    popEnterTransition = {
-                        EnterTransition.None
-                    },
-                    popExitTransition = {
-                        slideOutHorizontally(tween(300)) { it } + fadeOut(tween(300))
-                    },
-                ) {
-                    composable<MainTabs> {
-                        MainTabsPager(
-                            pagerState = mainPagerState,
-                            pages = mainTabPages,
-                            scrollToTopTrigger = scrollToTopTrigger,
-                            innerPadding = innerPadding,
-                            collectionDirectBrowseEnabled = collectionDirectBrowseEnabled,
-                            showHomeTopActions = showHomeTopActions,
-                        )
-                    }
-                    composable<Login> {
-                        LoginScreen(
-                            onLoginComplete = { navController.popBackStack() },
-                            onOpenTelemetrySettings = {
-                                navController.navigate(Account.SystemAndUpdateSettings("allowTelemetry"))
+                ) { innerPadding ->
+                    CompositionLocalProvider(
+                        LocalLifecycleOwner provides listLifecycleOwner,
+                        LocalArticleNavController provides navController,
+                        LocalNavigator provides Navigator(
+                            onNavigate = { destination ->
+                                if (
+                                    useSecondaryContentNavigation &&
+                                    (
+                                        destination.isDetailPaneDestination() ||
+                                            (showListDetail && currentMainTabDestination == Account && destination.isAccountDetailDestination())
+                                    )
+                                ) {
+                                    openListDetail(destination)
+                                } else {
+                                    navigate(destination)
+                                }
                             },
-                        )
-                    }
-                    composable<Question> { navEntry ->
-                        val question: Question = navEntry.toRoute()
-                        QuestionScreen(question)
-                    }
-                    composable<Topic> { navEntry ->
-                        TopicScreen(navEntry.toRoute())
-                    }
-                    composable<WriteAnswer> { navEntry ->
-                        val args: WriteAnswer = navEntry.toRoute()
-                        WriteAnswerScreen(args)
-                    }
-                    composable<WritePin> { navEntry ->
-                        WritePinScreen(navEntry.toRoute())
-                    }
-                    composable<Article>(
-                        typeMap = mapOf(typeOf<ArticleType>() to ArticleTypeNavType),
-                        enterTransition = articleEnterTransition,
-                        exitTransition = articleExitTransition,
-                    ) { navEntry ->
-                        val article: Article = navEntry.toRoute()
-                        articleContent(article, navEntry)
-                    }
-                    composable<HotList> {
-                        HotListScreen(innerPadding)
-                    }
-                    composable<Follow> {
-                        FollowScreen(
-                            scrollToTopTrigger = scrollToTopTrigger,
-                            innerPadding = innerPadding,
-                            parentPagerState = mainPagerState,
-                        )
-                    }
-                    composable<Daily> {
-                        DailyScreen()
-                    }
-                    composable<History> {
-                        LegacyLocalHistoryScreen(innerPadding)
-                    }
-                    composable<OnlineHistory> {
-                        OnlineHistoryScreen()
-                    }
-                    composable<Account> {
-                        AccountSettingScreen(innerPadding)
-                    }
-                    composable<Search>(
-                        enterTransition = {
-                            if (initialState.destination.hasRoute<Search>()) {
-                                EnterTransition.None
-                            } else {
-                                fadeIn(animationSpec = tween(durationMillis = 240)) +
-                                    slideInVertically(animationSpec = tween(durationMillis = 280)) { it / 16 } +
-                                    scaleIn(
-                                        animationSpec = tween(durationMillis = 280),
-                                        initialScale = 0.985f,
-                                    )
-                            }
-                        },
-                        popExitTransition = {
-                            if (targetState.destination.hasRoute<Search>()) {
+                            onNavigateBack = navController::popBackStack,
+                            onNavigateTopLevel = ::navigateTopLevel,
+                        ),
+                        LocalReadingPlayerOverlayPadding provides readingPlayerOverlayPadding,
+                        LocalReadingPlayerOverlayOffsetState provides readingPlayerOverlayOffsetState,
+                        LocalSelectedContentDestination provides selectedContentDestination,
+                    ) {
+                        NavHost(
+                            navController,
+                            modifier = Modifier.pointerInput(Unit) {
+                                while (true) {
+                                    awaitPointerEventScope {
+                                        awaitFirstDown(
+                                            requireUnconsumed = false,
+                                            pass = PointerEventPass.Initial,
+                                        )
+                                        while (
+                                            awaitPointerEvent(PointerEventPass.Final)
+                                                .changes
+                                                .any { it.pressed }
+                                        ) {
+                                            // 等手势完成后再重组，避免取消同一次背景点击或滚动。
+                                        }
+                                    }
+                                    if (shouldCompactPlayerOnBackgroundInteraction) {
+                                        delay(100)
+                                        isReadingPlayerExpandedByUser = false
+                                    }
+                                }
+                            },
+                            startDestination = MainTabs,
+                            enterTransition = {
+                                slideInHorizontally(tween(300)) { it }
+                            },
+                            exitTransition = {
                                 ExitTransition.None
-                            } else {
-                                fadeOut(animationSpec = tween(durationMillis = 180)) +
-                                    slideOutVertically(animationSpec = tween(durationMillis = 220)) { it / 20 } +
-                                    scaleOut(
-                                        animationSpec = tween(durationMillis = 220),
-                                        targetScale = 0.985f,
-                                    )
+                            },
+                            popEnterTransition = {
+                                EnterTransition.None
+                            },
+                            popExitTransition = {
+                                slideOutHorizontally(tween(300)) { it } + fadeOut(tween(300))
+                            },
+                        ) {
+                            composable<MainTabs> {
+                                MainTabsPager(
+                                    pagerState = mainPagerState,
+                                    pages = mainTabPages,
+                                    scrollToTopTrigger = scrollToTopTrigger,
+                                    innerPadding = innerPadding,
+                                    collectionDirectBrowseEnabled = collectionDirectBrowseEnabled,
+                                    showHomeTopActions = showHomeTopActions,
+                                )
                             }
-                        },
-                    ) { navEntry ->
-                        val search: Search = navEntry.toRoute()
-                        SearchScreen(search)
-                    }
-                    composable<Collections> { navEntry ->
-                        val data: Collections = navEntry.toRoute()
-                        CollectionScreen(
-                            urlToken = data.userToken,
-                            contentPadding = innerPadding,
-                        )
-                    }
-                    composable<CollectionContent> { navEntry ->
-                        val content: CollectionContent = navEntry.toRoute()
-                        CollectionContentScreen(content.collectionId)
-                    }
-                    composable<Person> { navEntry ->
-                        val person: Person = navEntry.toRoute()
-                        PeopleScreen(person)
-                    }
-                    composable<Pin> { navEntry ->
-                        val pin: Pin = navEntry.toRoute()
-                        PinScreen(pin)
-                    }
-                    composable<Account.RecommendSettings.Blocklist> {
-                        BlocklistSettingsScreen(blocklistSettingsNlpContent)
-                    }
-                    composable<Account.RecommendSettings.BlockedFeedHistory> {
-                        BlockedFeedHistoryScreen()
-                    }
-                    composable<Notification> {
-                        NotificationScreen()
-                    }
-                    composable<Notification.Entry> { navEntry ->
-                        val entry: Notification.Entry = navEntry.toRoute()
-                        NotificationTimelineScreen(entry.entryName, entry.title)
-                    }
-                    composable<Notification.Invitations> {
-                        NotificationTimelineScreen("invite", "邀请回答")
-                    }
-                    composable<Notification.Message> { navEntry ->
-                        PrivateMessageScreen(navEntry.toRoute())
-                    }
-                    composable<Notification.NotificationSettings> { navEntry ->
-                        NotificationSettingsScreen(
-                            setting = navEntry.toRoute<Notification.NotificationSettings>().setting,
-                        )
-                    }
-                    composable<SentenceSimilarityTest> {
-                        sentenceSimilarityContent()
-                    }
-                    composable<Account.AppearanceSettings> { navEntry ->
-                        val args = navEntry.toRoute<Account.AppearanceSettings>()
-                        AppearanceSettingsScreen(
-                            setting = args.setting,
-                            onExit = reloadBottomBarPreferences,
-                        )
-                    }
-                    composable<Account.RecommendSettings> { navEntry ->
-                        val args = navEntry.toRoute<Account.RecommendSettings>()
-                        ContentFilterSettingsScreen(args.setting)
-                    }
-                    composable<Account.IdentityManagement> {
-                        IdentityManagementScreen()
-                    }
-                    composable<Account.SystemAndUpdateSettings> { navEntry ->
-                        SystemAndUpdateSettingsScreen(
-                            setting = navEntry.toRoute<Account.SystemAndUpdateSettings>().setting,
-                        )
-                    }
-                    composable<Account.ReadingSettings> {
-                        ReadingSettingsScreen()
-                    }
-                    composable<Account.SettingsSearch> {
-                        SettingsSearchScreen()
-                    }
-                    composable<Account.OpenSourceLicenses> {
-                        OpenSourceLicensesScreen()
-                    }
-                    composable<Account.DeveloperSettings> {
-                        DeveloperSettingsScreen()
-                    }
-                    composable<Account.DeveloperSettings.ColorScheme> {
-                        ColorSchemeScreen()
+                            composable<Login> {
+                                LoginScreen(
+                                    onLoginComplete = { navController.popBackStack() },
+                                    onOpenTelemetrySettings = {
+                                        navController.navigate(Account.SystemAndUpdateSettings("allowTelemetry"))
+                                    },
+                                )
+                            }
+                            composable<Question> { navEntry ->
+                                val question: Question = navEntry.toRoute()
+                                QuestionScreen(question)
+                            }
+                            composable<Topic> { navEntry ->
+                                TopicScreen(navEntry.toRoute())
+                            }
+                            composable<WriteAnswer> { navEntry ->
+                                val args: WriteAnswer = navEntry.toRoute()
+                                WriteAnswerScreen(args)
+                            }
+                            composable<WritePin> { navEntry ->
+                                WritePinScreen(navEntry.toRoute())
+                            }
+                            composable<Article>(
+                                typeMap = mapOf(typeOf<ArticleType>() to ArticleTypeNavType),
+                                enterTransition = articleEnterTransition,
+                                exitTransition = articleExitTransition,
+                            ) { navEntry ->
+                                val article: Article = navEntry.toRoute()
+                                // 启用自适应导航时由 effect 转交详情栈，不创建会抢先消费一次性交接数据的临时页面。
+                                if (!enableLandscapeListDetail) articleContent(article, navEntry)
+                            }
+                            composable<HotList> {
+                                HotListScreen(innerPadding)
+                            }
+                            composable<Follow> {
+                                FollowScreen(
+                                    scrollToTopTrigger = scrollToTopTrigger,
+                                    innerPadding = innerPadding,
+                                    parentPagerState = mainPagerState,
+                                )
+                            }
+                            composable<Daily> {
+                                DailyScreen()
+                            }
+                            composable<History> {
+                                LegacyLocalHistoryScreen(innerPadding)
+                            }
+                            composable<OnlineHistory> {
+                                OnlineHistoryScreen()
+                            }
+                            composable<Account> {
+                                AccountSettingScreen(innerPadding)
+                            }
+                            composable<Search>(
+                                enterTransition = {
+                                    if (initialState.destination.hasRoute<Search>()) {
+                                        EnterTransition.None
+                                    } else {
+                                        fadeIn(animationSpec = tween(durationMillis = 240)) +
+                                            slideInVertically(animationSpec = tween(durationMillis = 280)) { it / 16 } +
+                                            scaleIn(
+                                                animationSpec = tween(durationMillis = 280),
+                                                initialScale = 0.985f,
+                                            )
+                                    }
+                                },
+                                popExitTransition = {
+                                    if (targetState.destination.hasRoute<Search>()) {
+                                        ExitTransition.None
+                                    } else {
+                                        fadeOut(animationSpec = tween(durationMillis = 180)) +
+                                            slideOutVertically(animationSpec = tween(durationMillis = 220)) { it / 20 } +
+                                            scaleOut(
+                                                animationSpec = tween(durationMillis = 220),
+                                                targetScale = 0.985f,
+                                            )
+                                    }
+                                },
+                            ) { navEntry ->
+                                val search: Search = navEntry.toRoute()
+                                SearchScreen(search)
+                            }
+                            composable<Collections> { navEntry ->
+                                val data: Collections = navEntry.toRoute()
+                                CollectionScreen(
+                                    urlToken = data.userToken,
+                                    contentPadding = innerPadding,
+                                )
+                            }
+                            composable<CollectionContent> { navEntry ->
+                                val content: CollectionContent = navEntry.toRoute()
+                                CollectionContentScreen(content.collectionId)
+                            }
+                            composable<Person> { navEntry ->
+                                val person: Person = navEntry.toRoute()
+                                PeopleScreen(person)
+                            }
+                            composable<Pin> { navEntry ->
+                                val pin: Pin = navEntry.toRoute()
+                                if (!enableLandscapeListDetail) PinScreen(pin)
+                            }
+                            accountSettings(reloadBottomBarPreferences, blocklistSettingsNlpContent)
+                            composable<Notification> {
+                                NotificationScreen()
+                            }
+                            composable<Notification.Entry> { navEntry ->
+                                val entry: Notification.Entry = navEntry.toRoute()
+                                NotificationTimelineScreen(entry.entryName, entry.title)
+                            }
+                            composable<Notification.Invitations> {
+                                NotificationTimelineScreen("invite", "邀请回答")
+                            }
+                            composable<Notification.Message> { navEntry ->
+                                PrivateMessageScreen(navEntry.toRoute())
+                            }
+                            composable<Notification.NotificationSettings> { navEntry ->
+                                NotificationSettingsScreen(
+                                    setting = navEntry.toRoute<Notification.NotificationSettings>().setting,
+                                )
+                            }
+                            composable<SentenceSimilarityTest> {
+                                sentenceSimilarityContent()
+                            }
+                        }
                     }
                 }
             }
         }
 
-        when {
-            showListDetail -> Row(Modifier.fillMaxSize()) {
-                Spacer(Modifier.width(listPaneWidth))
-                ListDetailDivider(
-                    onDrag = { deltaPx ->
-                        val usableWidthPx = with(density) {
-                            (containerWidth - LIST_DETAIL_DIVIDER_WIDTH).toPx()
-                        }
-                        if (usableWidthPx > 0f) {
-                            listPaneRatio = (listPaneRatio + deltaPx / usableWidthPx).coerceIn(0f, 1f)
-                        }
-                    },
-                    onAdjustBy = { ratioDelta ->
-                        listPaneRatio = (listPaneRatio + ratioDelta).coerceIn(0f, 1f)
-                    },
-                    onDragStopped = {
-                        val normalizedWidth = normalizedListPaneWidth(containerWidth, listPaneRatio)
-                        listPaneRatio = normalizedWidth.value /
-                            (containerWidth - LIST_DETAIL_DIVIDER_WIDTH).value
-                        settings.putFloat(LANDSCAPE_LIST_PANE_RATIO_KEY, listPaneRatio)
-                    },
-                )
-                DetailPane(Modifier.weight(1f).fillMaxSize())
+        if (showListDetail || showDetailPane || detailEntry == null) {
+            paneStateHolder.SaveableStateProvider("detail") {
+                // 尺寸变化只调整同一宿主的布局；隐藏时保存整个导航子树，独立弹窗也随页面离开组合。
+                Row(if (showListDetail || showDetailPane) Modifier.fillMaxSize() else Modifier.size(0.dp)) {
+                    if (showListDetail) {
+                        Spacer(Modifier.width(listPaneWidth))
+                        ListDetailDivider(
+                            onDrag = { deltaPx ->
+                                val usableWidthPx = with(density) {
+                                    (containerWidth - LIST_DETAIL_DIVIDER_WIDTH).toPx()
+                                }
+                                if (usableWidthPx > 0f) {
+                                    listPaneRatio = (listPaneRatio + deltaPx / usableWidthPx).coerceIn(0f, 1f)
+                                }
+                            },
+                            onAdjustBy = { ratioDelta ->
+                                listPaneRatio = (listPaneRatio + ratioDelta).coerceIn(0f, 1f)
+                            },
+                            onDragStopped = {
+                                val normalizedWidth = normalizedListPaneWidth(containerWidth, listPaneRatio)
+                                listPaneRatio = normalizedWidth.value /
+                                    (containerWidth - LIST_DETAIL_DIVIDER_WIDTH).value
+                                settings.putFloat(LANDSCAPE_LIST_PANE_RATIO_KEY, listPaneRatio)
+                            },
+                        )
+                    }
+                    DetailPane(Modifier.weight(1f).fillMaxSize())
+                }
             }
-            showDetailPane -> DetailPane(Modifier.fillMaxSize())
-            !hasOpenDetail -> Box(Modifier.size(0.dp)) {
-                DetailPane(Modifier.fillMaxSize())
-            }
+        }
+
+        AnimatedVisibility(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(
+                    start = if (showListDetail && showDetailPane) listPaneWidth + LIST_DETAIL_DIVIDER_WIDTH else 0.dp,
+                    bottom = bottomPadding + 16.dp + if (
+                        !showDetailPane && showMainNavigation && showMainNavigationBar && (!autoHideBottomBar || isBottomBarVisible)
+                    ) {
+                        64.dp
+                    } else {
+                        0.dp
+                    },
+                ).fillMaxWidth(),
+            visible = isReadingPlayerExpanded,
+            enter = fadeIn(tween(220)) + scaleIn(tween(220), initialScale = 0.92f),
+            exit = fadeOut(tween(160)) + scaleOut(tween(160), targetScale = 0.92f),
+        ) {
+            ReadingPlayerBar(
+                state = readingPlayerState,
+                onPrevious = readingPlayer::playPrevious,
+                onTogglePlayPause = readingPlayer::togglePlayPause,
+                onNext = readingPlayer::playNext,
+                onStop = readingPlayer::stop,
+                onOpenQueue = { showReadingQueue = true },
+                onPlaybackSpeedChange = { speed ->
+                    saveReadingPlaybackSpeed(settings, speed)
+                    readingPlayer.setPlaybackSpeed(speed)
+                },
+                onBackgroundInteraction = {
+                    if (!isOnReadingDetail) isReadingPlayerExpandedByUser = false
+                },
+                modifier = Modifier
+                    .onSizeChanged { readingPlayerHeightPx = it.height }
+                    .graphicsLayer {
+                        translationY = readingPlayerOverlayOffsetState.verticalOffsetPx
+                    },
+            )
         }
 
         AnimatedVisibility(
@@ -993,37 +938,7 @@ fun ZhihuMain(
                     readingPlayer.playAt(index)
                 }
                 showReadingQueue = false
-                val destination = item.toDestination(readingPlayerState.sourceId)
-                val currentDestination = when {
-                    detailEntry?.destination?.hasRoute<Article>() == true -> runCatching {
-                        detailEntry?.toRoute<Article>()
-                    }.getOrNull()
-                    detailEntry?.destination?.hasRoute<Pin>() == true -> runCatching {
-                        detailEntry?.toRoute<Pin>()
-                    }.getOrNull()
-                    detailEntry?.destination?.hasRoute<Question>() == true -> runCatching {
-                        detailEntry?.toRoute<Question>()
-                    }.getOrNull()
-                    navEntry?.destination?.hasRoute<Article>() == true -> runCatching {
-                        navEntry?.toRoute<Article>()
-                    }.getOrNull()
-                    navEntry?.destination?.hasRoute<Pin>() == true -> runCatching {
-                        navEntry?.toRoute<Pin>()
-                    }.getOrNull()
-                    navEntry?.destination?.hasRoute<Question>() == true -> runCatching {
-                        navEntry?.toRoute<Question>()
-                    }.getOrNull()
-                    else -> null
-                }
-                if (currentDestination != destination) {
-                    if (hasOpenDetail) {
-                        if (currentDestination != null) detailNavController.popBackStack()
-                        navigateContent(destination, detailNavController)
-                    } else {
-                        if (currentDestination != null) navController.popBackStack()
-                        navigate(destination)
-                    }
-                }
+                openReadingDestination(item.toDestination(readingPlayerState.sourceId))
             },
             onOpenSettings = {
                 showReadingQueue = false
@@ -1138,6 +1053,7 @@ internal fun NavBackStackEntry?.hasRoute(cls: KClass<out NavDestination>): Boole
 private fun NavBackStackEntry?.readingDestinationOrNull(): NavDestination? = when {
     this?.destination?.hasRoute<Article>() == true -> runCatching { toRoute<Article>() }.getOrNull()
     this?.destination?.hasRoute<Pin>() == true -> runCatching { toRoute<Pin>() }.getOrNull()
+    this?.destination?.hasRoute<Question>() == true -> runCatching { toRoute<Question>() }.getOrNull()
     else -> null
 }
 
@@ -1160,7 +1076,6 @@ private fun NavDestination.isAccountDetailDestination(): Boolean = when (this) {
 private fun NavBackStackEntry?.isListPaneDestination(): Boolean = when {
     this == null -> false
     destination.hasRoute<MainTabs>() -> true
-    destination.hasRoute<Account>() -> true
     destination.hasRoute<Search>() -> true
     destination.hasRoute<History>() -> true
     destination.hasRoute<Collections>() -> true
@@ -1173,4 +1088,50 @@ private fun NavBackStackEntry?.isListPaneDestination(): Boolean = when {
     destination.hasRoute<Notification.Invitations>() -> true
     destination.hasRoute<Account.RecommendSettings.BlockedFeedHistory>() -> true
     else -> false
+}
+
+private fun NavGraphBuilder.accountSettings(
+    reloadPreferences: () -> Unit,
+    nlpContent: @Composable (onNavigateBack: () -> Unit) -> Unit,
+) {
+    composable<Account.RecommendSettings.Blocklist> {
+        BlocklistSettingsScreen(nlpContent)
+    }
+    composable<Account.RecommendSettings.BlockedFeedHistory> {
+        BlockedFeedHistoryScreen()
+    }
+    composable<Account.AppearanceSettings> { entry ->
+        val args = entry.toRoute<Account.AppearanceSettings>()
+        AppearanceSettingsScreen(
+            setting = args.setting,
+            onExit = reloadPreferences,
+        )
+    }
+    composable<Account.RecommendSettings> { entry ->
+        val args = entry.toRoute<Account.RecommendSettings>()
+        ContentFilterSettingsScreen(args.setting)
+    }
+    composable<Account.IdentityManagement> {
+        IdentityManagementScreen()
+    }
+    composable<Account.SystemAndUpdateSettings> { entry ->
+        SystemAndUpdateSettingsScreen(
+            setting = entry.toRoute<Account.SystemAndUpdateSettings>().setting,
+        )
+    }
+    composable<Account.ReadingSettings> {
+        ReadingSettingsScreen()
+    }
+    composable<Account.SettingsSearch> {
+        SettingsSearchScreen()
+    }
+    composable<Account.OpenSourceLicenses> {
+        OpenSourceLicensesScreen()
+    }
+    composable<Account.DeveloperSettings> {
+        DeveloperSettingsScreen()
+    }
+    composable<Account.DeveloperSettings.ColorScheme> {
+        ColorSchemeScreen()
+    }
 }

@@ -109,7 +109,7 @@ class MainActivity : ComponentActivity() {
             .client
             .httpClient()
 
-    /** Primary NavHost used for the activity's main tabs and the default content pane. */
+    /** 主返回栈控制器，承载 MainTabs 主壳和单栏页面。 */
     lateinit var navController: NavHostController
     private lateinit var continuousUsageReminderManager: ContinuousUsageReminderManager
     private val pageTurnDispatcher = PageTurnDispatcher()
@@ -398,28 +398,27 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * Navigates through the activity's primary NavHost, optionally replacing the current popup route.
+     * 通过主返回栈打开页面；popup 可替换当前外部跳转页面。
      *
-     * @param route destination to open
-     * @param popup whether the destination is a popup that can replace the current popup entry
+     * @param route 要打开的页面
+     * @param popup 是否替换当前外部跳转页面
      */
     fun navigate(route: NavDestination, popup: Boolean = false) {
         navigate(route, navController, popup)
     }
 
     /**
-     * Navigates through [targetController], which may be the secondary landscape detail NavHost.
+     * 通过 [targetController] 打开页面；分屏时该控制器属于右侧详情栏。
      *
-     * @param route destination to open in the selected content pane
-     * @param targetController NavHost that owns the destination's back stack
+     * @param route 要在目标栏中打开的页面
+     * @param targetController 持有目标页面返回栈的控制器
      */
     fun navigateIn(route: NavDestination, targetController: NavHostController) {
         navigate(route, targetController, popup = false)
     }
 
     /**
-     * Routes a destination through the requested NavHost. The primary controller owns top-level
-     * tabs, while a secondary controller owns content displayed beside a list on large screens.
+     * 通过指定返回栈打开页面。主控制器承载主壳和列表，详情控制器承载大屏右侧内容。
      */
     private fun navigate(
         route: NavDestination,
@@ -490,6 +489,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** [sourceController] 提供触发导航的来源页面，用于记录内容打开来源。 */
     private fun preparePendingContentOpen(
         target: NavDestination,
         sourceController: NavHostController,
@@ -525,7 +525,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /** Reads the content-open source from the selected NavHost, including the secondary detail pane. */
+    /** 从指定返回栈的当前页面读取内容打开来源，支持右侧详情栏。 */
     private fun currentContentOpenSource(controller: NavHostController = navController): NavDestination? {
         val currentEntry = controller.currentBackStackEntry
         return runCatching {
