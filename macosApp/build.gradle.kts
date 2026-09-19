@@ -17,6 +17,7 @@
 
 import buildlogic.ValidateAndSignMacosApp
 import org.apache.tools.ant.filters.ReplaceTokens
+import org.gradle.api.tasks.Exec
 import org.gradle.api.tasks.Sync
 
 plugins {
@@ -123,6 +124,14 @@ listOf("Debug", "Release").forEach { buildType ->
                 ),
             )
         }
+
+    if (buildType == "Debug") {
+        tasks.named<Exec>("runDebugExecutableMacosArm64") {
+            dependsOn(syncApp)
+            executable = appDirectory.get().file("Contents/MacOS/ZhihuPlusPlus").asFile.absolutePath
+        }
+    }
+
     tasks.register("package${buildType}MacosApp") {
         dependsOn(validateAndSignApp)
     }
