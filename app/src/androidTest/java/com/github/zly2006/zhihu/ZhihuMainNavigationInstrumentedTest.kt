@@ -44,6 +44,7 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -413,7 +414,11 @@ class ZhihuMainNavigationInstrumentedTest {
             composeRule.onNodeWithTag("reading_player_queue").performTouchInput { click() }
             composeRule.onNodeWithTag("reading_queue_sheet").assertIsDisplayed()
             Espresso.pressBack()
-            composeRule.onNodeWithTag("reading_queue_sheet").assertDoesNotExist()
+            composeRule.waitUntil(timeoutMillis = 5_000) {
+                composeRule.onAllNodesWithTag("reading_queue_sheet")
+                    .fetchSemanticsNodes(atLeastOneRootRequired = false)
+                    .isEmpty()
+            }
             composeRule.runOnIdle { AndroidReadingPlayerBridge.publish(player.copy(currentIndex = 1)) }
             composeRule.onNodeWithTag(QUESTION_SCREEN_LIST_TAG).assertIsDisplayed()
             composeRule.runOnIdle {
