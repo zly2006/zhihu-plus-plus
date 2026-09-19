@@ -121,6 +121,7 @@ import com.github.zly2006.zhihu.viewmodel.feed.SearchViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.ZHIHU_HOT_SEARCH_URL
 import com.github.zly2006.zhihu.viewmodel.feed.fetchSearchSuggest
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
@@ -161,7 +162,7 @@ private fun saveSearchHistory(
  * 页面由搜索输入框、热搜/历史建议和结果列表组成。空查询时是否显示热搜、是否记录并展示搜索历史分别由
  * `showSearchHotSearch` 和 `showSearchHistory` 控制；执行搜索后会进入分页结果模式，并通过 [LocalNavigator] 打开条目详情。
  */
-@OptIn(ExperimentalMaterial3Api::class, FlowPreview::class)
+@OptIn(ExperimentalMaterial3Api::class, FlowPreview::class, ExperimentalCoroutinesApi::class)
 @Composable
 fun SearchScreen(
     search: Search,
@@ -245,12 +246,13 @@ fun SearchScreen(
 
     val suggestItems = remember { mutableStateListOf<SearchSuggestItem>() }
 
-    // 输入防抖后拉取搜索建议词；query 为空、未变化或单次请求失败时静默清空回落到热搜/历史。
-    LaunchedEffect(Unit) {
+    // 仅在初始搜索页拉取建议词；结果页和用户创作搜索不展示建议，也不发送请求。
+    LaunchedEffect(viewModel.searchQuery, isMemberSearch) {
+        if (viewModel.searchQuery.isNotEmpty() || isMemberSearch) return@LaunchedEffect
         snapshotFlow { searchText }
             .debounce(300)
             .mapLatest { text ->
-                if (text.isBlank() || isMemberSearch) emptyList() else fetchSearchSuggest(paginationEnvironment, text.trim())
+                if (text.isBlank()) emptyList() else fetchSearchSuggest(paginationEnvironment, text.trim())
             }.collectLatest { items ->
                 suggestItems.clear()
                 suggestItems.addAll(items)
