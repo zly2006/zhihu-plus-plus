@@ -34,6 +34,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.github.zly2006.zhihu.account.defaultNativeAccountStore
@@ -65,6 +66,7 @@ import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEM_ORDER_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.subscreens.LANDSCAPE_LIST_DETAIL_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.START_DESTINATION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.bottomBarItemOrderFromPreference
 import com.github.zly2006.zhihu.ui.subscreens.defaultBottomBarSelectionKeys
@@ -86,6 +88,7 @@ import kotlinx.coroutines.withContext
  */
 @Composable
 fun MacosZhihuMain(windowChrome: MacosWindowChromeHost? = null) {
+    /** 主返回栈控制器，承载 MainTabs 主壳和单栏页面。 */
     val navController = rememberNavController()
     val accountStore = defaultNativeAccountStore
     val accounts by accountStore.accountsState.collectAsState()
@@ -109,8 +112,13 @@ fun MacosZhihuMain(windowChrome: MacosWindowChromeHost? = null) {
         }
     }
 
-    fun currentContentOpenSource(): NavDestination? {
-        val currentEntry = navController.currentBackStackEntry
+    /**
+     * 从指定返回栈的当前页面读取内容打开来源，支持右侧详情栏。
+     *
+     * @param controller 提供来源页面的返回栈控制器
+     */
+    fun currentContentOpenSource(controller: NavHostController = navController): NavDestination? {
+        val currentEntry = controller.currentBackStackEntry
         return runCatching {
             currentEntry?.toRoute<Article>()
         }.getOrNull() ?: runCatching {
@@ -126,18 +134,19 @@ fun MacosZhihuMain(windowChrome: MacosWindowChromeHost? = null) {
         }.getOrNull()
     }
 
-    fun navigate(route: NavDestination) {
+    /**
+     * 通过 [targetController] 指定的主返回栈或详情返回栈打开 [route]。
+     *
+     * @param route 要打开的页面
+     * @param targetController 持有目标页面返回栈的控制器
+     */
+    fun navigate(route: NavDestination, targetController: NavHostController = navController) {
         when (route) {
-            History -> navController.navigate(route)
-            is TopLevelDestination -> {
-                mainTabNavigationTarget = route
-                navigateToMainTabs()
-            }
             is Video -> {
                 val current = runCatching {
-                    navController.currentBackStackEntry?.toRoute<Article>()
+                    targetController.currentBackStackEntry?.toRoute<Article>()
                 }.getOrNull() ?: runCatching {
-                    navController.currentBackStackEntry?.toRoute<Question>()
+                    targetController.currentBackStackEntry?.toRoute<Question>()
                 }.getOrNull()
                 if (current == null) {
                     userMessages.showMessage("无法打开视频：未知的内容类型")
@@ -187,9 +196,9 @@ fun MacosZhihuMain(windowChrome: MacosWindowChromeHost? = null) {
                     } else {
                         null
                     },
-                    source = currentContentOpenSource(),
+                    source = currentContentOpenSource(targetController),
                 )
-                navController.navigate(route)
+                targetController.navigate(route)
             }
         }
     }
@@ -200,6 +209,8 @@ fun MacosZhihuMain(windowChrome: MacosWindowChromeHost? = null) {
             navController = navController,
             mainTabNavigationTarget = mainTabNavigationTarget,
             navigate = ::navigate,
+            navigateContent = { destination, targetController -> navigate(destination, targetController) },
+            enableLandscapeListDetail = true,
             setCurrentMainTabOpenFrom = { currentMainTabOpenFrom = it },
             consumeMainTabNavigationTarget = { destination ->
                 if (mainTabNavigationTarget == destination) {
@@ -336,6 +347,7 @@ private fun rememberMacosZhihuMainPreferenceState(): ZhihuMainPreferenceState {
             tapToScrollToTopEnabled = settings.getBoolean("bottomBarTapScrollToTop", true),
             autoHideBottomBar = settings.getBoolean("autoHideBottomBar", false),
             collectionDirectBrowseEnabled = settings.getBoolean(COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY, false),
+            landscapeListDetailEnabled = settings.getBoolean(LANDSCAPE_LIST_DETAIL_PREFERENCE_KEY, true),
             selectedBottomBarItemKeys = orderedSelectedKeys,
             startDestination = navDestinationFromName(
                 resolveValidStartDestinationKey(

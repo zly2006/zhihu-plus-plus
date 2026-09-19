@@ -109,6 +109,7 @@ class MainActivity : ComponentActivity() {
             .client
             .httpClient()
 
+    /** 主返回栈控制器，承载 MainTabs 主壳和单栏页面。 */
     lateinit var navController: NavHostController
     private lateinit var continuousUsageReminderManager: ContinuousUsageReminderManager
     private val pageTurnDispatcher = PageTurnDispatcher()
@@ -396,20 +397,47 @@ class MainActivity : ComponentActivity() {
         return true
     }
 
+    /**
+     * 通过主返回栈打开页面；popup 可替换当前外部跳转页面。
+     *
+     * @param route 要打开的页面
+     * @param popup 是否替换当前外部跳转页面
+     */
     fun navigate(route: NavDestination, popup: Boolean = false) {
+        navigate(route, navController, popup)
+    }
+
+    /**
+     * 通过 [targetController] 打开页面；分屏时该控制器属于右侧详情栏。
+     *
+     * @param route 要在目标栏中打开的页面
+     * @param targetController 持有目标页面返回栈的控制器
+     */
+    fun navigateIn(route: NavDestination, targetController: NavHostController) {
+        navigate(route, targetController, popup = false)
+    }
+
+    /**
+     * 通过指定返回栈打开页面。主控制器承载主壳和列表，详情控制器承载大屏右侧内容。
+     */
+    private fun navigate(
+        route: NavDestination,
+        targetController: NavHostController,
+        popup: Boolean,
+    ) {
         if (route is CommentHolder) {
             AndroidArticleNavigationHandoff.prepareComment(route)
-            navigate(route.article, popup)
+            navigate(route.article, targetController, popup)
             return
         }
         AndroidArticleNavigationHandoff.clearCommentUnless(route)
-        preparePendingContentOpen(route)
+        preparePendingContentOpen(route, targetController)
         history.add(route)
         if (route is Video) {
             val current = runCatching {
-                navController.currentBackStackEntry?.toRoute<Article>()
+                targetController.currentBackStackEntry?.toRoute<Article>()
             }.getOrNull() ?: runCatching {
-                navController.currentBackStackEntry?.toRoute<Question>()
+                targetController.currentBackStackEntry?.toRoute<Question>()
             }.getOrNull()
             if (current == null) {
                 androidUserMessageSink(this).showShortMessage("无法打开视频：未知的内容类型")
@@ -447,9 +475,12 @@ class MainActivity : ComponentActivity() {
             navigateToMainTabs()
             return
         }
-        navController.navigate(route) {
+        targetController.navigate(route) {
+            // A secondary NavHost scopes content ViewModels by back-stack entry. Reusing
+            // the same Article destination here keeps the old entry-scoped article alive
+            // when a different feed item is selected.
+            launchSingleTop = popup
             if (popup) {
-                launchSingleTop = true
                 popUpTo(MainTabs) {
                     // clear the back stack and viewModels
                     saveState = true
@@ -458,7 +489,11 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun preparePendingContentOpen(target: NavDestination) {
+    /** [sourceController] 提供触发导航的来源页面，用于记录内容打开来源。 */
+    private fun preparePendingContentOpen(
+        target: NavDestination,
+        sourceController: NavHostController,
+    ) {
         val openFrom = if (
             runCatching { navController.currentBackStackEntry?.toRoute<MainTabs>() }.getOrNull() != null
         ) {
@@ -466,7 +501,7 @@ class MainActivity : ComponentActivity() {
         } else {
             null
         }
-            ?: ContentOpenEventSupport.inferOpenFrom(currentContentOpenSource(), target)
+            ?: ContentOpenEventSupport.inferOpenFrom(currentContentOpenSource(sourceController), target)
         AndroidArticleNavigationHandoff.prepareContentOpen(target, openFrom)
     }
 
@@ -490,8 +525,9 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun currentContentOpenSource(): NavDestination? {
-        val currentEntry = navController.currentBackStackEntry
+    /** 从指定返回栈的当前页面读取内容打开来源，支持右侧详情栏。 */
+    private fun currentContentOpenSource(controller: NavHostController = navController): NavDestination? {
+        val currentEntry = controller.currentBackStackEntry
         return runCatching {
             currentEntry?.toRoute<Article>()
         }.getOrNull() ?: runCatching {

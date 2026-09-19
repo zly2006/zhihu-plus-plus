@@ -159,7 +159,7 @@ class ReadingPlayerUiInstrumentedTest {
         composeRule.waitForTag(READING_PLAYER_BAR_TAG)
         composeRule.onNodeWithTag(READING_PLAYER_COMPACT_TAG).assertDoesNotExist()
 
-        composeRule.runOnIdle { assertTrue(navController.popBackStack()) }
+        composeRule.runOnIdle { composeRule.activity.onBackPressedDispatcher.onBackPressed() }
 
         composeRule.waitForTag(READING_PLAYER_COMPACT_TAG)
         composeRule.onNodeWithTag(READING_PLAYER_BAR_TAG).assertDoesNotExist()

@@ -28,6 +28,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -46,10 +47,14 @@ import com.github.zly2006.zhihu.viewmodel.sharedArticleAnswerSwitchState
 @Composable
 fun AndroidZhihuMain(navController: NavHostController) {
     val activity = LocalActivity.current as MainActivity
+    val isTablet = LocalConfiguration.current.smallestScreenWidthDp >= 600
     ZhihuMain(
         navController = navController,
         mainTabNavigationTarget = activity.mainTabNavigationTarget,
         navigate = activity::navigate,
+        navigateContent = activity::navigateIn,
+        enableLandscapeListDetail = true,
+        isListDetailCapable = isTablet,
         setCurrentMainTabOpenFrom = activity::setCurrentMainTabOpenFrom,
         consumeMainTabNavigationTarget = activity::consumeMainTabNavigationTarget,
         preferenceState = rememberAndroidZhihuMainPreferenceState(),
