@@ -37,4 +37,35 @@ class AdaptiveListDetailTest {
         assertTrue(CommentHolder("comment", Article(type = ArticleType.Answer, id = 1)).isDetailPaneDestination())
         assertFalse(CommentHolder("comment", Question(questionId = 2)).isDetailPaneDestination())
     }
+
+    @Test
+    fun landscapeListDetailNeedsEnabledPreferenceAndTabletOrDesktopCapability() {
+        assertTrue(
+            canShowLandscapeListDetail(
+                enabled = true,
+                deviceSupportsListDetail = true,
+                preferenceEnabled = true,
+                width = 1000.dp,
+                height = 600.dp,
+            ),
+        )
+        assertFalse(
+            canShowLandscapeListDetail(
+                enabled = true,
+                deviceSupportsListDetail = false,
+                preferenceEnabled = true,
+                width = 1000.dp,
+                height = 600.dp,
+            ),
+        )
+        assertFalse(
+            canShowLandscapeListDetail(
+                enabled = true,
+                deviceSupportsListDetail = true,
+                preferenceEnabled = false,
+                width = 1000.dp,
+                height = 600.dp,
+            ),
+        )
+    }
 }

@@ -128,7 +128,12 @@ listOf("Debug", "Release").forEach { buildType ->
     if (buildType == "Debug") {
         tasks.named<Exec>("runDebugExecutableMacosArm64") {
             dependsOn(syncApp)
-            executable = appDirectory.get().file("Contents/MacOS/ZhihuPlusPlus").asFile.absolutePath
+            executable =
+                appDirectory
+                    .get()
+                    .file("Contents/MacOS/ZhihuPlusPlus")
+                    .asFile
+                    .absolutePath
         }
     }
 

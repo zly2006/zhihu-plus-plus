@@ -58,6 +58,18 @@ internal fun NavDestination.isDetailPaneDestination(): Boolean = when (this) {
     else -> false
 }
 
+internal fun canShowLandscapeListDetail(
+    enabled: Boolean,
+    deviceSupportsListDetail: Boolean,
+    preferenceEnabled: Boolean,
+    width: Dp,
+    height: Dp,
+): Boolean = enabled &&
+    deviceSupportsListDetail &&
+    preferenceEnabled &&
+    width >= 840.dp &&
+    width > height
+
 internal fun normalizedListPaneWidth(
     availableWidth: Dp,
     requestedRatio: Float,

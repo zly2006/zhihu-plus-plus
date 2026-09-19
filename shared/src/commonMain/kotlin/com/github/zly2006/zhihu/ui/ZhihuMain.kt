@@ -213,6 +213,7 @@ fun ZhihuMain(
     navigate: (NavDestination) -> Unit,
     navigateContent: (NavDestination, NavHostController) -> Unit = { destination, _ -> navigate(destination) },
     enableLandscapeListDetail: Boolean = false,
+    isListDetailCapable: Boolean = true,
     setCurrentMainTabOpenFrom: (String?) -> Unit,
     consumeMainTabNavigationTarget: (TopLevelDestination) -> Unit,
     preferenceState: ZhihuMainPreferenceState,
@@ -231,7 +232,13 @@ fun ZhihuMain(
     articleExitTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition?)? = null,
 ) = BoxWithConstraints(modifier = modifier.fillMaxSize()) {
     val containerWidth = maxWidth
-    val isLargeLandscape = enableLandscapeListDetail && containerWidth >= 840.dp && containerWidth > maxHeight
+    val isLargeLandscape = canShowLandscapeListDetail(
+        enabled = enableLandscapeListDetail,
+        deviceSupportsListDetail = isListDetailCapable,
+        preferenceEnabled = preferenceState.landscapeListDetailEnabled,
+        width = containerWidth,
+        height = maxHeight,
+    )
     val bottomPadding = ScaffoldDefaults.contentWindowInsets.asPaddingValues().calculateBottomPadding()
     val duo3HomeAccount = preferenceState.duo3HomeAccount
     val tapToScrollToTopEnabled = preferenceState.tapToScrollToTopEnabled
