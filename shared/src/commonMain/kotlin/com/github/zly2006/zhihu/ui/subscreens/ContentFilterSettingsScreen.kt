@@ -64,7 +64,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.data.RecommendationMode
 import com.github.zly2006.zhihu.filter.ContentFilterStats
-import com.github.zly2006.zhihu.filter.cleanupOldData
 import com.github.zly2006.zhihu.filter.clearAllData
 import com.github.zly2006.zhihu.filter.loadFilterStats
 import com.github.zly2006.zhihu.navigation.Account
@@ -673,23 +672,8 @@ fun ContentFilterSettingsScreen(
                                 onClick = {
                                     coroutineScope.launch {
                                         try {
-                                            filterStats = contentFilterDao.cleanupOldData()
-                                            userMessages.showMessage("已清理过期数据")
-                                        } catch (e: Exception) {
-                                            // 忽略导出异常。
-                                        }
-                                    }
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                            ) {
-                                Text("清理过期数据")
-                            }
-                            Button(
-                                onClick = {
-                                    coroutineScope.launch {
-                                        try {
                                             filterStats = contentFilterDao.clearAllData()
-                                            userMessages.showMessage("已重置所有数据")
+                                            userMessages.showMessage("已清除曝光记录")
                                             showStatsDialog = false
                                         } catch (e: Exception) {
                                             // 忽略分享异常。
@@ -699,7 +683,7 @@ fun ContentFilterSettingsScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                             ) {
-                                Text("重置所有数据")
+                                Text("清除曝光记录")
                             }
                         }
                     },

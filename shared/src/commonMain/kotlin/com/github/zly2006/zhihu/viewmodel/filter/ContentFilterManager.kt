@@ -18,7 +18,6 @@
 package com.github.zly2006.zhihu.viewmodel.filter
 
 import com.github.zly2006.zhihu.filter.ContentFilterStats
-import com.github.zly2006.zhihu.filter.cleanupOldData
 import com.github.zly2006.zhihu.filter.clearAllData
 
 typealias FilterStats = ContentFilterStats
@@ -61,11 +60,6 @@ class ContentFilterManager(
             ContentViewRecord.generateId(targetType, targetId)
         }
         return dao.getViewedContentIdsByIds(idsToCheck).toSet()
-    }
-
-    /** 清理过期曝光记录。 */
-    suspend fun cleanupOldData() {
-        dao.cleanupOldData()
     }
 
     /** 清除所有曝光记录（用于测试或重置）。 */

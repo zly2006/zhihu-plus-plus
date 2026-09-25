@@ -64,8 +64,6 @@ private val emptyContentFilterDao = object : ContentFilterDao {
 
     override suspend fun getViewedContentIdsByIds(ids: List<String>): List<String> = emptyList()
 
-    override suspend fun cleanupOldRecords(cutoffTime: Long) = Unit
-
     override suspend fun clearAllRecords() = Unit
 
     override suspend fun getRecordCount(): Int = 0
@@ -74,7 +72,9 @@ private val emptyContentFilterDao = object : ContentFilterDao {
 private val emptyContentOpenEventDao = object : ContentOpenEventDao {
     override suspend fun insert(event: ContentOpenEvent): Long = 0L
 
-    override suspend fun getOpenedContentKeysByKeys(keys: List<String>): List<String> = emptyList()
+    override suspend fun getOpenedContentKeys(type: String, ids: List<String>): List<String> = emptyList()
+
+    override suspend fun getRemotelySyncedContentKeys(type: String, ids: List<String>): List<String> = emptyList()
 }
 
 private val emptyBlockedKeywordDao = object : BlockedKeywordDao {

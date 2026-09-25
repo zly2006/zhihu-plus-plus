@@ -26,13 +26,36 @@ interface ContentOpenEventDao {
     @Insert
     suspend fun insert(event: ContentOpenEvent): Long
 
-    /** 批量查询已打开过的内容身份键，供详情页导航或内容级已读判断使用。 */
+    /** 按类型和 ID 查询，复用联合索引，避免拼接表达式扫描全部历史。 */
+    suspend fun getOpenedContentKeysByKeys(keys: List<String>): List<String> =
+        queryContentKeys(keys, ::getOpenedContentKeys)
+
+    suspend fun getRemotelySyncedContentKeysByKeys(keys: List<String>): List<String> =
+        queryContentKeys(keys, ::getRemotelySyncedContentKeys)
+
     @Query(
         """
-        SELECT contentType || ':' || contentId
+        SELECT DISTINCT contentType || ':' || contentId
         FROM ${ContentOpenEvent.TABLE_NAME}
-        WHERE (contentType || ':' || contentId) IN (:keys)
+        WHERE contentType = :type AND contentId IN (:ids)
         """,
     )
-    suspend fun getOpenedContentKeysByKeys(keys: List<String>): List<String>
+    suspend fun getOpenedContentKeys(type: String, ids: List<String>): List<String>
+
+    @Query(
+        """
+        SELECT DISTINCT contentType || ':' || contentId
+        FROM ${ContentOpenEvent.TABLE_NAME}
+        WHERE contentType = :type AND contentId IN (:ids) AND openFrom = 'remote_sync'
+        """,
+    )
+    suspend fun getRemotelySyncedContentKeys(type: String, ids: List<String>): List<String>
+}
+
+private suspend fun queryContentKeys(
+    keys: List<String>,
+    query: suspend (String, List<String>) -> List<String>,
+): List<String> = keys.distinct().groupBy { it.substringBefore(':') }.flatMap { (type, typedKeys) ->
+    // Leave room for the type parameter on SQLite versions with a 999-variable limit.
+    typedKeys.map { it.substringAfter(':') }.chunked(500).flatMap { ids -> query(type, ids) }
 }

@@ -18,17 +18,12 @@
 package com.github.zly2006.zhihu.filter
 
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterDao
-import kotlin.time.Clock
-import kotlin.time.Duration.Companion.days
 
 data class ContentFilterStats(
     val totalRecords: Int,
     val filteredCount: Int,
     val filterRate: Float,
 )
-
-private val cleanupInterval = 7.days
-private const val MAX_CONTENT_FILTER_RECORDS = 10000
 
 suspend fun ContentFilterDao.loadFilterStats(): ContentFilterStats {
     val totalRecords = getRecordCount()
@@ -38,19 +33,6 @@ suspend fun ContentFilterDao.loadFilterStats(): ContentFilterStats {
         filteredCount = filteredCount,
         filterRate = if (totalRecords > 0) filteredCount.toFloat() / totalRecords else 0f,
     )
-}
-
-suspend fun ContentFilterDao.cleanupOldData(): ContentFilterStats {
-    cleanupOldRecords(
-        Clock.System
-            .now()
-            .minus(cleanupInterval)
-            .toEpochMilliseconds(),
-    )
-    if (getRecordCount() > MAX_CONTENT_FILTER_RECORDS) {
-        clearAllRecords()
-    }
-    return loadFilterStats()
 }
 
 suspend fun ContentFilterDao.clearAllData(): ContentFilterStats {
