@@ -50,6 +50,7 @@ import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SwitchAccount
@@ -115,6 +116,7 @@ const val ACCOUNT_SETTINGS_SCROLL_TAG = "accountSettings.scroll"
 const val ACCOUNT_SETTINGS_LOGIN_ITEM_TAG = "accountSettings.loginItem"
 const val ACCOUNT_SETTINGS_PROFILE_HEADER_TAG = "accountSettings.profileHeader"
 const val ACCOUNT_SETTINGS_PROFILE_NAME_TAG = "accountSettings.profileName"
+const val ACCOUNT_SETTINGS_SCAN_TAG = "accountSettings.scan"
 const val ACCOUNT_SETTINGS_SHORTCUT_COLLECTIONS_TAG = "accountSettings.shortcutCollections"
 const val ACCOUNT_SETTINGS_SHORTCUT_SUBSCRIPTIONS_TAG = "accountSettings.shortcutSubscriptions"
 const val ACCOUNT_SETTINGS_SHORTCUT_NOTIFICATION_TAG = "accountSettings.shortcutNotification"
@@ -158,6 +160,7 @@ fun AccountSettingScreen(
     val systemUpdateState = rememberSystemUpdateState()
     val versionInfo = rememberAppVersionInfo()
     val readingPlayerSupported = isReadingPlayerSupported
+    val launchQrScanner = rememberAccountQrScanAction()
 
     val useDuo3HomeAccount = remember { settings.getBoolean("duo3_home_account", false) }
     val selectedBottomBarItemKeys = remember {
@@ -242,6 +245,15 @@ fun AccountSettingScreen(
                         modifier = Modifier.testTag(ACCOUNT_SETTINGS_PROFILE_NAME_TAG),
                     )
                     Spacer(Modifier.weight(1f))
+                    if (launchQrScanner != null) {
+                        FilledTonalIconButton(
+                            onClick = launchQrScanner,
+                            modifier = Modifier.size(40.dp).testTag(ACCOUNT_SETTINGS_SCAN_TAG),
+                        ) {
+                            Icon(Icons.Default.QrCodeScanner, contentDescription = "扫码登录")
+                        }
+                        Spacer(Modifier.width(8.dp))
+                    }
                     FilledTonalIconButton(
                         onClick = {
                             showLogoutDialog = true

@@ -89,10 +89,8 @@ import com.github.zly2006.zhihu.util.clearShareImageCache
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
 import com.github.zly2006.zhihu.util.telemetry
-import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterManager
 import com.github.zly2006.zhihu.viewmodel.filter.androidKeywordSemanticMatcher
 import com.github.zly2006.zhihu.viewmodel.filter.androidKeywordWeightExtractor
-import com.github.zly2006.zhihu.viewmodel.filter.contentFilterSettings
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -181,18 +179,6 @@ class MainActivity : ComponentActivity() {
             }
         }
         settings.putLong(KEY_LAST_LAUNCH_TIMESTAMP, now)
-
-        // 应用启动时执行内容过滤数据库清理
-        lifecycleScope.launch {
-            try {
-                if (contentFilterSettings().enableContentFilter) {
-                    ContentFilterManager(getContentFilterDatabase(this@MainActivity).contentFilterDao()).cleanupOldData()
-                }
-                Log.i(TAG, "Content filter maintenance cleanup completed")
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to perform content filter cleanup", e)
-            }
-        }
 
         // 初始化emoji管理器
         lifecycleScope.launch {
