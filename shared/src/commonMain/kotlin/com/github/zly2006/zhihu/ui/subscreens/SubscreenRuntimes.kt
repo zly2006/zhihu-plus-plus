@@ -44,13 +44,32 @@ sealed interface SystemUpdateState {
         val cnDownloadUrl: String?,
     ) : SystemUpdateState
 
-    data object Downloading : SystemUpdateState
+    data class Downloading(
+        /** 当前使用的下载来源；探测尚未选出时为 null。 */
+        val sourceName: String? = null,
+        val downloadedBytes: Long = 0,
+        val totalBytes: Long = 0,
+    ) : SystemUpdateState
 
-    data object Downloaded : SystemUpdateState
+    /** 已下载并通过校验的更新包；[verification] 是实际生效的校验层级。 */
+    data class Downloaded(
+        val verification: String? = null,
+    ) : SystemUpdateState
 
     data class Error(
         val message: String,
+        /** 失败所处阶段，界面据此区分「检查更新失败」与「下载/校验失败」。 */
+        val phase: SystemUpdateErrorPhase,
     ) : SystemUpdateState
+}
+
+/** 更新流程失败所处阶段：获取版本元数据，或下载与校验安装包。 */
+enum class SystemUpdateErrorPhase {
+    /** 检查更新（获取版本元数据）失败。 */
+    Check,
+
+    /** 下载安装包失败，或下载后完整性校验未通过被拒绝。 */
+    Download,
 }
 
 @Composable
@@ -86,7 +105,7 @@ expect fun rememberDownloadedSystemUpdateInstaller(): DownloadedSystemUpdateInst
 
 expect fun resetSystemUpdateState()
 
-expect fun setSystemUpdateError(message: String)
+expect fun setSystemUpdateError(message: String, phase: SystemUpdateErrorPhase)
 
 expect val isApkUpdateInstallSupported: Boolean
 

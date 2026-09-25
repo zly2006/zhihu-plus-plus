@@ -67,7 +67,9 @@ class GithubReleaseTest {
                   "name": "release-notes.txt",
                   "content_type": "text/plain",
                   "browser_download_url": "https://github.com/example/release-notes.txt",
-                  "cn_download_url": "https://example.cn/release-notes.txt"
+                  "cn_download_url": "https://example.cn/release-notes.txt",
+                  "size": 1024,
+                  "digest": "sha256:562cbb7a44f77b1d787b644a6e4799d59d743a90c6cd7d1eca33e48b780e1930"
                 }
               ]
             }
@@ -80,6 +82,32 @@ class GithubReleaseTest {
         assertEquals("text/plain", release.assets.single().contentType)
         assertEquals("https://github.com/example/release-notes.txt", release.assets.single().browserDownloadUrl)
         assertEquals("https://example.cn/release-notes.txt", release.assets.single().cnDownloadUrl)
+        assertEquals(1024L, release.assets.single().size)
+        assertEquals("sha256:562cbb7a44f77b1d787b644a6e4799d59d743a90c6cd7d1eca33e48b780e1930", release.assets.single().digest)
+    }
+
+    /** 旧资产没有 size / digest，模型必须保持向后兼容。 */
+    @Test
+    fun decodesAssetWithoutSizeAndDigest() {
+        val release = ZhihuJson.json.decodeFromString<GithubRelease>(
+            """
+            {
+              "tag_name": "1.0.0",
+              "assets": [
+                {
+                  "name": "zhihu++-lite.apk",
+                  "content_type": "application/vnd.android.package-archive",
+                  "browser_download_url": "https://github.com/example/zhihu++-lite.apk"
+                }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val info = release.extractAndroidDownloadInfo(isLiteVariant = true)
+        assertEquals("https://github.com/example/zhihu++-lite.apk", info.browserDownloadUrl)
+        assertNull(info.size)
+        assertNull(info.digest)
     }
 
     @Test

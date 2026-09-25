@@ -22,23 +22,38 @@ import android.content.Intent
 import android.util.Log
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
+import com.github.zly2006.zhihu.account.accountHttpClientEngineFactory
 import com.github.zly2006.zhihu.account.androidZhihuAccountStore
 import com.github.zly2006.zhihu.platform.androidSettingsStore
 import com.github.zly2006.zhihu.platform.isAndroidLiteVariantPackageName
+import com.github.zly2006.zhihu.updater.DownloadResult
+import com.github.zly2006.zhihu.updater.DownloadVerifier
 import com.github.zly2006.zhihu.updater.GithubAsset
 import com.github.zly2006.zhihu.updater.GithubRelease
+import com.github.zly2006.zhihu.updater.MIRROR_ACCELERATION_ENABLED_PREFERENCE_KEY
+import com.github.zly2006.zhihu.updater.MirrorDownloadRequest
+import com.github.zly2006.zhihu.updater.MirrorSelector
 import com.github.zly2006.zhihu.updater.SchematicVersion
 import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState.Downloading
+import com.github.zly2006.zhihu.updater.androidUpdateVerifier
 import com.github.zly2006.zhihu.updater.extractGithubReleaseNotes
 import com.github.zly2006.zhihu.updater.fetchLatestZhihuRelease
 import com.github.zly2006.zhihu.updater.fetchNightlyZhihuRelease
-import io.ktor.client.call.body
-import io.ktor.client.request.get
+import io.ktor.client.HttpClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withContext
+import kotlinx.io.files.Path
 import java.io.File
-import java.net.URI
+
+/** 更新流程失败所处阶段：获取版本元数据，或下载与校验安装包。 */
+enum class UpdateErrorPhase {
+    /** 检查更新（获取版本元数据）失败。 */
+    Check,
+
+    /** 下载安装包失败，或下载后完整性校验未通过被拒绝。 */
+    Download,
+}
 
 object UpdateManager {
     private const val AUTO_CHECK_INTERVAL_MILLIS = 3 * 60 * 60 * 1000L
@@ -63,20 +78,46 @@ object UpdateManager {
             val downloadUrl: String,
             val cnDownloadUrl: String?,
             val opensExternally: Boolean = false,
+            /** 官方资产的字节数，用于镜像探测筛选与下载后大小校验；元数据缺失时为 null。 */
+            val downloadSize: Long? = null,
+            /** 官方资产的 SHA256 摘要（Releases 的 digest 字段），缺失时降级为大小加签名校验。 */
+            val downloadDigest: String? = null,
         ) : UpdateState()
 
-        object Downloading : UpdateState()
+        data class Downloading(
+            /** 当前使用的下载来源；探测尚未选出时为 null。 */
+            val sourceName: String? = null,
+            val downloadedBytes: Long = 0,
+            val totalBytes: Long = 0,
+        ) : UpdateState()
 
         data class Downloaded(
             val file: File,
+            /** 实际生效的校验层级，用于向用户说明下载物为什么可信。 */
+            val verification: String? = null,
         ) : UpdateState()
 
         data class Error(
             val message: String,
+            /** 失败所处阶段，界面据此区分「检查更新失败」与「下载/校验失败」。 */
+            val phase: UpdateErrorPhase,
         ) : UpdateState()
     }
 
     val updateState = MutableStateFlow<UpdateState>(UpdateState.NoUpdate)
+
+    /**
+     * 镜像选优器。作为长生命周期实例持有，使各来源的连续失败次数能跨多次下载累积。
+     */
+    private val mirrorSelector = MirrorSelector()
+
+    /**
+     * 更新下载专用的匿名客户端。
+     *
+     * 不复用知乎账户客户端：镜像站与 GitHub 都是第三方，把知乎 Cookie、UA 与签名头带过去属于
+     * 无必要的隐私外泄。这里只复用平台 HTTP 引擎。
+     */
+    private val updateHttpClient by lazy { HttpClient(accountHttpClientEngineFactory) {} }
 
     private fun getGitHubToken(context: Context): String? = androidSettingsStore(context).getStringOrNull("githubToken")?.takeIf { it.isNotBlank() }
 
@@ -131,12 +172,14 @@ object UpdateManager {
                 // 检查是否是被跳过的版本
                 if (skippedVersion != versionString) {
                     updateState.value = UpdateState.UpdateAvailable(
-                        latestVersion,
-                        false,
-                        latestResponse.body?.let(::extractGithubReleaseNotes),
-                        latestDownloadInfo.browserDownloadUrl,
-                        latestDownloadInfo.cnDownloadUrl,
-                        latestDownloadInfo.opensExternally,
+                        version = latestVersion,
+                        isNightly = false,
+                        releaseNotes = latestResponse.body?.let(::extractGithubReleaseNotes),
+                        downloadUrl = latestDownloadInfo.browserDownloadUrl,
+                        cnDownloadUrl = latestDownloadInfo.cnDownloadUrl,
+                        opensExternally = latestDownloadInfo.opensExternally,
+                        downloadSize = latestDownloadInfo.size,
+                        downloadDigest = latestDownloadInfo.digest,
                     )
                     return true // 有可用更新且未被跳过
                 } else {
@@ -147,7 +190,7 @@ object UpdateManager {
             }
         } catch (e: Exception) {
             Log.e("UpdateManager", "Error checking for updates", e)
-            updateState.value = UpdateState.Error(e.message ?: "Unknown error")
+            updateState.value = UpdateState.Error(e.message ?: "Unknown error", UpdateErrorPhase.Check)
         }
 
         return false
@@ -196,21 +239,30 @@ object UpdateManager {
 
             if (latestVersion != null && latestVersion > currentVersion) {
                 updateState.value = UpdateState.UpdateAvailable(
-                    latestVersion,
-                    isNightly,
-                    releaseNotes,
-                    downloadInfo.browserDownloadUrl,
-                    downloadInfo.cnDownloadUrl,
-                    downloadInfo.opensExternally,
+                    version = latestVersion,
+                    isNightly = isNightly,
+                    releaseNotes = releaseNotes,
+                    downloadUrl = downloadInfo.browserDownloadUrl,
+                    cnDownloadUrl = downloadInfo.cnDownloadUrl,
+                    opensExternally = downloadInfo.opensExternally,
+                    downloadSize = downloadInfo.size,
+                    downloadDigest = downloadInfo.digest,
                 )
             } else {
                 updateState.value = UpdateState.Latest
             }
         } catch (e: Exception) {
-            updateState.value = UpdateState.Error(e.message ?: "Unknown error")
+            updateState.value = UpdateState.Error(e.message ?: "Unknown error", UpdateErrorPhase.Check)
         }
     }
 
+    /**
+     * 下载更新安装包。
+     *
+     * 走多源镜像加速：并行探测候选源后按实测带宽选优，低速、停滞或中断时换源并从断点续传。
+     * 下载完成后必须通过文件大小、SHA256 摘要与 APK 签名三层校验，才会进入
+     * [UpdateState.Downloaded]，校验是安装门禁，不通过不放行。
+     */
     suspend fun downloadUpdate(context: Context, downloadUrl: String) {
         val state = updateState.value
         if (state !is UpdateState.UpdateAvailable) return
@@ -221,20 +273,35 @@ object UpdateManager {
                 )
                 return
             }
-            updateState.value = Downloading
+            updateState.value = Downloading()
 
-            val file = withContext(Dispatchers.IO) {
-                val apkFile = File(context.cacheDir, "update.apk")
-                URI(downloadUrl)
-                    .toURL()
-                    .openConnection()
-                    .getInputStream()
-                    .use { input -> apkFile.outputStream().use { output -> input.copyTo(output) } }
-                apkFile
+            val apkFile = File(context.cacheDir, "update.apk")
+            val result = withContext(Dispatchers.IO) {
+                mirrorSelector.download(
+                    client = updateHttpClient,
+                    request = MirrorDownloadRequest(
+                        officialUrl = downloadUrl,
+                        destination = Path(apkFile.absolutePath),
+                        expectedSize = state.downloadSize,
+                        expectedDigest = DownloadVerifier.parseDigest(state.downloadDigest),
+                        mirrorEnabled = androidSettingsStore(context)
+                            .getBoolean(MIRROR_ACCELERATION_ENABLED_PREFERENCE_KEY, true),
+                    ),
+                    verifier = androidUpdateVerifier(context),
+                ) { progress ->
+                    updateState.value = Downloading(
+                        progress.source.name,
+                        progress.downloadedBytes,
+                        progress.totalBytes,
+                    )
+                }
             }
-            updateState.value = UpdateState.Downloaded(file)
+            updateState.value = when (result) {
+                is DownloadResult.Verified -> UpdateState.Downloaded(apkFile, result.layers.joinToString(" + "))
+                is DownloadResult.Failed -> UpdateState.Error(result.reason, UpdateErrorPhase.Download)
+            }
         } catch (e: Exception) {
-            updateState.value = UpdateState.Error(e.message ?: "Unknown error")
+            updateState.value = UpdateState.Error(e.message ?: "Unknown error", UpdateErrorPhase.Download)
         }
     }
 

@@ -43,6 +43,7 @@ import com.github.zly2006.zhihu.platform.androidUserMessageSink
 import com.github.zly2006.zhihu.platform.rememberIsLiteVariant
 import com.github.zly2006.zhihu.reading.AndroidReadingPlayerBridge
 import com.github.zly2006.zhihu.ui.rememberArticleTtsState
+import com.github.zly2006.zhihu.updater.UpdateErrorPhase
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState
 import com.github.zly2006.zhihu.util.ContinuousUsageReminderManager
@@ -219,8 +220,8 @@ actual fun resetSystemUpdateState() {
     UpdateManager.updateState.value = UpdateState.NoUpdate
 }
 
-actual fun setSystemUpdateError(message: String) {
-    UpdateManager.updateState.value = UpdateState.Error(message)
+actual fun setSystemUpdateError(message: String, phase: SystemUpdateErrorPhase) {
+    UpdateManager.updateState.value = UpdateState.Error(message, phase.toUpdateErrorPhase())
 }
 
 actual val isApkUpdateInstallSupported: Boolean = true
@@ -236,9 +237,19 @@ private fun UpdateState.toSystemUpdateState(): SystemUpdateState = when (this) {
         downloadUrl = downloadUrl,
         cnDownloadUrl = cnDownloadUrl,
     )
-    UpdateState.Downloading -> SystemUpdateState.Downloading
-    is UpdateState.Downloaded -> SystemUpdateState.Downloaded
-    is UpdateState.Error -> SystemUpdateState.Error(message)
+    is UpdateState.Downloading -> SystemUpdateState.Downloading(sourceName, downloadedBytes, totalBytes)
+    is UpdateState.Downloaded -> SystemUpdateState.Downloaded(verification)
+    is UpdateState.Error -> SystemUpdateState.Error(message, phase.toSystemUpdateErrorPhase())
+}
+
+private fun UpdateErrorPhase.toSystemUpdateErrorPhase(): SystemUpdateErrorPhase = when (this) {
+    UpdateErrorPhase.Check -> SystemUpdateErrorPhase.Check
+    UpdateErrorPhase.Download -> SystemUpdateErrorPhase.Download
+}
+
+private fun SystemUpdateErrorPhase.toUpdateErrorPhase(): UpdateErrorPhase = when (this) {
+    SystemUpdateErrorPhase.Check -> UpdateErrorPhase.Check
+    SystemUpdateErrorPhase.Download -> UpdateErrorPhase.Download
 }
 
 @Composable

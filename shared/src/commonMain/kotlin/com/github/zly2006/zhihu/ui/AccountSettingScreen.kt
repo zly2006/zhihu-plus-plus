@@ -98,6 +98,7 @@ import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.subscreens.SystemUpdateErrorPhase
 import com.github.zly2006.zhihu.ui.subscreens.SystemUpdateState
 import com.github.zly2006.zhihu.ui.subscreens.defaultBottomBarSelectionKeys
 import com.github.zly2006.zhihu.ui.subscreens.normalizeBottomBarSelection
@@ -526,7 +527,9 @@ fun AccountSettingScreen(
                     userMessages.showShortMessage("发现新$versionType ${state.version}")
                 }
                 if (updateState is SystemUpdateState.Error) {
-                    userMessages.showLongMessage("检查更新失败: ${(updateState as SystemUpdateState.Error).message}")
+                    val error = updateState as SystemUpdateState.Error
+                    val prefix = if (error.phase == SystemUpdateErrorPhase.Check) "检查更新失败" else "下载失败"
+                    userMessages.showLongMessage("$prefix: ${error.message}")
                 }
             }
 

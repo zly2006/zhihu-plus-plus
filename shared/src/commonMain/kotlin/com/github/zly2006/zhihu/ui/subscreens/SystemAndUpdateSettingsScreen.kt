@@ -83,6 +83,7 @@ import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
 import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
+import com.github.zly2006.zhihu.updater.MIRROR_ACCELERATION_ENABLED_PREFERENCE_KEY
 import com.github.zly2006.zhihu.util.ContinuousUsageReminderPolicy
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
@@ -189,6 +190,30 @@ fun SystemAndUpdateSettingsScreen(
                             )
                         }
 
+                        val downloading = updateState as? SystemUpdateState.Downloading
+                        if (downloading?.sourceName != null) {
+                            val percent = if (downloading.totalBytes > 0) {
+                                "（${downloading.downloadedBytes * 100 / downloading.totalBytes}%）"
+                            } else {
+                                ""
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "下载来源：${downloading.sourceName}$percent",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        val downloaded = updateState as? SystemUpdateState.Downloaded
+                        if (downloaded?.verification != null) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "已通过校验：${downloaded.verification}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+
                         if (releaseNotes != null) {
                             Spacer(modifier = Modifier.height(16.dp))
                             Surface(
@@ -252,7 +277,7 @@ fun SystemAndUpdateSettingsScreen(
                                     runCatching {
                                         openExternalUrl(cnDownloadUrl)
                                     }.onFailure {
-                                        setSystemUpdateError(it.message ?: "无法打开浏览器")
+                                        setSystemUpdateError(it.message ?: "无法打开浏览器", SystemUpdateErrorPhase.Download)
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth(),
@@ -380,6 +405,23 @@ fun SystemAndUpdateSettingsScreen(
                     highlightedKey = highlightedSetting,
                 )
 
+                var mirrorAccelerationEnabled by remember {
+                    mutableStateOf(settings.getBoolean(MIRROR_ACCELERATION_ENABLED_PREFERENCE_KEY, true))
+                }
+                SettingItemWithSwitch(
+                    title = { Text("使用国内镜像加速下载") },
+                    description = {
+                        Text("下载更新时自动探测并选用实测最快的国内 GitHub 加速镜像，全部不可用时回退官方直连。下载完成会校验文件大小、SHA256 摘要与 APK 签名后才允许安装。")
+                    },
+                    checked = mirrorAccelerationEnabled,
+                    onCheckedChange = {
+                        mirrorAccelerationEnabled = it
+                        settings.putBoolean(MIRROR_ACCELERATION_ENABLED_PREFERENCE_KEY, it)
+                    },
+                    settingKey = MIRROR_ACCELERATION_ENABLED_PREFERENCE_KEY,
+                    highlightedKey = highlightedSetting,
+                )
+
                 var allowTelemetry by remember { mutableStateOf(settings.getBoolean("allowTelemetry", true)) }
                 SettingItemWithSwitch(
                     title = { Text("允许发送遥测统计数据") },
@@ -415,35 +457,51 @@ fun SystemAndUpdateSettingsScreen(
             }
 
             AnimatedVisibility(visible = !showUpdateBanner) {
-                Button(
-                    onClick = {
-                        coroutineScope.launch {
-                            when (updateState) {
-                                is SystemUpdateState.NoUpdate, is SystemUpdateState.Error -> {
-                                    checkForUpdate.check()
-                                    if (updateStateFlow.value is SystemUpdateState.UpdateAvailable) {
-                                        scrollState.animateScrollTo(0)
+                Column {
+                    val updateError = updateState as? SystemUpdateState.Error
+                    if (updateError != null) {
+                        Text(
+                            text = updateError.message,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.fillMaxWidth().padding(16.dp, 0.dp, 16.dp, 8.dp),
+                        )
+                    }
+                    Button(
+                        onClick = {
+                            coroutineScope.launch {
+                                when (updateState) {
+                                    is SystemUpdateState.NoUpdate, is SystemUpdateState.Error -> {
+                                        checkForUpdate.check()
+                                        if (updateStateFlow.value is SystemUpdateState.UpdateAvailable) {
+                                            scrollState.animateScrollTo(0)
+                                        }
                                     }
+                                    SystemUpdateState.Latest -> {
+                                        resetSystemUpdateState()
+                                    }
+                                    else -> { /* NOOP */ }
                                 }
-                                SystemUpdateState.Latest -> {
-                                    resetSystemUpdateState()
-                                }
-                                else -> { /* NOOP */ }
                             }
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth().padding(16.dp, 0.dp, 16.dp, 16.dp),
-                ) {
-                    Text(
-                        when (updateState) {
-                            is SystemUpdateState.NoUpdate -> "检查更新"
-                            is SystemUpdateState.Checking -> "检查中..."
-                            is SystemUpdateState.Latest -> "已经是最新版本"
-                            is SystemUpdateState.Error -> "检查更新失败，点击重试"
-                            else -> ""
                         },
-                        Modifier.padding(0.dp, 4.dp),
-                    )
+                        modifier = Modifier.fillMaxWidth().padding(16.dp, 0.dp, 16.dp, 16.dp),
+                    ) {
+                        val currentState = updateState
+                        Text(
+                            when (currentState) {
+                                is SystemUpdateState.NoUpdate -> "检查更新"
+                                is SystemUpdateState.Checking -> "检查中..."
+                                is SystemUpdateState.Latest -> "已经是最新版本"
+                                is SystemUpdateState.Error -> if (currentState.phase == SystemUpdateErrorPhase.Check) {
+                                    "检查更新失败，点击重试"
+                                } else {
+                                    "下载失败，点击重试"
+                                }
+                                else -> ""
+                            },
+                            Modifier.padding(0.dp, 4.dp),
+                        )
+                    }
                 }
             }
 

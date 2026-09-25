@@ -81,7 +81,7 @@ actual fun rememberSystemUpdateDownloader(): SystemUpdateDownloader = remember {
                 }
                 openDesktopExternalUrl(url)
             }.onFailure {
-                desktopSystemUpdateState.value = SystemUpdateState.Error(it.message ?: "无法打开浏览器")
+                desktopSystemUpdateState.value = SystemUpdateState.Error(it.message ?: "无法打开浏览器", SystemUpdateErrorPhase.Download)
             }
         }
     }
@@ -91,7 +91,7 @@ actual fun rememberSystemUpdateDownloader(): SystemUpdateDownloader = remember {
 actual fun rememberDownloadedSystemUpdateInstaller(): DownloadedSystemUpdateInstaller = remember {
     object : DownloadedSystemUpdateInstaller {
         override suspend fun install() {
-            desktopSystemUpdateState.value = SystemUpdateState.Error("$platformName 暂不支持 APK 更新安装")
+            desktopSystemUpdateState.value = SystemUpdateState.Error("$platformName 暂不支持 APK 更新安装", SystemUpdateErrorPhase.Download)
         }
     }
 }
@@ -100,8 +100,8 @@ actual fun resetSystemUpdateState() {
     desktopSystemUpdateState.value = SystemUpdateState.NoUpdate
 }
 
-actual fun setSystemUpdateError(message: String) {
-    desktopSystemUpdateState.value = SystemUpdateState.Error(message)
+actual fun setSystemUpdateError(message: String, phase: SystemUpdateErrorPhase) {
+    desktopSystemUpdateState.value = SystemUpdateState.Error(message, phase)
 }
 
 actual val isApkUpdateInstallSupported: Boolean = false
@@ -161,7 +161,7 @@ private suspend fun checkDesktopUpdate(
             state.value = SystemUpdateState.Latest
         }
     } catch (e: Exception) {
-        state.value = SystemUpdateState.Error(e.message ?: "Unknown error")
+        state.value = SystemUpdateState.Error(e.message ?: "Unknown error", SystemUpdateErrorPhase.Check)
     }
 }
 

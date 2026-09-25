@@ -44,6 +44,10 @@ data class GithubAsset(
     @SerialName("content_type") val contentType: String,
     @SerialName("browser_download_url") val browserDownloadUrl: String,
     @SerialName("cn_download_url") val cnDownloadUrl: String? = null,
+    /** 资产字节数，用于下载前探测筛选与下载后大小校验。 */
+    val size: Long? = null,
+    /** 资产摘要，格式 `sha256:<hex>`；GitHub 会为发布资产计算该值，旧资产可能缺失。 */
+    val digest: String? = null,
 )
 
 fun extractGithubReleaseNotes(body: String): String = body
@@ -84,6 +88,8 @@ internal data class AndroidReleaseDownloadInfo(
     val browserDownloadUrl: String,
     val cnDownloadUrl: String? = null,
     val opensExternally: Boolean = false,
+    val size: Long? = null,
+    val digest: String? = null,
 )
 
 internal fun GithubRelease.extractAndroidDownloadInfo(isLiteVariant: Boolean): AndroidReleaseDownloadInfo {
@@ -91,7 +97,12 @@ internal fun GithubRelease.extractAndroidDownloadInfo(isLiteVariant: Boolean): A
     val variant = if (isLiteVariant) "lite" else "full"
     val selectedAsset = apkAssets.firstOrNull { it.name.contains(variant, ignoreCase = true) } ?: apkAssets.firstOrNull()
     if (selectedAsset != null) {
-        return AndroidReleaseDownloadInfo(selectedAsset.browserDownloadUrl, selectedAsset.cnDownloadUrl)
+        return AndroidReleaseDownloadInfo(
+            selectedAsset.browserDownloadUrl,
+            selectedAsset.cnDownloadUrl,
+            size = selectedAsset.size,
+            digest = selectedAsset.digest,
+        )
     }
     val quarkUrl = Regex("""https://pan\.quark\.cn/s/[A-Za-z0-9_-]+(?:\?[A-Za-z0-9._~%!$&*+,;=:@/?-]+)?""")
         .find(body.orEmpty())

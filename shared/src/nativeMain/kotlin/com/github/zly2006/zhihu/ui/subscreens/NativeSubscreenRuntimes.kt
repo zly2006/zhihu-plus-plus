@@ -93,7 +93,7 @@ actual fun rememberSystemUpdateDownloader(): SystemUpdateDownloader {
                 } catch (error: CancellationException) {
                     throw error
                 } catch (error: Exception) {
-                    nativeSystemUpdateState.value = SystemUpdateState.Error(error.message ?: "无法打开浏览器")
+                    nativeSystemUpdateState.value = SystemUpdateState.Error(error.message ?: "无法打开浏览器", SystemUpdateErrorPhase.Download)
                 }
             }
         }
@@ -104,7 +104,7 @@ actual fun rememberSystemUpdateDownloader(): SystemUpdateDownloader {
 actual fun rememberDownloadedSystemUpdateInstaller(): DownloadedSystemUpdateInstaller = remember {
     object : DownloadedSystemUpdateInstaller {
         override suspend fun install() {
-            nativeSystemUpdateState.value = SystemUpdateState.Error("$platformName 暂不支持 APK 更新安装")
+            nativeSystemUpdateState.value = SystemUpdateState.Error("$platformName 暂不支持 APK 更新安装", SystemUpdateErrorPhase.Download)
         }
     }
 }
@@ -113,8 +113,8 @@ actual fun resetSystemUpdateState() {
     nativeSystemUpdateState.value = SystemUpdateState.NoUpdate
 }
 
-actual fun setSystemUpdateError(message: String) {
-    nativeSystemUpdateState.value = SystemUpdateState.Error(message)
+actual fun setSystemUpdateError(message: String, phase: SystemUpdateErrorPhase) {
+    nativeSystemUpdateState.value = SystemUpdateState.Error(message, phase)
 }
 
 actual val isApkUpdateInstallSupported: Boolean = false
@@ -177,7 +177,7 @@ private suspend fun checkNativeUpdate(
         nativeSystemUpdateState.value = SystemUpdateState.NoUpdate
         throw error
     } catch (error: Exception) {
-        nativeSystemUpdateState.value = SystemUpdateState.Error(error.message ?: "Unknown error")
+        nativeSystemUpdateState.value = SystemUpdateState.Error(error.message ?: "Unknown error", SystemUpdateErrorPhase.Check)
     }
 }
 
