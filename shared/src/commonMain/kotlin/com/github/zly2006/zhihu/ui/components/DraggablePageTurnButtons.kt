@@ -20,6 +20,7 @@ package com.github.zly2006.zhihu.ui.components
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.ScrollableState
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -64,12 +65,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollDispatcher
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.github.zly2006.zhihu.platform.isPageTurnSupported
@@ -376,34 +382,69 @@ fun LazyListScope.pageTurnContentEndMarker(key: Any = "page_turn_content_end_mar
 class PageTurnTarget internal constructor(
     internal val state: PageTurnRuntimeState,
 ) {
+    internal val nestedScrollDispatcher = NestedScrollDispatcher()
     internal var viewportHeight = 0f
 }
+
+private val NoOpNestedScrollConnection = object : NestedScrollConnection {}
 
 /**
  * Reports this scroll surface's visible height to [target] and, when enabled in settings, draws the
  * overlap guide left by the latest page turn. This modifier must wrap the actual scrolling viewport.
+ * It also attaches the nested scroll dispatch node through which page turns emit synthetic scroll
+ * events to outer connections (see [dispatchPageTurnScroll]).
  */
 fun Modifier.pageTurnViewportWithGuide(target: PageTurnTarget): Modifier =
-    drawWithContent {
-        drawContent()
-        target.viewportHeight = size.height
-        val state = target.state
-        if (state.showGuide && state.lastPageTurnDirection != 0) {
-            val overlapFraction = 1f - state.pageTurnPercent / 100f
-            val y = if (state.lastPageTurnDirection > 0) {
-                overlapFraction * size.height
-            } else {
-                state.pageTurnPercent / 100f * size.height
+    nestedScroll(NoOpNestedScrollConnection, target.nestedScrollDispatcher)
+        .drawWithContent {
+            drawContent()
+            target.viewportHeight = size.height
+            val state = target.state
+            if (state.showGuide && state.lastPageTurnDirection != 0) {
+                val overlapFraction = 1f - state.pageTurnPercent / 100f
+                val y = if (state.lastPageTurnDirection > 0) {
+                    overlapFraction * size.height
+                } else {
+                    state.pageTurnPercent / 100f * size.height
+                }
+                drawLine(
+                    color = state.guideColor,
+                    start = Offset(0f, y),
+                    end = Offset(size.width, y),
+                    strokeWidth = 1.dp.toPx(),
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(8.dp.toPx(), 6.dp.toPx())),
+                )
             }
-            drawLine(
-                color = state.guideColor,
-                start = Offset(0f, y),
-                end = Offset(size.width, y),
-                strokeWidth = 1.dp.toPx(),
-                pathEffect = PathEffect.dashPathEffect(floatArrayOf(8.dp.toPx(), 6.dp.toPx())),
-            )
         }
-    }
+
+/**
+ * Performs a programmatic page scroll while emitting nested scroll events to outer connections,
+ * so UI that reacts to scroll direction (auto-hiding bars, collapsing toolbars) also responds to
+ * page turns, matching touch scrolling. Events use [NestedScrollSource.SideEffect], so connections
+ * that only react to direct user input (e.g. the answer switch overscroll) ignore them.
+ *
+ * Outer connections consume in `onPreScroll` first. Any remaining distance scrolls the content.
+ * Returns the amount the content actually scrolled, so callers can skip drawing the page guide
+ * when nothing moved. The zero-velocity completion lets ancestors settle using their existing
+ * snap behavior without probing or repeatedly spending the page's scroll distance.
+ * [deltaPx] follows the [ScrollableState] convention (positive towards the content end); nested
+ * scroll events use the opposite sign, matching gestures.
+ */
+private suspend fun NestedScrollDispatcher.dispatchPageTurnScroll(
+    scrollState: ScrollableState,
+    deltaPx: Float,
+): Float {
+    val preConsumed = dispatchPreScroll(Offset(0f, -deltaPx), NestedScrollSource.SideEffect).y
+    val childDelta = deltaPx + preConsumed
+    val consumed = if (childDelta != 0f) scrollState.scrollBy(childDelta) else 0f
+    dispatchPostScroll(
+        Offset(0f, -consumed),
+        Offset(0f, -(childDelta - consumed)),
+        NestedScrollSource.SideEffect,
+    )
+    dispatchPostFling(Velocity.Zero, Velocity.Zero)
+    return consumed
+}
 
 /**
  * Creates a target for a continuous [ScrollState]. Boundary callbacks optionally turn an extra page command at the
@@ -445,9 +486,11 @@ fun rememberPageTurnTarget(
                         reachedStart && currentOnPageUpAtStart != null -> currentOnPageUpAtStart?.invoke()
                         reachedEnd && currentOnPageDownAtEnd != null -> currentOnPageDownAtEnd?.invoke()
                         target.viewportHeight > 0f -> {
-                            scrollState.scrollBy(
+                            val scrolled = target.nestedScrollDispatcher.dispatchPageTurnScroll(
+                                scrollState,
                                 target.viewportHeight * state.pageTurnPercent / 100f * command.scrollDirection,
                             )
+                            if (scrolled == 0f) state.lastPageTurnDirection = 0
                         }
                     }
                 }
@@ -486,9 +529,11 @@ fun rememberPageTurnTarget(
                 PageTurnCommand.PageDown,
                 -> {
                     if (target.viewportHeight > 0f) {
-                        listState.scrollBy(
+                        val scrolled = target.nestedScrollDispatcher.dispatchPageTurnScroll(
+                            listState,
                             target.viewportHeight * state.pageTurnPercent / 100f * command.scrollDirection,
                         )
+                        if (scrolled == 0f) state.lastPageTurnDirection = 0
                     }
                 }
             }
