@@ -131,6 +131,7 @@ fun AnswerVerticalOverscroll(
     val nestedScrollConnection = remember {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (source != NestedScrollSource.UserInput) return Offset.Zero
                 if (overscrollOffset.value != 0f && !overscrollOffset.isRunning) {
                     val delta = available.y
                     val currentOffset = overscrollOffset.value

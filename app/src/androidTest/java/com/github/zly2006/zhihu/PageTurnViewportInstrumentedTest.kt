@@ -18,7 +18,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -89,5 +94,199 @@ class PageTurnViewportInstrumentedTest {
         composeRule.runOnIdle { enabled.value = false }
         composeRule.waitUntil(5_000) { !dispatcher.hasActiveTarget }
         assertFalse(dispatcher.dispatch(PageTurnCommand.PageDown))
+    }
+
+    /**
+     * Regression: 编程式翻页（Page Down 键、翻页悬浮按钮、音量键翻页）不产生嵌套滚动事件，
+     * 基于 NestedScrollConnection 的自动隐藏 UI（主 tab 底栏、文章页顶栏收起）收不到通知。
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/760
+     */
+    @Test
+    fun pageTurnCommandsDispatchNestedScrollEventsToAncestors() {
+        composeRule.resetAppPreferences()
+        composeRule.activity
+            .getSharedPreferences(PREFERENCE_NAME, 0)
+            .edit()
+            .putInt(PREF_PAGE_TURN_PERCENT, 90)
+            .commit()
+
+        val dispatcher = PageTurnDispatcher()
+        val preScrollYs = mutableListOf<Float>()
+        val userInputOnlyEvents = mutableListOf<Float>()
+        lateinit var scrollState: ScrollState
+        composeRule.setScreenContent {
+            val recordingConnection = remember {
+                object : NestedScrollConnection {
+                    override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                        preScrollYs += available.y
+                        return Offset.Zero
+                    }
+                }
+            }
+            // 模仿回答切换（AnswerVerticalOverscroll）：只响应用户直接输入。
+            val userInputOnlyConnection = remember {
+                object : NestedScrollConnection {
+                    override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                        if (source == NestedScrollSource.UserInput) userInputOnlyEvents += available.y
+                        return Offset.Zero
+                    }
+
+                    override fun onPostScroll(
+                        consumed: Offset,
+                        available: Offset,
+                        source: NestedScrollSource,
+                    ): Offset {
+                        if (source == NestedScrollSource.UserInput) userInputOnlyEvents += available.y
+                        return Offset.Zero
+                    }
+                }
+            }
+            CompositionLocalProvider(LocalPageTurnDispatcher provides dispatcher) {
+                scrollState = rememberScrollState()
+                val target = rememberPageTurnTarget(
+                    scrollState = scrollState,
+                    enabled = true,
+                )
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(300.dp)
+                        .nestedScroll(recordingConnection)
+                        .nestedScroll(userInputOnlyConnection)
+                        .pageTurnViewportWithGuide(target)
+                        .verticalScroll(scrollState),
+                ) {
+                    repeat(80) { Text("第 $it 行", fontSize = 20.sp) }
+                }
+            }
+        }
+
+        assertTrue(dispatcher.dispatch(PageTurnCommand.PageDown))
+        composeRule.waitUntil(5_000) { scrollState.value > 0 }
+        composeRule.waitUntil(5_000) { preScrollYs.any { it < 0f } }
+
+        assertTrue(dispatcher.dispatch(PageTurnCommand.PageUp))
+        composeRule.waitUntil(5_000) { scrollState.value <= 2 }
+        composeRule.waitUntil(5_000) { preScrollYs.any { it > 0f } }
+
+        assertTrue(userInputOnlyEvents.isEmpty())
+    }
+
+    /**
+     * Regression: 编程式翻页跳过顶栏收起阶段直接滚动正文，正文中间仍显示展开版顶栏。
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/760
+     */
+    @Test
+    fun pageTurnDefersToAncestorConsumingEntirePreScroll() {
+        composeRule.resetAppPreferences()
+        composeRule.activity
+            .getSharedPreferences(PREFERENCE_NAME, 0)
+            .edit()
+            .putInt(PREF_PAGE_TURN_PERCENT, 90)
+            .commit()
+
+        val dispatcher = PageTurnDispatcher()
+        var outerConsumed = false
+        val greedyConnection = object : NestedScrollConnection {
+            // 模仿 PreferCollapsedExitUntilCollapsedScrollBehavior：收起期间把整个 delta 作为已消费返回。
+            private var collapseBudget = Float.MAX_VALUE
+
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (available.y < 0f && collapseBudget > 0f) {
+                    collapseBudget = 0f
+                    outerConsumed = true
+                    return available.copy(x = 0f)
+                }
+                return Offset.Zero
+            }
+        }
+        lateinit var scrollState: ScrollState
+        composeRule.setScreenContent {
+            CompositionLocalProvider(LocalPageTurnDispatcher provides dispatcher) {
+                scrollState = rememberScrollState()
+                val target = rememberPageTurnTarget(
+                    scrollState = scrollState,
+                    enabled = true,
+                )
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(300.dp)
+                        .nestedScroll(greedyConnection)
+                        .pageTurnViewportWithGuide(target)
+                        .verticalScroll(scrollState),
+                ) {
+                    repeat(80) { Text("第 $it 行", fontSize = 20.sp) }
+                }
+            }
+        }
+
+        assertTrue(dispatcher.dispatch(PageTurnCommand.PageDown))
+        composeRule.waitUntil(5_000) { outerConsumed }
+        assertEquals(0, scrollState.value)
+
+        assertTrue(dispatcher.dispatch(PageTurnCommand.PageDown))
+        val expectedPage = 270 * composeRule.activity.resources.displayMetrics.density
+        composeRule.waitUntil(5_000) { scrollState.value >= expectedPage.toInt() - 2 }
+        assertEquals(expectedPage.toDouble(), scrollState.value.toDouble(), 2.0)
+    }
+
+    /**
+     * Regression: 标题区域收起范围超过一页翻页距离时，一次编程式翻页只收起其中一部分，
+     * 顶栏停在中间位置。
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/760
+     */
+    @Test
+    fun pageTurnDrivesOversizedToolbarCollapseToCompletion() {
+        composeRule.resetAppPreferences()
+        composeRule.activity
+            .getSharedPreferences(PREFERENCE_NAME, 0)
+            .edit()
+            .putInt(PREF_PAGE_TURN_PERCENT, 90)
+            .commit()
+
+        val expectedPage = 270 * composeRule.activity.resources.displayMetrics.density
+        val dispatcher = PageTurnDispatcher()
+        // 模仿标题区域超高的 PreferCollapsedExitUntilCollapsedScrollBehavior：收起范围为两页翻页距离，
+        // 收起期间把整个 delta 作为已消费返回。
+        var collapseBudget = 2 * expectedPage
+        val tallToolbarConnection = object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (available.y < 0f && collapseBudget > 0f) {
+                    val take = minOf(-available.y, collapseBudget)
+                    collapseBudget -= take
+                    return available.copy(x = 0f)
+                }
+                return Offset.Zero
+            }
+        }
+        lateinit var scrollState: ScrollState
+        composeRule.setScreenContent {
+            CompositionLocalProvider(LocalPageTurnDispatcher provides dispatcher) {
+                scrollState = rememberScrollState()
+                val target = rememberPageTurnTarget(
+                    scrollState = scrollState,
+                    enabled = true,
+                )
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(300.dp)
+                        .nestedScroll(tallToolbarConnection)
+                        .pageTurnViewportWithGuide(target)
+                        .verticalScroll(scrollState),
+                ) {
+                    repeat(80) { Text("第 $it 行", fontSize = 20.sp) }
+                }
+            }
+        }
+
+        assertTrue(dispatcher.dispatch(PageTurnCommand.PageDown))
+        composeRule.waitUntil(5_000) { collapseBudget < 0.5f }
+        assertEquals(0, scrollState.value)
+
+        assertTrue(dispatcher.dispatch(PageTurnCommand.PageDown))
+        composeRule.waitUntil(5_000) { scrollState.value >= expectedPage.toInt() - 2 }
+        assertEquals(expectedPage.toDouble(), scrollState.value.toDouble(), 2.0)
     }
 }
