@@ -24,23 +24,23 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
-@Serializable(with = SchematicVersion.Companion::class)
-class SchematicVersion(
+@Serializable(with = SemanticVersion.Companion::class)
+class SemanticVersion(
     val allComponents: List<Int>,
     val preRelease: String,
     val build: String,
-) : Comparable<SchematicVersion> {
-    companion object : KSerializer<SchematicVersion> {
+) : Comparable<SemanticVersion> {
+    companion object : KSerializer<SemanticVersion> {
         override val descriptor =
-            PrimitiveSerialDescriptor(SchematicVersion::class.simpleName!!, PrimitiveKind.STRING)
+            PrimitiveSerialDescriptor(SemanticVersion::class.simpleName!!, PrimitiveKind.STRING)
 
-        override fun serialize(encoder: Encoder, value: SchematicVersion) = encoder.encodeString(value.toString())
+        override fun serialize(encoder: Encoder, value: SemanticVersion) = encoder.encodeString(value.toString())
 
         override fun deserialize(decoder: Decoder) = fromString(decoder.decodeString())
 
-        private val REGEX = Regex("""[vV]?(?<components>[\d.]+)(-(?<pre>[\w._-]+))?(\+(?<build>.+))?""")
+        private val REGEX = Regex("""[vV]?(?<components>\d+(?:\.\d+)*)(?:-(?<pre>[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+(?<build>[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?""")
 
-        fun fromString(version: String): SchematicVersion {
+        fun fromString(version: String): SemanticVersion {
             val match = REGEX.matchEntire(version) ?: throw IllegalArgumentException("Invalid version string")
             val components = match.groups["components"]!!
                 .value
@@ -49,7 +49,7 @@ class SchematicVersion(
             require(components.isNotEmpty()) { "Version must have at least one component" }
             val preRelease = match.groups["pre"]?.value ?: ""
             val build = match.groups["build"]?.value ?: ""
-            return SchematicVersion(components, preRelease, build)
+            return SemanticVersion(components, preRelease, build)
         }
     }
 
@@ -63,26 +63,31 @@ class SchematicVersion(
         if (build.isNotEmpty()) append("+$build")
     }
 
-    override operator fun compareTo(other: SchematicVersion): Int {
+    override operator fun compareTo(other: SemanticVersion): Int {
         for (i in 0 until maxOf(allComponents.size, other.allComponents.size)) {
             val a = allComponents.getOrNull(i) ?: 0
             val b = other.allComponents.getOrNull(i) ?: 0
-            if (a != b) return a - b
+            if (a != b) return a.compareTo(b)
         }
         if (preRelease.isNotEmpty() && other.preRelease.isNotEmpty()) {
             val a = preRelease.split(".")
             val b = other.preRelease.split(".")
-            for (i in 0 until maxOf(a.size, b.size)) {
-                val aPart = a.getOrNull(i) ?: ""
-                val bPart = b.getOrNull(i) ?: ""
-                if (aPart != bPart) {
-                    return when {
-                        aPart.all { it.isDigit() } && bPart.all { it.isDigit() } -> aPart.toInt() - bPart.toInt()
-                        else -> aPart.compareTo(bPart)
-                    }
+            for (i in 0 until minOf(a.size, b.size)) {
+                val aPart = a[i]
+                val bPart = b[i]
+                if (aPart == bPart) continue
+                val aNumeric = aPart.all(Char::isDigit)
+                val bNumeric = bPart.all(Char::isDigit)
+                val result = when {
+                    aNumeric && bNumeric -> aPart.trimStart('0').length.compareTo(bPart.trimStart('0').length)
+                        .takeIf { it != 0 } ?: aPart.trimStart('0').compareTo(bPart.trimStart('0'))
+                    aNumeric -> -1
+                    bNumeric -> 1
+                    else -> aPart.compareTo(bPart)
                 }
+                if (result != 0) return result
             }
-            return 0
+            return a.size.compareTo(b.size)
         } else if (preRelease.isNotEmpty()) {
             return -1
         } else if (other.preRelease.isNotEmpty()) {

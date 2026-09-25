@@ -23,7 +23,7 @@ import com.github.zly2006.zhihu.desktop.defaultDesktopAccountStore
 import com.github.zly2006.zhihu.desktop.openDesktopExternalUrl
 import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.updater.SchematicVersion
+import com.github.zly2006.zhihu.updater.SemanticVersion
 import com.github.zly2006.zhihu.updater.extractGithubReleaseNotes
 import com.github.zly2006.zhihu.updater.fetchLatestZhihuRelease
 import com.github.zly2006.zhihu.updater.fetchNightlyZhihuRelease
@@ -117,9 +117,9 @@ private suspend fun checkDesktopUpdate(
 ) {
     try {
         state.value = SystemUpdateState.Checking
-        val currentVersion = SchematicVersion.fromString(desktopVersionName())
+        val currentVersion = SemanticVersion.fromString(desktopVersionName())
         var latestResponse = fetchLatestZhihuRelease(client, githubToken)
-        var latestVersion = latestResponse.tagName.takeIf { it.isNotBlank() }?.let { SchematicVersion.fromString(it) }
+        var latestVersion = latestResponse.tagName.takeIf { it.isNotBlank() }?.let { SemanticVersion.fromString(it) }
         var isNightly = false
         var releaseNotes = latestResponse.body?.let(::extractGithubReleaseNotes)
 
@@ -129,7 +129,7 @@ private suspend fun checkDesktopUpdate(
             }.onSuccess { nightlyResponse ->
                 if (nightlyResponse.tagName == "nightly") {
                     latestResponse = nightlyResponse
-                    latestVersion = SchematicVersion(
+                    latestVersion = SemanticVersion(
                         allComponents = listOf(999, 0, 0),
                         preRelease = "nightly",
                         build = "",
