@@ -388,7 +388,7 @@ class ZhihuMainNavigationInstrumentedTest {
      * Related tablet request: https://github.com/zly2006/zhihu-plus-plus/issues/680
      * Regression found reviewing: https://github.com/zly2006/zhihu-plus-plus/pull/754
      * 混合听读队列从回答切换到问题时，必须打开问题而不是跳入未注册该路由的详情图。
-     * 关闭队列弹层使用其语义动作，避免系统返回键在弹层窗口获取焦点前落到背景页面。
+     * 关闭队列弹层使用其语义动作，不依赖系统返回键的窗口分发时序。
      */
     @Test
     fun readingQueueCanSwitchFromDetailToQuestion() {
