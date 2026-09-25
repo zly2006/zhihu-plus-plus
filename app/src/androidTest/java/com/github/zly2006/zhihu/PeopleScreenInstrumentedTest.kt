@@ -17,18 +17,16 @@
 
 package com.github.zly2006.zhihu
 
-import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
-import androidx.compose.ui.test.swipeUp
+import androidx.compose.ui.test.swipe
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.FeedDisplayItem
@@ -169,7 +167,12 @@ class PeopleScreenInstrumentedTest {
         )
     }
 
-    /** Regression: https://github.com/zly2006/zhihu-plus-plus/issues/718 */
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/718
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/722
+     * Target: four badges leave the expanded action buttons visible and keep them clear of the tab row after collapse.
+     * The tab row must move upward to prove the header collapsed; changes to unrelated list pixels cannot pass.
+     */
     @Test
     fun denseProfileBadgesKeepHeaderActionsVisibleOffline() {
         val viewModel = seededViewModel(itemCount = 1)
@@ -208,25 +211,23 @@ class PeopleScreenInstrumentedTest {
             )
         }
 
-        fun capturePixels(): IntArray {
-            val bitmap = composeRule.onRoot().captureToImage().asAndroidBitmap()
-            return IntArray(bitmap.width * bitmap.height).also { pixels ->
-                bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
-            }
-        }
-
-        val expandedPixels = capturePixels()
         val listNode = composeRule.onNodeWithTag(PEOPLE_SCREEN_ANSWERS_LIST_TAG)
-        listNode.performTouchInput { swipeUp(250f) }
-        composeRule.waitForIdle()
-        val intermediatePixels = capturePixels()
-        listNode.performTouchInput { swipeUp(800f) }
+        listNode.performTouchInput {
+            swipe(
+                start = Offset(centerX, height * 0.85f),
+                end = Offset(centerX, height * 0.35f),
+            )
+        }
         composeRule.waitForIdle()
         val collapsedTabBounds = composeRule
             .onNodeWithTag(PEOPLE_SCREEN_TAB_ROW_TAG)
             .fetchSemanticsNode()
             .boundsInRoot
         assertTrue("收起态标签栏必须保持可见", collapsedTabBounds.height > 0f)
+        assertTrue(
+            "滚动后标签栏必须上移，证明资料头已收起：展开=$expandedTabTop，收起=${collapsedTabBounds.top}",
+            expandedTabTop > collapsedTabBounds.top,
+        )
         listOf(
             PEOPLE_SCREEN_FOLLOW_BUTTON_TAG,
             PEOPLE_SCREEN_BLOCK_BUTTON_TAG,
@@ -239,13 +240,6 @@ class PeopleScreenInstrumentedTest {
                 buttonBounds.bottom <= collapsedTabBounds.top || buttonBounds.top >= collapsedTabBounds.bottom,
             )
         }
-        val collapsedPixels = capturePixels()
-        assertTrue(
-            "展开、中间、收起必须呈现不同布局状态",
-            !expandedPixels.contentEquals(intermediatePixels) &&
-                !intermediatePixels.contentEquals(collapsedPixels) &&
-                !expandedPixels.contentEquals(collapsedPixels),
-        )
     }
 
     /**
