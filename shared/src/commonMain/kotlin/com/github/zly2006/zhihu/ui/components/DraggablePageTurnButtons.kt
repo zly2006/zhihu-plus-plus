@@ -75,6 +75,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.github.zly2006.zhihu.platform.isPageTurnSupported
@@ -416,23 +417,16 @@ fun Modifier.pageTurnViewportWithGuide(target: PageTurnTarget): Modifier =
             }
         }
 
-// 正常页面的收起范围不超过数页翻页距离，上限只用于异常连接持续消费时的保护。
-private const val COLLAPSE_DRIVE_MAX_ROUNDS = 10
-
 /**
  * Performs a programmatic page scroll while emitting nested scroll events to outer connections,
  * so UI that reacts to scroll direction (auto-hiding bars, collapsing toolbars) also responds to
  * page turns, matching touch scrolling. Events use [NestedScrollSource.SideEffect], so connections
  * that only react to direct user input (e.g. the answer switch overscroll) ignore them.
  *
- * Outer connections consume in `onPreScroll` first. The app's `exitUntilCollapsed` behavior
- * ([PreferCollapsedExitUntilCollapsedScrollBehavior]) reports the whole delta as consumed while
- * the toolbar collapses (stock Material 3 only consumes the remaining collapse range), so on
- * such a press the content does not scroll — like a short drag that only collapses the toolbar.
- * In that case a 1px probe checks whether the collapse has settled, and the drive repeats until
- * it has, so an oversized title area still fully collapses instead of freezing halfway; once
- * they leave the delta (or already have), the content scrolls it. Returns the amount the
- * content actually scrolled, so callers can skip drawing the page guide when nothing moved.
+ * Outer connections consume in `onPreScroll` first. Any remaining distance scrolls the content.
+ * Returns the amount the content actually scrolled, so callers can skip drawing the page guide
+ * when nothing moved. The zero-velocity completion lets ancestors settle using their existing
+ * snap behavior without probing or repeatedly spending the page's scroll distance.
  * [deltaPx] follows the [ScrollableState] convention (positive towards the content end); nested
  * scroll events use the opposite sign, matching gestures.
  */
@@ -440,25 +434,16 @@ private suspend fun NestedScrollDispatcher.dispatchPageTurnScroll(
     scrollState: ScrollableState,
     deltaPx: Float,
 ): Float {
-    val probeDelta = if (deltaPx < 0f) 1f else -1f
-    var rounds = 0
-    while (rounds < COLLAPSE_DRIVE_MAX_ROUNDS) {
-        rounds++
-        val preConsumed = dispatchPreScroll(Offset(0f, -deltaPx), NestedScrollSource.SideEffect).y
-        val childDelta = deltaPx + preConsumed
-        if (childDelta != 0f) {
-            val consumed = scrollState.scrollBy(childDelta)
-            dispatchPostScroll(
-                Offset(0f, preConsumed - consumed),
-                Offset(0f, -(childDelta - consumed)),
-                NestedScrollSource.SideEffect,
-            )
-            return consumed
-        }
-        val settled = dispatchPreScroll(Offset(0f, probeDelta), NestedScrollSource.SideEffect).y == 0f
-        if (settled) return 0f
-    }
-    return 0f
+    val preConsumed = dispatchPreScroll(Offset(0f, -deltaPx), NestedScrollSource.SideEffect).y
+    val childDelta = deltaPx + preConsumed
+    val consumed = if (childDelta != 0f) scrollState.scrollBy(childDelta) else 0f
+    dispatchPostScroll(
+        Offset(0f, -consumed),
+        Offset(0f, -(childDelta - consumed)),
+        NestedScrollSource.SideEffect,
+    )
+    dispatchPostFling(Velocity.Zero, Velocity.Zero)
+    return consumed
 }
 
 /**

@@ -23,7 +23,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarState
+import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,6 +48,7 @@ import com.github.zly2006.zhihu.ui.components.PageTurnCommand
 import com.github.zly2006.zhihu.ui.components.PageTurnDispatcher
 import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
+import com.github.zly2006.zhihu.ui.components.rememberPreferCollapsedExitUntilCollapsedScrollBehavior
 import com.github.zly2006.zhihu.ui.subscreens.PREF_PAGE_TURN_PERCENT
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -52,6 +56,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import kotlin.math.roundToInt
 
 @RunWith(AndroidJUnit4::class)
 class PageTurnViewportInstrumentedTest {
@@ -196,7 +201,7 @@ class PageTurnViewportInstrumentedTest {
         val dispatcher = PageTurnDispatcher()
         var outerConsumed = false
         val greedyConnection = object : NestedScrollConnection {
-            // 模仿 PreferCollapsedExitUntilCollapsedScrollBehavior：收起期间把整个 delta 作为已消费返回。
+            // 验证祖先完整消费翻页距离时，正文不滚动。
             private var collapseBudget = Float.MAX_VALUE
 
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
@@ -240,12 +245,12 @@ class PageTurnViewportInstrumentedTest {
     }
 
     /**
-     * Regression: 标题区域收起范围超过一页翻页距离时，一次编程式翻页只收起其中一部分，
-     * 顶栏停在中间位置。
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/630
      * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/760
+     * 祖先部分消费翻页距离时，正文移动剩余距离，后滚动事件不能重复计算祖先的消费量。
      */
     @Test
-    fun pageTurnDrivesOversizedToolbarCollapseToCompletion() {
+    fun pageTurnPassesPartialPreScrollRemainderToContent() {
         composeRule.resetAppPreferences()
         composeRule.activity
             .getSharedPreferences(PREFERENCE_NAME, 0)
@@ -254,17 +259,20 @@ class PageTurnViewportInstrumentedTest {
             .commit()
 
         val expectedPage = 270 * composeRule.activity.resources.displayMetrics.density
+        val toolbarRemainder = expectedPage / 3f
         val dispatcher = PageTurnDispatcher()
-        // 模仿标题区域超高的 PreferCollapsedExitUntilCollapsedScrollBehavior：收起范围为两页翻页距离，
-        // 收起期间把整个 delta 作为已消费返回。
-        var collapseBudget = 2 * expectedPage
-        val tallToolbarConnection = object : NestedScrollConnection {
+        var postConsumed = Float.NaN
+        val toolbarConnection = object : NestedScrollConnection {
+            var remaining = toolbarRemainder
+
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (available.y < 0f && collapseBudget > 0f) {
-                    val take = minOf(-available.y, collapseBudget)
-                    collapseBudget -= take
-                    return available.copy(x = 0f)
-                }
+                val taken = minOf(-available.y, remaining)
+                remaining -= taken
+                return Offset(0f, -taken)
+            }
+
+            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                postConsumed = consumed.y
                 return Offset.Zero
             }
         }
@@ -272,15 +280,12 @@ class PageTurnViewportInstrumentedTest {
         composeRule.setScreenContent {
             CompositionLocalProvider(LocalPageTurnDispatcher provides dispatcher) {
                 scrollState = rememberScrollState()
-                val target = rememberPageTurnTarget(
-                    scrollState = scrollState,
-                    enabled = true,
-                )
+                val target = rememberPageTurnTarget(scrollState = scrollState, enabled = true)
                 Column(
                     Modifier
                         .fillMaxWidth()
                         .height(300.dp)
-                        .nestedScroll(tallToolbarConnection)
+                        .nestedScroll(toolbarConnection)
                         .pageTurnViewportWithGuide(target)
                         .verticalScroll(scrollState),
                 ) {
@@ -290,7 +295,58 @@ class PageTurnViewportInstrumentedTest {
         }
 
         assertTrue(dispatcher.dispatch(PageTurnCommand.PageDown))
-        composeRule.waitUntil(5_000) { collapseBudget < 0.5f }
+        composeRule.waitUntil(5_000) { !postConsumed.isNaN() }
+        val expectedContentScroll = expectedPage - toolbarRemainder
+        assertEquals(expectedContentScroll.toDouble(), scrollState.value.toDouble(), 2.0)
+        assertEquals(-expectedContentScroll.toDouble(), postConsumed.toDouble(), 2.0)
+        assertEquals(0.0, toolbarConnection.remaining.toDouble(), 0.01)
+    }
+
+    /**
+     * Regression: 翻页结束未触发真实顶栏的吸附，超高标题会停在半收起状态。
+     * 验证首次翻页收完顶栏且正文不动，第二次才滚动正文。
+     * 关联 issue 未提出这项两阶段翻页行为；维护者 zly2006 已于 2026-09-25 明确认可其作为交互契约。
+     * Related issue: https://github.com/zly2006/zhihu-plus-plus/issues/630
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/760
+     */
+    @Test
+    @OptIn(ExperimentalMaterial3Api::class)
+    fun pageTurnDrivesOversizedToolbarCollapseToCompletion() {
+        composeRule.resetAppPreferences()
+        composeRule.activity
+            .getSharedPreferences(PREFERENCE_NAME, 0)
+            .edit()
+            .putInt(PREF_PAGE_TURN_PERCENT, 90)
+            .commit()
+
+        val expectedPage = (300 * composeRule.activity.resources.displayMetrics.density).roundToInt() * 0.9f
+        val dispatcher = PageTurnDispatcher()
+        lateinit var toolbarState: TopAppBarState
+        lateinit var scrollState: ScrollState
+        composeRule.setScreenContent {
+            CompositionLocalProvider(LocalPageTurnDispatcher provides dispatcher) {
+                toolbarState = rememberTopAppBarState(initialHeightOffsetLimit = -2 * expectedPage)
+                val toolbarBehavior = rememberPreferCollapsedExitUntilCollapsedScrollBehavior(toolbarState)
+                scrollState = rememberScrollState()
+                val target = rememberPageTurnTarget(
+                    scrollState = scrollState,
+                    enabled = true,
+                )
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(300.dp)
+                        .nestedScroll(toolbarBehavior.nestedScrollConnection)
+                        .pageTurnViewportWithGuide(target)
+                        .verticalScroll(scrollState),
+                ) {
+                    repeat(80) { Text("第 $it 行", fontSize = 20.sp) }
+                }
+            }
+        }
+
+        assertTrue(dispatcher.dispatch(PageTurnCommand.PageDown))
+        composeRule.waitUntil(5_000) { toolbarState.collapsedFraction == 1f }
         assertEquals(0, scrollState.value)
 
         assertTrue(dispatcher.dispatch(PageTurnCommand.PageDown))
