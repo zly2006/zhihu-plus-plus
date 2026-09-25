@@ -44,6 +44,8 @@ class SemanticVersionTest {
         assertEquals(0, SemanticVersion.fromString("1.2.0").compareTo(SemanticVersion.fromString("1.2")))
         assertTrue(SemanticVersion.fromString("1.2.0") > SemanticVersion.fromString("1.2.0-beta.1"))
         assertTrue(SemanticVersion.fromString("1.2.0-beta.2") > SemanticVersion.fromString("1.2.0-beta.1"))
+        assertTrue(SemanticVersion.fromString("1.2.0-beta.11") > SemanticVersion.fromString("1.2.0-beta.1"))
+        assertTrue(SemanticVersion.fromString("1.2.0-beta.11") > SemanticVersion.fromString("1.2.0-beta.2"))
     }
 
     @Test

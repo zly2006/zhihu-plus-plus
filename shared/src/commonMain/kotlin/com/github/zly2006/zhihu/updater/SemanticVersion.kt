@@ -79,8 +79,12 @@ class SemanticVersion(
                 val aNumeric = aPart.all(Char::isDigit)
                 val bNumeric = bPart.all(Char::isDigit)
                 val result = when {
-                    aNumeric && bNumeric -> aPart.trimStart('0').length.compareTo(bPart.trimStart('0').length)
-                        .takeIf { it != 0 } ?: aPart.trimStart('0').compareTo(bPart.trimStart('0'))
+                    aNumeric && bNumeric ->
+                        aPart
+                            .trimStart('0')
+                            .length
+                            .compareTo(bPart.trimStart('0').length)
+                            .takeIf { it != 0 } ?: aPart.trimStart('0').compareTo(bPart.trimStart('0'))
                     aNumeric -> -1
                     bNumeric -> 1
                     else -> aPart.compareTo(bPart)
