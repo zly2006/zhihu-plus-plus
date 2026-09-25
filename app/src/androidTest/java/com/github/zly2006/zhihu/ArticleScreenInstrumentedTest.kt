@@ -228,6 +228,7 @@ class ArticleScreenInstrumentedTest {
     /**
      * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/630
      * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/728
+     * First Page Down collapses the article title without scrolling the body; the second scrolls the body.
      */
     @Test
     fun pageTurnControlsScrollTheArticleAndProduceReviewScreenshot() {
@@ -249,6 +250,28 @@ class ArticleScreenInstrumentedTest {
             .fetchSemanticsNode()
             .config[SemanticsProperties.VerticalScrollAxisRange]
             .value()
+        val title = composeRule.onNodeWithText("离线 Article 标题")
+        val toolbarActionBottom = composeRule
+            .onNodeWithContentDescription("更多选项")
+            .fetchSemanticsNode()
+            .boundsInRoot
+            .bottom
+        assertTrue(title.fetchSemanticsNode().boundsInRoot.bottom > toolbarActionBottom)
+
+        assertTrue(dispatcher.dispatch(PageTurnCommand.PageDown))
+        composeRule.waitUntil(5_000) {
+            title.fetchSemanticsNode().boundsInRoot.bottom <= toolbarActionBottom
+        }
+        composeRule.waitForIdle()
+        assertEquals(
+            initialValue.toDouble(),
+            scrollContainer
+                .fetchSemanticsNode()
+                .config[SemanticsProperties.VerticalScrollAxisRange]
+                .value()
+                .toDouble(),
+            0.5,
+        )
 
         assertTrue(dispatcher.dispatch(PageTurnCommand.PageDown))
         composeRule.waitUntil(5_000) {
