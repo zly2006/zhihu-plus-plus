@@ -18,10 +18,8 @@
 package com.github.zly2006.zhihu
 
 import android.content.Context
-import android.graphics.Bitmap
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -30,7 +28,6 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.core.content.edit
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.platform.app.InstrumentationRegistry
 import com.github.zly2006.zhihu.data.MOBILE_NOTIFICATION_MESSAGE_URL
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.ZhihuMockApi
@@ -46,8 +43,6 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.io.File
-import java.io.FileOutputStream
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor
@@ -111,14 +106,6 @@ class HomeNotificationPixelInstrumentedTest {
             .fetchSemanticsNode()
             .boundsInRoot
         val rootImage = composeRule.onRoot().captureToImage()
-        val screenshot = File(
-            requireNotNull(InstrumentationRegistry.getInstrumentation().targetContext.getExternalFilesDir(null)),
-            "home-notification-button-content.png",
-        )
-        FileOutputStream(screenshot).use { stream ->
-            rootImage.asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, stream)
-        }
-
         val pixels = rootImage.toPixelMap()
         val left = contentBounds.left.roundToInt().coerceIn(0, pixels.width - 1)
         val top = contentBounds.top.roundToInt().coerceIn(0, pixels.height - 1)
@@ -140,7 +127,7 @@ class HomeNotificationPixelInstrumentedTest {
         contentCorners.forEach { (x, y) ->
             val corner = pixels[x.coerceIn(0, pixels.width - 1), y.coerceIn(0, pixels.height - 1)]
             assertTrue(
-                "Notification icon content box corners must stay on the app-bar background; corner=$corner background=$background screenshot=${screenshot.absolutePath}",
+                "Notification icon content box corners must stay on the app-bar background; corner=$corner background=$background",
                 isCloseTo(corner, background),
             )
         }
@@ -151,7 +138,7 @@ class HomeNotificationPixelInstrumentedTest {
             }
         }
         assertTrue(
-            "Notification icon content box must contain visible foreground pixels for the icon/badge; found $foregroundPixels screenshot=${screenshot.absolutePath}",
+            "Notification icon content box must contain visible foreground pixels for the icon/badge; found $foregroundPixels",
             foregroundPixels >= 80,
         )
         val badgeLeft = floor(badgeBounds.left).toInt().coerceIn(0, pixels.width - 1)

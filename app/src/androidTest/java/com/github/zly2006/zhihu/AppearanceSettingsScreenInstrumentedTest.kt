@@ -19,12 +19,9 @@ package com.github.zly2006.zhihu
 
 import android.content.Context
 import android.content.SharedPreferences
-import android.graphics.Bitmap
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
-import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
@@ -32,7 +29,6 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeUp
@@ -62,8 +58,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.io.File
-import java.io.FileOutputStream
 
 @RunWith(AndroidJUnit4::class)
 class AppearanceSettingsScreenInstrumentedTest {
@@ -124,7 +118,7 @@ class AppearanceSettingsScreenInstrumentedTest {
      * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/728
      */
     @Test
-    fun pageTurnSettingsAreAvailableOnAndroidAndProduceReviewScreenshot() {
+    fun pageTurnSettingsAreAvailableOnAndroid() {
         composeRule.resetAppPreferences()
         preferences
             .edit()
@@ -143,19 +137,6 @@ class AppearanceSettingsScreenInstrumentedTest {
         assertFalse(preferences.getBoolean(PREF_SHOW_CONTENT_END_MARKER, false))
         assertTrue(preferences.getBoolean(PREF_VOLUME_KEY_PAGE_TURN, false))
         assertTrue(preferences.getBoolean(PREF_SHOW_PAGE_TURN_FAB, false))
-
-        val screenshot = File(
-            requireNotNull(composeRule.activity.getExternalFilesDir(null)),
-            "page-turn-settings.png",
-        )
-        FileOutputStream(screenshot).use { output ->
-            composeRule.onRoot().captureToImage().asAndroidBitmap().compress(
-                Bitmap.CompressFormat.PNG,
-                100,
-                output,
-            )
-        }
-        assertTrue(screenshot.exists() && screenshot.length() > 0)
     }
 
     private fun setUpScreen(setting: String = "", resetPreferences: Boolean = true) {

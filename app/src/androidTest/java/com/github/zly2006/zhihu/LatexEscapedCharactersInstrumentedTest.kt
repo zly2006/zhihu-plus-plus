@@ -29,7 +29,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.captureToImage
@@ -39,7 +39,6 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.platform.app.InstrumentationRegistry
 import com.github.zly2006.zhihu.test.setScreenContent
 import com.hrm.latex.renderer.Latex
 import com.hrm.latex.renderer.model.LatexConfig
@@ -47,8 +46,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.io.File
-import java.io.FileOutputStream
 
 @RunWith(AndroidJUnit4::class)
 class LatexEscapedCharactersInstrumentedTest {
@@ -74,7 +71,7 @@ class LatexEscapedCharactersInstrumentedTest {
             Surface(
                 modifier = Modifier
                     .fillMaxSize()
-                    .testTag("latex_compatibility_screenshot"),
+                    .testTag("latex_compatibility"),
                 color = MaterialTheme.colorScheme.background,
             ) {
                 Column(
@@ -120,10 +117,7 @@ class LatexEscapedCharactersInstrumentedTest {
             }
         }
 
-        captureScreenshot(
-            tag = "latex_compatibility_screenshot",
-            filename = "latex-escaped-characters.png",
-        )
+        assertRenderedContent("latex_compatibility")
     }
 
     /**
@@ -138,7 +132,7 @@ class LatexEscapedCharactersInstrumentedTest {
             Surface(
                 modifier = Modifier
                     .fillMaxSize()
-                    .testTag("latex_unbraced_scripts_screenshot"),
+                    .testTag("latex_unbraced_scripts"),
                 color = MaterialTheme.colorScheme.background,
             ) {
                 Column(
@@ -183,36 +177,21 @@ class LatexEscapedCharactersInstrumentedTest {
             }
         }
 
-        captureScreenshot(
-            tag = "latex_unbraced_scripts_screenshot",
-            filename = "latex-unbraced-scripts.png",
-        )
+        assertRenderedContent("latex_unbraced_scripts")
     }
 
-    private fun captureScreenshot(tag: String, filename: String) {
-        val screenshotNode = composeRule
+    private fun assertRenderedContent(tag: String) {
+        val pixels = composeRule
             .onNodeWithTag(tag)
             .assertIsDisplayed()
-        composeRule.waitForIdle()
-
-        val outputDir = InstrumentationRegistry
-            .getInstrumentation()
-            .targetContext
-            .getExternalFilesDir(null)
-        val screenshot = File(outputDir, filename)
-        val bitmap = screenshotNode.captureToImage().asAndroidBitmap()
-        FileOutputStream(screenshot).use { stream ->
-            bitmap.compress(
-                android.graphics.Bitmap.CompressFormat.PNG,
-                100,
-                stream,
-            )
-        }
-
-        val pixels = IntArray(bitmap.width * bitmap.height)
-        bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
-        assertTrue(pixels.any { it != pixels.first() })
-        assertTrue(screenshot.exists())
-        assertTrue(screenshot.length() > 0)
+            .captureToImage()
+            .toPixelMap()
+        val background = pixels[0, 0]
+        assertTrue(
+            "Rendered LaTeX screen must contain visible content",
+            (0 until pixels.height).any { y ->
+                (0 until pixels.width).any { x -> pixels[x, y] != background }
+            },
+        )
     }
 }
