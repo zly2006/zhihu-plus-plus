@@ -19,7 +19,6 @@ package com.github.zly2006.zhihu
 
 import android.content.Context
 import android.content.Intent
-import android.graphics.Bitmap
 import android.os.SystemClock
 import android.util.Log
 import android.view.InputDevice
@@ -42,7 +41,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.Clipboard
@@ -114,8 +112,6 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.io.File
-import java.io.FileOutputStream
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
@@ -231,7 +227,7 @@ class ArticleScreenInstrumentedTest {
      * First Page Down collapses the article title without scrolling the body; the second scrolls the body.
      */
     @Test
-    fun pageTurnControlsScrollTheArticleAndProduceReviewScreenshot() {
+    fun pageTurnControlsScrollTheArticle() {
         composeRule.activity
             .getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
             .edit()
@@ -280,19 +276,6 @@ class ArticleScreenInstrumentedTest {
                 .config[SemanticsProperties.VerticalScrollAxisRange]
                 .value() > initialValue
         }
-
-        val screenshot = File(
-            requireNotNull(composeRule.activity.getExternalFilesDir(null)),
-            "page-turn-article.png",
-        )
-        FileOutputStream(screenshot).use { output ->
-            composeRule.onRoot().captureToImage().asAndroidBitmap().compress(
-                Bitmap.CompressFormat.PNG,
-                100,
-                output,
-            )
-        }
-        assertTrue(screenshot.exists() && screenshot.length() > 0)
     }
 
     /**
@@ -995,14 +978,6 @@ class ArticleScreenInstrumentedTest {
         val image = composeRule
             .onNodeWithTag("wrapped-highlight-article")
             .captureToImage()
-        val output = File(
-            requireNotNull(InstrumentationRegistry.getInstrumentation().targetContext.getExternalFilesDir(null)),
-            "segment-highlight-wrapped.png",
-        )
-        FileOutputStream(output).use { stream ->
-            image.asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, stream)
-        }
-
         val pixels = image.toPixelMap()
         for (line in startLine..endLine) {
             val top = (layout.getLineBottom(line) - 6f).toInt().coerceAtLeast(0)
@@ -1014,7 +989,7 @@ class ArticleScreenInstrumentedTest {
                 }
             }
             assertTrue(
-                "Highlighted visual line $line must contain visible dash pixels; found $magentaPixels. Screenshot: ${output.absolutePath}",
+                "Highlighted visual line $line must contain visible dash pixels; found $magentaPixels",
                 magentaPixels >= 4,
             )
         }
@@ -1115,13 +1090,6 @@ class ArticleScreenInstrumentedTest {
             val selectionImage = composeRule
                 .onNodeWithTag("multiline-selection-article")
                 .captureToImage()
-            val screenshot = File(
-                requireNotNull(InstrumentationRegistry.getInstrumentation().targetContext.getExternalFilesDir(null)),
-                "markdown-native-selection.png",
-            )
-            FileOutputStream(screenshot).use { stream ->
-                selectionImage.asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, stream)
-            }
             val pixels = selectionImage.toPixelMap()
             val highlightedRows = (0 until pixels.height).count { y ->
                 var selectedPixels = 0
@@ -1135,8 +1103,7 @@ class ArticleScreenInstrumentedTest {
             }
             Log.i("MarkdownSelection", "multilineSelectionHighlightedRows=$highlightedRows")
             assertTrue(
-                "Select-all highlight only covered $highlightedRows pixel rows; a wrapped paragraph must highlight every line. " +
-                    "Screenshot: ${screenshot.absolutePath}",
+                "Select-all highlight only covered $highlightedRows pixel rows; a wrapped paragraph must highlight every line.",
                 highlightedRows >= 180,
             )
         } finally {

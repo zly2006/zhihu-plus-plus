@@ -18,7 +18,9 @@
 package com.github.zly2006.zhihu
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -60,6 +62,8 @@ class NotificationScreenInstrumentedTest {
     /**
      * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/490
      * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/503
+     * Target: the Like category button displays its own capped unread badge for 210 unread items.
+     * The descendant matcher rejects a count shown elsewhere on the screen.
      */
     @Test
     fun notificationScreen_showsCategoryUnreadCountBadge() {
@@ -73,10 +77,14 @@ class NotificationScreenInstrumentedTest {
             NotificationScreen()
         }
         composeRule.seedNotificationViewModel(
-            unreadCounts = mapOf(MobileNotificationCategory.Like to 2),
+            unreadCounts = mapOf(MobileNotificationCategory.Like to 210),
         )
 
-        composeRule.onNodeWithText("2").assertIsDisplayed()
+        composeRule
+            .onNode(
+                hasText("99+") and hasAnyAncestor(hasTestTag("notification_category_like")),
+                useUnmergedTree = true,
+            ).assertIsDisplayed()
     }
 
     /**

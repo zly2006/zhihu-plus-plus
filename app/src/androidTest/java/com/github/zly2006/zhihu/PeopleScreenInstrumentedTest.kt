@@ -17,18 +17,16 @@
 
 package com.github.zly2006.zhihu
 
-import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
-import androidx.compose.ui.test.swipeUp
+import androidx.compose.ui.test.swipe
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.FeedDisplayItem
@@ -71,9 +69,6 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.io.File
-import java.io.FileOutputStream
-import java.security.MessageDigest
 
 @RunWith(AndroidJUnit4::class)
 class PeopleScreenInstrumentedTest {
@@ -172,7 +167,12 @@ class PeopleScreenInstrumentedTest {
         )
     }
 
-    /** Regression: https://github.com/zly2006/zhihu-plus-plus/issues/718 */
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/718
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/722
+     * Target: four badges leave the expanded action buttons visible and keep them clear of the tab row after collapse.
+     * The tab row must move upward to prove the header collapsed; changes to unrelated list pixels cannot pass.
+     */
     @Test
     fun denseProfileBadgesKeepHeaderActionsVisibleOffline() {
         val viewModel = seededViewModel(itemCount = 1)
@@ -211,37 +211,23 @@ class PeopleScreenInstrumentedTest {
             )
         }
 
-        fun captureScreenshot(name: String): String {
-            val screenshot = File(
-                requireNotNull(composeRule.activity.getExternalFilesDir(null)),
-                name,
-            )
-            FileOutputStream(screenshot).use { output ->
-                composeRule.onRoot().captureToImage().asAndroidBitmap().compress(
-                    android.graphics.Bitmap.CompressFormat.PNG,
-                    100,
-                    output,
-                )
-            }
-            assertTrue(screenshot.exists() && screenshot.length() > 0)
-            return MessageDigest
-                .getInstance("SHA-256")
-                .digest(screenshot.readBytes())
-                .joinToString("") { byte -> "%02x".format(byte) }
-        }
-
-        val expandedScreenshot = captureScreenshot("issue-718-expanded.png")
         val listNode = composeRule.onNodeWithTag(PEOPLE_SCREEN_ANSWERS_LIST_TAG)
-        listNode.performTouchInput { swipeUp(250f) }
-        composeRule.waitForIdle()
-        val intermediateScreenshot = captureScreenshot("issue-718-intermediate.png")
-        listNode.performTouchInput { swipeUp(800f) }
+        listNode.performTouchInput {
+            swipe(
+                start = Offset(centerX, height * 0.85f),
+                end = Offset(centerX, height * 0.35f),
+            )
+        }
         composeRule.waitForIdle()
         val collapsedTabBounds = composeRule
             .onNodeWithTag(PEOPLE_SCREEN_TAB_ROW_TAG)
             .fetchSemanticsNode()
             .boundsInRoot
         assertTrue("收起态标签栏必须保持可见", collapsedTabBounds.height > 0f)
+        assertTrue(
+            "滚动后标签栏必须上移，证明资料头已收起：展开=$expandedTabTop，收起=${collapsedTabBounds.top}",
+            expandedTabTop > collapsedTabBounds.top,
+        )
         listOf(
             PEOPLE_SCREEN_FOLLOW_BUTTON_TAG,
             PEOPLE_SCREEN_BLOCK_BUTTON_TAG,
@@ -254,11 +240,6 @@ class PeopleScreenInstrumentedTest {
                 buttonBounds.bottom <= collapsedTabBounds.top || buttonBounds.top >= collapsedTabBounds.bottom,
             )
         }
-        val collapsedScreenshot = captureScreenshot("issue-718-collapsed.png")
-        assertTrue(
-            "展开、中间、收起截图必须来自不同布局状态",
-            setOf(expandedScreenshot, intermediateScreenshot, collapsedScreenshot).size == 3,
-        )
     }
 
     /**

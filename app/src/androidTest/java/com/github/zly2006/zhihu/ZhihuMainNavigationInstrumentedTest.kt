@@ -18,7 +18,6 @@
 package com.github.zly2006.zhihu
 
 import android.content.pm.ActivityInfo
-import android.graphics.Bitmap
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -33,16 +32,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
-import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.click
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -51,6 +50,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
@@ -60,7 +60,6 @@ import androidx.core.content.edit
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
-import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.filter.ContentOpenFrom
 import com.github.zly2006.zhihu.navigation.Account
@@ -94,6 +93,7 @@ import com.github.zly2006.zhihu.ui.ZhihuMain
 import com.github.zly2006.zhihu.ui.components.LocalPageTurnDispatcher
 import com.github.zly2006.zhihu.ui.components.PageTurnCommand
 import com.github.zly2006.zhihu.ui.components.PageTurnDispatcher
+import com.github.zly2006.zhihu.ui.components.READING_QUEUE_SHEET_TAG
 import com.github.zly2006.zhihu.ui.rememberAndroidZhihuMainPreferenceState
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY
@@ -210,18 +210,8 @@ class ZhihuMainNavigationInstrumentedTest {
         composeRule.onNodeWithTag("accountSettings.developer").performScrollTo().performClick()
         composeRule.onNodeWithTag("developerSettings/colorScheme").performScrollTo().performClick()
         composeRule.onNodeWithText("Primary").assertIsDisplayed()
-        composeRule.onRoot().captureToImage().asAndroidBitmap().let { bitmap ->
-            composeRule.activity.openFileOutput("split-settings-child.png", 0).use {
-                bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
-            }
-        }
         composeRule.runOnIdle { composeRule.activity.onBackPressedDispatcher.onBackPressed() }
         composeRule.onNodeWithTag("developerSettings/colorScheme").assertIsDisplayed()
-        composeRule.onRoot().captureToImage().asAndroidBitmap().let { bitmap ->
-            composeRule.activity.openFileOutput("split-settings-return.png", 0).use {
-                bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
-            }
-        }
     }
 
     @Test
@@ -398,6 +388,7 @@ class ZhihuMainNavigationInstrumentedTest {
      * Related tablet request: https://github.com/zly2006/zhihu-plus-plus/issues/680
      * Regression found reviewing: https://github.com/zly2006/zhihu-plus-plus/pull/754
      * 混合听读队列从回答切换到问题时，必须打开问题而不是跳入未注册该路由的详情图。
+     * 关闭队列弹层使用其语义动作，不依赖系统返回键的窗口分发时序。
      */
     @Test
     fun readingQueueCanSwitchFromDetailToQuestion() {
@@ -418,7 +409,13 @@ class ZhihuMainNavigationInstrumentedTest {
             composeRule.runOnIdle { width.value = 400.dp }
             composeRule.onNodeWithTag("reading_player_queue").performTouchInput { click() }
             composeRule.onNodeWithTag("reading_queue_sheet").assertIsDisplayed()
-            Espresso.pressBack()
+            composeRule
+                .onNode(
+                    SemanticsMatcher
+                        .keyIsDefined(SemanticsActions.Dismiss)
+                        .and(hasAnyAncestor(hasTestTag(READING_QUEUE_SHEET_TAG))),
+                    useUnmergedTree = true,
+                ).performSemanticsAction(SemanticsActions.Dismiss)
             composeRule.waitUntil(timeoutMillis = 5_000) {
                 composeRule
                     .onAllNodesWithTag("reading_queue_sheet")

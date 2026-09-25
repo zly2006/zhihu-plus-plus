@@ -61,6 +61,8 @@ class ArticleExportEnvironmentInstrumentedTest {
     /**
      * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/428
      * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/429
+     * Target: the exported long image includes both the first and last body paragraphs.
+     * Distinct marker colors verify those paragraphs were drawn, rather than merely measuring a nonblank header.
      */
     @Test
     fun articleImageRendererUsesStableContentHeightBeforeFullLayout() = runBlocking {
@@ -80,7 +82,14 @@ class ArticleExportEnvironmentInstrumentedTest {
             assertTrue(prepared.contentHeightPx < 60_000)
             assertEquals(prepared.expectedBitmapWidthPx(context), bitmap.width)
             assertEquals(prepared.expectedBitmapHeightPx(context), bitmap.height)
-            assertTrue(bitmap.hasVisibleContentPixels())
+            assertTrue(
+                "导出图上半部分应包含首段正文的青色标记",
+                bitmap.hasMarkerPixels(red = 0, green = 255, blue = 255, startY = 0, endY = bitmap.height / 2),
+            )
+            assertTrue(
+                "导出图下半部分应包含末段正文的品红标记，不能只画出标题或前几段",
+                bitmap.hasMarkerPixels(red = 255, green = 0, blue = 255, startY = bitmap.height / 2, endY = bitmap.height),
+            )
             ByteArrayOutputStream().use { output ->
                 assertTrue(bitmap.compress(Bitmap.CompressFormat.JPEG, 70, output))
                 assertTrue(output.size() > 0)
@@ -198,20 +207,25 @@ class ArticleExportEnvironmentInstrumentedTest {
             .coerceAtLeast(1)
             .toFloat()
 
-    private fun Bitmap.hasVisibleContentPixels(): Boolean {
+    private fun Bitmap.hasMarkerPixels(
+        red: Int,
+        green: Int,
+        blue: Int,
+        startY: Int,
+        endY: Int,
+    ): Boolean {
         val row = IntArray(width)
-        var visiblePixelCount = 0
-        val requiredVisiblePixels = 100
-        for (y in 0 until height) {
+        var markerPixelCount = 0
+        for (y in startY until endY) {
             getPixels(row, 0, width, 0, y, width, 1)
             for (pixel in row) {
-                val alpha = pixel ushr 24
-                val red = pixel shr 16 and 0xff
-                val green = pixel shr 8 and 0xff
-                val blue = pixel and 0xff
-                if (alpha > 0 && (red < 245 || green < 245 || blue < 245)) {
-                    visiblePixelCount++
-                    if (visiblePixelCount >= requiredVisiblePixels) {
+                if (
+                    kotlin.math.abs((pixel shr 16 and 0xff) - red) <= 16 &&
+                    kotlin.math.abs((pixel shr 8 and 0xff) - green) <= 16 &&
+                    kotlin.math.abs((pixel and 0xff) - blue) <= 16
+                ) {
+                    markerPixelCount++
+                    if (markerPixelCount >= 100) {
                         return true
                     }
                 }
@@ -269,7 +283,12 @@ class ArticleExportEnvironmentInstrumentedTest {
         canComment = DataHolder.CanComment(status = true, reason = ""),
         commentCount = 4175,
         content = (1..24).joinToString("") { index ->
-            "<p data-pid=\"p$index\">第 $index 段用于验证 WebView 导出高度稳定性的正文。</p>"
+            val marker = when (index) {
+                1 -> " style=\"background-color:#00ffff\""
+                24 -> " style=\"background-color:#ff00ff\""
+                else -> ""
+            }
+            "<p data-pid=\"p$index\"$marker>第 $index 段用于验证 WebView 导出高度稳定性的正文。</p>"
         },
         excerpt = "导出测试回答摘要",
         type = "answer",
