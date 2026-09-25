@@ -38,6 +38,7 @@ import kotlinx.serialization.json.Json
 class ForegroundReadFilterPipeline(
     private val settings: FeedFilterSettings,
     private val contentFilterManager: ContentFilterManager,
+    private val contentOpenEventDao: ContentOpenEventDao,
     private val blockedFeedRecordDao: BlockedFeedRecordDao,
 ) {
     suspend fun filter(items: List<FeedDisplayItem>): List<FeedDisplayItem> {
@@ -49,12 +50,17 @@ class ForegroundReadFilterPipeline(
         val viewedContentIds = contentFilterManager.getAlreadyViewedContentIds(
             itemIdentityPairs.map { (_, identity) -> identity.type to identity.id },
         )
+        val openedContentKeys = contentOpenEventDao
+            .getOpenedContentKeysByKeys(
+                itemIdentityPairs.map { (_, identity) -> "${identity.type}:${identity.id}" },
+            ).toSet()
 
         val keptItems = mutableListOf<FeedDisplayItem>()
         val blockedItems = mutableListOf<Pair<FilterableContent, String>>()
 
         itemIdentityPairs.forEach { (item, identity) ->
-            val isViewed = ContentViewRecord.generateId(identity.type, identity.id) in viewedContentIds
+            val isViewed = ContentViewRecord.generateId(identity.type, identity.id) in viewedContentIds ||
+                "${identity.type}:${identity.id}" in openedContentKeys
             val isFollowing = item.feed
                 ?.target
                 ?.author

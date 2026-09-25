@@ -43,9 +43,6 @@ interface ContentFilterDao {
     @Query("SELECT id FROM ${ContentViewRecord.TABLE_NAME} WHERE id IN (:ids)")
     suspend fun getViewedContentIdsByIds(ids: List<String>): List<String>
 
-    @Query("DELETE FROM ${ContentViewRecord.TABLE_NAME} WHERE firstViewTime < :cutoffTime")
-    suspend fun cleanupOldRecords(cutoffTime: Long)
-
     @Query("DELETE FROM ${ContentViewRecord.TABLE_NAME}")
     suspend fun clearAllRecords()
 

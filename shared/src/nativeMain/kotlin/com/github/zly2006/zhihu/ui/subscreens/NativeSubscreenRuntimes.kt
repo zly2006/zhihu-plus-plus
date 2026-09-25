@@ -29,7 +29,7 @@ import com.github.zly2006.zhihu.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.NativeArticleSpeechController
 import com.github.zly2006.zhihu.ui.TtsState
-import com.github.zly2006.zhihu.updater.SchematicVersion
+import com.github.zly2006.zhihu.updater.SemanticVersion
 import com.github.zly2006.zhihu.updater.extractGithubReleaseNotes
 import com.github.zly2006.zhihu.updater.fetchLatestZhihuRelease
 import com.github.zly2006.zhihu.updater.fetchNightlyZhihuRelease
@@ -127,9 +127,9 @@ private suspend fun checkNativeUpdate(
 ) {
     try {
         nativeSystemUpdateState.value = SystemUpdateState.Checking
-        val currentVersion = SchematicVersion.fromString(nativeAppVersionName)
+        val currentVersion = SemanticVersion.fromString(nativeAppVersionName)
         var latestResponse = fetchLatestZhihuRelease(accountStore.client.httpClient(), githubToken)
-        var latestVersion = latestResponse.tagName.takeIf { it.isNotBlank() }?.let(SchematicVersion::fromString)
+        var latestVersion = latestResponse.tagName.takeIf { it.isNotBlank() }?.let(SemanticVersion::fromString)
         var isNightly = false
         var releaseNotes = latestResponse.body?.let(::extractGithubReleaseNotes)
 
@@ -138,7 +138,7 @@ private suspend fun checkNativeUpdate(
                 val nightlyResponse = fetchNightlyZhihuRelease(accountStore.client.httpClient(), githubToken)
                 if (nightlyResponse.tagName == "nightly") {
                     latestResponse = nightlyResponse
-                    latestVersion = SchematicVersion(
+                    latestVersion = SemanticVersion(
                         allComponents = listOf(999, 0, 0),
                         preRelease = "nightly",
                         build = "",

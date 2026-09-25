@@ -206,6 +206,7 @@ internal class NativePaginationEnvironment(
         return ForegroundReadFilterPipeline(
             settings = settings,
             contentFilterManager = ContentFilterManager(contentFilterDatabase.contentFilterDao()),
+            contentOpenEventDao = contentFilterDatabase.contentOpenEventDao(),
             blockedFeedRecordDao = contentFilterDatabase.blockedFeedRecordDao(),
         ).filter(items)
     }

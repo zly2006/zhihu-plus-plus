@@ -24,10 +24,10 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
-class SchematicVersionTest {
+class SemanticVersionTest {
     @Test
     fun parsesVersionComponentsPreReleaseAndBuild() {
-        val version = SchematicVersion.fromString("v1.2.3-beta.4+build.5")
+        val version = SemanticVersion.fromString("v1.2.3-beta.4+build.5")
 
         assertEquals(listOf(1, 2, 3), version.allComponents)
         assertEquals(1, version.major)
@@ -40,15 +40,28 @@ class SchematicVersionTest {
 
     @Test
     fun comparesReleaseAndPreReleaseVersions() {
-        assertTrue(SchematicVersion.fromString("1.2.1") > SchematicVersion.fromString("1.2.0"))
-        assertEquals(0, SchematicVersion.fromString("1.2.0").compareTo(SchematicVersion.fromString("1.2")))
-        assertTrue(SchematicVersion.fromString("1.2.0") > SchematicVersion.fromString("1.2.0-beta.1"))
-        assertTrue(SchematicVersion.fromString("1.2.0-beta.2") > SchematicVersion.fromString("1.2.0-beta.1"))
+        assertTrue(SemanticVersion.fromString("1.2.1") > SemanticVersion.fromString("1.2.0"))
+        assertEquals(0, SemanticVersion.fromString("1.2.0").compareTo(SemanticVersion.fromString("1.2")))
+        assertTrue(SemanticVersion.fromString("1.2.0") > SemanticVersion.fromString("1.2.0-beta.1"))
+        assertTrue(SemanticVersion.fromString("1.2.0-beta.2") > SemanticVersion.fromString("1.2.0-beta.1"))
+        assertTrue(SemanticVersion.fromString("1.2.0-beta.11") > SemanticVersion.fromString("1.2.0-beta.1"))
+        assertTrue(SemanticVersion.fromString("1.2.0-beta.11") > SemanticVersion.fromString("1.2.0-beta.2"))
+    }
+
+    @Test
+    fun comparesPreReleaseIdentifiers() {
+        val versions = listOf("1.0-pre.1", "1.0-pre.2", "1.0-pre.10", "1.0-pre.alpha", "1.0-pre.alpha.1", "1.0")
+            .map(SemanticVersion::fromString)
+        versions.zipWithNext().forEach { (earlier, later) -> assertTrue(earlier < later, "$earlier should precede $later") }
+        assertTrue(SemanticVersion.fromString("1.0-1") < SemanticVersion.fromString("1.0-alpha"))
+        assertEquals(0, SemanticVersion.fromString("1.0-pre.1+first").compareTo("1.0-pre.1+second"))
+        assertTrue(SemanticVersion.fromString("2147483647.0") > SemanticVersion.fromString("0.0"))
+        assertTrue(SemanticVersion.fromString("1.0-pre.999999999999999999999") > SemanticVersion.fromString("1.0-pre.2"))
     }
 
     @Test
     fun serializesAsVersionString() {
-        val holder = VersionHolder(SchematicVersion.fromString("2.0.0-nightly"))
+        val holder = VersionHolder(SemanticVersion.fromString("2.0.0-nightly"))
 
         val encoded = ZhihuJson.json.encodeToString(holder)
         val decoded = ZhihuJson.json.decodeFromString<VersionHolder>(encoded)
@@ -59,13 +72,15 @@ class SchematicVersionTest {
 
     @Test
     fun rejectsInvalidVersionString() {
-        assertFailsWith<IllegalArgumentException> {
-            SchematicVersion.fromString("nightly")
+        listOf("nightly", "1..0", "1.0-", "1.0-pre..1", "1.0-pre_1", "1.0+").forEach { invalid ->
+            assertFailsWith<IllegalArgumentException>(invalid) {
+                SemanticVersion.fromString(invalid)
+            }
         }
     }
 
     @Serializable
     private data class VersionHolder(
-        val version: SchematicVersion,
+        val version: SemanticVersion,
     )
 }

@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version_name:
-        description: 'Version name (e.g. 0.17.8)'
+        description: 'Version name (e.g. 1.0-pre.1 or 1.0.0)'
         required: true
         type: string
 
@@ -21,35 +21,42 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Validate version format
+        env:
+          VERSION: ${{ inputs.version_name }}
         run: |
-          if ! echo "${{ inputs.version_name }}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
-            echo "Error: version_name must be in format X.Y.Z"
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
+            echo "Error: version_name must be X.Y, X.Y.Z, or a pre-release such as 1.0-pre.1"
             exit 1
           fi
 
       - name: Calculate version code
         id: ver
         run: |
-          VERSION="${{ inputs.version_name }}"
-          MAJOR=$(echo "$VERSION" | cut -d. -f1)
-          MINOR=$(echo "$VERSION" | cut -d. -f2)
-          PATCH=$(echo "$VERSION" | cut -d. -f3)
-          VERSION_CODE=$((MINOR * 10 + PATCH))
+          CURRENT_CODE=$(sed -n 's/^app\.versionCode=//p' gradle.properties)
+          if ! [[ "$CURRENT_CODE" =~ ^[0-9]+$ ]] || (( CURRENT_CODE >= 2100000000 )); then
+            echo "Error: invalid or exhausted app.versionCode"
+            exit 1
+          fi
+          VERSION_CODE=$((CURRENT_CODE + 1))
           echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
 
       - name: Update gradle.properties
+        env:
+          VERSION: ${{ inputs.version_name }}
         run: |
-          sed -i "s/^app\.versionName=.*/app.versionName=${{ inputs.version_name }}/" gradle.properties
+          sed -i "s/^app\.versionName=.*/app.versionName=$VERSION/" gradle.properties
           sed -i "s/^app\.versionCode=.*/app.versionCode=${{ steps.ver.outputs.version_code }}/" gradle.properties
-          echo "Updated to versionName=${{ inputs.version_name }}, versionCode=${{ steps.ver.outputs.version_code }}"
+          echo "Updated to versionName=$VERSION, versionCode=${{ steps.ver.outputs.version_code }}"
           grep "app\.version" gradle.properties
 
       - name: Commit and tag
+        env:
+          VERSION: ${{ inputs.version_name }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add gradle.properties
           git commit -m "bump version"
-          git tag "${{ inputs.version_name }}"
+          git tag "$VERSION"
           git push origin master
-          git push origin "${{ inputs.version_name }}"
+          git push origin "$VERSION"

@@ -352,6 +352,7 @@ open class SharedAndroidPaginationEnvironment(
         return ForegroundReadFilterPipeline(
             settings = filterSettings,
             contentFilterManager = ContentFilterManager(filterDatabase.contentFilterDao()),
+            contentOpenEventDao = filterDatabase.contentOpenEventDao(),
             blockedFeedRecordDao = filterDatabase.blockedFeedRecordDao(),
         ).filter(items)
     }

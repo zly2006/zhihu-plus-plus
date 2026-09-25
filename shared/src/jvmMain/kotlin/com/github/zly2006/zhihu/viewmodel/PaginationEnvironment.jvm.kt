@@ -243,6 +243,7 @@ class DesktopPaginationEnvironment(
         return ForegroundReadFilterPipeline(
             settings = settings,
             contentFilterManager = ContentFilterManager(contentFilterDb.contentFilterDao()),
+            contentOpenEventDao = contentFilterDb.contentOpenEventDao(),
             blockedFeedRecordDao = contentFilterDb.blockedFeedRecordDao(),
         ).filter(items)
     }
