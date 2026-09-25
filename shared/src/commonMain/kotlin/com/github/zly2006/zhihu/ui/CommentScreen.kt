@@ -708,7 +708,7 @@ fun CommentScreen(
                         activeCommentItem == null && viewModel.allData.isEmpty() -> {
                             // activeCommentItem != null 的空态在下面的 LazyColumn 中处理。
                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text("暂无评论")
+                                Text(viewModel.commentClosedMessage ?: "暂无评论")
                             }
                         }
 
@@ -1001,219 +1001,221 @@ fun CommentScreen(
                     }
                 }
 
-                // 评论输入框
-                Surface(
-                    tonalElevation = 2.dp,
-                    modifier = Modifier.fillMaxWidth(),
-                    color = commentInputBarColor,
-                ) {
-                    Column {
-                        // 回复目标提示栏。
-                        AnimatedVisibility(
-                            visible = replyToComment != null,
-                            enter = expandVertically() + fadeIn(),
-                            exit = shrinkVertically() + fadeOut(),
-                        ) {
-                            Surface(
-                                color = MaterialTheme.colorScheme.secondaryContainer,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .testTag(COMMENT_REPLY_BANNER_TAG),
+                // 评论区关闭后没有可发送的内容，不再保留输入栏。
+                if (viewModel.commentClosedMessage == null) {
+                    Surface(
+                        tonalElevation = 2.dp,
+                        modifier = Modifier.fillMaxWidth(),
+                        color = commentInputBarColor,
+                    ) {
+                        Column {
+                            // 回复目标提示栏。
+                            AnimatedVisibility(
+                                visible = replyToComment != null,
+                                enter = expandVertically() + fadeIn(),
+                                exit = shrinkVertically() + fadeOut(),
                             ) {
-                                Row(
+                                Surface(
+                                    color = MaterialTheme.colorScheme.secondaryContainer,
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
+                                        .testTag(COMMENT_REPLY_BANNER_TAG),
                                 ) {
-                                    Icon(
-                                        Icons.AutoMirrored.Filled.Reply,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp),
-                                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = "回复 ${replyToComment?.item?.author?.name ?: ""}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                        modifier = Modifier.weight(1f),
-                                    )
-                                    IconButton(
-                                        onClick = { replyToComment = null },
+                                    Row(
                                         modifier = Modifier
-                                            .size(24.dp)
-                                            .testTag(COMMENT_CANCEL_REPLY_TAG),
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
                                     ) {
                                         Icon(
-                                            Icons.Default.Close,
-                                            contentDescription = "取消回复",
+                                            Icons.AutoMirrored.Filled.Reply,
+                                            contentDescription = null,
                                             modifier = Modifier.size(16.dp),
                                             tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = "回复 ${replyToComment?.item?.author?.name ?: ""}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                        IconButton(
+                                            onClick = { replyToComment = null },
+                                            modifier = Modifier
+                                                .size(24.dp)
+                                                .testTag(COMMENT_CANCEL_REPLY_TAG),
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Close,
+                                                contentDescription = "取消回复",
+                                                modifier = Modifier.size(16.dp),
+                                                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = 40.dp, max = 140.dp)
+                                    .padding(8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                IconButton(
+                                    onClick = {
+                                        if (showEmojiPicker) {
+                                            showEmojiPicker = false
+                                            commentInputFocusRequester.requestFocus()
+                                            keyboardController?.show()
+                                        } else {
+                                            focusManager.clearFocus(force = true)
+                                            keyboardController?.hide()
+                                            showEmojiPicker = true
+                                        }
+                                    },
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .testTag(COMMENT_EMOJI_BUTTON_TAG),
+                                ) {
+                                    Icon(
+                                        imageVector = if (showEmojiPicker) {
+                                            Icons.Outlined.Keyboard
+                                        } else {
+                                            Icons.Outlined.EmojiEmotions
+                                        },
+                                        contentDescription = if (showEmojiPicker) {
+                                            "切换到键盘"
+                                        } else {
+                                            "选择表情"
+                                        },
+                                        tint = if (showEmojiPicker) {
+                                            MaterialTheme.colorScheme.primary
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        },
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(4.dp))
+
+                                BasicTextField(
+                                    value = commentFieldValue,
+                                    onValueChange = {
+                                        commentFieldValue = it
+                                        onCommentInputChange(it.text)
+                                    },
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .focusRequester(commentInputFocusRequester)
+                                        .onFocusChanged {
+                                            isCommentInputFocused = it.isFocused
+                                            if (it.isFocused) showEmojiPicker = false
+                                        }.testTag(COMMENT_INPUT_TAG),
+                                    decorationBox = { inner ->
+                                        Box {
+                                            if (commentFieldValue.text.isEmpty()) {
+                                                Text(
+                                                    if (replyToComment != null) {
+                                                        "回复 ${replyToComment?.item?.author?.name}..."
+                                                    } else {
+                                                        "写下你的评论..."
+                                                    },
+                                                    fontSize = 16.sp,
+                                                )
+                                            }
+                                            inner()
+                                        }
+                                    },
+                                    textStyle = TextStyle.Default.copy(
+                                        fontSize = 16.sp,
+                                        lineHeight = 18.sp,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                    ),
+                                )
+
+                                IconButton(
+                                    onClick = { submitComment() },
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .testTag(COMMENT_SEND_BUTTON_TAG),
+                                    enabled = !isSending && commentFieldValue.text.isNotBlank(),
+                                ) {
+                                    if (isSending) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(16.dp),
+                                            strokeWidth = 2.dp,
+                                            color = MaterialTheme.colorScheme.primary,
+                                        )
+                                    } else {
+                                        Icon(
+                                            Icons.AutoMirrored.Outlined.Send,
+                                            contentDescription = "发送评论",
+                                            tint = if (commentFieldValue.text.isNotBlank()) {
+                                                MaterialTheme.colorScheme.primary
+                                            } else {
+                                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                            },
                                         )
                                     }
                                 }
                             }
-                        }
 
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = 40.dp, max = 140.dp)
-                                .padding(8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            IconButton(
-                                onClick = {
-                                    if (showEmojiPicker) {
-                                        showEmojiPicker = false
-                                        commentInputFocusRequester.requestFocus()
-                                        keyboardController?.show()
-                                    } else {
-                                        focusManager.clearFocus(force = true)
-                                        keyboardController?.hide()
-                                        showEmojiPicker = true
-                                    }
-                                },
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .testTag(COMMENT_EMOJI_BUTTON_TAG),
+                            AnimatedVisibility(
+                                visible = showEmojiPicker,
+                                enter = expandVertically() + fadeIn(),
+                                exit = shrinkVertically() + fadeOut(),
                             ) {
-                                Icon(
-                                    imageVector = if (showEmojiPicker) {
-                                        Icons.Outlined.Keyboard
-                                    } else {
-                                        Icons.Outlined.EmojiEmotions
-                                    },
-                                    contentDescription = if (showEmojiPicker) {
-                                        "切换到键盘"
-                                    } else {
-                                        "选择表情"
-                                    },
-                                    tint = if (showEmojiPicker) {
-                                        MaterialTheme.colorScheme.primary
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                    },
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(4.dp))
-
-                            BasicTextField(
-                                value = commentFieldValue,
-                                onValueChange = {
-                                    commentFieldValue = it
-                                    onCommentInputChange(it.text)
-                                },
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .focusRequester(commentInputFocusRequester)
-                                    .onFocusChanged {
-                                        isCommentInputFocused = it.isFocused
-                                        if (it.isFocused) showEmojiPicker = false
-                                    }.testTag(COMMENT_INPUT_TAG),
-                                decorationBox = { inner ->
-                                    Box {
-                                        if (commentFieldValue.text.isEmpty()) {
-                                            Text(
-                                                if (replyToComment != null) {
-                                                    "回复 ${replyToComment?.item?.author?.name}..."
-                                                } else {
-                                                    "写下你的评论..."
-                                                },
-                                                fontSize = 16.sp,
-                                            )
-                                        }
-                                        inner()
+                                if (commentEmojis.isEmpty()) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(240.dp)
+                                            .testTag(COMMENT_EMOJI_PICKER_TAG),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Text(
+                                            text = "暂无可用表情",
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
                                     }
-                                },
-                                textStyle = TextStyle.Default.copy(
-                                    fontSize = 16.sp,
-                                    lineHeight = 18.sp,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                ),
-                            )
-
-                            IconButton(
-                                onClick = { submitComment() },
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .testTag(COMMENT_SEND_BUTTON_TAG),
-                                enabled = !isSending && commentFieldValue.text.isNotBlank(),
-                            ) {
-                                if (isSending) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(16.dp),
-                                        strokeWidth = 2.dp,
-                                        color = MaterialTheme.colorScheme.primary,
-                                    )
                                 } else {
-                                    Icon(
-                                        Icons.AutoMirrored.Outlined.Send,
-                                        contentDescription = "发送评论",
-                                        tint = if (commentFieldValue.text.isNotBlank()) {
-                                            MaterialTheme.colorScheme.primary
-                                        } else {
-                                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                                        },
-                                    )
-                                }
-                            }
-                        }
-
-                        AnimatedVisibility(
-                            visible = showEmojiPicker,
-                            enter = expandVertically() + fadeIn(),
-                            exit = shrinkVertically() + fadeOut(),
-                        ) {
-                            if (commentEmojis.isEmpty()) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(240.dp)
-                                        .testTag(COMMENT_EMOJI_PICKER_TAG),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Text(
-                                        text = "暂无可用表情",
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                            } else {
-                                LazyVerticalGrid(
-                                    columns = GridCells.Adaptive(minSize = 48.dp),
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(240.dp)
-                                        .testTag(COMMENT_EMOJI_PICKER_TAG),
-                                    contentPadding = PaddingValues(8.dp),
-                                ) {
-                                    items(
-                                        items = commentEmojis,
-                                        key = CommentEmoji::placeholder,
-                                    ) { emoji ->
-                                        IconButton(
-                                            onClick = {
-                                                val updatedValue = commentFieldValue.replaceSelection(
-                                                    insert = emoji.placeholder,
-                                                    cursorOffsetInInsert = emoji.placeholder.length,
-                                                )
-                                                commentFieldValue = updatedValue
-                                                onCommentInputChange(updatedValue.text)
-                                            },
-                                            modifier = Modifier
-                                                .size(48.dp)
-                                                .testTag(COMMENT_EMOJI_ITEM_TAG_PREFIX + emoji.placeholder),
-                                        ) {
-                                            Text(
-                                                text = remember(emoji) {
-                                                    buildAnnotatedString {
-                                                        appendInlineContent(emoji.inlineKey, emoji.placeholder)
-                                                    }
+                                    LazyVerticalGrid(
+                                        columns = GridCells.Adaptive(minSize = 48.dp),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(240.dp)
+                                            .testTag(COMMENT_EMOJI_PICKER_TAG),
+                                        contentPadding = PaddingValues(8.dp),
+                                    ) {
+                                        items(
+                                            items = commentEmojis,
+                                            key = CommentEmoji::placeholder,
+                                        ) { emoji ->
+                                            IconButton(
+                                                onClick = {
+                                                    val updatedValue = commentFieldValue.replaceSelection(
+                                                        insert = emoji.placeholder,
+                                                        cursorOffsetInInsert = emoji.placeholder.length,
+                                                    )
+                                                    commentFieldValue = updatedValue
+                                                    onCommentInputChange(updatedValue.text)
                                                 },
-                                                inlineContent = emojiInlineContent,
-                                                fontSize = 28.sp,
-                                            )
+                                                modifier = Modifier
+                                                    .size(48.dp)
+                                                    .testTag(COMMENT_EMOJI_ITEM_TAG_PREFIX + emoji.placeholder),
+                                            ) {
+                                                Text(
+                                                    text = remember(emoji) {
+                                                        buildAnnotatedString {
+                                                            appendInlineContent(emoji.inlineKey, emoji.placeholder)
+                                                        }
+                                                    },
+                                                    inlineContent = emojiInlineContent,
+                                                    fontSize = 28.sp,
+                                                )
+                                            }
                                         }
                                     }
                                 }

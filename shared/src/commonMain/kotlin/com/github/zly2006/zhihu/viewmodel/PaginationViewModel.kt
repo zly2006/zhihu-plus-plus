@@ -112,6 +112,8 @@ abstract class PaginationViewModel<T : Any>(
         loadMore(environment)
     }
 
+    protected open fun handlePageMetadata(json: JsonObject) = Unit
+
     protected open fun processResponse(environment: PaginationEnvironment, data: List<T>, rawData: JsonArray) {
         debugData.addAll(rawData) // 保存原始JSON
         allData.addAll(data) // 保存未flatten的数据
@@ -155,6 +157,7 @@ abstract class PaginationViewModel<T : Any>(
             if ("paging" in json) {
                 lastPaging = decodeJson(json["paging"]!!)
             }
+            handlePageMetadata(json)
         } catch (e: kotlin.coroutines.cancellation.CancellationException) {
             throw e
         } catch (_: NoTransformationFoundException) {
