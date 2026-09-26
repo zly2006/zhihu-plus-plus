@@ -124,7 +124,7 @@ class RootCommentViewModel(
             return "$baseUrl${separator}order_by=$orderParam"
         }
 
-    public override suspend fun fetchFeeds(environment: PaginationEnvironment) {
+    override suspend fun fetchFeeds(environment: PaginationEnvironment) {
         if (!initialCommentLoaded && initialCommentId != null) {
             initialCommentLoaded = true
             try {
