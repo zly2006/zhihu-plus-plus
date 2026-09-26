@@ -196,7 +196,9 @@ internal fun AigcFlagSheet(
                     onClick = if (viewModel.aigcFlagged) onCancelRequest else onSubmitRequest,
                     enabled = if (viewModel.aigcFlagged) {
                         viewModel.aigcVoteAvailable && !viewModel.aigcVoteLoading && viewModel.aigcVoterName.isNotBlank()
-                    } else canSubmitAigcFlag,
+                    } else {
+                        canSubmitAigcFlag
+                    },
                 ) {
                     Text(
                         when {

@@ -825,13 +825,15 @@ class ArticleViewModel(
             aigcVoteLoading = true
             aigcVoteError = null
             try {
-                val response = environment.aigcVoteHttpClient().delete(
-                    "${environment.aigcVoteBaseUrl().trimEnd('/')}/v1/contents/" +
-                        "${aigcContentType()}/${article.id}/aigc-flag",
-                ) {
-                    contentType(ContentType.Application.Json)
-                    setBody(AigcVoteFlagCancelRequest(environment.aigcVoteClientId(), voter))
-                }.body<AigcVoteFlagStatusResponse>()
+                val response = environment
+                    .aigcVoteHttpClient()
+                    .delete(
+                        "${environment.aigcVoteBaseUrl().trimEnd('/')}/v1/contents/" +
+                            "${aigcContentType()}/${article.id}/aigc-flag",
+                    ) {
+                        contentType(ContentType.Application.Json)
+                        setBody(AigcVoteFlagCancelRequest(environment.aigcVoteClientId(), voter))
+                    }.body<AigcVoteFlagStatusResponse>()
                 applyAigcFlagStatus(response)
                 userMessages.showShortMessage("已取消疑似 AIGC 标记")
             } catch (e: CancellationException) {
