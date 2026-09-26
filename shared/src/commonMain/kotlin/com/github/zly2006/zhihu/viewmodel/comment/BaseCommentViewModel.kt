@@ -33,6 +33,10 @@ import com.github.zly2006.zhihu.viewmodel.postSigned
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.reflect.typeOf
 
 enum class CommentSortOrder {
@@ -45,6 +49,26 @@ abstract class BaseCommentViewModel(
 ) : PaginationViewModel<DataHolder.Comment>(typeOf<DataHolder.Comment>()) {
     protected val commentsMap = mutableMapOf<String, CommentItem>()
     var sortOrder by mutableStateOf(CommentSortOrder.SCORE)
+    var commentClosedMessage by mutableStateOf<String?>(null)
+        private set
+
+    override val isEnd: Boolean
+        get() = commentClosedMessage != null || super.isEnd
+
+    override fun refresh(environment: PaginationEnvironment) {
+        commentClosedMessage = null
+        super.refresh(environment)
+    }
+
+    override fun handlePageMetadata(json: JsonObject) {
+        val status = json["comment_status"] as? JsonObject ?: return
+        if (status["type"]?.jsonPrimitive?.intOrNull != 1) return
+        // 作者关闭评论后，列表接口仍返回空 data，并把 paging.is_end 保持为 false，next 游标也会继续变化。
+        // 若按普通分页跟随 next，空列表会在转圈和空态之间无限切换。
+        // https://github.com/zly2006/zhihu-plus-plus/issues/758
+        commentClosedMessage = status["text"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
+            ?: "评论区已关闭"
+    }
 
     override fun processResponse(environment: PaginationEnvironment, data: List<DataHolder.Comment>, rawData: JsonArray) {
         debugData.addAll(rawData) // 保存原始JSON
