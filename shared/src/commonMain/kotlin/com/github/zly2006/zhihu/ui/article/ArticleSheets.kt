@@ -110,6 +110,7 @@ internal fun AigcFlagSheet(
     viewModel: ArticleViewModel,
     onDismissRequest: () -> Unit,
     onSubmitRequest: () -> Unit,
+    onCancelRequest: () -> Unit,
 ) {
     if (!showDialog) return
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -192,13 +193,16 @@ internal fun AigcFlagSheet(
                 TextButton(onClick = onDismissRequest) { Text("关闭") }
                 Spacer(modifier = Modifier.width(8.dp))
                 Button(
-                    onClick = onSubmitRequest,
-                    enabled = canSubmitAigcFlag,
+                    onClick = if (viewModel.aigcFlagged) onCancelRequest else onSubmitRequest,
+                    enabled = if (viewModel.aigcFlagged) {
+                        viewModel.aigcVoteAvailable && !viewModel.aigcVoteLoading && viewModel.aigcVoterName.isNotBlank()
+                    } else canSubmitAigcFlag,
                 ) {
                     Text(
                         when {
                             !viewModel.aigcVoteAvailable -> "未启用"
-                            viewModel.aigcFlagged -> "已标记"
+                            viewModel.aigcFlagged && viewModel.aigcVoteLoading -> "取消中"
+                            viewModel.aigcFlagged -> "取消标记"
                             viewModel.aigcVoteLoading -> "提交中"
                             viewModel.aigcVoterName.isBlank() -> "需登录"
                             viewModel.aigcCreditBypassAvailable -> "免积分标记"

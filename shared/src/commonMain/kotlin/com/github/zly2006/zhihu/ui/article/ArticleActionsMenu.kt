@@ -367,7 +367,7 @@ fun ArticleActionsMenu(
         Spacer(modifier = Modifier.height(12.dp))
         MenuActionButton(
             icon = Icons.Filled.Flag,
-            text = "标记疑似 AIGC",
+            text = if (viewModel.aigcFlagged) "取消疑似 AIGC 标记" else "标记疑似 AIGC",
             onClick = {
                 onDismissRequest()
                 onAigcFlagRequest()

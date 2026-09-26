@@ -26,6 +26,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.github.zly2006.zhihu.data.AigcVoteFlagCancelRequest
 import com.github.zly2006.zhihu.data.AigcVoteFlagRequest
 import com.github.zly2006.zhihu.data.AigcVoteFlagResponse
 import com.github.zly2006.zhihu.data.AigcVoteFlagStatusResponse
@@ -71,6 +72,7 @@ import com.github.zly2006.zhihu.util.twoDigitString
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.accept
+import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.parameter
@@ -678,14 +680,7 @@ class ArticleViewModel(
                             it.urlToken?.takeIf(String::isNotBlank)?.let { token -> parameter("voter_url_token", token) }
                         }
                     }.body<AigcVoteFlagStatusResponse>()
-                aigcFlagged = response.myFlagged
-                aigcVoteCredit = response.credit
-                aigcVoteProgress = response.progress
-                aigcVoteCap = response.cap
-                aigcCreditBypassAvailable = response.creditBypassAvailable
-                aigcEffectiveFlagCount = response.effectiveFlagCount
-                aigcNamedVoters = response.voters
-                zhihuaiAigcSupportVoterCount = response.externalSource?.voterCount ?: 0
+                applyAigcFlagStatus(response)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -818,6 +813,48 @@ class ArticleViewModel(
                 aigcVoteLoading = false
             }
         }
+    }
+
+    fun cancelAigcFlag(environment: AigcVoteEnvironment) {
+        if (!aigcVoteAvailable || !aigcFlagged || aigcVoteLoading) return
+        val voter = environment.aigcVoteVoter() ?: run {
+            aigcVoteError = "需要登录后才能取消标记"
+            return
+        }
+        viewModelScope.launch {
+            aigcVoteLoading = true
+            aigcVoteError = null
+            try {
+                val response = environment.aigcVoteHttpClient().delete(
+                    "${environment.aigcVoteBaseUrl().trimEnd('/')}/v1/contents/" +
+                        "${aigcContentType()}/${article.id}/aigc-flag",
+                ) {
+                    contentType(ContentType.Application.Json)
+                    setBody(AigcVoteFlagCancelRequest(environment.aigcVoteClientId(), voter))
+                }.body<AigcVoteFlagStatusResponse>()
+                applyAigcFlagStatus(response)
+                userMessages.showShortMessage("已取消疑似 AIGC 标记")
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e("ArticleViewModel", "AIGC flag cancellation failed", e)
+                aigcVoteError = e.message ?: "取消 AIGC 标记失败"
+                userMessages.showShortMessage("取消 AIGC 标记失败: ${e.message}")
+            } finally {
+                aigcVoteLoading = false
+            }
+        }
+    }
+
+    private fun applyAigcFlagStatus(response: AigcVoteFlagStatusResponse) {
+        aigcFlagged = response.myFlagged
+        aigcVoteCredit = response.credit
+        aigcVoteProgress = response.progress
+        aigcVoteCap = response.cap
+        aigcCreditBypassAvailable = response.creditBypassAvailable
+        aigcEffectiveFlagCount = response.effectiveFlagCount
+        aigcNamedVoters = response.voters
+        zhihuaiAigcSupportVoterCount = response.externalSource?.voterCount ?: 0
     }
 
     private fun currentAigcReadEvidence(): AigcVoteReadEvidence {

@@ -1271,6 +1271,7 @@ fun ArticleScreen(
         viewModel = viewModel,
         onDismissRequest = { showAigcFlagSheet = false },
         onSubmitRequest = { viewModel.submitAigcFlag(environment) },
+        onCancelRequest = { viewModel.cancelAigcFlag(environment) },
     )
 
     // 使用新的收藏夹对话框组件

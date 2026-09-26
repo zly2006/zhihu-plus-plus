@@ -112,6 +112,12 @@ pub struct AigcFlagRequest {
     pub evidence: AigcFlagEvidence,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+pub struct AigcFlagCancelRequest {
+    pub client_id: String,
+    pub voter: VoterIdentity,
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct VoterIdentity {
     pub id: String,
@@ -252,7 +258,9 @@ pub fn app(state: AppState) -> Router {
         .route("/v1/read-events:batch", post(post_read_events))
         .route(
             "/v1/contents/{content_type}/{content_id}/aigc-flag",
-            get(get_flag_status).post(post_aigc_flag),
+            get(get_flag_status)
+                .post(post_aigc_flag)
+                .delete(delete_aigc_flag),
         )
         .with_state(state)
 }
@@ -296,6 +304,22 @@ async fn post_aigc_flag(
     ))
 }
 
+async fn delete_aigc_flag(
+    State(state): State<AppState>,
+    AxumPath((content_type, content_id)): AxumPath<(String, String)>,
+    Json(request): Json<AigcFlagCancelRequest>,
+) -> Result<Json<AigcFlagStatusResponse>, ServiceError> {
+    validate_client_id(&request.client_id)?;
+    validate_content_identity(&content_type, &content_id)?;
+    validate_voter_identity(&request.voter)?;
+    Ok(Json(
+        state
+            .store
+            .cancel_aigc_flag(content_type, content_id, request)
+            .await?,
+    ))
+}
+
 async fn get_flag_status(
     State(state): State<AppState>,
     AxumPath((content_type, content_id)): AxumPath<(String, String)>,
@@ -333,6 +357,13 @@ trait VoteStore: Send + Sync {
         content_id: String,
         request: AigcFlagRequest,
     ) -> Result<AigcFlagResponse, ServiceError>;
+
+    async fn cancel_aigc_flag(
+        &self,
+        content_type: String,
+        content_id: String,
+        request: AigcFlagCancelRequest,
+    ) -> Result<AigcFlagStatusResponse, ServiceError>;
 
     async fn flag_status(
         &self,
@@ -396,6 +427,7 @@ struct FlagKey {
 
 #[derive(Debug)]
 struct MemoryFlagRecord {
+    client_id: String,
     content_hash: String,
     voter: VoterIdentity,
     created_at: i64,
@@ -566,6 +598,7 @@ impl VoteStore for MemoryVoteStore {
             data.flags.insert(
                 flag_key,
                 MemoryFlagRecord {
+                    client_id: request.client_id.clone(),
                     content_hash: content_hash.clone(),
                     voter: request.voter.clone(),
                     created_at: now_epoch_seconds(),
@@ -593,6 +626,44 @@ impl VoteStore for MemoryVoteStore {
             voters,
             external_source: None,
         })
+    }
+
+    async fn cancel_aigc_flag(
+        &self,
+        content_type: String,
+        content_id: String,
+        request: AigcFlagCancelRequest,
+    ) -> Result<AigcFlagStatusResponse, ServiceError> {
+        {
+            let mut data = self
+                .data
+                .lock()
+                .map_err(|_| ServiceError::internal("memory store lock poisoned"))?;
+            data.ensure_client(&request.client_id);
+            let key = FlagKey {
+                voter_id: request.voter.id.clone(),
+                content_type: content_type.clone(),
+                content_id: content_id.clone(),
+            };
+            if let Some(flag) = data.flags.remove(&key) {
+                if !flag.credit_bypassed {
+                    let client = data
+                        .clients
+                        .get_mut(&flag.client_id)
+                        .expect("flag owner client exists");
+                    client.account.credit = (client.account.credit + 1).min(CREDIT_CAP);
+                }
+            }
+        }
+        self.flag_status(
+            content_type,
+            content_id,
+            Some(request.client_id),
+            Some(request.voter.id),
+            Some(request.voter.name),
+            request.voter.url_token,
+        )
+        .await
     }
 
     async fn flag_status(
@@ -851,6 +922,41 @@ impl VoteStore for PostgresVoteStore {
             refresh_and_load_external_aigc_stats(&self.pool, &content_type, &content_id).await;
 
         Ok(response)
+    }
+
+    async fn cancel_aigc_flag(
+        &self,
+        content_type: String,
+        content_id: String,
+        request: AigcFlagCancelRequest,
+    ) -> Result<AigcFlagStatusResponse, ServiceError> {
+        let mut tx = self.pool.begin().await?;
+        let refunded: Option<(String, bool)> = sqlx::query_as(
+            "DELETE FROM aigc_flags WHERE voter_id = $1 AND content_type = $2 AND content_id = $3 RETURNING client_id, credit_bypassed",
+        )
+        .bind(&request.voter.id)
+        .bind(&content_type)
+        .bind(&content_id)
+        .fetch_optional(&mut *tx)
+        .await?;
+        if let Some((original_client_id, false)) = refunded {
+            sqlx::query("UPDATE clients SET credit = LEAST(credit + 1, $1), last_seen_at = $2 WHERE id = $3")
+                .bind(CREDIT_CAP)
+                .bind(now_epoch_seconds())
+                .bind(&original_client_id)
+                .execute(&mut *tx)
+                .await?;
+        }
+        tx.commit().await?;
+        self.flag_status(
+            content_type,
+            content_id,
+            Some(request.client_id),
+            Some(request.voter.id),
+            Some(request.voter.name),
+            request.voter.url_token,
+        )
+        .await
     }
 
     async fn flag_status(

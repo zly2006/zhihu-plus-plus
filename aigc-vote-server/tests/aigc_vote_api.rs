@@ -83,6 +83,154 @@ async fn short_or_unread_like_events_do_not_earn_credit() {
 }
 
 #[tokio::test]
+async fn voter_can_cancel_own_aigc_flag_and_recover_spent_credit() {
+    let app = app(AppState::new_in_memory().expect("state"));
+    let voter = test_voter("voter-a", "投票人 A");
+    let flag: AigcFlagResponse = request_json(
+        app.clone(),
+        Method::POST,
+        "/v1/contents/answer/42/aigc-flag",
+        &test_flag_request("client-a", voter.clone()),
+    )
+    .await;
+    assert_eq!(flag.credit, 0);
+
+    let cancelled: AigcFlagStatusResponse = request_json(
+        app.clone(),
+        Method::DELETE,
+        "/v1/contents/answer/42/aigc-flag",
+        &json!({ "client_id": "client-a", "voter": voter }),
+    )
+    .await;
+    assert!(!cancelled.my_flagged);
+    assert_eq!(cancelled.credit, 1);
+    assert_eq!(cancelled.effective_flag_count, 0);
+    assert!(cancelled.voters.is_empty());
+
+    let repeated: AigcFlagStatusResponse = request_json(
+        app,
+        Method::DELETE,
+        "/v1/contents/answer/42/aigc-flag",
+        &json!({ "client_id": "client-a", "voter": test_voter("voter-a", "投票人 A") }),
+    )
+    .await;
+    assert_eq!(repeated.credit, 1);
+}
+
+#[tokio::test]
+async fn same_voter_can_cancel_from_another_client_and_refund_original_client() {
+    let app = app(AppState::new_in_memory().expect("state"));
+    let voter = test_voter("voter-a", "投票人 A");
+    let _: AigcFlagResponse = request_json(
+        app.clone(),
+        Method::POST,
+        "/v1/contents/answer/42/aigc-flag",
+        &test_flag_request("original-client", voter.clone()),
+    )
+    .await;
+    let cancelled: AigcFlagStatusResponse = request_json(
+        app.clone(),
+        Method::DELETE,
+        "/v1/contents/answer/42/aigc-flag",
+        &json!({ "client_id": "new-client", "voter": voter }),
+    )
+    .await;
+    assert!(!cancelled.my_flagged);
+    assert_eq!(cancelled.credit, 1);
+    assert_eq!(cancelled.effective_flag_count, 0);
+    let original: AigcFlagStatusResponse = request_json(
+        app,
+        Method::GET,
+        "/v1/contents/answer/42/aigc-flag?client_id=original-client&voter_id=voter-a",
+        &json!({}),
+    )
+    .await;
+    assert_eq!(original.credit, 1);
+}
+
+#[tokio::test]
+async fn another_voter_on_same_client_cannot_cancel_flag() {
+    let app = app(AppState::new_in_memory().expect("state"));
+    let _: AigcFlagResponse = request_json(
+        app.clone(),
+        Method::POST,
+        "/v1/contents/answer/42/aigc-flag",
+        &test_flag_request("client-a", test_voter("voter-a", "A")),
+    )
+    .await;
+    let status: AigcFlagStatusResponse = request_json(
+        app.clone(),
+        Method::DELETE,
+        "/v1/contents/answer/42/aigc-flag",
+        &json!({ "client_id": "client-a", "voter": test_voter("voter-b", "B") }),
+    )
+    .await;
+    assert!(!status.my_flagged);
+    assert_eq!(status.credit, 0);
+    assert_eq!(status.effective_flag_count, 1);
+}
+
+#[tokio::test]
+async fn cancelling_bypassed_flag_does_not_refund_credit() {
+    let app = app(AppState::new_in_memory_with_credit_bypass_voters(
+        ["owner-token".to_string()].into_iter().collect(),
+    )
+    .expect("state"));
+    let mut voter = test_voter("owner", "Owner");
+    voter.url_token = Some("owner-token".to_string());
+    let flag: AigcFlagResponse = request_json(
+        app.clone(),
+        Method::POST,
+        "/v1/contents/answer/42/aigc-flag",
+        &test_flag_request("client-a", voter.clone()),
+    )
+    .await;
+    assert!(flag.credit_bypass_available);
+    let status: AigcFlagStatusResponse = request_json(
+        app,
+        Method::DELETE,
+        "/v1/contents/answer/42/aigc-flag",
+        &json!({ "client_id": "client-a", "voter": voter }),
+    )
+    .await;
+    assert!(!status.my_flagged);
+    assert_eq!(status.credit, flag.credit);
+}
+
+#[tokio::test]
+async fn cancelling_flag_at_credit_cap_does_not_exceed_cap() {
+    let app = app(AppState::new_in_memory().expect("state"));
+    let voter = test_voter("voter-a", "A");
+    let _: AigcFlagResponse = request_json(
+        app.clone(),
+        Method::POST,
+        "/v1/contents/answer/42/aigc-flag",
+        &test_flag_request("client-a", voter.clone()),
+    )
+    .await;
+    let earned: ReadEventsResponse = request_json(
+        app.clone(),
+        Method::POST,
+        "/v1/read-events:batch",
+        &ReadEventsRequest {
+            client_id: "client-a".to_string(),
+            events: build_read_events(100, 30_000, 0.75),
+        },
+    )
+    .await;
+    assert_eq!(earned.credit, earned.cap);
+    let status: AigcFlagStatusResponse = request_json(
+        app,
+        Method::DELETE,
+        "/v1/contents/answer/42/aigc-flag",
+        &json!({ "client_id": "client-a", "voter": voter }),
+    )
+    .await;
+    assert!(!status.my_flagged);
+    assert_eq!(status.credit, status.cap);
+}
+
+#[tokio::test]
 async fn read_events_without_content_html_do_not_earn_credit() {
     let state = AppState::new_in_memory().expect("state");
     let app = app(state);

@@ -128,6 +128,13 @@ internal data class AigcVoteFlagRequest(
 )
 
 @Serializable
+internal data class AigcVoteFlagCancelRequest(
+    @SerialName("client_id")
+    val clientId: String,
+    val voter: AigcVoteVoter,
+)
+
+@Serializable
 data class AigcVoteFlagEvidenceRequest(
     @SerialName("client_view_duration_ms")
     val clientViewDurationMs: Long,
