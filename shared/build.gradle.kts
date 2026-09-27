@@ -124,6 +124,12 @@ kotlin {
     macosArm64()
 
     sourceSets {
+        // Reserve separate source sets for the Android Full and Lite implementations.
+        // The Android KMP plugin currently exposes one production compilation, so these
+        // source sets remain unbound until both variant compilations can be wired.
+        create("androidFull")
+        create("androidLite")
+
         commonMain.dependencies {
             api(project(":shared-local-db"))
             implementation(compose.runtime)
