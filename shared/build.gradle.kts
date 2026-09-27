@@ -123,12 +123,38 @@ kotlin {
     }
     macosArm64()
 
+    applyDefaultHierarchyTemplate()
+
     sourceSets {
-        // Reserve separate source sets for the Android Full and Lite implementations.
-        // The Android KMP plugin currently exposes one production compilation, so these
-        // source sets remain unbound until both variant compilations can be wired.
-        create("androidFull")
-        create("androidLite")
+        val androidFull =
+            create("androidFull") {
+                dependsOn(commonMain.get())
+            }
+        val androidLite =
+            create("androidLite") {
+                dependsOn(commonMain.get())
+            }
+        val selectedAndroidVariant = providers.gradleProperty("zhihu.androidVariant").orNull
+        val requestedAndroidVariants =
+            gradle.startParameter.taskNames
+                .mapNotNull { taskName ->
+                    val task = taskName.substringAfterLast(':')
+                    when {
+                        task.startsWith("assembleFull") || task.startsWith("bundleFull") -> "full"
+                        task.startsWith("assembleLite") || task.startsWith("bundleLite") -> "lite"
+                        else -> null
+                    }
+                }
+        val requestedAndroidVariantSet = requestedAndroidVariants.toSet()
+        require(requestedAndroidVariantSet.isEmpty() || requestedAndroidVariantSet == setOf(selectedAndroidVariant)) {
+            "Requested APK variant $requestedAndroidVariantSet does not match zhihu.androidVariant=$selectedAndroidVariant; build each flavor in a separate Gradle invocation"
+        }
+        when (selectedAndroidVariant) {
+            "full" -> androidMain.get().dependsOn(androidFull)
+            "lite" -> androidMain.get().dependsOn(androidLite)
+            null -> Unit
+            else -> error("zhihu.androidVariant must be full or lite")
+        }
 
         commonMain.dependencies {
             api(project(":shared-local-db"))
