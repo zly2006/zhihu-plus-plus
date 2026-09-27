@@ -63,13 +63,13 @@ jobs:
       - name: Run gradle tests
         run: |
           ./gradlew test -x :app:test
-          ./gradlew -Pzhihu.androidVariant=full :app:testFullDebugUnitTest
-          ./gradlew -Pzhihu.androidVariant=lite :app:testLiteDebugUnitTest
+          ./gradlew :app:testFullDebugUnitTest
+          ./gradlew :app:testLiteDebugUnitTest
       - name: Build App
         # Build .apk
         run: |
-          bash ./gradlew -Pzhihu.androidVariant=full assembleFullDebug
-          bash ./gradlew -Pzhihu.androidVariant=lite assembleLiteDebug
+          bash ./gradlew assembleFullDebug
+          bash ./gradlew assembleLiteDebug
         env:
           CI_BUILD_MINIFY: false
       - name: Move files

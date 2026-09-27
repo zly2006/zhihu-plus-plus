@@ -81,7 +81,7 @@ jobs:
           if [[ "$RUN_INSTRUMENTED_TESTS" == "true" ]]; then
             tasks+=(:app:assembleLiteDebugAndroidTest)
           fi
-          ./gradlew -Pzhihu.androidVariant=lite "${tasks[@]}" --max-workers=2
+          ./gradlew "${tasks[@]}" --max-workers=2
 
       - name: Upload Gradle build cache
         uses: actions/upload-artifact@v4

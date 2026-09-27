@@ -134,26 +134,25 @@ kotlin {
             create("androidLite") {
                 dependsOn(commonMain.get())
             }
-        val selectedAndroidVariant = providers.gradleProperty("zhihu.androidVariant").orNull
+        val androidVariantTaskPattern = Regex("^(?:assemble|bundle|install|test|connected|compile)(Full|Lite)")
         val requestedAndroidVariants =
             gradle.startParameter.taskNames
                 .mapNotNull { taskName ->
                     val task = taskName.substringAfterLast(':')
-                    when {
-                        task.startsWith("assembleFull") || task.startsWith("bundleFull") -> "full"
-                        task.startsWith("assembleLite") || task.startsWith("bundleLite") -> "lite"
-                        else -> null
-                    }
+                    androidVariantTaskPattern
+                        .find(task)
+                        ?.groupValues
+                        ?.get(1)
+                        ?.lowercase()
                 }
-        val requestedAndroidVariantSet = requestedAndroidVariants.toSet()
-        require(requestedAndroidVariantSet.isEmpty() || requestedAndroidVariantSet == setOf(selectedAndroidVariant)) {
-            "Requested APK variant $requestedAndroidVariantSet does not match zhihu.androidVariant=$selectedAndroidVariant; build each flavor in a separate Gradle invocation"
+        val selectedAndroidVariants = requestedAndroidVariants.toSet()
+        require(selectedAndroidVariants.size <= 1) {
+            "Full and Lite Android tasks require separate Gradle invocations"
         }
-        when (selectedAndroidVariant) {
+        when (selectedAndroidVariants.singleOrNull()) {
             "full" -> androidMain.get().dependsOn(androidFull)
             "lite" -> androidMain.get().dependsOn(androidLite)
             null -> Unit
-            else -> error("zhihu.androidVariant must be full or lite")
         }
 
         commonMain.dependencies {
