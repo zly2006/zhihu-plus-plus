@@ -71,7 +71,6 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.platform.isBlocklistNlpSupported
 import com.github.zly2006.zhihu.platform.platformName
-import com.github.zly2006.zhihu.platform.rememberIsLiteVariant
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.util.Log
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeyword
@@ -133,7 +132,7 @@ fun BlocklistSettingsScreen(
     val database = remember { getContentFilterDatabase() }
     val coroutineScope = rememberCoroutineScope()
 
-    val nlpSupported = isBlocklistNlpSupported && !rememberIsLiteVariant()
+    val nlpSupported = isBlocklistNlpSupported
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = buildList {
         add("屏蔽关键词")

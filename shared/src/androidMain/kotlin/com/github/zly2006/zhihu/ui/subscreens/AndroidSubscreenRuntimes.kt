@@ -40,7 +40,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.platform.androidUserMessageSink
-import com.github.zly2006.zhihu.platform.rememberIsLiteVariant
 import com.github.zly2006.zhihu.reading.AndroidReadingPlayerBridge
 import com.github.zly2006.zhihu.ui.rememberArticleTtsState
 import com.github.zly2006.zhihu.updater.UpdateManager
@@ -251,6 +250,3 @@ actual fun rememberOpenSourceLicensesLibraries(): Libs {
             .build()
     }
 }
-
-@Composable
-actual fun rememberShowFullVariantLicenses(): Boolean = !rememberIsLiteVariant()
