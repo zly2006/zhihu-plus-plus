@@ -225,8 +225,7 @@ actual fun PlatformPredictiveBackHandler(
     onBack: () -> Unit,
 ) = PlatformBackHandler(enabled = enabled, onBack = onBack)
 
-@Composable
-actual fun rememberIsLiteVariant(): Boolean = false
+actual val isLiteVariant: Boolean = false
 
 internal actual val platformBottomBarItemLimit: Int? = null
 

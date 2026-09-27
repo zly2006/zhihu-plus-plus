@@ -31,6 +31,8 @@ expect val isNative: Boolean
 
 expect val isAigcVoteSupported: Boolean
 
+expect val isLiteVariant: Boolean
+
 expect val isBlocklistNlpSupported: Boolean
 
 expect val isSentenceSimilaritySupported: Boolean
@@ -187,6 +189,3 @@ expect fun PlatformPredictiveBackHandler(
     onCancel: () -> Unit,
     onBack: () -> Unit,
 )
-
-@Composable
-expect fun rememberIsLiteVariant(): Boolean

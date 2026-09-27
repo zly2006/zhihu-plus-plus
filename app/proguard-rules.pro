@@ -62,8 +62,8 @@
 }
 
 -keepnames class ** implements com.github.zly2006.zhihu.data.Feed$Target
-# Keep all enums
--keep enum ** {
+# Keep app enum names used by persisted preferences and database values.
+-keep enum com.github.zly2006.zhihu.** {
     <fields>;
     public static **[] values();
     public static ** valueOf(java.lang.String);

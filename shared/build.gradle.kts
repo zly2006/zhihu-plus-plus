@@ -73,7 +73,9 @@ tasks
 
 mapOf(
     "runKtlintFormatOverAndroidMainSourceSet" to
-        listOf("src/androidMain/kotlin", "src/tiqianMarkdownMain/kotlin"),
+        listOf("src/androidMain/kotlin"),
+    "runKtlintFormatOverAndroidFullSourceSet" to
+        listOf("src/androidFull/kotlin", "src/tiqianMarkdownMain/kotlin"),
     "runKtlintFormatOverJvmMainSourceSet" to listOf("src/jvmMain/kotlin"),
     "runKtlintFormatOverCommonMainSourceSet" to listOf("src/commonMain/kotlin"),
     "runKtlintFormatOverJvmTestSourceSet" to listOf("src/jvmTest/kotlin"),
@@ -123,7 +125,43 @@ kotlin {
     }
     macosArm64()
 
+    applyDefaultHierarchyTemplate()
+
     sourceSets {
+        val androidFull =
+            create("androidFull") {
+                dependsOn(commonMain.get())
+                kotlin.srcDir("src/tiqianMarkdownMain/kotlin")
+                dependencies {
+                    implementation("org.tiqian:markdown-compose:0.1.0-SNAPSHOT")
+                    implementation("org.tiqian:math-font-stix:0.1.0-SNAPSHOT")
+                }
+            }
+        val androidLite =
+            create("androidLite") {
+                dependsOn(commonMain.get())
+            }
+        val androidVariantTaskPattern = Regex("^(?:assemble|bundle|install|test|connected|compile)(Full|Lite)")
+        val requestedAndroidVariants =
+            gradle.startParameter.taskNames
+                .mapNotNull { taskName ->
+                    val task = taskName.substringAfterLast(':')
+                    androidVariantTaskPattern
+                        .find(task)
+                        ?.groupValues
+                        ?.get(1)
+                        ?.lowercase()
+                }
+        val selectedAndroidVariants = requestedAndroidVariants.toSet()
+        require(selectedAndroidVariants.size <= 1) {
+            "Full and Lite Android tasks require separate Gradle invocations"
+        }
+        when (selectedAndroidVariants.singleOrNull()) {
+            "full" -> androidMain.get().dependsOn(androidFull)
+            "lite" -> androidMain.get().dependsOn(androidLite)
+            null -> Unit
+        }
+
         commonMain.dependencies {
             api(project(":shared-local-db"))
             implementation(compose.runtime)
@@ -157,10 +195,7 @@ kotlin {
             implementation("io.ktor:ktor-client-mock:3.5.0")
         }
         androidMain {
-            kotlin.srcDir("src/tiqianMarkdownMain/kotlin")
             dependencies {
-                implementation("org.tiqian:markdown-compose:0.1.0-SNAPSHOT")
-                implementation("org.tiqian:math-font-stix:0.1.0-SNAPSHOT")
                 implementation("androidx.activity:activity-compose:1.13.0")
                 implementation("androidx.browser:browser:1.10.0")
                 implementation("androidx.core:core-ktx:1.19.0")

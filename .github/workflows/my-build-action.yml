@@ -149,7 +149,7 @@ jobs:
         if: runner.os != 'macOS'
         uses: actions/upload-artifact@v4
         with:
-          name: zhihu++-desktop-${{ steps.desktop_suffix.outputs.suffix }}
+          name: ${{ inputs.name }}-desktop-${{ steps.desktop_suffix.outputs.suffix }}
           path: desktopApp/build/upload/*
           if-no-files-found: error
 
@@ -177,23 +177,14 @@ jobs:
         if: runner.os == 'macOS'
         uses: actions/upload-artifact@v4
         with:
-          name: zhihu++-desktop-${{ steps.desktop_suffix.outputs.suffix }}
+          name: ${{ inputs.name }}-desktop-${{ steps.desktop_suffix.outputs.suffix }}
           path: desktopApp/build/upload/zhihu++-desktop-${{ steps.desktop_suffix.outputs.suffix }}.app.zip
 
   build:
     name: Build Android App
-    needs: build-desktop
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # Set Current Date As Env Variable
-      - name: Set current date as env variable
-        run: echo "date_today=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
-
-      # Set Repository Name As Env Variable
-      - name: Set repository name as env variable
-        run: echo "repository_name=$(echo '${{ github.repository }}' | awk -F '/' '{print $2}')" >> $GITHUB_ENV
-
       - name: Set Up JDK
         uses: actions/setup-java@v4
         with:
@@ -250,11 +241,8 @@ jobs:
         run: |
           echo "y" | sdkmanager --install "ndk;29.0.14206865"
           echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/29.0.14206865" >> $GITHUB_ENV
-      # Run Tests Build
       - name: Run KtLint
         run: ./gradlew ktlintCheck
-      #- name: Run gradle tests
-      #  run: ./gradlew test
       - name: Build App
         # Build .apk
         run: |
@@ -271,12 +259,6 @@ jobs:
           mkdir -p app/build/upload
           mv app/build/outputs/apk/full/release/app-full-release.apk app/build/upload/zhihu++-full.apk
           mv app/build/outputs/apk/lite/release/app-lite-release.apk app/build/upload/zhihu++-lite.apk
-      - name: Download desktop apps
-        uses: actions/download-artifact@v4
-        with:
-          pattern: zhihu++-desktop-*
-          path: app/build/upload
-          merge-multiple: true
       - name: Compress lite mapping file
         if: ${{ inputs.minify }}
         run: |
@@ -286,8 +268,40 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
+          name: ${{ inputs.name }}-android
+          path: app/build/upload/
+          if-no-files-found: error
+
+  publish:
+    name: Collect and publish builds
+    needs: [build-desktop, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set current date as env variable
+        run: echo "date_today=$(date +'%Y-%m-%d')" >> "$GITHUB_ENV"
+
+      - name: Set repository name as env variable
+        run: echo "repository_name=${GITHUB_REPOSITORY#*/}" >> "$GITHUB_ENV"
+
+      - name: Download Android apps
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.name }}-android
+          path: app/build/upload
+
+      - name: Download desktop apps
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ${{ inputs.name }}-desktop-*
+          path: app/build/upload
+          merge-multiple: true
+
+      - name: Upload combined artifacts
+        uses: actions/upload-artifact@v4
+        with:
           name: ${{ env.date_today }} - ${{ env.repository_name }} - ${{ inputs.name }}
           path: app/build/upload/
+          if-no-files-found: error
 
       # Delete existing nightly release
       - name: Delete existing nightly release
