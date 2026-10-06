@@ -230,6 +230,8 @@ fun ZhihuMain(
     },
     articleEnterTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition?)? = null,
     articleExitTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition?)? = null,
+    // 与 exit 分开传：destination 级 popExit 默认复用 exit，普通返回会沿用前进退场。
+    articlePopExitTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition?)? = null,
 ) = BoxWithConstraints(modifier = modifier.fillMaxSize()) {
     val containerWidth = maxWidth
     val isLargeLandscape = canShowLandscapeListDetail(
@@ -548,6 +550,7 @@ fun ZhihuMain(
                     typeMap = mapOf(typeOf<ArticleType>() to ArticleTypeNavType),
                     enterTransition = articleEnterTransition,
                     exitTransition = articleExitTransition,
+                    popExitTransition = articlePopExitTransition,
                 ) { entry ->
                     articleContent(entry.toRoute(), entry)
                 }
@@ -747,6 +750,7 @@ fun ZhihuMain(
                                 typeMap = mapOf(typeOf<ArticleType>() to ArticleTypeNavType),
                                 enterTransition = articleEnterTransition,
                                 exitTransition = articleExitTransition,
+                                popExitTransition = articlePopExitTransition,
                             ) { navEntry ->
                                 val article: Article = navEntry.toRoute()
                                 // 有大屏布局时由 effect 转交详情栈，不创建会抢先消费一次性交接数据的临时页面。
