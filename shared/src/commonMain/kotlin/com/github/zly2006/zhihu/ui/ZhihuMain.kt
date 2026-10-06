@@ -273,7 +273,7 @@ fun ZhihuMain(
     val showDetailPane = hasOpenSecondaryDetail &&
         (showListDetail || navEntry?.id == detailOwnerEntryId)
     val hasOpenDetail = showDetailPane && selectedContentDestination != null
-    val useSecondaryContentNavigation = enableLandscapeListDetail && isListPaneContext
+    val useSecondaryContentNavigation = showListDetail
     val detailLifecycleOwner = rememberLifecycleOwner(
         maxLifecycle = if (showListDetail || showDetailPane) Lifecycle.State.RESUMED else Lifecycle.State.CREATED,
     )
@@ -571,7 +571,7 @@ fun ZhihuMain(
         }
         LaunchedEffect(navEntry, isLargeLandscape, hasOpenSecondaryDetail, isListPaneContext) {
             val directReadingDestination = navEntry.readingDestinationOrNull()?.takeIf { it.isDetailPaneDestination() }
-            if (enableLandscapeListDetail && directReadingDestination != null) {
+            if (isLargeLandscape && directReadingDestination != null) {
                 navController.popBackStack()
                 if (navController.currentBackStackEntry == null) navController.navigate(MainTabs)
                 detailOwnerEntryId = navController.currentBackStackEntry?.id
@@ -747,8 +747,7 @@ fun ZhihuMain(
                                 exitTransition = articleExitTransition,
                             ) { navEntry ->
                                 val article: Article = navEntry.toRoute()
-                                // 启用自适应导航时由 effect 转交详情栈，不创建会抢先消费一次性交接数据的临时页面。
-                                if (!enableLandscapeListDetail) articleContent(article, navEntry)
+                                if (!isLargeLandscape) articleContent(article, navEntry)
                             }
                             composable<HotList> {
                                 HotListScreen(innerPadding)
@@ -818,7 +817,7 @@ fun ZhihuMain(
                             }
                             composable<Pin> { navEntry ->
                                 val pin: Pin = navEntry.toRoute()
-                                if (!enableLandscapeListDetail) PinScreen(pin)
+                                if (!isLargeLandscape) PinScreen(pin)
                             }
                             accountSettings(reloadBottomBarPreferences, blocklistSettingsNlpContent)
                             composable<Notification> {
