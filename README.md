@@ -119,7 +119,10 @@ Zhihu++独创本地推荐算法，把内容推荐完全放在本地进行，为�
 
 - [Hydrogen](https://github.com/zhihulite/Hydrogen)
 - [Zhihu--](https://github.com/huamurui/zhihu-minus-minus) （极早期开发阶段，功能尚有欠缺）
-- [Zhihu++ swift版（iOS）](https://github.com/kangyun1994/zhihu-plus-plus-swift) 注意：这里的所有项目与知乎++无关，在此列出不代表其实得到了知乎++的支持或背书。
+- [Zhihu++ swift版（iOS）](https://github.com/kangyun1994/zhihu-plus-plus-swift)
+- [Zhihu++ HMOS （鸿蒙版）](https://github.com/zhuoyi233/zhihu-plus-plus-HMOS)
+
+注意：这里的所有项目与知乎++无关，在此列出不代表其实得到了知乎++的支持或背书。
 
 ## 贡献者
 
