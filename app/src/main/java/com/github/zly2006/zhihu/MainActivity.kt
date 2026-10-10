@@ -36,6 +36,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
@@ -51,15 +53,19 @@ import com.github.zly2006.zhihu.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionContent
+import com.github.zly2006.zhihu.navigation.Collections
 import com.github.zly2006.zhihu.navigation.CommentHolder
 import com.github.zly2006.zhihu.navigation.History
 import com.github.zly2006.zhihu.navigation.Home
 import com.github.zly2006.zhihu.navigation.MainTabs
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Notification
+import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.navigation.Search
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
+import com.github.zly2006.zhihu.navigation.Topic
 import com.github.zly2006.zhihu.navigation.Video
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.nlp.KeywordWeightExtractor
@@ -416,6 +422,10 @@ class MainActivity : ComponentActivity() {
             navigate(route.article, targetController, popup)
             return
         }
+        // 同一栏内目标页与栈顶是同一页时不再入栈：分屏两栏可能对同一次点击各推一次，
+        // 「每栏最多一层」要求同一页只留一条记录；重复入栈还会让返回先回到一个看起来一样的上一页。
+        // 判断放在下面这些副作用之前：被跳过的导航不应该再写历史，也不应该留下一次性的评论/来源交接。
+        if (route.isSamePageAs(targetController.currentBackStackEntry)) return
         AndroidArticleNavigationHandoff.clearCommentUnless(route)
         preparePendingContentOpen(route, targetController)
         history.add(route)
@@ -544,3 +554,41 @@ class MainActivity : ComponentActivity() {
         const val TAG = "MainActivity"
     }
 }
+
+/**
+ * 目标页与所在栏栈顶是否已经是同一页。
+ *
+ * 先比路由类，再逐类比「稳定身份字段」：
+ * - 只看路由类（`hasRoute`）会把「类相同但 id 不同」的另一个回答/文章/问题/作者判成同一页，
+ *   于是「切换到下一个回答」「从作者A进作者B」变成无操作。
+ * - 只看 data class equals 也不行：[Article] 的 equals 只比 id+type，[Question] 的 title 默认值是
+ *   "loading..."，同一页会因为展示字段不同被判成不同页而照样重复入栈。
+ * - 无参页面（通知、账号设置等 data object）由末尾的类比较兜底；带参页面只比身份字段，
+ *   避免 title/name 这类展示字段在二次进入时刷新导致的「同页两层」。
+ */
+private fun NavDestination.isSamePageAs(current: NavBackStackEntry?): Boolean {
+    val currentDestination = current?.destination ?: return false
+    if (!currentDestination.hasRoute(this::class)) return false
+    return when (this) {
+        is Article -> current.toRouteOrNull<Article>()?.let { it.id == id && it.type == type } == true
+        is Pin -> current.toRouteOrNull<Pin>()?.id == id
+        is Question -> current.toRouteOrNull<Question>()?.questionId == questionId
+        // Person 自身重写了 equals：id 有效时按 id、否则按 urlToken 判同一人。
+        is Person -> current.toRouteOrNull<Person>() == this
+        is Topic -> current.toRouteOrNull<Topic>()?.id == id
+        is Search -> current.toRouteOrNull<Search>()?.let {
+            it.query == query && it.restrictedMemberHashId == restrictedMemberHashId
+        } == true
+        is Collections -> current.toRouteOrNull<Collections>()?.userToken == userToken
+        is CollectionContent -> current.toRouteOrNull<CollectionContent>()?.collectionId == collectionId
+        // 其余目的地分两类：
+        // - 无参页面（MainTabs、通知、账号设置等 data object）：类相同即同一页，可以直接去重；
+        // - 带参页面（Notification.Entry/Message、WriteAnswer/WritePin、带 setting 锚点的账号设置页）：
+        //   这里只做「同类才算同一页」的保守判断。当前 UI 里这些页都由别的栈顶页触发，
+        //   不会出现「同类不同参且恰在本栏栈顶」的情形，因此不会误判为同页而吞掉导航。
+        else -> this::class.isData && this::class == currentDestination::class
+    }
+}
+
+private inline fun <reified T : Any> NavBackStackEntry.toRouteOrNull(): T? =
+    runCatching { toRoute<T>() }.getOrNull()

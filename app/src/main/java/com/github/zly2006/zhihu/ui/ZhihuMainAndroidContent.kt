@@ -85,6 +85,20 @@ fun AndroidZhihuMain(navController: NavHostController) {
                 else -> ExitTransition.None
             }
         },
+        // 普通返回回退 NavHost 默认右滑+淡出；回答切换才用方向转场。
+        articlePopExitTransition = {
+            when (sharedArticleAnswerSwitchState.answerTransitionDirection) {
+                ArticleAnswerTransitionDirection.VERTICAL_NEXT ->
+                    slideOutVertically(tween(300)) { -it } + fadeOut(tween(300))
+                ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS ->
+                    slideOutVertically(tween(300)) { it } + fadeOut(tween(300))
+                ArticleAnswerTransitionDirection.HORIZONTAL_NEXT ->
+                    slideOutHorizontally(tween(300)) { -it } + fadeOut(tween(300))
+                ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS ->
+                    slideOutHorizontally(tween(300)) { it } + fadeOut(tween(300))
+                else -> null
+            }
+        },
         articleContent = { article, navEntry ->
             val viewModel: ArticleViewModel = viewModel(navEntry) {
                 ArticleViewModel(article, activity.httpClient, androidUserMessageSink(activity)) { onPause ->
