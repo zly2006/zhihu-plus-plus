@@ -75,7 +75,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -269,11 +268,15 @@ fun ZhihuMain(
     val navEntry by navController.currentBackStackEntryAsState()
     val showMainNavigation = navEntry?.destination?.hasRoute<MainTabs>() == true
     val isListPaneContext = navEntry.isListPaneDestination()
-    // 窄屏从详情进入主栈页面时隐藏详情；返回原列表项后恢复同一详情和页面状态。
-    var detailOwnerEntryId by rememberSaveable { mutableStateOf<String?>(null) }
     val showListDetail = isLargeLandscape && isListPaneContext
+    // 横屏分屏时右栏照旧；非分屏时只在主栈栈顶是「名单页」时让右栏内容全屏覆盖它。
+    // 竖屏栈顶已经是阅读页说明这次阅读发生在主栈，右栏必须让位，否则同一内容会被渲染两遍；
+    // 竖屏栈顶是名单页时右栏内容照旧覆盖它（返回名单页就恢复原右栏页面）。
+    // 注意必须同时要求 isListPaneContext：编辑器（WritePin/WriteAnswer）、登录页、账号设置等
+    // 既不是阅读页也不是名单页，若把它们也判成「可以被右栏覆盖」，主栈会被整段跳过组合，
+    // 页面入了栈却完全不可见。（Question 同时属于名单页与阅读页，两个条件都要保留。）
     val showDetailPane = hasOpenSecondaryDetail &&
-        (showListDetail || navEntry?.id == detailOwnerEntryId)
+        (showListDetail || (isListPaneContext && navEntry.readingDestinationOrNull() == null))
     val hasOpenDetail = showDetailPane && selectedContentDestination != null
     // 副详情栈只服务可见分屏；窄屏留在主栈，否则预测返回会在副栈内预览 EmptyDetail 占位页。
     val useSecondaryContentNavigation = showListDetail
@@ -284,12 +287,7 @@ fun ZhihuMain(
         maxLifecycle = if (showDetailPane && !showListDetail) Lifecycle.State.CREATED else Lifecycle.State.RESUMED,
     )
 
-    LaunchedEffect(isLargeLandscape, navEntry) {
-        if (showListDetail) detailOwnerEntryId = navEntry?.id
-    }
-
     fun openListDetail(destination: NavDestination) {
-        detailOwnerEntryId = navController.currentBackStackEntry?.id
         detailNavController.popBackStack(detailNavController.graph.startDestinationId, inclusive = false)
         navigateContent(destination, detailNavController)
     }
@@ -297,7 +295,8 @@ fun ZhihuMain(
     fun openReadingDestination(destination: NavDestination, onlyIfReading: Boolean = false) {
         val current = if (hasOpenDetail) selectedContentDestination else navEntry.readingDestinationOrNull()
         if (current == destination || (onlyIfReading && current == null)) return
-        val opensInDetail = useSecondaryContentNavigation && destination.isDetailPaneDestination()
+        // 竖屏所有内容页忠实进主栈：只有横屏分屏可见时才把内容交给右栏，窄屏走主栈才有正常的返回动画。
+        val opensInDetail = isLargeLandscape && useSecondaryContentNavigation && destination.isDetailPaneDestination()
         if (hasOpenDetail) {
             if (opensInDetail) {
                 detailNavController.popBackStack()
@@ -308,7 +307,6 @@ fun ZhihuMain(
             navController.popBackStack()
         }
         if (opensInDetail) {
-            detailOwnerEntryId = navController.currentBackStackEntry?.id
             navigateContent(destination, detailNavController)
         } else {
             navigate(destination)
@@ -573,16 +571,39 @@ fun ZhihuMain(
         } else {
             Modifier.fillMaxSize()
         }
-        LaunchedEffect(navEntry, isLargeLandscape, hasOpenSecondaryDetail, isListPaneContext) {
-            val directReadingDestination = navEntry.readingDestinationOrNull()?.takeIf { it.isDetailPaneDestination() }
-            // isLargeLandscape 不随 navEntry 翻转；deeplink 临时压入阅读页时 useSecondaryContentNavigation 会漏掉转交。
-            if (isLargeLandscape && directReadingDestination != null) {
-                navController.popBackStack()
-                if (navController.currentBackStackEntry == null) navController.navigate(MainTabs)
-                detailOwnerEntryId = navController.currentBackStackEntry?.id
-                detailNavController.popBackStack(detailNavController.graph.startDestinationId, inclusive = false)
-                // 平台入口已经处理历史、评论交接等副作用，这里只转移页面归属。
-                detailNavController.navigate(directReadingDestination)
+        // 竖→横「退化收纳」：分屏只有左右两栏，主栈里多于一层的阅读历史没有位置可放，
+        // 收敛成「左栏 = 最靠近栈顶的名单页，右栏 = 最近一次阅读页」，中间历史丢弃（用户已接受）。
+        // 只在 isLargeLandscape 为真时动作：横→竖方向不搬任何页面，两栈保持原状由用户返回，
+        // 否则同一页面会在两栈间来回迁移。把阅读页从主栈挪进右栏会让该页条目重建、重新请求一次，
+        // 这是本设计的已知代价（不接受用跨栈握手标记或缓存兜底来掩盖）。
+        LaunchedEffect(isLargeLandscape, navEntry, detailEntry) {
+            if (!isLargeLandscape) return@LaunchedEffect
+            val entries = navController.currentBackStack.value
+            val listIndex = entries.indexOfLast { it.isListPaneDestination() }
+            // 「最近一次阅读页」= 最靠近栈顶的名单页之上最后出现的阅读页（没有名单页时整栈都算）。
+            val readingIndex = entries.indices.lastOrNull {
+                it > listIndex && entries[it].readingDestinationOrNull() != null
+            }
+            // 只有「主栈顶就是本次的阅读页」时才需要收纳：把它交给右栏，再把主栈收敛到最近的名单页。
+            // 其余情况一律不动：
+            // - 没有阅读页：下面的 popBackStack 会把「最近名单页之上的所有页面」一起弹掉，而它们
+            //   可能是编辑器（WritePin/WriteAnswer）、通知设置、登录等既非名单页也不进副栈的页面，
+            //   误弹会让这些页面只闪一帧就消失。
+            // - 阅读页不在栈顶：要么它上面还压着别的页面（同上，不能连坐弹掉），要么这次阅读其实
+            //   已经在右栏里（分屏模式下内容本来就走副栈），没有可收纳的主栈阅读页。
+            if (readingIndex == null || readingIndex != entries.lastIndex) return@LaunchedEffect
+            val reading = entries[readingIndex].readingDestinationOrNull() ?: return@LaunchedEffect
+            // 含 deeplink 直接压入主栈的情况：先摘下来交给右栏，主栈才能收敛成名单页。
+            navController.popBackStack()
+            if (navController.currentBackStackEntry == null) navController.navigate(MainTabs)
+            // 平台入口已经处理历史、评论交接等副作用，这里只转移页面归属。
+            detailNavController.popBackStack(detailNavController.graph.startDestinationId, inclusive = false)
+            detailNavController.navigate(reading)
+            // 主栈收敛为「列表根 … 最靠近栈顶的名单页」。走到这里说明刚才已经弹掉了栈顶阅读页，
+            // 名单页之上只可能还剩本轮要丢弃的中间历史；目标已在栈顶时这一步不产生动作，
+            // effect 重跑也会因为栈顶不是阅读页而在上面的守卫处退出，不会重复搬运。
+            if (listIndex >= 0) {
+                navController.popBackStack(entries[listIndex].destination.id, inclusive = false)
             }
         }
         if (showListDetail || !showDetailPane) {
