@@ -20,6 +20,14 @@ Zhihu++独创本地推荐算法，把内容推荐完全放在本地进行，为�
 | --- | --- | --- | --- | --- |
 | ![首页截图](fastlane/metadata/android/zh-CN/images/phoneScreenshots/1_home.jpg) | ![关注截图](fastlane/metadata/android/zh-CN/images/phoneScreenshots/2_follow.jpg) | ![日报截图](fastlane/metadata/android/zh-CN/images/phoneScreenshots/3_daily.jpg) | ![个人主页截图](fastlane/metadata/android/zh-CN/images/phoneScreenshots/4_people.jpg) | ![文章截图](fastlane/metadata/android/zh-CN/images/phoneScreenshots/5_article.jpg) |
 
+<div style="  display: flex; flex-flow: column; max-width: 520px; margin: auto; align-items: center" align="center">
+  <img height="320" alt="知乎++在老年机上都能流畅运行" src="https://github.com/user-attachments/assets/e85e899c-d899-4309-8382-2a2aee25a1f9" />
+  <div>
+    知乎++在老年机上都能流畅运行 photo by @zeky
+  </div>
+</div>
+
+
 ## 下载
 
 告别知乎 110MB+ 的 Android 客户端，Lite APK 只要不到 4 MB！
