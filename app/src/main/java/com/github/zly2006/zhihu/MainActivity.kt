@@ -36,6 +36,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
@@ -51,15 +53,19 @@ import com.github.zly2006.zhihu.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionContent
+import com.github.zly2006.zhihu.navigation.Collections
 import com.github.zly2006.zhihu.navigation.CommentHolder
 import com.github.zly2006.zhihu.navigation.History
 import com.github.zly2006.zhihu.navigation.Home
 import com.github.zly2006.zhihu.navigation.MainTabs
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Notification
+import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.navigation.Search
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
+import com.github.zly2006.zhihu.navigation.Topic
 import com.github.zly2006.zhihu.navigation.Video
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.nlp.KeywordWeightExtractor
@@ -416,6 +422,8 @@ class MainActivity : ComponentActivity() {
             navigate(route.article, targetController, popup)
             return
         }
+        // MainTabs 是"回主壳并选中 tab"的动作（会复位 pager），不是往栈顶再压一页，不参与去重。
+        if (route != MainTabs && route.isSamePageAs(targetController.currentBackStackEntry)) return
         AndroidArticleNavigationHandoff.clearCommentUnless(route)
         preparePendingContentOpen(route, targetController)
         history.add(route)
@@ -544,3 +552,26 @@ class MainActivity : ComponentActivity() {
         const val TAG = "MainActivity"
     }
 }
+
+private fun NavDestination.isSamePageAs(current: NavBackStackEntry?): Boolean {
+    val currentDestination = current?.destination ?: return false
+    if (!currentDestination.hasRoute(this::class)) return false
+    return when (this) {
+        is Article -> current.toRouteOrNull<Article>()?.let { it.id == id && it.type == type } == true
+        is Pin -> current.toRouteOrNull<Pin>()?.id == id
+        is Question -> current.toRouteOrNull<Question>()?.questionId == questionId
+        is Person -> current.toRouteOrNull<Person>() == this
+        is Topic -> current.toRouteOrNull<Topic>()?.id == id
+        is Search -> current.toRouteOrNull<Search>()?.let {
+            it.query == query && it.restrictedMemberHashId == restrictedMemberHashId
+        } == true
+        is Collections -> current.toRouteOrNull<Collections>()?.userToken == userToken
+        is CollectionContent -> current.toRouteOrNull<CollectionContent>()?.collectionId == collectionId
+        else ->
+            this::class == currentDestination::class &&
+                currentDestination.arguments.isEmpty()
+    }
+}
+
+private inline fun <reified T : Any> NavBackStackEntry.toRouteOrNull(): T? =
+    runCatching { toRoute<T>() }.getOrNull()

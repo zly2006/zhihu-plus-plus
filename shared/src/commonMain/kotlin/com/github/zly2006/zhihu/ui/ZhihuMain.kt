@@ -75,10 +75,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -100,6 +100,7 @@ import androidx.lifecycle.compose.rememberLifecycleOwner
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavGraph
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -269,13 +270,16 @@ fun ZhihuMain(
     val navEntry by navController.currentBackStackEntryAsState()
     val showMainNavigation = navEntry?.destination?.hasRoute<MainTabs>() == true
     val isListPaneContext = navEntry.isListPaneDestination()
-    // 窄屏从详情进入主栈页面时隐藏详情；返回原列表项后恢复同一详情和页面状态。
-    var detailOwnerEntryId by rememberSaveable { mutableStateOf<String?>(null) }
     val showListDetail = isLargeLandscape && isListPaneContext
     val showDetailPane = hasOpenSecondaryDetail &&
-        (showListDetail || navEntry?.id == detailOwnerEntryId)
+        (showListDetail || (isListPaneContext && navEntry.readingDestinationOrNull() == null))
     val hasOpenDetail = showDetailPane && selectedContentDestination != null
     val useSecondaryContentNavigation = showListDetail
+    // isLargeLandscape 来自 BoxWithConstraints，只在测量阶段更新；同一帧里既改窗口尺寸又切播放项时，
+    // LaunchedEffect 会拿着上一帧的模式按窄屏语义导航（把主栈顶的列表页弹掉）。等一帧后再决定归属时，
+    // 必须读这两个"最新值"，而不是启动 effect 那次组合捕获的值。
+    val latestIsLargeLandscape by rememberUpdatedState(isLargeLandscape)
+    val latestUseSecondaryContentNavigation by rememberUpdatedState(useSecondaryContentNavigation)
     val detailLifecycleOwner = rememberLifecycleOwner(
         maxLifecycle = if (showListDetail || showDetailPane) Lifecycle.State.RESUMED else Lifecycle.State.CREATED,
     )
@@ -283,34 +287,59 @@ fun ZhihuMain(
         maxLifecycle = if (showDetailPane && !showListDetail) Lifecycle.State.CREATED else Lifecycle.State.RESUMED,
     )
 
-    LaunchedEffect(isLargeLandscape, navEntry) {
-        if (showListDetail) detailOwnerEntryId = navEntry?.id
+    fun detailPaneContentDepth(): Int = detailNavController.currentBackStack.value.count {
+        it.destination !is NavGraph && !it.destination.hasRoute<EmptyDetail>()
+    }
+
+    fun clearDetailPaneContent() {
+        var contentLayers = detailPaneContentDepth()
+        while (contentLayers > 0 && detailNavController.popBackStack()) {
+            contentLayers--
+        }
     }
 
     fun openListDetail(destination: NavDestination) {
-        detailOwnerEntryId = navController.currentBackStackEntry?.id
-        detailNavController.popBackStack(detailNavController.graph.startDestinationId, inclusive = false)
+        clearDetailPaneContent()
+        detailNavController.popBackStack<EmptyDetail>(inclusive = true)
         navigateContent(destination, detailNavController)
+    }
+
+    fun resetDetailPane() {
+        clearDetailPaneContent()
+        detailNavController.navigate(EmptyDetail) {
+            launchSingleTop = true
+        }
     }
 
     fun openReadingDestination(destination: NavDestination, onlyIfReading: Boolean = false) {
         val current = if (hasOpenDetail) selectedContentDestination else navEntry.readingDestinationOrNull()
         if (current == destination || (onlyIfReading && current == null)) return
-        val opensInDetail = useSecondaryContentNavigation && destination.isDetailPaneDestination()
+        val opensInDetail = latestIsLargeLandscape &&
+            latestUseSecondaryContentNavigation &&
+            destination.isDetailPaneDestination()
         if (hasOpenDetail) {
             if (opensInDetail) {
                 detailNavController.popBackStack()
             } else {
-                detailNavController.popBackStack(detailNavController.graph.startDestinationId, inclusive = false)
+                resetDetailPane()
             }
         } else if (current != null && !opensInDetail) {
             navController.popBackStack()
         }
         if (opensInDetail) {
-            detailOwnerEntryId = navController.currentBackStackEntry?.id
             navigateContent(destination, detailNavController)
         } else {
             navigate(destination)
+        }
+    }
+
+    fun popDetailOrFallThrough() {
+        if (detailPaneContentDepth() > 1) {
+            detailNavController.popBackStack()
+        } else if (navController.currentBackStack.value.count { it.destination !is NavGraph } > 1) {
+            navController.popBackStack()
+        } else {
+            resetDetailPane()
         }
     }
     val isOnReadingDetail = hasOpenDetail ||
@@ -343,6 +372,8 @@ fun ZhihuMain(
         val itemChanged = previousReadingItemKey != null && previousReadingItemKey != currentItemKey
         previousReadingItemKey = currentItemKey
         if (itemChanged && currentItem != null) {
+            // 等本帧布局落定：播放项切换可能与窗口尺寸变化同帧，归属判断要用测量后的模式。
+            withFrameNanos { }
             openReadingDestination(currentItem.toDestination(readingPlayerState.sourceId), onlyIfReading = true)
         }
     }
@@ -425,16 +456,10 @@ fun ZhihuMain(
     PlatformBackHandler(enabled = navEntry != null && !showMainNavigation && !showDetailPane) {
         navController.popBackStack()
     }
-    PlatformBackHandler(enabled = showDetailPane) {
-        detailNavController.popBackStack()
-    }
 
     fun navigateTopLevel(destination: TopLevelDestination) {
         if (destination == Account && hasOpenDetail) {
-            detailNavController.popBackStack(
-                detailNavController.graph.startDestinationId,
-                inclusive = false,
-            )
+            resetDetailPane()
         }
         val targetPage = pageIndexForDestination(destination)
         coroutineScope.launch {
@@ -462,10 +487,7 @@ fun ZhihuMain(
         if (isAccountSurface && hasOpenDetail) {
             // A reading detail belongs to the feed that opened it. Do not carry it into
             // the account split pane when the user switches tabs.
-            detailNavController.popBackStack(
-                detailNavController.graph.startDestinationId,
-                inclusive = false,
-            )
+            resetDetailPane()
         }
     }
 
@@ -526,7 +548,7 @@ fun ZhihuMain(
                         navigate(destination)
                     }
                 },
-                onNavigateBack = detailNavController::popBackStack,
+                onNavigateBack = ::popDetailOrFallThrough,
                 onNavigateTopLevel = ::navigateTopLevel,
             ),
             LocalSelectedContentDestination provides selectedContentDestination,
@@ -573,16 +595,41 @@ fun ZhihuMain(
         } else {
             Modifier.fillMaxSize()
         }
-        LaunchedEffect(navEntry, isLargeLandscape, hasOpenSecondaryDetail, isListPaneContext) {
-            val directReadingDestination = navEntry.readingDestinationOrNull()?.takeIf { it.isDetailPaneDestination() }
-            if (isLargeLandscape && directReadingDestination != null) {
-                navController.popBackStack()
-                if (navController.currentBackStackEntry == null) navController.navigate(MainTabs)
-                detailOwnerEntryId = navController.currentBackStackEntry?.id
-                detailNavController.popBackStack(detailNavController.graph.startDestinationId, inclusive = false)
-                // 平台入口已经处理历史、评论交接等副作用，这里只转移页面归属。
-                detailNavController.navigate(directReadingDestination)
+        LaunchedEffect(isLargeLandscape, navEntry, detailEntry) {
+            if (!isLargeLandscape) {
+                if (!hasOpenDetail) return@LaunchedEffect
+                val reading = selectedContentDestination
+                val entries = navController.currentBackStack.value.filter { it.destination !is NavGraph }
+                val listRootIndex = entries.indexOfFirst { it.destination.hasRoute<MainTabs>() }
+                val laterPages = if (listRootIndex < 0) {
+                    emptyList()
+                } else {
+                    entries.drop(listRootIndex + 1).map { it.toListPaneDestinationOrNull() }
+                }
+                if (listRootIndex >= 0 && laterPages.none { it == null }) {
+                    navController.popBackStack<MainTabs>(inclusive = false)
+                    navController.navigate(reading)
+                    laterPages.filterNotNull().forEach { navController.navigate(it) }
+                    resetDetailPane()
+                }
+                return@LaunchedEffect
             }
+            val entries = navController.currentBackStack.value.filter { it.destination !is NavGraph }
+            val isReadingEntry = { entry: NavBackStackEntry ->
+                entry.destination.hasRoute<Article>() || entry.destination.hasRoute<Pin>()
+            }
+            val readingIndex = entries.indexOfLast { isReadingEntry(it) }
+            val plainPage = entries.any { !it.isListPaneDestination() && !isReadingEntry(it) }
+            val listIndex = entries.indexOfLast {
+                it.isListPaneDestination() && !it.destination.hasRoute<MainTabs>()
+            }
+            if (readingIndex < 0 || plainPage) return@LaunchedEffect
+            if (entries.none { it.destination.hasRoute<MainTabs>() }) return@LaunchedEffect
+            val reading = entries[readingIndex].readingDestinationOrNull() ?: return@LaunchedEffect
+            val keepList = entries.getOrNull(listIndex)?.toListPaneDestinationOrNull()
+            if (detailPaneContentDepth() == 0) openListDetail(reading)
+            navController.popBackStack<MainTabs>(inclusive = false)
+            if (keepList != null) navController.navigate(keepList)
         }
         if (showListDetail || !showDetailPane) {
             paneStateHolder.SaveableStateProvider("list") {
@@ -1085,22 +1132,24 @@ private fun NavDestination.isAccountDetailDestination(): Boolean = when (this) {
     else -> false
 }
 
-private fun NavBackStackEntry?.isListPaneDestination(): Boolean = when {
-    this == null -> false
-    destination.hasRoute<MainTabs>() -> true
-    destination.hasRoute<Search>() -> true
-    destination.hasRoute<History>() -> true
-    destination.hasRoute<Collections>() -> true
-    destination.hasRoute<CollectionContent>() -> true
-    destination.hasRoute<Question>() -> true
-    destination.hasRoute<Person>() -> true
-    destination.hasRoute<Topic>() -> true
-    destination.hasRoute<Notification>() -> true
-    destination.hasRoute<Notification.Entry>() -> true
-    destination.hasRoute<Notification.Invitations>() -> true
-    destination.hasRoute<Account.RecommendSettings.BlockedFeedHistory>() -> true
-    else -> false
+private fun NavBackStackEntry?.toListPaneDestinationOrNull(): NavDestination? = when {
+    this == null -> null
+    destination.hasRoute<MainTabs>() -> MainTabs
+    destination.hasRoute<Search>() -> runCatching { toRoute<Search>() }.getOrNull()
+    destination.hasRoute<History>() -> History
+    destination.hasRoute<Collections>() -> runCatching { toRoute<Collections>() }.getOrNull()
+    destination.hasRoute<CollectionContent>() -> runCatching { toRoute<CollectionContent>() }.getOrNull()
+    destination.hasRoute<Question>() -> runCatching { toRoute<Question>() }.getOrNull()
+    destination.hasRoute<Person>() -> runCatching { toRoute<Person>() }.getOrNull()
+    destination.hasRoute<Topic>() -> runCatching { toRoute<Topic>() }.getOrNull()
+    destination.hasRoute<Notification.Entry>() -> runCatching { toRoute<Notification.Entry>() }.getOrNull()
+    destination.hasRoute<Notification.Invitations>() -> Notification.Invitations
+    destination.hasRoute<Notification>() -> Notification
+    destination.hasRoute<Account.RecommendSettings.BlockedFeedHistory>() -> Account.RecommendSettings.BlockedFeedHistory
+    else -> null
 }
+
+private fun NavBackStackEntry?.isListPaneDestination(): Boolean = toListPaneDestinationOrNull() != null
 
 private fun NavGraphBuilder.accountSettings(
     reloadPreferences: () -> Unit,
