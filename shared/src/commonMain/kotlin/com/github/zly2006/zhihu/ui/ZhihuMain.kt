@@ -230,6 +230,8 @@ fun ZhihuMain(
     },
     articleEnterTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition?)? = null,
     articleExitTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition?)? = null,
+    articlePopExitTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition?)? = null,
+    articlePopEnterTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition?)? = null,
 ) = BoxWithConstraints(modifier = modifier.fillMaxSize()) {
     val containerWidth = maxWidth
     val isLargeLandscape = canShowLandscapeListDetail(
@@ -547,6 +549,8 @@ fun ZhihuMain(
                     typeMap = mapOf(typeOf<ArticleType>() to ArticleTypeNavType),
                     enterTransition = articleEnterTransition,
                     exitTransition = articleExitTransition,
+                    popEnterTransition = articlePopEnterTransition,
+                    popExitTransition = articlePopExitTransition,
                 ) { entry ->
                     articleContent(entry.toRoute(), entry)
                 }
@@ -745,6 +749,8 @@ fun ZhihuMain(
                                 typeMap = mapOf(typeOf<ArticleType>() to ArticleTypeNavType),
                                 enterTransition = articleEnterTransition,
                                 exitTransition = articleExitTransition,
+                                popEnterTransition = articlePopEnterTransition,
+                                popExitTransition = articlePopExitTransition,
                             ) { navEntry ->
                                 val article: Article = navEntry.toRoute()
                                 if (!isLargeLandscape) articleContent(article, navEntry)
