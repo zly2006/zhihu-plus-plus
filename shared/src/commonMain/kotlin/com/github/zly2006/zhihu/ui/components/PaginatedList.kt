@@ -46,6 +46,7 @@ import com.github.zly2006.zhihu.ui.rememberObservedSetting
 import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_SHOW_CONTENT_END_MARKER
 import com.github.zly2006.zhihu.ui.subscreens.PREF_SHOW_CONTENT_END_MARKER
 import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 val ProgressIndicatorFooter: @Composable (LazyListState) -> Unit = { state ->
     Box(
@@ -147,10 +148,10 @@ fun <T> PaginatedList(
     }
 
     LaunchedEffect(shouldLoadMore, items.size, isEnd()) {
-        if (shouldLoadMore && items.isNotEmpty() && !isEnd()) {
+        while (shouldLoadMore && items.isNotEmpty() && !isEnd()) {
             onLoadMore()
             // 留一帧给调用方发布新数据或标记列表结束。
-            delay(50)
+            delay(50.milliseconds)
         }
     }
 
