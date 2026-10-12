@@ -71,7 +71,7 @@ data class MarkdownTheme(
     /** 块间距 */
     val blockSpacing: Dp = 12.dp,
     /** 列表项缩进 */
-    val listIndent: Dp = 24.dp,
+    val listIndent: Dp = 8.dp,
     /** 列表项 bullet 颜色 */
     val listBulletColor: Color = Color(0xFF1F2328),
     /** 表格边框颜色 */
