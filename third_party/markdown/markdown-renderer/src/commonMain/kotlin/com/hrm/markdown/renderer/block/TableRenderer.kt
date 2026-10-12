@@ -12,19 +12,22 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.hrm.markdown.parser.ast.Table
 import com.hrm.markdown.parser.ast.TableBody
 import com.hrm.markdown.parser.ast.TableCell
 import com.hrm.markdown.parser.ast.TableHead
 import com.hrm.markdown.parser.ast.TableRow
+import com.hrm.markdown.renderer.DeferredMarkdownColumn
 import com.hrm.markdown.renderer.LocalMarkdownTheme
 import com.hrm.markdown.renderer.LocalOnLinkClick
-import com.hrm.markdown.renderer.DeferredMarkdownColumn
 import com.hrm.markdown.renderer.estimatedInlineWidthDp
 import com.hrm.markdown.renderer.inline.InlineFlowText
 import com.hrm.markdown.renderer.inline.rememberInlineContent
@@ -77,19 +80,23 @@ private fun TableLayout(
 ) {
     val theme = LocalMarkdownTheme.current
     val rows = remember(allRows) { allRows.map { it.first } }
-    val fontSize = theme.bodyStyle.fontSize.value.takeIf { it.isFinite() && it > 0f } ?: 16f
-    val lineHeight = theme.bodyStyle.lineHeight.value.takeIf { it.isFinite() && it > 0f } ?: fontSize * 1.5f
+    val fontSize = theme.bodyStyle.fontSize.value
+        .takeIf { it.isFinite() && it > 0f } ?: 16f
+    val lineHeight = theme.bodyStyle.lineHeight.value
+        .takeIf { it.isFinite() && it > 0f } ?: fontSize * 1.5f
     val horizontalPadding = theme.tableCellPadding.value * 2f
     val columnWidthsDp = remember(allRows, alignments, theme) {
         List(columnCount) { columnIndex ->
-            allRows.maxOfOrNull { (row, _) ->
-                row.children
-                    .filterIsInstance<TableCell>()
-                    .getOrNull(columnIndex)
-                    ?.estimatedInlineWidthDp(fontSize, 240f)
-                    ?.times(1.1f)
-                    ?: 0f
-            }?.plus(horizontalPadding)?.coerceAtLeast(48f) ?: 48f
+            allRows
+                .maxOfOrNull { (row, _) ->
+                    row.children
+                        .filterIsInstance<TableCell>()
+                        .getOrNull(columnIndex)
+                        ?.estimatedInlineWidthDp(fontSize, 240f)
+                        ?.times(1.1f)
+                        ?: 0f
+                }?.plus(horizontalPadding)
+                ?.coerceAtLeast(48f) ?: 48f
         }
     }
     val estimatedRowHeightDp = lineHeight + theme.tableCellPadding.value * 2f + 1f
@@ -120,6 +127,20 @@ private fun TableRowRenderer(
     val theme = LocalMarkdownTheme.current
     val cells = row.children.filterIsInstance<TableCell>()
     Layout(
+        modifier = Modifier
+            .let { if (isHeader) it.background(theme.tableHeaderBackground) else it }
+            .drawBehind {
+                // 中英文及行内内容的高度可能不同，网格线必须按整行高度绘制。
+                val strokeWidth = 1.dp.toPx()
+                val bottom = size.height - strokeWidth / 2
+                drawLine(theme.tableBorderColor, Offset(0f, bottom), Offset(size.width, bottom), strokeWidth)
+                var columnEnd = 0
+                for (columnIndex in 0 until columnWidthsDp.lastIndex) {
+                    columnEnd += columnWidthsDp[columnIndex].dp.roundToPx()
+                    val x = if (layoutDirection == LayoutDirection.Rtl) size.width - columnEnd else columnEnd.toFloat()
+                    drawLine(theme.tableBorderColor, Offset(x, 0f), Offset(x, size.height), strokeWidth)
+                }
+            },
         content = {
             columnWidthsDp.forEachIndexed { columnIndex, widthDp ->
                 TableCellRenderer(
@@ -128,10 +149,6 @@ private fun TableRowRenderer(
                     isHeader = isHeader,
                     modifier = Modifier
                         .width(widthDp.dp)
-                        .border(0.5.dp, theme.tableBorderColor)
-                        .let {
-                            if (isHeader) it.background(theme.tableHeaderBackground) else it
-                        }
                         .padding(theme.tableCellPadding),
                 )
             }
@@ -146,7 +163,7 @@ private fun TableRowRenderer(
                 Constraints(
                     minWidth = fixedWidth,
                     maxWidth = fixedWidth,
-                )
+                ),
             )
         }
 
@@ -156,7 +173,7 @@ private fun TableRowRenderer(
         layout(totalWidth, rowHeight) {
             var x = 0
             placeables.forEach { placeable ->
-                placeable.placeRelative(x, 0)
+                placeable.placeRelative(x, (rowHeight - placeable.height) / 2)
                 x += placeable.width
             }
         }
