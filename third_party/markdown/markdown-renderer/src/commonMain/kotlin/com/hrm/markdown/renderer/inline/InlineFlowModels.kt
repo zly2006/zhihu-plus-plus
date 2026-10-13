@@ -37,6 +37,11 @@ internal sealed class LineItem {
         val id: String,
         override val widthPx: Float,
         override val heightPx: Float,
+        /**
+         * 行内内容自身的宽度。行内排版无法切开单个行内项，所以超宽时 [widthPx] 会被夹到可用行宽，
+         * 而这里保留真实宽度，渲染侧据此判断是否需要提供横向滚动。
+         */
+        val naturalWidthPx: Float,
         val alternateText: String,
         val content: @Composable () -> Unit,
     ) : LineItem()
