@@ -1,8 +1,10 @@
 package com.hrm.markdown.renderer.inline
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -127,7 +129,16 @@ private fun InlineFlowMeasuredContent(
                                 val wDp = with(density) { item.widthPx.toDp() }
                                 val hDp = with(density) { item.heightPx.toDp() }
                                 Box(modifier = Modifier.size(wDp, hDp)) {
-                                    item.content()
+                                    if (item.naturalWidthPx > item.widthPx) {
+                                        // 占位宽度被夹到了可用行宽，内容仍按自身宽度绘制，
+                                        // 因此必须可横向拖动，否则超出的部分无法查看。
+                                        val scrollState = rememberScrollState()
+                                        Box(modifier = Modifier.horizontalScroll(scrollState)) {
+                                            item.content()
+                                        }
+                                    } else {
+                                        item.content()
+                                    }
                                 }
                             }
                         }
