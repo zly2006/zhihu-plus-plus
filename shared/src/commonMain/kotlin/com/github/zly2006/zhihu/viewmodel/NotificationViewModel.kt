@@ -295,6 +295,14 @@ class PrivateMessageViewModel(
     var isSending by mutableStateOf(false)
         private set
 
+    private var isRefreshingLatest = false
+    private var refreshGeneration = 0
+
+    override fun refresh(environment: PaginationEnvironment) {
+        refreshGeneration += 1
+        super.refresh(environment)
+    }
+
     suspend fun sendMessage(
         content: String,
         environment: MobileHomeFeedEnvironment,
@@ -345,6 +353,64 @@ class PrivateMessageViewModel(
             false
         } finally {
             isSending = false
+        }
+    }
+
+    /**
+     * 静默增量拉取最新消息。保留已经加载的历史分页，轮询失败时也不打断当前会话。
+     */
+    suspend fun refreshLatest(environment: MobileHomeFeedEnvironment) {
+        if (isLoading || isSending || isRefreshingLatest) return
+
+        isRefreshingLatest = true
+        val generation = refreshGeneration
+        try {
+            val client = environment.mobileHomeFeedHttpClient()
+            val knownIds = allData.mapTo(mutableSetOf()) { it.stableId }
+            val incoming = mutableListOf<ZhihuPrivateMessage>()
+            val visitedUrls = mutableSetOf<String>()
+            var pageUrl = initialUrl
+            var firstPagePaging: ZhihuPaging? = null
+
+            while (true) {
+                val json = client
+                    .get(pageUrl.replace("http://", "https://"))
+                    .jsonObject()
+                val page = ZhihuJson.decodeJson<ZhihuPrivateMessagePage>(json)
+                if (generation != refreshGeneration) return
+                if (firstPagePaging == null) firstPagePaging = page.paging
+                incoming += page.data
+
+                val overlapsKnownMessage = page.data.any { it.stableId in knownIds }
+                val nextUrl = page.paging.next
+                if (knownIds.isEmpty() || overlapsKnownMessage || page.paging.isEnd || nextUrl.isBlank() || !visitedUrls.add(nextUrl)) {
+                    break
+                }
+                pageUrl = nextUrl
+            }
+
+            incoming
+                .sortedByDescending(ZhihuPrivateMessage::createdTime)
+                .forEach { message ->
+                    val existingIndex = allData.indexOfFirst { it.stableId == message.stableId }
+                    if (existingIndex >= 0) {
+                        if (allData[existingIndex] != message) allData[existingIndex] = message
+                    } else {
+                        val insertionIndex = allData
+                            .indexOfFirst { it.createdTime < message.createdTime }
+                            .takeIf { it >= 0 } ?: allData.size
+                        allData.add(insertionIndex, message)
+                    }
+                }
+
+            if (knownIds.isEmpty()) {
+                lastPaging = firstPagePaging
+            }
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            Log.e("PrivateMessageViewModel", "Failed to refresh latest private messages", e)
+        } finally {
+            isRefreshingLatest = false
         }
     }
 

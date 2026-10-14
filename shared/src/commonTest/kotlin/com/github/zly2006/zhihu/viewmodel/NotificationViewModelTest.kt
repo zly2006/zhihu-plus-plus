@@ -21,12 +21,14 @@ import com.github.zly2006.zhihu.util.ZhihuMessageBodyEncryptor
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.OutgoingContent
 import io.ktor.http.headersOf
+import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -163,4 +165,74 @@ class NotificationViewModelTest {
         assertEquals("暂时不能向对方发送私信", viewModel.errorMessage)
         assertFalse(viewModel.isSending)
     }
+
+    @Test
+    fun privateMessagePollingFetchesUntilOverlapAndPreservesHistory() = runTest {
+        val requestedUrls = mutableListOf<String>()
+        val client = HttpClient(
+            MockEngine { request ->
+                requestedUrls += request.url.toString()
+                val content = if (request.url.parameters["after_id"] == null) {
+                    privateMessagePage(
+                        ids = listOf("new-2" to 300L, "new-1" to 200L),
+                        next = "https://api.zhihu.com/messages?sender_id=peer-id&after_id=200&limit=20",
+                    )
+                } else {
+                    privateMessagePage(
+                        ids = listOf("old-2" to 100L, "old-1" to 50L),
+                        isEnd = true,
+                    )
+                }
+                respond(
+                    content = content,
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+                )
+            },
+        ) {
+            install(ContentNegotiation) { json() }
+        }
+        val environment = object : MobileHomeFeedEnvironment {
+            override fun httpClient() = client
+
+            override fun mobileHomeFeedHttpClient() = client
+
+            override fun authenticatedCookies() = emptyMap<String, String>()
+
+            override suspend fun handleFetchFailure(tag: String?, error: Exception) = Unit
+        }
+        val viewModel = PrivateMessageViewModel("peer-id")
+        viewModel.allData += listOf(
+            privateMessage("old-2", 100L),
+            privateMessage("old-1", 50L),
+        )
+
+        viewModel.refreshLatest(environment)
+
+        assertEquals(
+            listOf("new-2", "new-1", "old-2", "old-1"),
+            viewModel.allData.map { it.id },
+        )
+        assertEquals(2, requestedUrls.size)
+    }
+
+    private fun privateMessage(id: String, createdTime: Long) =
+        com.github.zly2006.zhihu.data.ZhihuPrivateMessage(
+            id = id,
+            createdTime = createdTime,
+        )
+
+    private fun privateMessagePage(
+        ids: List<Pair<String, Long>>,
+        next: String = "",
+        isEnd: Boolean = false,
+    ): String =
+        """
+        {
+          "data": [${ids.joinToString(",") { (id, createdTime) ->
+            """{"id":"$id","type":"message","content":"$id","created_time":$createdTime}"""
+        }}],
+          "paging": {"is_end":$isEnd,"next":"$next"}
+        }
+        """.trimIndent()
 }
