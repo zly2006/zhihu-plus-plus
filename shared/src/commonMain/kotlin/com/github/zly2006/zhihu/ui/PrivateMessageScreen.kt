@@ -33,6 +33,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -60,6 +61,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -102,8 +104,27 @@ fun PrivateMessageScreen(destination: Notification.Message) {
     val userMessages = rememberUserMessageSink()
     val lifecycleOwner = LocalLifecycleOwner.current
     val selfAvatarUrl = rememberAccountSettingsAccountState().value.avatarUrl.orEmpty()
+    val listState = rememberLazyListState()
     var draft by rememberSaveable(destination.peerId) { mutableStateOf("") }
     var nowEpochSeconds by remember { mutableLongStateOf(Clock.System.now().epochSeconds) }
+
+    LaunchedEffect(viewModel, listState) {
+        var previousLatestId = viewModel.allData.firstOrNull()?.stableId
+        snapshotFlow { viewModel.allData.firstOrNull()?.stableId }.collect { latestId ->
+            if (latestId != null && latestId != previousLatestId && !listState.isScrollInProgress) {
+                // 倒序列表插入消息后可能已按 key 锚定旧首项；仍贴着旧最新消息才继续跟随底部。
+                val anchoredToPreviousLatest = previousLatestId != null &&
+                    listState.layoutInfo.visibleItemsInfo
+                        .firstOrNull()
+                        ?.key == previousLatestId &&
+                    listState.firstVisibleItemScrollOffset == 0
+                if (!listState.canScrollBackward || anchoredToPreviousLatest) {
+                    listState.requestScrollToItem(0)
+                }
+            }
+            previousLatestId = latestId
+        }
+    }
 
     LaunchedEffect(lifecycleOwner, destination.peerId, environment) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
@@ -176,6 +197,7 @@ fun PrivateMessageScreen(destination: Notification.Message) {
                             coroutineScope.launch {
                                 if (viewModel.sendMessage(content, environment)) {
                                     draft = ""
+                                    listState.requestScrollToItem(0)
                                 } else {
                                     userMessages.showMessage(viewModel.errorMessage ?: "发送失败")
                                 }
@@ -203,6 +225,7 @@ fun PrivateMessageScreen(destination: Notification.Message) {
                 onLoadMore = { viewModel.loadMore(environment) },
                 isEnd = { viewModel.isEnd },
                 reverseLayout = true,
+                listState = listState,
                 contentPadding = PaddingValues(vertical = 12.dp),
                 modifier = Modifier.fillMaxSize(),
                 footer = ProgressIndicatorFooter,
