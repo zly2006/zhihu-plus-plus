@@ -189,23 +189,19 @@ fun QuestionScreen(
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
     val answerSwitchState = sharedArticleAnswerSwitchState
     val listState = rememberLazyListState()
-    var questionContent by remember(question.questionId) { mutableStateOf("") }
-    var answerCount by remember(question.questionId) { mutableIntStateOf(0) }
-    var visitCount by remember(question.questionId) { mutableIntStateOf(0) }
-    var commentCount by remember(question.questionId) { mutableIntStateOf(0) }
-    var followerCount by remember(question.questionId) { mutableIntStateOf(0) }
-    var title by remember(question.questionId, question.title) { mutableStateOf(question.title) }
-    var isQuestionLoaded by remember(question.questionId) { mutableStateOf(false) }
+    var followerCount by remember(viewModel.questionDetail) { mutableIntStateOf(viewModel.questionDetail?.followerCount ?: 0) }
+    var isFollowing by remember(viewModel.questionDetail) {
+        mutableStateOf(viewModel.questionDetail?.relationship?.isFollowing ?: false)
+    }
     var showComments by rememberSaveable(question.questionId) { mutableStateOf(false) }
-    var isFollowing by remember(question.questionId) { mutableStateOf(false) }
-    var topics by remember(question.questionId) { mutableStateOf<List<DataHolder.Topic>>(emptyList()) }
     var showShareDialog by remember { mutableStateOf(false) }
     val userMessages = rememberUserMessageSink()
     var isQuestionDetailExpanded by rememberSaveable(question.questionId) { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    val questionContentPlainText =
-        remember(questionContent) { Ksoup.parse(questionContent).text().trim() }
-    val shareText = getShareText(question, title)
+    val questionContentPlainText = remember(viewModel.questionDetail?.detail.orEmpty()) {
+        Ksoup.parse(viewModel.questionDetail?.detail.orEmpty()).text().trim()
+    }
+    val shareText = getShareText(question, viewModel.questionDetail?.title ?: question.title)
     val topBarTitleThresholdPx = with(LocalDensity.current) { 160.dp.roundToPx() }
     val showTopBarTitle by remember {
         derivedStateOf {
@@ -222,18 +218,11 @@ fun QuestionScreen(
         if (viewModel.displayItems.isEmpty()) {
             launch { viewModel.refresh(paginationEnvironment) }
         }
+        if (viewModel.questionDetail != null) return@LaunchedEffect
         try {
             val questionData = loadQuestion(paginationEnvironment, question)
             if (questionData != null) {
-                questionContent = questionData.detail
-                title = questionData.title
-                answerCount = questionData.answerCount
-                visitCount = questionData.visitCount
-                commentCount = questionData.commentCount
-                followerCount = questionData.followerCount
-                isFollowing = questionData.relationship.isFollowing
-                topics = questionData.topics
-                isQuestionLoaded = true
+                viewModel.questionDetail = questionData
             } else {
                 userMessages.showShortMessage("获取问题详情失败")
             }
@@ -246,7 +235,7 @@ fun QuestionScreen(
         modifier = Modifier.fillMaxSize(),
         topBar = {
             QuestionTopBar(
-                title = title,
+                title = viewModel.questionDetail?.title ?: question.title,
                 showTitle = showTopBarTitle,
                 onNavigateBack = navigator.onNavigateBack,
                 onOpenLog = {
@@ -288,18 +277,18 @@ fun QuestionScreen(
                             verticalArrangement = Arrangement.spacedBy(16.dp),
                         ) {
                             QuestionHeaderSection(
-                                title = title,
-                                visitCount = visitCount,
-                                commentCount = commentCount,
+                                title = viewModel.questionDetail?.title ?: question.title,
+                                visitCount = viewModel.questionDetail?.visitCount ?: 0,
+                                commentCount = viewModel.questionDetail?.commentCount ?: 0,
                                 followerCount = followerCount,
                                 onShowComments = { showComments = true },
                             )
-                            if (isQuestionLoaded) {
+                            if (viewModel.questionDetail != null) {
                                 QuestionAnimatedBodyHeader(
                                     questionId = question.questionId,
-                                    questionContent = questionContent,
+                                    questionContent = viewModel.questionDetail?.detail.orEmpty(),
                                     questionContentPlainText = questionContentPlainText,
-                                    topics = topics,
+                                    topics = viewModel.questionDetail?.topics.orEmpty(),
                                     onTopicClick = { topic -> navigator.onNavigate(Topic(topic.id, topic.name)) },
                                     isExpanded = isQuestionDetailExpanded,
                                     onToggleExpanded = { isQuestionDetailExpanded = !isQuestionDetailExpanded },
@@ -317,12 +306,12 @@ fun QuestionScreen(
                                         navigator.onNavigate(
                                             WriteAnswer(
                                                 questionId = question.questionId,
-                                                questionTitle = title,
-                                                questionDetail = questionContent,
+                                                questionTitle = viewModel.questionDetail?.title ?: question.title,
+                                                questionDetail = viewModel.questionDetail?.detail.orEmpty(),
                                             ),
                                         )
                                     },
-                                    answerCount = answerCount,
+                                    answerCount = viewModel.questionDetail?.answerCount ?: 0,
                                     currentSort = viewModel.sortOrder,
                                     onSortChange = { sortOrder ->
                                         viewModel.updateSortOrder(sortOrder)

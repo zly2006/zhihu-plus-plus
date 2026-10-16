@@ -13,6 +13,14 @@
 -keep class com.sun.openjfx.** { *; }
 -keep class netscape.javascript.** { *; }
 
+# JavaFX WebView 的 WebKit 桥接类由 JNI 和 NativeLibLoader 在运行时按名查找，静态分析不可达。
+# 缺少它们时 release 版创建 WebView 会抛 NoClassDefFoundError（实测 com.sun.webkit.FileSystem），
+# jfxwebkit.dll 无法装载，网页登录和所有 WebView 页面都无法打开。整包保留。
+-keep class com.sun.webkit.** { *; }
+
+# Coil 通过 ServiceLoader 创建网络下载器；服务描述仍在但 provider 被裁剪时，所有网络图片都会加载失败。
+-keep class coil3.network.ktor3.internal.KtorNetworkFetcherServiceLoaderTarget { *; }
+
 -keep class * implements io.ktor.client.HttpClientEngineContainer {
     *;
 }
