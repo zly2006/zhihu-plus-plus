@@ -102,13 +102,14 @@ private fun uniqueDuplicatePaginatedListKey(
 @Composable
 private fun <T> LazyItemScope.PaginatedListItem(
     item: T,
+    animateItemPlacement: Boolean,
     itemContent: @Composable LazyItemScope.(T) -> Unit,
 ) {
     Box(
         modifier = Modifier.animateItem(
             fadeInSpec = spring(stiffness = Spring.StiffnessMediumLow),
             fadeOutSpec = spring(stiffness = Spring.StiffnessMediumLow),
-            placementSpec = spring(stiffness = Spring.StiffnessMediumLow),
+            placementSpec = if (animateItemPlacement) spring(stiffness = Spring.StiffnessMediumLow) else null,
         ),
     ) {
         itemContent(item)
@@ -123,6 +124,7 @@ fun <T> PaginatedList(
     contentPadding: PaddingValues = PaddingValues(0.dp),
     listState: LazyListState = rememberLazyListState(),
     reverseLayout: Boolean = false,
+    animateItemPlacement: Boolean = true,
     isEnd: () -> Boolean = { false },
     footer: @Composable ((LazyListState) -> Unit)? = null,
     key: ((T) -> Any)? = null,
@@ -166,11 +168,11 @@ fun <T> PaginatedList(
         if (key != null) {
             val itemKeys = uniquePaginatedListKeys(items, key)
             itemsIndexed(items, key = { index, _ -> itemKeys[index] }) { _, item ->
-                PaginatedListItem(item, itemContent)
+                PaginatedListItem(item, animateItemPlacement, itemContent)
             }
         } else {
             items(items) { item ->
-                PaginatedListItem(item, itemContent)
+                PaginatedListItem(item, animateItemPlacement, itemContent)
             }
         }
 

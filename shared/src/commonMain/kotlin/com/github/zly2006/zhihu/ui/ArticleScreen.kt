@@ -155,10 +155,10 @@ import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_PAGE_TURN_SWITCH_ANSWER
 import com.github.zly2006.zhihu.ui.subscreens.DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.PREF_PAGE_TURN_SWITCH_ANSWER
 import com.github.zly2006.zhihu.util.formatCompactCount
+import com.github.zly2006.zhihu.util.formatFullDateTime
 import com.github.zly2006.zhihu.util.smoothGradient
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.addReadHistory
-import com.github.zly2006.zhihu.viewmodel.formatArticleDateTime
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.sharedArticleAnswerSwitchState
 import com.materialkolor.ktx.harmonize
@@ -948,13 +948,13 @@ fun ArticleScreen(
                         @Composable
                         fun ColumnScope.DateTexts() {
                             Text(
-                                "发布于 " + formatArticleDateTime(viewModel.createdAt),
+                                "发布于 " + formatFullDateTime(viewModel.createdAt),
                                 color = Color.Gray,
                                 fontSize = 11.sp,
                             )
                             if (viewModel.createdAt != viewModel.updatedAt) {
                                 Text(
-                                    "编辑于 " + formatArticleDateTime(viewModel.updatedAt),
+                                    "编辑于 " + formatFullDateTime(viewModel.updatedAt),
                                     color = Color.Gray,
                                     fontSize = 11.sp,
                                 )
