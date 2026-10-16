@@ -17,6 +17,11 @@
 
 package com.github.zly2006.zhihu.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -65,6 +70,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -225,20 +231,34 @@ fun PrivateMessageScreen(destination: Notification.Message) {
                 onLoadMore = { viewModel.loadMore(environment) },
                 isEnd = { viewModel.isEnd },
                 reverseLayout = true,
+                // 保留列表淡入，由新消息高度连续变化带动旧消息让位，避免独立的位置动画造成重叠。
+                animateItemPlacement = false,
                 listState = listState,
                 contentPadding = PaddingValues(vertical = 12.dp),
                 modifier = Modifier.fillMaxSize(),
                 footer = ProgressIndicatorFooter,
                 key = { it.stableId },
             ) { message ->
-                PrivateMessageBubble(
-                    message = message,
-                    incoming = message.sender?.let { sender ->
-                        sender.id == destination.peerId || sender.urlToken == destination.peerId
-                    } == true,
-                    selfAvatarUrl = selfAvatarUrl,
-                    nowEpochSeconds = nowEpochSeconds,
-                )
+                var appeared by rememberSaveable(message.stableId) { mutableStateOf(false) }
+                val visibility = remember(message.stableId) {
+                    MutableTransitionState(appeared).apply { targetState = true }
+                }
+                LaunchedEffect(message.stableId) { appeared = true }
+                AnimatedVisibility(
+                    visibleState = visibility,
+                    modifier = Modifier.clipToBounds(),
+                    enter = slideInVertically(tween(240)) { it } +
+                        expandVertically(tween(240), expandFrom = Alignment.Bottom, clip = true),
+                ) {
+                    PrivateMessageBubble(
+                        message = message,
+                        incoming = message.sender?.let { sender ->
+                            sender.id == destination.peerId || sender.urlToken == destination.peerId
+                        } == true,
+                        selfAvatarUrl = selfAvatarUrl,
+                        nowEpochSeconds = nowEpochSeconds,
+                    )
+                }
             }
         }
     }
