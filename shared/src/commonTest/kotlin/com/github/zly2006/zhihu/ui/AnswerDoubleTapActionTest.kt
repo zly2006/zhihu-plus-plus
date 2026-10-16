@@ -28,6 +28,12 @@ class AnswerDoubleTapActionTest {
     }
 
     @Test
+    fun restoresTopAndBottomJumpPreferences() {
+        assertEquals("回到顶部 ↑", AnswerDoubleTapAction.fromPreference("jumpToTop").label)
+        assertEquals("跳到底部 ↓", AnswerDoubleTapAction.fromPreference("jumpToBottom").label)
+    }
+
+    @Test
     fun defaultsToAskForMissingOrUnknownPreference() {
         assertEquals(AnswerDoubleTapAction.Ask, AnswerDoubleTapAction.fromPreference(null))
         assertEquals(AnswerDoubleTapAction.Ask, AnswerDoubleTapAction.fromPreference("unknown"))

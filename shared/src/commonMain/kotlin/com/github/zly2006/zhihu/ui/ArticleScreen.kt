@@ -70,6 +70,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -79,6 +80,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -162,6 +164,7 @@ import com.github.zly2006.zhihu.viewmodel.sharedArticleAnswerSwitchState
 import com.materialkolor.ktx.harmonize
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import zhihu.shared.generated.resources.Res
 import zhihu.shared.generated.resources.ic_vote_down_24dp
@@ -199,6 +202,7 @@ fun ArticleScreen(
         ?: remember { mutableStateOf(null) }
 
     val scrollState = rememberScrollState()
+    val coroutineScope = rememberCoroutineScope()
     val settings = rememberSettingsStore()
     val isTitleAutoHide by rememberObservedSetting(settings, "titleAutoHide") { getBoolean("titleAutoHide", false) }
     val autoHideArticleBottomBar by rememberObservedSetting(settings, "autoHideArticleBottomBar") {
@@ -358,6 +362,14 @@ fun ArticleScreen(
             }
             AnswerDoubleTapAction.ToggleImmersive -> {
                 isImmersiveMode = !isImmersiveMode
+            }
+            AnswerDoubleTapAction.JumpToTop -> coroutineScope.launch {
+                scrollState.scrollTo(0)
+            }
+            AnswerDoubleTapAction.JumpToBottom -> coroutineScope.launch {
+                if (latestEffectiveScrollMaxValue != Int.MAX_VALUE) {
+                    scrollState.scrollTo(latestEffectiveScrollMaxValue)
+                }
             }
         }
     }
@@ -1312,10 +1324,12 @@ fun ArticleScreen(
     if (showDoubleTapActionDialog) {
         MyModalBottomSheet(
             onDismissRequest = { showDoubleTapActionDialog = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
@@ -1371,6 +1385,24 @@ fun ArticleScreen(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text("设为开关沉浸式")
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    listOf(AnswerDoubleTapAction.JumpToTop, AnswerDoubleTapAction.JumpToBottom).forEach { action ->
+                        Button(
+                            onClick = {
+                                showDoubleTapActionDialog = false
+                                saveAnswerDoubleTapAction(action)
+                                performAnswerDoubleTapAction(action)
+                                userMessages.showMessage("已将双击回答动作设为：${action.label}")
+                            },
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Text(action.label)
+                        }
+                    }
                 }
             }
         }
