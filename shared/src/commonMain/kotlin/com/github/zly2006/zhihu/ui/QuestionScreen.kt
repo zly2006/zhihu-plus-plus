@@ -189,16 +189,20 @@ fun QuestionScreen(
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
     val answerSwitchState = sharedArticleAnswerSwitchState
     val listState = rememberLazyListState()
-    var questionContent by remember(question.questionId) { mutableStateOf("") }
-    var answerCount by remember(question.questionId) { mutableIntStateOf(0) }
-    var visitCount by remember(question.questionId) { mutableIntStateOf(0) }
-    var commentCount by remember(question.questionId) { mutableIntStateOf(0) }
-    var followerCount by remember(question.questionId) { mutableIntStateOf(0) }
-    var title by remember(question.questionId, question.title) { mutableStateOf(question.title) }
-    var isQuestionLoaded by remember(question.questionId) { mutableStateOf(false) }
+    // 详情随导航条目保留，返回时头部立即保持离开前的高度，列表恢复的滚动偏移才不会落到别的回答上。
+    val questionDetail = viewModel.questionDetail
+    val questionContent = questionDetail?.detail.orEmpty()
+    val topics = questionDetail?.topics.orEmpty()
+    val isQuestionLoaded = questionDetail != null
+    val title = questionDetail?.title ?: question.title
+    val answerCount = questionDetail?.answerCount ?: 0
+    val visitCount = questionDetail?.visitCount ?: 0
+    val commentCount = questionDetail?.commentCount ?: 0
+    var followerCount by remember(questionDetail) { mutableIntStateOf(questionDetail?.followerCount ?: 0) }
+    var isFollowing by remember(questionDetail) {
+        mutableStateOf(questionDetail?.relationship?.isFollowing ?: false)
+    }
     var showComments by rememberSaveable(question.questionId) { mutableStateOf(false) }
-    var isFollowing by remember(question.questionId) { mutableStateOf(false) }
-    var topics by remember(question.questionId) { mutableStateOf<List<DataHolder.Topic>>(emptyList()) }
     var showShareDialog by remember { mutableStateOf(false) }
     val userMessages = rememberUserMessageSink()
     var isQuestionDetailExpanded by rememberSaveable(question.questionId) { mutableStateOf(false) }
@@ -222,18 +226,11 @@ fun QuestionScreen(
         if (viewModel.displayItems.isEmpty()) {
             launch { viewModel.refresh(paginationEnvironment) }
         }
+        if (viewModel.questionDetail != null) return@LaunchedEffect
         try {
             val questionData = loadQuestion(paginationEnvironment, question)
             if (questionData != null) {
-                questionContent = questionData.detail
-                title = questionData.title
-                answerCount = questionData.answerCount
-                visitCount = questionData.visitCount
-                commentCount = questionData.commentCount
-                followerCount = questionData.followerCount
-                isFollowing = questionData.relationship.isFollowing
-                topics = questionData.topics
-                isQuestionLoaded = true
+                viewModel.questionDetail = questionData
             } else {
                 userMessages.showShortMessage("获取问题详情失败")
             }
