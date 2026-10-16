@@ -69,7 +69,11 @@ actual fun decodePhoneLoginCaptchaImage(content: String) = runCatching {
 @Composable
 actual fun QrLoginPane(onLoginSuccess: (String) -> Unit) {
     val store = defaultNativeAccountStore
+    val cookies = remember { store.session.cookies.toMutableMap() }
+    val client = rememberLoginHttpClient(cookies)
     SharedQrLoginPane(
+        client = client,
+        cookies = cookies,
         onLoginSuccess = { cookies ->
             if (store.login(cookies.toMutableMap())) {
                 onLoginSuccess(store.session.username)
@@ -78,7 +82,6 @@ actual fun QrLoginPane(onLoginSuccess: (String) -> Unit) {
                 false
             }
         },
-        initialCookies = store.session.cookies,
     )
 }
 
