@@ -13,6 +13,11 @@
 -keep class com.sun.openjfx.** { *; }
 -keep class netscape.javascript.** { *; }
 
+# JavaFX WebView 的 WebKit 桥接类由 JNI 和 NativeLibLoader 在运行时按名查找，静态分析不可达。
+# 缺少它们时 release 版创建 WebView 会抛 NoClassDefFoundError（实测 com.sun.webkit.FileSystem），
+# jfxwebkit.dll 无法装载，网页登录和所有 WebView 页面都无法打开。整包保留。
+-keep class com.sun.webkit.** { *; }
+
 -keep class * implements io.ktor.client.HttpClientEngineContainer {
     *;
 }
