@@ -43,6 +43,14 @@ enum class AnswerDoubleTapAction(
         preferenceValue = "toggleImmersive",
         label = "开关沉浸式",
     ),
+    JumpToTop(
+        preferenceValue = "jumpToTop",
+        label = "回到顶部 ↑",
+    ),
+    JumpToBottom(
+        preferenceValue = "jumpToBottom",
+        label = "跳到底部 ↓",
+    ),
     ;
 
     companion object {
