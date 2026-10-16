@@ -298,8 +298,12 @@ class PrivateMessageViewModel(
     private var isRefreshingLatest = false
     private var refreshGeneration = 0
 
+    // 发送确认只证明这一条消息存在，不能作为消息列表已连续同步的边界。
+    private val pendingSentIds = mutableSetOf<String>()
+
     override fun refresh(environment: PaginationEnvironment) {
         refreshGeneration += 1
+        pendingSentIds.clear()
         super.refresh(environment)
     }
 
@@ -343,6 +347,7 @@ class PrivateMessageViewModel(
                 )
                 if (allData.none { it.stableId == message.stableId }) {
                     allData.add(0, message)
+                    pendingSentIds.add(message.stableId)
                 }
                 true
             }
@@ -366,7 +371,7 @@ class PrivateMessageViewModel(
         val generation = refreshGeneration
         try {
             val client = environment.mobileHomeFeedHttpClient()
-            val knownIds = allData.mapTo(mutableSetOf()) { it.stableId }
+            val knownIds = allData.mapTo(mutableSetOf()) { it.stableId } - pendingSentIds
             val incoming = mutableListOf<ZhihuPrivateMessage>()
             val visitedUrls = mutableSetOf<String>()
             var pageUrl = initialUrl
@@ -383,25 +388,33 @@ class PrivateMessageViewModel(
 
                 val overlapsKnownMessage = page.data.any { it.stableId in knownIds }
                 val nextUrl = page.paging.next
-                if (knownIds.isEmpty() || overlapsKnownMessage || page.paging.isEnd || nextUrl.isBlank() || !visitedUrls.add(nextUrl)) {
+                if (knownIds.isEmpty() || overlapsKnownMessage || page.paging.isEnd) {
                     break
                 }
+                if (nextUrl.isBlank() || !visitedUrls.add(nextUrl)) return
                 pageUrl = nextUrl
             }
 
+            var olderMessageId: String? = null
             incoming
-                .sortedByDescending(ZhihuPrivateMessage::createdTime)
+                .distinctBy(ZhihuPrivateMessage::stableId)
+                .asReversed()
                 .forEach { message ->
                     val existingIndex = allData.indexOfFirst { it.stableId == message.stableId }
-                    if (existingIndex >= 0) {
+                    val anchorIndex = olderMessageId?.let { id -> allData.indexOfFirst { it.stableId == id } }
+                    if (existingIndex >= 0 && (anchorIndex == null || existingIndex == anchorIndex - 1)) {
                         if (allData[existingIndex] != message) allData[existingIndex] = message
                     } else {
-                        val insertionIndex = allData
-                            .indexOfFirst { it.createdTime < message.createdTime }
-                            .takeIf { it >= 0 } ?: allData.size
+                        if (existingIndex >= 0) allData.removeAt(existingIndex)
+                        // 同秒消息也按服务端顺序插到更旧的消息前，保留未出现在本轮响应中的发送消息。
+                        val insertionIndex = olderMessageId?.let { id -> allData.indexOfFirst { it.stableId == id } }
+                            ?: allData.indexOfFirst { it.createdTime < message.createdTime }.takeIf { it >= 0 }
+                            ?: allData.size
                         allData.add(insertionIndex, message)
                     }
+                    olderMessageId = message.stableId
                 }
+            pendingSentIds.removeAll(incoming.map { it.stableId }.toSet())
 
             if (knownIds.isEmpty()) {
                 lastPaging = firstPagePaging
