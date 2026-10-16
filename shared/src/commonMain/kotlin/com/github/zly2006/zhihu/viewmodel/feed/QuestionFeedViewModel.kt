@@ -20,6 +20,7 @@ package com.github.zly2006.zhihu.viewmodel.feed
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.FeedDisplayItem
 import com.github.zly2006.zhihu.data.navDestination
@@ -40,6 +41,16 @@ open class QuestionFeedViewModel(
 ) : BaseFeedViewModel() {
     var sortOrder by mutableStateOf("default")
         private set
+
+    /**
+     * 已加载的问题详情，随导航条目存活。
+     *
+     * 问题页头部的高度由详情和话题决定；返回时若详情尚未恢复，头部会先变矮再长回去，而列表
+     * 恢复的滚动位置只记录“顶部那一项 + 项内偏移”，偏移量一旦按变矮的头部计算就会落到后面的
+     * 回答上。保留详情可让返回后的头部立即保持离开前的高度。
+     */
+    var questionDetail by mutableStateOf<DataHolder.Question?>(null)
+        internal set
 
     override val initialUrl: String
         get() = zhihuQuestionFeedsUrl(questionId, limit = 20, order = sortOrder)
