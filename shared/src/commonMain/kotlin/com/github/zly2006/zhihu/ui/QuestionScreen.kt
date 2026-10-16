@@ -189,13 +189,6 @@ fun QuestionScreen(
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
     val answerSwitchState = sharedArticleAnswerSwitchState
     val listState = rememberLazyListState()
-    val questionContent = viewModel.questionDetail?.detail.orEmpty()
-    val topics = viewModel.questionDetail?.topics.orEmpty()
-    val isQuestionLoaded = viewModel.questionDetail != null
-    val title = viewModel.questionDetail?.title ?: question.title
-    val answerCount = viewModel.questionDetail?.answerCount ?: 0
-    val visitCount = viewModel.questionDetail?.visitCount ?: 0
-    val commentCount = viewModel.questionDetail?.commentCount ?: 0
     var followerCount by remember(viewModel.questionDetail) { mutableIntStateOf(viewModel.questionDetail?.followerCount ?: 0) }
     var isFollowing by remember(viewModel.questionDetail) {
         mutableStateOf(viewModel.questionDetail?.relationship?.isFollowing ?: false)
@@ -205,9 +198,10 @@ fun QuestionScreen(
     val userMessages = rememberUserMessageSink()
     var isQuestionDetailExpanded by rememberSaveable(question.questionId) { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    val questionContentPlainText =
-        remember(questionContent) { Ksoup.parse(questionContent).text().trim() }
-    val shareText = getShareText(question, title)
+    val questionContentPlainText = remember(viewModel.questionDetail?.detail.orEmpty()) {
+        Ksoup.parse(viewModel.questionDetail?.detail.orEmpty()).text().trim()
+    }
+    val shareText = getShareText(question, viewModel.questionDetail?.title ?: question.title)
     val topBarTitleThresholdPx = with(LocalDensity.current) { 160.dp.roundToPx() }
     val showTopBarTitle by remember {
         derivedStateOf {
@@ -241,7 +235,7 @@ fun QuestionScreen(
         modifier = Modifier.fillMaxSize(),
         topBar = {
             QuestionTopBar(
-                title = title,
+                title = viewModel.questionDetail?.title ?: question.title,
                 showTitle = showTopBarTitle,
                 onNavigateBack = navigator.onNavigateBack,
                 onOpenLog = {
@@ -283,18 +277,18 @@ fun QuestionScreen(
                             verticalArrangement = Arrangement.spacedBy(16.dp),
                         ) {
                             QuestionHeaderSection(
-                                title = title,
-                                visitCount = visitCount,
-                                commentCount = commentCount,
+                                title = viewModel.questionDetail?.title ?: question.title,
+                                visitCount = viewModel.questionDetail?.visitCount ?: 0,
+                                commentCount = viewModel.questionDetail?.commentCount ?: 0,
                                 followerCount = followerCount,
                                 onShowComments = { showComments = true },
                             )
-                            if (isQuestionLoaded) {
+                            if (viewModel.questionDetail != null) {
                                 QuestionAnimatedBodyHeader(
                                     questionId = question.questionId,
-                                    questionContent = questionContent,
+                                    questionContent = viewModel.questionDetail?.detail.orEmpty(),
                                     questionContentPlainText = questionContentPlainText,
-                                    topics = topics,
+                                    topics = viewModel.questionDetail?.topics.orEmpty(),
                                     onTopicClick = { topic -> navigator.onNavigate(Topic(topic.id, topic.name)) },
                                     isExpanded = isQuestionDetailExpanded,
                                     onToggleExpanded = { isQuestionDetailExpanded = !isQuestionDetailExpanded },
@@ -312,12 +306,12 @@ fun QuestionScreen(
                                         navigator.onNavigate(
                                             WriteAnswer(
                                                 questionId = question.questionId,
-                                                questionTitle = title,
-                                                questionDetail = questionContent,
+                                                questionTitle = viewModel.questionDetail?.title ?: question.title,
+                                                questionDetail = viewModel.questionDetail?.detail.orEmpty(),
                                             ),
                                         )
                                     },
-                                    answerCount = answerCount,
+                                    answerCount = viewModel.questionDetail?.answerCount ?: 0,
                                     currentSort = viewModel.sortOrder,
                                     onSortChange = { sortOrder ->
                                         viewModel.updateSortOrder(sortOrder)
