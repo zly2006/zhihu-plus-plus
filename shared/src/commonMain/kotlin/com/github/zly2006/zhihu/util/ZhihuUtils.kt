@@ -121,11 +121,8 @@ fun formatRelativeTime(
 }
 
 @OptIn(ExperimentalTime::class)
-fun formatFullDateTime(
-    epochSeconds: Long,
-    timeZone: TimeZone = TimeZone.currentSystemDefault(),
-): String {
-    val dateTime = Instant.fromEpochSeconds(epochSeconds).toLocalDateTime(timeZone)
+fun formatFullDateTime(epochSeconds: Long): String {
+    val dateTime = Instant.fromEpochSeconds(epochSeconds).toLocalDateTime(TimeZone.currentSystemDefault())
     return buildString {
         append(dateTime.year.toString().padStart(4, '0'))
         append('-')

@@ -17,7 +17,9 @@
 
 package com.github.zly2006.zhihu.util
 
+import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toInstant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -52,10 +54,13 @@ class DisplayFormatTest {
     }
 
     @Test
-    fun fullDateTimeIncludesSecondsInRequestedTimeZone() {
+    fun fullDateTimeIncludesSecondsInSystemTimeZone() {
+        val epochSeconds = LocalDateTime(1970, 1, 1, 0, 0, 0)
+            .toInstant(TimeZone.currentSystemDefault())
+            .epochSeconds
         assertEquals(
             "1970-01-01 00:00:00",
-            formatFullDateTime(epochSeconds = 0, timeZone = TimeZone.UTC),
+            formatFullDateTime(epochSeconds = epochSeconds),
         )
     }
 }
