@@ -28,6 +28,7 @@ import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.QuestionAnswerNavigator
 import com.github.zly2006.zhihu.navigation.zhihuQuestionFeedsUrl
+import com.github.zly2006.zhihu.util.formatRelativeTime
 import com.github.zly2006.zhihu.viewmodel.FeedDisplayEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
@@ -56,7 +57,12 @@ open class QuestionFeedViewModel(
                 authorName = target.author?.name ?: "未知作者",
                 avatarSrc = target.author?.avatarUrl,
                 summary = target.excerpt,
-                details = target.detailsText,
+                // 列表里带上回答时间，便于快速分辨回答的早晚；老 API 或广告可能没有时间。
+                details = if (target.createdTime > 0) {
+                    "${target.detailsText} · ${formatRelativeTime(target.createdTime)}"
+                } else {
+                    target.detailsText
+                },
                 feed = feed,
                 title = "",
             )
