@@ -53,7 +53,7 @@ fun AndroidZhihuMain(navController: NavHostController) {
         mainTabNavigationTarget = activity.mainTabNavigationTarget,
         navigate = activity::navigate,
         navigateContent = activity::navigateIn,
-        enableLandscapeListDetail = true,
+        enableLandscapeListDetail = isTablet,
         isListDetailCapable = isTablet,
         setCurrentMainTabOpenFrom = activity::setCurrentMainTabOpenFrom,
         consumeMainTabNavigationTarget = activity::consumeMainTabNavigationTarget,
@@ -72,17 +72,12 @@ fun AndroidZhihuMain(navController: NavHostController) {
                 else -> slideInHorizontally(tween(300)) { it }
             }
         },
-        articleExitTransition = {
-            when (sharedArticleAnswerSwitchState.answerTransitionDirection) {
-                ArticleAnswerTransitionDirection.VERTICAL_NEXT ->
-                    slideOutVertically(tween(300)) { -it } + fadeOut(tween(300))
-                ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS ->
-                    slideOutVertically(tween(300)) { it } + fadeOut(tween(300))
-                ArticleAnswerTransitionDirection.HORIZONTAL_NEXT ->
-                    slideOutHorizontally(tween(300)) { -it } + fadeOut(tween(300))
-                ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS ->
-                    slideOutHorizontally(tween(300)) { it } + fadeOut(tween(300))
-                else -> ExitTransition.None
+        articleExitTransition = { articleAnswerSwitchExitTransition() },
+        articlePopExitTransition = {
+            if (sharedArticleAnswerSwitchState.navigatingFromAnswerSwitch) {
+                articleAnswerSwitchExitTransition()
+            } else {
+                slideOutHorizontally(tween(300)) { it } + fadeOut(tween(300))
             }
         },
         articleContent = { article, navEntry ->
@@ -108,3 +103,16 @@ fun AndroidZhihuMain(navController: NavHostController) {
         },
     )
 }
+
+private fun articleAnswerSwitchExitTransition(): ExitTransition =
+    when (sharedArticleAnswerSwitchState.answerTransitionDirection) {
+        ArticleAnswerTransitionDirection.VERTICAL_NEXT ->
+            slideOutVertically(tween(300)) { -it } + fadeOut(tween(300))
+        ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS ->
+            slideOutVertically(tween(300)) { it } + fadeOut(tween(300))
+        ArticleAnswerTransitionDirection.HORIZONTAL_NEXT ->
+            slideOutHorizontally(tween(300)) { -it } + fadeOut(tween(300))
+        ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS ->
+            slideOutHorizontally(tween(300)) { it } + fadeOut(tween(300))
+        else -> ExitTransition.None
+    }
