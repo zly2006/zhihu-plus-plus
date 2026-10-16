@@ -51,7 +51,6 @@ open class QuestionFeedViewModel(
     var questionDetail by mutableStateOf<DataHolder.Question?>(null)
         internal set
 
-
     override val initialUrl: String
         get() = zhihuQuestionFeedsUrl(questionId, limit = 20, order = sortOrder)
 

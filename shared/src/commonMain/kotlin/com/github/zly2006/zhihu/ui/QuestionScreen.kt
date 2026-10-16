@@ -189,18 +189,16 @@ fun QuestionScreen(
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
     val answerSwitchState = sharedArticleAnswerSwitchState
     val listState = rememberLazyListState()
-    // 详情随导航条目保留，返回时头部立即保持离开前的高度，列表恢复的滚动偏移才不会落到别的回答上。
-    val questionDetail = viewModel.questionDetail
-    val questionContent = questionDetail?.detail.orEmpty()
-    val topics = questionDetail?.topics.orEmpty()
-    val isQuestionLoaded = questionDetail != null
-    val title = questionDetail?.title ?: question.title
-    val answerCount = questionDetail?.answerCount ?: 0
-    val visitCount = questionDetail?.visitCount ?: 0
-    val commentCount = questionDetail?.commentCount ?: 0
-    var followerCount by remember(questionDetail) { mutableIntStateOf(questionDetail?.followerCount ?: 0) }
-    var isFollowing by remember(questionDetail) {
-        mutableStateOf(questionDetail?.relationship?.isFollowing ?: false)
+    val questionContent = viewModel.questionDetail?.detail.orEmpty()
+    val topics = viewModel.questionDetail?.topics.orEmpty()
+    val isQuestionLoaded = viewModel.questionDetail != null
+    val title = viewModel.questionDetail?.title ?: question.title
+    val answerCount = viewModel.questionDetail?.answerCount ?: 0
+    val visitCount = viewModel.questionDetail?.visitCount ?: 0
+    val commentCount = viewModel.questionDetail?.commentCount ?: 0
+    var followerCount by remember(viewModel.questionDetail) { mutableIntStateOf(viewModel.questionDetail?.followerCount ?: 0) }
+    var isFollowing by remember(viewModel.questionDetail) {
+        mutableStateOf(viewModel.questionDetail?.relationship?.isFollowing ?: false)
     }
     var showComments by rememberSaveable(question.questionId) { mutableStateOf(false) }
     var showShareDialog by remember { mutableStateOf(false) }
