@@ -80,7 +80,11 @@ actual fun decodePhoneLoginCaptchaImage(content: String) = runCatching {
 actual fun QrLoginPane(onLoginSuccess: (String) -> Unit) {
     val context = LocalContext.current
     val accountStore = rememberZhihuAccountStore()
+    val cookies = remember { accountStore.session.cookies.toMutableMap() }
+    val client = rememberLoginHttpClient(cookies)
     SharedQrLoginPane(
+        client = client,
+        cookies = cookies,
         onLoginSuccess = { cookies ->
             if (accountStore.login(cookies.toMutableMap())) {
                 telemetry(context, "login")
@@ -90,7 +94,6 @@ actual fun QrLoginPane(onLoginSuccess: (String) -> Unit) {
                 false
             }
         },
-        initialCookies = AccountData.data.cookies,
     )
 }
 
