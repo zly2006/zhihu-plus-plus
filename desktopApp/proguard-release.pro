@@ -13,6 +13,9 @@
 -keep class com.sun.openjfx.** { *; }
 -keep class netscape.javascript.** { *; }
 
+# Coil 通过 ServiceLoader 创建网络下载器；服务描述仍在但 provider 被裁剪时，所有网络图片都会加载失败。
+-keep class coil3.network.ktor3.internal.KtorNetworkFetcherServiceLoaderTarget { *; }
+
 -keep class * implements io.ktor.client.HttpClientEngineContainer {
     *;
 }
