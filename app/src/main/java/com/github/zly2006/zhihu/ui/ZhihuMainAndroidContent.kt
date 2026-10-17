@@ -28,6 +28,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
@@ -100,14 +101,17 @@ fun AndroidZhihuMain(navController: NavHostController) {
         },
         articlePopEnterTransition = { null },
         articleContent = { article, navEntry ->
-            val viewModel: ArticleViewModel = viewModel(navEntry) {
-                ArticleViewModel(article, activity.httpClient, androidUserMessageSink(activity)) { onPause ->
-                    navEntry.lifecycle.addObserver(object : DefaultLifecycleObserver {
-                        override fun onPause(owner: LifecycleOwner) {
-                            onPause()
-                        }
-                    })
+            val viewModel: ArticleViewModel = viewModel {
+                ArticleViewModel(article, activity.httpClient, androidUserMessageSink(activity))
+            }
+            DisposableEffect(navEntry, viewModel) {
+                val observer = object : DefaultLifecycleObserver {
+                    override fun onPause(owner: LifecycleOwner) {
+                        viewModel.rememberedScrollYSync = false
+                    }
                 }
+                navEntry.lifecycle.addObserver(observer)
+                onDispose { navEntry.lifecycle.removeObserver(observer) }
             }
             ArticleScreen(article, viewModel)
         },

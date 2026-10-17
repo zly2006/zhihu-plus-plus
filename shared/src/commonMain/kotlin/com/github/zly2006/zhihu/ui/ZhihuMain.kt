@@ -68,6 +68,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -97,6 +98,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.rememberLifecycleOwner
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -187,6 +189,17 @@ private sealed class MainTabPage(
 internal val LocalReadingPlayerOverlayPadding = staticCompositionLocalOf { 0.dp }
 internal val LocalArticleNavController = staticCompositionLocalOf<NavHostController?> { null }
 
+private sealed interface ReadingSlotTarget {
+    data class ArticlePage(
+        val article: Article,
+        val entry: NavBackStackEntry,
+    ) : ReadingSlotTarget
+
+    data class PinPage(
+        val pin: Pin,
+    ) : ReadingSlotTarget
+}
+
 /**
  * Zhihu++ 的共享应用主壳。
  *
@@ -257,6 +270,23 @@ fun ZhihuMain(
     /** 右侧详情独立持有返回栈；栏内导航保留上级，从左侧重新选项时清空。 */
     val paneStateHolder = rememberSaveableStateHolder()
     val detailNavController = rememberNavController()
+
+    val contentSlotStores: ContentViewModelStores = viewModel()
+    val contentSlots = remember(contentSlotStores) {
+        ContentSlotRegistry(contentSlotStores) { entryId ->
+            navController.currentBackStack.value.any { it.id == entryId } ||
+                detailNavController.currentBackStack.value.any { it.id == entryId }
+        }
+    }
+    val mainBackStack by navController.currentBackStack.collectAsState()
+    val detailBackStack by detailNavController.currentBackStack.collectAsState()
+    val liveContentKeys = remember(mainBackStack, detailBackStack) {
+        (mainBackStack + detailBackStack).mapNotNull { it.contentIdentityOrNull() }.toSet()
+    }
+    LaunchedEffect(contentSlots, liveContentKeys) {
+        delay(CONTENT_SLOT_RELEASE_DELAY_MILLIS)
+        contentSlots.dropMissing(liveContentKeys)
+    }
     val detailEntry by detailNavController.currentBackStackEntryAsState()
     val selectedContentDestination = detailEntry.readingDestinationOrNull()
     val hasOpenSecondaryDetail = detailEntry?.destination?.hasRoute<EmptyDetail>() == false
@@ -280,6 +310,10 @@ fun ZhihuMain(
     // 必须读这两个"最新值"，而不是启动 effect 那次组合捕获的值。
     val latestIsLargeLandscape by rememberUpdatedState(isLargeLandscape)
     val latestUseSecondaryContentNavigation by rememberUpdatedState(useSecondaryContentNavigation)
+    LaunchedEffect(navEntry, detailEntry) {
+        contentSlots.claim(navEntry)
+        contentSlots.claim(detailEntry)
+    }
     val detailLifecycleOwner = rememberLifecycleOwner(
         maxLifecycle = if (showListDetail || showDetailPane) Lifecycle.State.RESUMED else Lifecycle.State.CREATED,
     )
@@ -298,10 +332,22 @@ fun ZhihuMain(
         }
     }
 
+    fun claimContentHost(controller: NavHostController) {
+        contentSlots.claim(controller.currentBackStackEntry)
+    }
+
+    val readingSlotContent: @Composable (Any?) -> Unit = { slotTarget ->
+        when (val target = slotTarget as ReadingSlotTarget) {
+            is ReadingSlotTarget.ArticlePage -> articleContent(target.article, target.entry)
+            is ReadingSlotTarget.PinPage -> PinScreen(target.pin)
+        }
+    }
+
     fun openListDetail(destination: NavDestination) {
         clearDetailPaneContent()
         detailNavController.popBackStack<EmptyDetail>(inclusive = true)
         navigateContent(destination, detailNavController)
+        claimContentHost(detailNavController)
     }
 
     fun resetDetailPane() {
@@ -328,8 +374,10 @@ fun ZhihuMain(
         }
         if (opensInDetail) {
             navigateContent(destination, detailNavController)
+            claimContentHost(detailNavController)
         } else {
             navigate(destination)
+            claimContentHost(navController)
         }
     }
 
@@ -544,8 +592,10 @@ fun ZhihuMain(
                         destination is Video || destination.isDetailPaneDestination() || destination.isAccountDetailDestination()
                     ) {
                         navigateContent(destination, detailNavController)
+                        claimContentHost(detailNavController)
                     } else {
                         navigate(destination)
+                        claimContentHost(navController)
                     }
                 },
                 onNavigateBack = ::popDetailOrFallThrough,
@@ -574,12 +624,12 @@ fun ZhihuMain(
                     popEnterTransition = articlePopEnterTransition,
                     popExitTransition = articlePopExitTransition,
                 ) { entry ->
-                    articleContent(entry.toRoute(), entry)
+                    ContentSlotHost(contentSlots, entry, ReadingSlotTarget.ArticlePage(entry.toRoute(), entry), readingSlotContent)
                 }
                 composable<Pin> { entry ->
-                    PinScreen(entry.toRoute())
+                    ContentSlotHost(contentSlots, entry, ReadingSlotTarget.PinPage(entry.toRoute()), readingSlotContent)
                 }
-                accountSettings(reloadBottomBarPreferences, blocklistSettingsNlpContent)
+                accountSettings(reloadBottomBarPreferences, blocklistSettingsNlpContent, contentSlots)
             }
         }
     }
@@ -609,7 +659,11 @@ fun ZhihuMain(
                 if (listRootIndex >= 0 && laterPages.none { it == null }) {
                     navController.popBackStack<MainTabs>(inclusive = false)
                     navController.navigate(reading)
-                    laterPages.filterNotNull().forEach { navController.navigate(it) }
+                    claimContentHost(navController)
+                    laterPages.filterNotNull().forEach {
+                        navController.navigate(it)
+                        claimContentHost(navController)
+                    }
                     resetDetailPane()
                 }
                 return@LaunchedEffect
@@ -629,7 +683,10 @@ fun ZhihuMain(
             val keepList = entries.getOrNull(listIndex)?.toListPaneDestinationOrNull()
             if (detailPaneContentDepth() == 0) openListDetail(reading)
             navController.popBackStack<MainTabs>(inclusive = false)
-            if (keepList != null) navController.navigate(keepList)
+            if (keepList != null) {
+                navController.navigate(keepList)
+                claimContentHost(navController)
+            }
         }
         if (showListDetail || !showDetailPane) {
             paneStateHolder.SaveableStateProvider("list") {
@@ -714,6 +771,7 @@ fun ZhihuMain(
                                     openListDetail(destination)
                                 } else {
                                     navigate(destination)
+                                    claimContentHost(navController)
                                 }
                             },
                             onNavigateBack = navController::popBackStack,
@@ -780,10 +838,10 @@ fun ZhihuMain(
                             }
                             composable<Question> { navEntry ->
                                 val question: Question = navEntry.toRoute()
-                                QuestionScreen(question)
+                                ContentSlotHost(contentSlots, navEntry, Unit) { QuestionScreen(question) }
                             }
                             composable<Topic> { navEntry ->
-                                TopicScreen(navEntry.toRoute())
+                                ContentSlotHost(contentSlots, navEntry, Unit) { TopicScreen(navEntry.toRoute()) }
                             }
                             composable<WriteAnswer> { navEntry ->
                                 val args: WriteAnswer = navEntry.toRoute()
@@ -800,7 +858,7 @@ fun ZhihuMain(
                                 popExitTransition = articlePopExitTransition,
                             ) { navEntry ->
                                 val article: Article = navEntry.toRoute()
-                                if (!isLargeLandscape) articleContent(article, navEntry)
+                                ContentSlotHost(contentSlots, navEntry, ReadingSlotTarget.ArticlePage(article, navEntry), readingSlotContent)
                             }
                             composable<HotList> {
                                 HotListScreen(innerPadding)
@@ -816,7 +874,7 @@ fun ZhihuMain(
                                 DailyScreen()
                             }
                             composable<History> {
-                                LegacyLocalHistoryScreen(innerPadding)
+                                ContentSlotHost(contentSlots, it, Unit) { LegacyLocalHistoryScreen(innerPadding) }
                             }
                             composable<OnlineHistory> {
                                 OnlineHistoryScreen()
@@ -851,37 +909,41 @@ fun ZhihuMain(
                                 },
                             ) { navEntry ->
                                 val search: Search = navEntry.toRoute()
-                                SearchScreen(search)
+                                ContentSlotHost(contentSlots, navEntry, Unit) { SearchScreen(search) }
                             }
                             composable<Collections> { navEntry ->
                                 val data: Collections = navEntry.toRoute()
-                                CollectionScreen(
-                                    urlToken = data.userToken,
-                                    contentPadding = innerPadding,
-                                )
+                                ContentSlotHost(contentSlots, navEntry, Unit) {
+                                    CollectionScreen(
+                                        urlToken = data.userToken,
+                                        contentPadding = innerPadding,
+                                    )
+                                }
                             }
                             composable<CollectionContent> { navEntry ->
                                 val content: CollectionContent = navEntry.toRoute()
-                                CollectionContentScreen(content.collectionId)
+                                ContentSlotHost(contentSlots, navEntry, Unit) { CollectionContentScreen(content.collectionId) }
                             }
                             composable<Person> { navEntry ->
                                 val person: Person = navEntry.toRoute()
-                                PeopleScreen(person)
+                                ContentSlotHost(contentSlots, navEntry, Unit) { PeopleScreen(person) }
                             }
                             composable<Pin> { navEntry ->
                                 val pin: Pin = navEntry.toRoute()
-                                if (!isLargeLandscape) PinScreen(pin)
+                                ContentSlotHost(contentSlots, navEntry, ReadingSlotTarget.PinPage(pin), readingSlotContent)
                             }
-                            accountSettings(reloadBottomBarPreferences, blocklistSettingsNlpContent)
+                            accountSettings(reloadBottomBarPreferences, blocklistSettingsNlpContent, contentSlots)
                             composable<Notification> {
-                                NotificationScreen()
+                                ContentSlotHost(contentSlots, it, Unit) { NotificationScreen() }
                             }
                             composable<Notification.Entry> { navEntry ->
                                 val entry: Notification.Entry = navEntry.toRoute()
-                                NotificationTimelineScreen(entry.entryName, entry.title)
+                                ContentSlotHost(contentSlots, navEntry, Unit) {
+                                    NotificationTimelineScreen(entry.entryName, entry.title)
+                                }
                             }
                             composable<Notification.Invitations> {
-                                NotificationTimelineScreen("invite", "邀请回答")
+                                ContentSlotHost(contentSlots, it, Unit) { NotificationTimelineScreen("invite", "邀请回答") }
                             }
                             composable<Notification.Message> { navEntry ->
                                 PrivateMessageScreen(navEntry.toRoute())
@@ -1154,12 +1216,13 @@ private fun NavBackStackEntry?.isListPaneDestination(): Boolean = toListPaneDest
 private fun NavGraphBuilder.accountSettings(
     reloadPreferences: () -> Unit,
     nlpContent: @Composable (onNavigateBack: () -> Unit) -> Unit,
+    contentSlots: ContentSlotRegistry,
 ) {
     composable<Account.RecommendSettings.Blocklist> {
         BlocklistSettingsScreen(nlpContent)
     }
     composable<Account.RecommendSettings.BlockedFeedHistory> {
-        BlockedFeedHistoryScreen()
+        ContentSlotHost(contentSlots, it, Unit) { BlockedFeedHistoryScreen() }
     }
     composable<Account.AppearanceSettings> { entry ->
         val args = entry.toRoute<Account.AppearanceSettings>()

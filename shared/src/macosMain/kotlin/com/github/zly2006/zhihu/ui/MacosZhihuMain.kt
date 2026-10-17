@@ -248,8 +248,8 @@ fun MacosZhihuMain(windowChrome: MacosWindowChromeHost? = null) {
                     else -> ExitTransition.None
                 }
             },
-            articleContent = { article: Article, navEntry ->
-                val articleViewModel: ArticleViewModel = viewModel(navEntry) {
+            articleContent = { article: Article, _ ->
+                val articleViewModel: ArticleViewModel = viewModel {
                     ArticleViewModel(article, httpClient, userMessages)
                 }
                 ArticleScreen(article, articleViewModel)
