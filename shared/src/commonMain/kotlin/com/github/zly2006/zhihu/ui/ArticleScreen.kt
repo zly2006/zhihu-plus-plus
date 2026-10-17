@@ -465,13 +465,7 @@ fun ArticleScreen(
                         ZhihuTwoRowsTopAppBar(
                             navigationIcon = {
                                 IconButton(
-                                    onClick = {
-                                        if (articleNavController != null) {
-                                            articleNavController.popBackStack()
-                                        } else {
-                                            navigator.onNavigateBack()
-                                        }
-                                    },
+                                    onClick = { navigator.onNavigateBack() },
                                     colors = IconButtonDefaults.iconButtonColors(
                                         containerColor = MaterialTheme.colorScheme.surfaceVariant,
                                         contentColor = MaterialTheme.colorScheme.onSurfaceVariant,

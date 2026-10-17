@@ -105,7 +105,6 @@ class ArticleViewModel(
     private val userMessages: UserMessageSink = object : UserMessageSink {
         override fun showShortMessage(message: String) = Unit
     },
-    registerOnPause: (((() -> Unit) -> Unit))? = null,
 ) : ViewModel() {
     var permissionRequestCount by mutableIntStateOf(0)
     var title by mutableStateOf("")
@@ -238,9 +237,6 @@ class ArticleViewModel(
 
     init {
         Log.i("zhihu-scroll", "me is $this")
-        registerOnPause?.invoke {
-            rememberedScrollYSync = false
-        }
     }
 
     val isFavorited: Boolean
