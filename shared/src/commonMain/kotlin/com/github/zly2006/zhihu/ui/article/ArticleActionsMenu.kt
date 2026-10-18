@@ -423,7 +423,7 @@ fun ArticleActionsMenu(
         Spacer(modifier = Modifier.height(12.dp))
         MenuActionButton(
             icon = Icons.Outlined.DesktopWindows,
-            text = "在电脑中打开（我计划使用浏览器插件实现，还在写，点击后请手动前往收藏夹打开）",
+            text = "在电脑打开",
             onClick = {
                 coroutineScope.launch {
                     openArticleInBrowser(article)
