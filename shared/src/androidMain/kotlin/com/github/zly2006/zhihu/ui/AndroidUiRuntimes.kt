@@ -177,7 +177,7 @@ actual fun rememberArticleBrowserOpener(): ArticleBrowserOpener {
 }
 
 @Composable
-actual fun consumePendingCommentId(content: com.github.zly2006.zhihu.navigation.NavDestination): String? = remember(content) { AndroidArticleNavigationHandoff.consumeCommentId(content) }
+actual fun consumePendingCommentId(content: NavDestination): String? = remember(content) { AndroidArticleNavigationHandoff.consumeCommentId(content) }
 
 @Composable
 actual fun ArticleWebViewContent(
