@@ -254,10 +254,6 @@ kotlin {
         jvmTest.dependencies {
             implementation("org.jetbrains.compose.ui:ui-test:1.11.1")
             implementation("org.jsoup:jsoup:1.22.2")
-            // WebView 回归测试要在真实 JavaFX 运行时上跑；jvmMain 的 compileOnly 不会进入测试运行时。
-            // javafx-web 在类初始化时引用 javafx-media，测试运行时必须显式提供。
-            javafxModules.forEach { implementation("org.openjfx:$it:21.0.2:$fxClassifier") }
-            implementation("org.openjfx:javafx-media:21.0.2:$fxClassifier")
         }
     }
 }
