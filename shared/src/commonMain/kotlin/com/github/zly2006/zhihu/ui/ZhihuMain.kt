@@ -79,6 +79,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -276,6 +277,8 @@ fun ZhihuMain(
         (showListDetail || navEntry?.id == detailOwnerEntryId)
     val hasOpenDetail = showDetailPane && selectedContentDestination != null
     val useSecondaryContentNavigation = showListDetail
+    val latestIsLargeLandscape by rememberUpdatedState(isLargeLandscape)
+    val latestUseSecondaryContentNavigation by rememberUpdatedState(useSecondaryContentNavigation)
     val detailLifecycleOwner = rememberLifecycleOwner(
         maxLifecycle = if (showListDetail || showDetailPane) Lifecycle.State.RESUMED else Lifecycle.State.CREATED,
     )
@@ -296,7 +299,9 @@ fun ZhihuMain(
     fun openReadingDestination(destination: NavDestination, onlyIfReading: Boolean = false) {
         val current = if (hasOpenDetail) selectedContentDestination else navEntry.readingDestinationOrNull()
         if (current == destination || (onlyIfReading && current == null)) return
-        val opensInDetail = useSecondaryContentNavigation && destination.isDetailPaneDestination()
+        val opensInDetail = latestIsLargeLandscape &&
+            latestUseSecondaryContentNavigation &&
+            destination.isDetailPaneDestination()
         if (hasOpenDetail) {
             if (opensInDetail) {
                 detailNavController.popBackStack()
@@ -343,6 +348,7 @@ fun ZhihuMain(
         val itemChanged = previousReadingItemKey != null && previousReadingItemKey != currentItemKey
         previousReadingItemKey = currentItemKey
         if (itemChanged && currentItem != null) {
+            withFrameNanos { }
             openReadingDestination(currentItem.toDestination(readingPlayerState.sourceId), onlyIfReading = true)
         }
     }
