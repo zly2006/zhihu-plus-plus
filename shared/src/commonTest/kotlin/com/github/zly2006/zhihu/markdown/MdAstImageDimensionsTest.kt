@@ -17,7 +17,7 @@
 
 package com.github.zly2006.zhihu.markdown
 
-import com.hrm.markdown.parser.ast.Figure
+import me.zly2006.markdown.parser.ast.Figure
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
