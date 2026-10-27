@@ -127,7 +127,9 @@ import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.int
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.jetbrains.compose.resources.painterResource
 import zhihu.shared.generated.resources.Res
@@ -274,7 +276,10 @@ class PeopleColumnContributionsViewModel(
         get() = "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/column-contributions"
 
     override val include: String
-        get() = "data[*].articles_count,followers,author"
+        get() = "data[*].column.articles_count"
+
+    override fun decodePage(environment: PaginationEnvironment, rawData: JsonArray): List<DataHolder.Column> =
+        super.decodePage(environment, JsonArray(rawData.map { it.jsonObject.getValue("column") }))
 }
 
 class PeopleFollowingCollectionsViewModel(
@@ -1359,12 +1364,18 @@ private fun ColumnListItem(
                     modifier = Modifier.padding(top = 4.dp),
                 )
             }
-            Text(
-                text = "${column.articlesCount} 文章 · ${column.followerCount.coerceAtLeast(column.followers)} 关注",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 4.dp),
+            val counts = listOfNotNull(
+                column.articlesCount?.let { "$it 文章" },
+                listOfNotNull(column.followerCount, column.followers).maxOrNull()?.let { "$it 关注" },
             )
+            if (counts.isNotEmpty()) {
+                Text(
+                    text = counts.joinToString(" · "),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
         }
     }
 }
