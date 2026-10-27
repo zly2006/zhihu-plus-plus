@@ -29,7 +29,7 @@ internal actual fun rememberFilePicker(
     mimeTypes: List<String>,
     extensions: List<String>,
     onPicked: (() -> Pair<String, RawSource>) -> Unit,
-): (() -> Unit)? = {
+): () -> Unit = {
     val chooser = JFileChooser().apply {
         dialogTitle = title
         fileSelectionMode = JFileChooser.FILES_ONLY

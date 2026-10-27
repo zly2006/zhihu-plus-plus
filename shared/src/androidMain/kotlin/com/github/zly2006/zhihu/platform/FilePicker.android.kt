@@ -31,7 +31,7 @@ internal actual fun rememberFilePicker(
     mimeTypes: List<String>,
     extensions: List<String>,
     onPicked: (() -> Pair<String, RawSource>) -> Unit,
-): (() -> Unit)? {
+): () -> Unit {
     val resolver = LocalContext.current.contentResolver
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {

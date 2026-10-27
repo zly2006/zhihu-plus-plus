@@ -35,7 +35,7 @@ internal expect fun rememberFilePicker(
     mimeTypes: List<String>,
     extensions: List<String>,
     onPicked: (() -> Pair<String, RawSource>) -> Unit,
-): (() -> Unit)?
+): () -> Unit
 
 /** The picker supplies a lazy source so reading and closing always happen on the worker. */
 @Composable
@@ -46,7 +46,7 @@ internal fun rememberFileImporter(
     maxBytes: Int? = null,
     userMessages: UserMessageSink = rememberUserMessageSink(),
     onImported: suspend (String, ByteArray) -> Unit,
-): (() -> Unit)? {
+): () -> Unit {
     val scope = rememberCoroutineScope()
     val currentOnImported by rememberUpdatedState(onImported)
     return rememberFilePicker(title, mimeTypes, extensions) { openFile ->

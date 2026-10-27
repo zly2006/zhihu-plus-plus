@@ -18,17 +18,29 @@
 package com.github.zly2006.zhihu.platform
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import com.github.zly2006.zhihu.ui.noopSettingsStore
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.uikit.LocalUIViewController
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.io.RawSource
+import kotlinx.io.files.Path
+import kotlinx.io.files.SystemFileSystem
 import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSTemporaryDirectory
 import platform.Foundation.NSURL
 import platform.Foundation.NSUserDomainMask
 import platform.UIKit.UIApplication
+import platform.UIKit.UIDocumentPickerDelegateProtocol
+import platform.UIKit.UIDocumentPickerViewController
 import platform.UIKit.UIPasteboard
+import platform.UniformTypeIdentifiers.UTType
+import platform.UniformTypeIdentifiers.UTTypeData
+import platform.darwin.NSObject
 
 internal actual val nativeIsDesktop: Boolean = false
 
@@ -62,7 +74,7 @@ actual fun rememberImageGalleryOpener(): ImageGalleryOpener {
         object : ImageGalleryOpener {
             override fun invoke(urls: List<String>, initialIndex: Int) {
                 if (urls.isNotEmpty()) {
-                    urls[initialIndex.coerceIn(0, urls.lastIndex)].let(openExternalUrl)
+                    openExternalUrl(urls[initialIndex.coerceIn(0, urls.lastIndex)])
                 }
             }
         }
@@ -85,14 +97,65 @@ internal actual fun nativeAppPrivateDirectoryPath(): String {
 internal actual fun nativeDownloadsDirectoryPath(): String = "${nativeAppPrivateDirectoryPath()}/Downloads"
 
 @Composable
+@OptIn(ExperimentalForeignApi::class)
 internal actual fun rememberFilePicker(
     title: String,
     mimeTypes: List<String>,
     extensions: List<String>,
     onPicked: (() -> Pair<String, RawSource>) -> Unit,
-): (() -> Unit)? = null
+): () -> Unit {
+    val host = LocalUIViewController.current
+    val currentOnPicked by rememberUpdatedState(onPicked)
+    var activePicker by remember { mutableStateOf<UIDocumentPickerViewController?>(null) }
+    val delegate = remember {
+        object : NSObject(), UIDocumentPickerDelegateProtocol {
+            override fun documentPicker(controller: UIDocumentPickerViewController, didPickDocumentsAtURLs: List<*>) {
+                activePicker = null
+                val url = didPickDocumentsAtURLs.firstOrNull() as? NSURL ?: return
+                currentOnPicked {
+                    val file = Path(checkNotNull(url.path))
+                    val source = SystemFileSystem.source(file)
+                    // Copy mode gives an app-owned temporary file, never the provider's original.
+                    (url.lastPathComponent ?: "所选文件") to object : RawSource by source {
+                        override fun close() {
+                            try {
+                                source.close()
+                            } finally {
+                                runCatching { SystemFileSystem.delete(file, mustExist = false) }
+                            }
+                        }
+                    }
+                }
+            }
 
-internal actual fun nativeSettingsStore(relativePath: String): SettingsStore = noopSettingsStore()
+            override fun documentPickerWasCancelled(controller: UIDocumentPickerViewController) {
+                activePicker = null
+            }
+        }
+    }
+    DisposableEffect(host) {
+        onDispose {
+            activePicker?.delegate = null
+            activePicker?.dismissViewControllerAnimated(false, completion = null)
+            activePicker = null
+        }
+    }
+    return {
+        if (activePicker == null) {
+            val types = extensions
+                .mapNotNull { UTType.typeWithFilenameExtension(it) }
+                .ifEmpty { mimeTypes.mapNotNull { UTType.typeWithMIMEType(it) } }
+                .ifEmpty { listOf(UTTypeData) }
+            val picker = UIDocumentPickerViewController(forOpeningContentTypes = types, asCopy = true)
+            picker.title = title
+            picker.allowsMultipleSelection = false
+            picker.shouldShowFileExtensions = true
+            picker.delegate = delegate
+            activePicker = picker
+            host.presentViewController(picker, animated = true, completion = null)
+        }
+    }
+}
 
 @Composable
 actual fun rememberUserMessageSink(): UserMessageSink = remember {
@@ -100,3 +163,5 @@ actual fun rememberUserMessageSink(): UserMessageSink = remember {
         override fun showShortMessage(message: String) = println(message)
     }
 }
+
+internal actual val platformBottomBarItemLimit: Int? = 5
