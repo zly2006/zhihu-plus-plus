@@ -961,6 +961,8 @@ fun ArticleScreen(
                             }
                         }
 
+                        val reserveVotersSpace = article.type == ArticleType.Answer
+
                         @Composable
                         fun ColumnScope.ArticleVotersSocialCredit() {
                             val contentLabel = when (article.type) {
@@ -968,31 +970,49 @@ fun ArticleScreen(
                                 ArticleType.Article -> "文章"
                             }
                             val hasVotersSocialCredit = viewModel.votersTotal > 0
-                            if (!hasVotersSocialCredit && viewModel.aigcSupportVoterCount <= 0) return
+                            if (!reserveVotersSpace && !hasVotersSocialCredit && viewModel.aigcSupportVoterCount <= 0) return
                             Spacer(modifier = Modifier.height(8.dp))
-                            if (hasVotersSocialCredit) {
-                                val text = viewModel.votersSocialText.ifBlank {
-                                    "${formatCompactCount(viewModel.votersTotal)} 人赞同了该$contentLabel"
-                                }
-                                val votersTextModifier = if (article.type == ArticleType.Answer) {
-                                    Modifier.clickable {
-                                        showVoters = true
-                                        if (viewModel.voters.isEmpty()) {
-                                            viewModel.loadMoreVoters(environment, reset = true)
+                            if (reserveVotersSpace || hasVotersSocialCredit) {
+                                // 切换回答时正文先从缓存恢复，赞同信息稍后加载；先预留一行，避免正文跳动。
+                                Box(
+                                    modifier = if (reserveVotersSpace) {
+                                        Modifier.fillMaxWidth().height(
+                                            with(density) {
+                                                MaterialTheme.typography.bodySmall.lineHeight
+                                                    .toDp()
+                                            },
+                                        )
+                                    } else {
+                                        Modifier
+                                    },
+                                ) {
+                                    if (hasVotersSocialCredit) {
+                                        val text = viewModel.votersSocialText.ifBlank {
+                                            "${formatCompactCount(viewModel.votersTotal)} 人赞同了该$contentLabel"
                                         }
+                                        val votersTextModifier = if (article.type == ArticleType.Answer) {
+                                            Modifier.clickable {
+                                                showVoters = true
+                                                if (viewModel.voters.isEmpty()) {
+                                                    viewModel.loadMoreVoters(environment, reset = true)
+                                                }
+                                            }
+                                        } else {
+                                            Modifier
+                                        }
+                                        Text(
+                                            text = text,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = votersTextModifier,
+                                            maxLines = if (reserveVotersSpace) 1 else Int.MAX_VALUE,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
                                     }
-                                } else {
-                                    Modifier
                                 }
-                                Text(
-                                    text = text,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = votersTextModifier,
-                                )
                             }
                             if (viewModel.aigcSupportVoterCount > 0) {
-                                if (hasVotersSocialCredit) {
+                                if (reserveVotersSpace || hasVotersSocialCredit) {
                                     Spacer(modifier = Modifier.height(4.dp))
                                 }
                                 Text(
@@ -1023,7 +1043,7 @@ fun ArticleScreen(
                             val hasSocialCredit = viewModel.votersTotal > 0 || viewModel.aigcSupportVoterCount > 0
                             val endorsements = viewModel.endorsements
                             val hasEndorsements = endorsements.isNotEmpty()
-                            if (hasPinnedDate || hasSocialCredit || hasEndorsements) {
+                            if (reserveVotersSpace || hasPinnedDate || hasSocialCredit || hasEndorsements) {
                                 Column(
                                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                                     horizontalAlignment = Alignment.Start,
@@ -1033,7 +1053,7 @@ fun ArticleScreen(
                                     }
                                     ArticleVotersSocialCredit()
                                     if (hasEndorsements) {
-                                        if (hasPinnedDate || hasSocialCredit) {
+                                        if (reserveVotersSpace || hasPinnedDate || hasSocialCredit) {
                                             Spacer(modifier = Modifier.height(8.dp))
                                         }
                                         FlowRow(
