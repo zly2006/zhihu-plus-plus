@@ -84,6 +84,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.markdown.SELECTED_MATH_FONT_KEY
 import com.github.zly2006.zhihu.markdown.TiqianBrandTitle
 import com.github.zly2006.zhihu.markdown.isTiqianMarkdownRendererAvailable
 import com.github.zly2006.zhihu.navigation.Account
@@ -707,6 +708,13 @@ fun AppearanceSettingsScreen(
                             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                         )
                     },
+                )
+                SettingItem(
+                    title = { Text("公式字体") },
+                    settingKey = SELECTED_MATH_FONT_KEY,
+                    highlightedKey = settingKey,
+                    bringIntoViewRequester = requesterFor(SELECTED_MATH_FONT_KEY),
+                    bottomAction = { MathFontSettings() },
                 )
             }
 

@@ -20,17 +20,35 @@
 package com.github.zly2006.zhihu.platform
 
 import platform.Foundation.NSFileManager
+import platform.Foundation.NSRecursiveLock
 import platform.Foundation.NSString
 import platform.Foundation.NSUTF8StringEncoding
 import platform.Foundation.create
 import platform.Foundation.dataUsingEncoding
 
+// Share each physical file so independent settings consumers cannot overwrite stale snapshots.
+private val macosSettingsStores = mutableMapOf<String, SettingsStore>()
+private val macosSettingsStoreLock = NSRecursiveLock()
+
 private const val STRING_SET_SEPARATOR = '\u001F'
 
 internal actual fun nativeSettingsStore(relativePath: String): SettingsStore {
-    val propertiesFile = MacosPropertiesFile("${nativeAppPrivateDirectoryPath()}/$relativePath")
+    macosSettingsStoreLock.lock()
+    try {
+        return macosSettingsStores.getOrPut("${nativeAppPrivateDirectoryPath()}/$relativePath") {
+            createMacosSettingsStore("${nativeAppPrivateDirectoryPath()}/$relativePath")
+        }
+    } finally {
+        macosSettingsStoreLock.unlock()
+    }
+}
+
+private fun createMacosSettingsStore(filePath: String): SettingsStore {
+    val propertiesFile = MacosPropertiesFile(filePath)
 
     return object : SettingsStore {
+        override fun observeKeyChanges(onChanged: (String) -> Unit): AutoCloseable = propertiesFile.observe(onChanged)
+
         override fun getBoolean(key: String, defaultValue: Boolean) = propertiesFile[key]?.toBooleanStrictOrNull() ?: defaultValue
 
         override fun putBoolean(key: String, value: Boolean) {
@@ -77,6 +95,22 @@ private class MacosPropertiesFile(
     private val filePath: String,
 ) {
     private val values = linkedMapOf<String, String>()
+    private val listeners = mutableListOf<(String) -> Unit>()
+    private val lock = NSRecursiveLock()
+
+    private inline fun <T> locked(block: () -> T): T {
+        lock.lock()
+        try {
+            return block()
+        } finally {
+            lock.unlock()
+        }
+    }
+
+    fun observe(listener: (String) -> Unit): AutoCloseable = locked {
+        listeners.add(listener)
+        AutoCloseable { locked { listeners.remove(listener) } }
+    }
 
     init {
         val fileManager = NSFileManager.defaultManager
@@ -89,16 +123,18 @@ private class MacosPropertiesFile(
         }
     }
 
-    operator fun get(key: String): String? = values[key]
+    operator fun get(key: String): String? = locked { values[key] }
 
-    operator fun set(key: String, value: String) {
+    operator fun set(key: String, value: String) = locked {
         values[key] = value
         save()
+        listeners.toList().forEach { it(key) }
     }
 
-    fun remove(key: String) {
+    fun remove(key: String) = locked {
         if (values.remove(key) != null) {
             save()
+            listeners.toList().forEach { it(key) }
         }
     }
 

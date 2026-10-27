@@ -25,7 +25,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toComposeImageBitmap
@@ -39,20 +38,16 @@ import com.github.zly2006.zhihu.platform.UserMessageSink
 import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.subscreens.desktopVersionName
-import com.github.zly2006.zhihu.util.Log
 import com.github.zly2006.zhihu.viewmodel.DesktopPaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.filter.desktopContentFilterDatabaseFile
 import com.github.zly2006.zhihu.viewmodel.filter.encodeBlocklistBackup
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
-import com.github.zly2006.zhihu.viewmodel.filter.importBlocklistBackupFromJsonText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import java.io.File
 import javax.imageio.ImageIO
-import javax.swing.JFileChooser
-import javax.swing.filechooser.FileNameExtensionFilter
 
 @Composable
 actual fun rememberArticleTtsState(): TtsState = DesktopArticleSpeechController.currentTtsState
@@ -225,44 +220,6 @@ private fun desktopProjectRoots(): List<File> =
 actual fun rememberHomeIsDebuggable(): Boolean = true
 
 @Composable
-actual fun rememberBlocklistRuleImporter(
-    userMessages: UserMessageSink,
-    onImported: (String) -> Unit,
-): BlocklistRuleImporter {
-    val database = remember {
-        val databaseFile = desktopContentFilterDatabaseFile()
-        databaseFile.parentFile?.mkdirs()
-        getContentFilterDatabase(databaseFile)
-    }
-    val coroutineScope = rememberCoroutineScope()
-    val currentOnImported by rememberUpdatedState(onImported)
-    return remember(database, userMessages, coroutineScope) {
-        object : BlocklistRuleImporter {
-            override fun invoke() {
-                val selectedFile = chooseBlocklistImportFile()
-                if (selectedFile != null) {
-                    coroutineScope.launch {
-                        try {
-                            val summary = importBlocklistBackupFromJsonText(
-                                keywordDao = database.blockedKeywordDao(),
-                                userDao = database.blockedUserDao(),
-                                questionAuthorDao = database.blockedQuestionAuthorDao(),
-                                topicDao = database.blockedTopicDao(),
-                                text = selectedFile.readText(),
-                            )
-                            currentOnImported(summary)
-                        } catch (e: Exception) {
-                            Log.e("BlocklistSettings", "Failed to import blocklist", e)
-                            userMessages.showShortMessage("导入失败: ${e.message}")
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
 actual fun rememberBlocklistRuleExporter(): BlocklistRuleExporter {
     val database = remember {
         val databaseFile = desktopContentFilterDatabaseFile()
@@ -284,19 +241,6 @@ actual fun rememberBlocklistRuleExporter(): BlocklistRuleExporter {
                 return "已导出到 ${file.absolutePath}"
             }
         }
-    }
-}
-
-private fun chooseBlocklistImportFile(): File? {
-    val chooser = JFileChooser().apply {
-        dialogTitle = "导入屏蔽规则"
-        fileSelectionMode = JFileChooser.FILES_ONLY
-        fileFilter = FileNameExtensionFilter("JSON 或文本文件", "json", "txt")
-    }
-    return if (chooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
-        chooser.selectedFile
-    } else {
-        null
     }
 }
 

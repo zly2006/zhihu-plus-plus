@@ -104,11 +104,16 @@ internal actual fun PlatformTiqianMarkdown(
     val compiled = remember(document, sourceMarkdown) {
         compileZhihuMarkdown(document, sourceMarkdown)
     }
+    val importedFont = rememberImportedMathFont()
+    val customMathFont = remember(importedFont) {
+        importedFont?.let { MarkdownMathFont.LoadedOpenType(checkNotNull(it.fontBytes), checkNotNull(it.fontFamily)) }
+    }
     val style = rememberZhihuMarkdownStyle(
         fontSizeScale = fontSizeScale,
         lineHeightFromFontSize = lineHeightFromFontSize,
         blockSpacingScale = blockSpacingScale,
         mathFontFamilyId = mathFontFamilyId,
+        customMathFont = customMathFont,
     )
     val inlineSlots = rememberZhihuInlineSlots(imageUrls)
     val imageProvider: MarkdownImageProvider = { block -> ZhihuMarkdownImageContent(block) }
@@ -156,6 +161,7 @@ private fun rememberZhihuMarkdownStyle(
     lineHeightFromFontSize: Float,
     blockSpacingScale: Float,
     mathFontFamilyId: String?,
+    customMathFont: MarkdownMathFont?,
 ): MarkdownStyle =
     // App-side customization: body 字号/行高按阅读设置缩放、数学字体选择、块间距缩放，
     // 以及 display 公式滚动宿主 inset。作者色适配沿用 Markdown Material 3 默认。
@@ -171,7 +177,7 @@ private fun rememberZhihuMarkdownStyle(
             }.let { base ->
                 base.copy(
                     math = base.math.copy(
-                        font = mathFontFamilyId?.let(MarkdownMathFont::Packaged)
+                        font = customMathFont ?: mathFontFamilyId?.let(MarkdownMathFont::Packaged)
                             ?: MarkdownMathFont.LeteSansMath,
                         displayScrollHostInset = 16.dp,
                     ),

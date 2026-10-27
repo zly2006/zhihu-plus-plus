@@ -46,11 +46,16 @@ import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.platform.SettingsStore
 import com.github.zly2006.zhihu.platform.UserMessageSink
+import com.github.zly2006.zhihu.platform.rememberFileImporter
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.subscreens.DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
+import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
+import com.github.zly2006.zhihu.viewmodel.filter.importBlocklistBackupFromJsonText
 import com.github.zly2006.zhihu.viewmodel.getOrFetchContentDetail
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.jsonPrimitive
@@ -436,13 +441,29 @@ expect fun commentEmojiInlineKey(placeholder: String): String?
 expect fun Modifier.commentSelectionWorkaround(): Modifier
 
 @Composable
-expect fun rememberBlocklistRuleImporter(
+fun rememberBlocklistRuleImporter(
     userMessages: UserMessageSink,
     onImported: (String) -> Unit,
-): BlocklistRuleImporter
-
-interface BlocklistRuleImporter {
-    operator fun invoke()
+): () -> Unit {
+    val database = remember { getContentFilterDatabase() }
+    val picker = rememberFileImporter(
+        title = "导入屏蔽规则",
+        mimeTypes = listOf("application/json", "text/plain", "*/*"),
+        extensions = listOf("json", "txt"),
+        userMessages = userMessages,
+    ) { _, bytes ->
+        val summary = withContext(Dispatchers.Default) {
+            importBlocklistBackupFromJsonText(
+                keywordDao = database.blockedKeywordDao(),
+                userDao = database.blockedUserDao(),
+                questionAuthorDao = database.blockedQuestionAuthorDao(),
+                topicDao = database.blockedTopicDao(),
+                text = bytes.decodeToString(),
+            )
+        }
+        onImported(summary)
+    }
+    return { picker?.invoke() }
 }
 
 interface BlocklistRuleExporter {
