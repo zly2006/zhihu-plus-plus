@@ -356,7 +356,9 @@ private fun RenderMarkdownDocument(
                             footer = footer,
                         )
                     } else {
-                        val mathFont = rememberMarkdownMathFont()
+                        val selectedMathFont = rememberSelectedMathFont()
+                        val importedMathFont = rememberImportedMathFont()
+                        val mathFont = if (selectedMathFont == null) rememberMarkdownMathFont() else importedMathFont
                         val defaultTheme = MarkdownTheme.material3()
                         val scaledFontSize = 16.sp * fontSize / 100
                         val theme = defaultTheme.copy(

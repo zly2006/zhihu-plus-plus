@@ -40,11 +40,26 @@ actual fun Modifier.exportTestTagsForUiAutomation(): Modifier = this
 @Composable
 actual fun rememberAppPrivateDirectory(): Path = remember { Path(desktopZhihuDataDir().absolutePath) }
 
-fun desktopSettingsStore(): SettingsStore {
+private val desktopSettingsStores = mutableMapOf<String, SettingsStore>()
+
+fun desktopSettingsStore(): SettingsStore = synchronized(desktopSettingsStores) {
+    desktopSettingsStores.getOrPut(desktopZhihuDataDir().resolve("settings.properties").absolutePath) {
+        createDesktopSettingsStore()
+    }
+}
+
+private fun createDesktopSettingsStore(): SettingsStore {
     val propertiesFile = DesktopPropertiesFile("settings.properties", "Zhihu++ desktop settings")
     val properties = propertiesFile.properties
 
     return object : SettingsStore {
+        private val listeners = java.util.concurrent.CopyOnWriteArrayList<(String) -> Unit>()
+
+        override fun observeKeyChanges(onChanged: (String) -> Unit): AutoCloseable {
+            listeners.add(onChanged)
+            return AutoCloseable { listeners.remove(onChanged) }
+        }
+
         override fun getBoolean(key: String, defaultValue: Boolean) = properties.getProperty(key)?.toBooleanStrictOrNull() ?: defaultValue
 
         override fun putBoolean(key: String, value: Boolean) = write(key, value.toString())
@@ -76,18 +91,28 @@ fun desktopSettingsStore(): SettingsStore {
         override fun putFloat(key: String, value: Float) = write(key, value.toString())
 
         override fun remove(key: String) {
-            properties.remove(key)
-            propertiesFile.save()
+            synchronized(properties) {
+                properties.remove(key)
+                propertiesFile.save()
+            }
+            listeners.forEach { it(key) }
         }
 
         override fun removeByPrefix(prefix: String) {
-            properties.stringPropertyNames().filter { it.startsWith(prefix) }.forEach(properties::remove)
-            propertiesFile.save()
+            val keys = properties.stringPropertyNames().filter { it.startsWith(prefix) }
+            synchronized(properties) {
+                keys.forEach(properties::remove)
+                propertiesFile.save()
+            }
+            keys.forEach { key -> listeners.forEach { it(key) } }
         }
 
         private fun write(key: String, value: String) {
-            properties.setProperty(key, value)
-            propertiesFile.save()
+            synchronized(properties) {
+                properties.setProperty(key, value)
+                propertiesFile.save()
+            }
+            listeners.forEach { it(key) }
         }
     }
 }

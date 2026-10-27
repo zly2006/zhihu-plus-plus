@@ -108,3 +108,13 @@ fun showMacosUserMessage(
 }
 
 internal actual val platformBottomBarItemLimit: Int? = null
+
+@OptIn(ExperimentalForeignApi::class)
+internal actual fun nativeChooseMathFontImportFilePath(): String? {
+    val panel = NSOpenPanel.openPanel()
+    panel.title = "导入公式字体"
+    panel.canChooseFiles = true
+    panel.canChooseDirectories = false
+    panel.allowsMultipleSelection = false
+    return if (panel.runModal() == NSModalResponseOK) panel.URL?.path else null
+}

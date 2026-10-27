@@ -93,3 +93,5 @@ actual fun rememberUserMessageSink(): UserMessageSink = remember {
         override fun showShortMessage(message: String) = println(message)
     }
 }
+
+internal actual fun nativeChooseMathFontImportFilePath(): String? = null

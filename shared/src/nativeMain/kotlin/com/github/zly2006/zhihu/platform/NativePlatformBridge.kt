@@ -38,3 +38,5 @@ internal fun nativeBundledResourcePath(relativePath: String): String? =
     NSBundle.mainBundle.resourcePath?.let { resourceDirectory -> "$resourceDirectory/$relativePath" }
 
 internal expect fun nativeSettingsStore(relativePath: String): SettingsStore
+
+internal expect fun nativeChooseMathFontImportFilePath(): String?
