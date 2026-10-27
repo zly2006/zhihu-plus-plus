@@ -21,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import com.github.zly2006.zhihu.ui.noopSettingsStore
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.io.RawSource
 import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSTemporaryDirectory
@@ -83,7 +84,13 @@ internal actual fun nativeAppPrivateDirectoryPath(): String {
 
 internal actual fun nativeDownloadsDirectoryPath(): String = "${nativeAppPrivateDirectoryPath()}/Downloads"
 
-internal actual fun nativeChooseImportFilePath(title: String): String? = null
+@Composable
+internal actual fun rememberFilePicker(
+    title: String,
+    mimeTypes: List<String>,
+    extensions: List<String>,
+    onPicked: (() -> Pair<String, RawSource>) -> Unit,
+): (() -> Unit)? = null
 
 internal actual fun nativeSettingsStore(relativePath: String): SettingsStore = noopSettingsStore()
 

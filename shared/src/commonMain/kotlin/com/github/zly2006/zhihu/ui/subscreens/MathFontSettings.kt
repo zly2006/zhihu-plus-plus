@@ -33,44 +33,37 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.markdown.MAX_MATH_FONT_BYTES
 import com.github.zly2006.zhihu.markdown.rememberCustomMathFonts
 import com.github.zly2006.zhihu.markdown.rememberSelectedMathFont
+import com.github.zly2006.zhihu.platform.rememberFileImporter
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-
-@Composable
-internal expect fun rememberMathFontPicker(onPicked: (String, ByteArray) -> Unit): (() -> Unit)?
 
 @Composable
 internal fun MathFontSettings() {
     val fonts = rememberCustomMathFonts()
     val selected = rememberSelectedMathFont()
     val messages = rememberUserMessageSink()
-    val scope = rememberCoroutineScope()
     var busy by remember { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
-    val picker = rememberMathFontPicker { name, bytes ->
-        scope.launch {
-            busy = true
-            try {
-                withContext(Dispatchers.Default) { fonts.import(name, bytes) }
-                messages.showShortMessage("公式字体已导入")
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Exception) {
-                messages.showLongMessage(error.message ?: "字体导入失败")
-            } finally {
-                busy = false
-            }
+    val picker = rememberFileImporter(
+        title = "导入公式字体",
+        extensions = listOf("otf", "ttf"),
+        maxBytes = MAX_MATH_FONT_BYTES,
+    ) { name, bytes ->
+        busy = true
+        try {
+            withContext(Dispatchers.Default) { fonts.import(name, bytes) }
+            messages.showShortMessage("公式字体已导入")
+        } finally {
+            busy = false
         }
     }
     Column {

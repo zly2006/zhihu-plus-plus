@@ -24,6 +24,9 @@ import com.github.zly2006.zhihu.data.macosBackgroundUiDebugDataDirectoryPath
 import com.github.zly2006.zhihu.ui.subscreens.MACOS_QUIT_ON_WINDOW_CLOSE_PREFERENCE_KEY
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.channels.Channel
+import kotlinx.io.RawSource
+import kotlinx.io.files.Path
+import kotlinx.io.files.SystemFileSystem
 import platform.AppKit.NSModalResponseOK
 import platform.AppKit.NSOpenPanel
 import platform.AppKit.NSPasteboard
@@ -80,14 +83,22 @@ internal actual fun nativeDownloadsDirectoryPath(): String =
     macosBackgroundUiDebugDataDirectoryPath()?.let { "$it/Downloads" }
         ?: "${NSHomeDirectory()}/Downloads"
 
+@Composable
 @OptIn(ExperimentalForeignApi::class)
-internal actual fun nativeChooseImportFilePath(title: String): String? {
+internal actual fun rememberFilePicker(
+    title: String,
+    mimeTypes: List<String>,
+    extensions: List<String>,
+    onPicked: (() -> Pair<String, RawSource>) -> Unit,
+): (() -> Unit)? = {
     val panel = NSOpenPanel.openPanel()
     panel.title = title
     panel.canChooseFiles = true
     panel.canChooseDirectories = false
     panel.allowsMultipleSelection = false
-    return if (panel.runModal() == NSModalResponseOK) panel.URL?.path else null
+    if (panel.runModal() == NSModalResponseOK) {
+        panel.URL?.path?.let { filePath -> onPicked { filePath.substringAfterLast('/') to SystemFileSystem.source(Path(filePath)) } }
+    }
 }
 
 internal data class MacosUserMessage(
