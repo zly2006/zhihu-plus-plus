@@ -120,6 +120,22 @@ fun formatRelativeTime(
     }
 }
 
+/** 问题回答列表使用简短日期；跨年时保留年份。 */
+@OptIn(ExperimentalTime::class)
+fun formatAnswerTime(
+    epochSeconds: Long,
+    nowEpochSeconds: Long = Clock.System.now().epochSeconds,
+    timeZone: TimeZone = TimeZone.currentSystemDefault(),
+): String {
+    if (nowEpochSeconds - epochSeconds < 604_800) {
+        return formatRelativeTime(epochSeconds, nowEpochSeconds, timeZone)
+    }
+    val date = Instant.fromEpochSeconds(epochSeconds).toLocalDateTime(timeZone)
+    val currentYear = Instant.fromEpochSeconds(nowEpochSeconds).toLocalDateTime(timeZone).year
+    val year = if (date.year == currentYear) "" else "${date.year}-"
+    return "$year${date.month.number.twoDigitString()}-${date.day.twoDigitString()}"
+}
+
 @OptIn(ExperimentalTime::class)
 fun formatFullDateTime(epochSeconds: Long): String {
     val dateTime = Instant.fromEpochSeconds(epochSeconds).toLocalDateTime(TimeZone.currentSystemDefault())

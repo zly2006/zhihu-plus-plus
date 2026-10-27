@@ -54,6 +54,20 @@ class DisplayFormatTest {
     }
 
     @Test
+    fun answerDatesDistinguishYearsAndKeepRecentRelativeTimes() {
+        val now = LocalDateTime(2026, 10, 27, 12, 0).toInstant(TimeZone.UTC).epochSeconds
+        assertEquals("刚刚", formatAnswerTime(now - 30, now, TimeZone.UTC))
+        assertEquals("2小时前", formatAnswerTime(now - 7_200, now, TimeZone.UTC))
+        assertEquals("6天前", formatAnswerTime(now - 6 * 86_400, now, TimeZone.UTC))
+        assertEquals("10-20", formatAnswerTime(now - 7 * 86_400, now, TimeZone.UTC))
+        assertEquals("03-22", formatAnswerTime(LocalDateTime(2026, 3, 22, 19, 0).toInstant(TimeZone.UTC).epochSeconds, now, TimeZone.UTC))
+        assertEquals("2025-03-22", formatAnswerTime(LocalDateTime(2025, 3, 22, 19, 0).toInstant(TimeZone.UTC).epochSeconds, now, TimeZone.UTC))
+        val newYear = LocalDateTime(2026, 1, 1, 0, 0).toInstant(TimeZone.UTC).epochSeconds
+        val oldDate = LocalDateTime(2025, 12, 20, 23, 0).toInstant(TimeZone.UTC).epochSeconds
+        assertEquals("2025-12-20", formatAnswerTime(oldDate, newYear, TimeZone.UTC))
+    }
+
+    @Test
     fun fullDateTimeIncludesSecondsInSystemTimeZone() {
         val epochSeconds = LocalDateTime(1970, 1, 1, 0, 0, 0)
             .toInstant(TimeZone.currentSystemDefault())
