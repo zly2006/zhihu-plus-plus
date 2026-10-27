@@ -389,36 +389,6 @@ fun rememberAccountSettingsAccountState(): State<AccountSettingsAccountState> {
 @Composable
 expect fun rememberAppVersionInfo(): String
 
-fun noopSettingsStore(): SettingsStore = object : SettingsStore {
-    override fun getBoolean(key: String, defaultValue: Boolean) = defaultValue
-
-    override fun putBoolean(key: String, value: Boolean) = Unit
-
-    override fun getString(key: String, defaultValue: String) = defaultValue
-
-    override fun putString(key: String, value: String) = Unit
-
-    override fun getStringOrNull(key: String): String? = null
-
-    override fun putStringSet(key: String, value: Set<String>) = Unit
-
-    override fun getStringSet(key: String, defaultValue: Set<String>) = defaultValue
-
-    override fun getInt(key: String, defaultValue: Int) = defaultValue
-
-    override fun putInt(key: String, value: Int) = Unit
-
-    override fun getLong(key: String, defaultValue: Long) = defaultValue
-
-    override fun putLong(key: String, value: Long) = Unit
-
-    override fun getFloat(key: String, defaultValue: Float) = defaultValue
-
-    override fun putFloat(key: String, value: Float) = Unit
-
-    override fun remove(key: String) = Unit
-}
-
 internal const val PEOPLE_PROFILE_INCLUDE_PATH =
     "allow_message,is_followed,is_following,is_org,is_blocking,badge_v2,answer_count,follower_count,following_count,articles_count,question_count,pins_count"
 
@@ -463,7 +433,7 @@ fun rememberBlocklistRuleImporter(
         }
         onImported(summary)
     }
-    return { picker?.invoke() }
+    return picker
 }
 
 interface BlocklistRuleExporter {
