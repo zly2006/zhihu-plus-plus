@@ -36,7 +36,7 @@ import com.github.zly2006.zhihu.platform.UserMessageSink
 import com.github.zly2006.zhihu.platform.nativeAppPrivateDirectoryPath
 import com.github.zly2006.zhihu.platform.nativeAppVersionName
 import com.github.zly2006.zhihu.platform.nativeBundledResourcePath
-import com.github.zly2006.zhihu.platform.nativeChooseBlocklistImportFilePath
+import com.github.zly2006.zhihu.platform.nativeChooseImportFilePath
 import com.github.zly2006.zhihu.platform.nativeIsDesktop
 import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.platform.rememberExternalUrlOpener
@@ -216,7 +216,7 @@ actual fun rememberBlocklistRuleImporter(
     return remember(database, coroutineScope, userMessages) {
         object : BlocklistRuleImporter {
             override fun invoke() {
-                val selectedFilePath = nativeChooseBlocklistImportFilePath()
+                val selectedFilePath = nativeChooseImportFilePath("导入屏蔽规则")
                 if (selectedFilePath != null) {
                     coroutineScope.launch {
                         try {

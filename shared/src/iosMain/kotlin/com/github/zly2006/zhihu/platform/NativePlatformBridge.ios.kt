@@ -83,7 +83,7 @@ internal actual fun nativeAppPrivateDirectoryPath(): String {
 
 internal actual fun nativeDownloadsDirectoryPath(): String = "${nativeAppPrivateDirectoryPath()}/Downloads"
 
-internal actual fun nativeChooseBlocklistImportFilePath(): String? = null
+internal actual fun nativeChooseImportFilePath(title: String): String? = null
 
 internal actual fun nativeSettingsStore(relativePath: String): SettingsStore = noopSettingsStore()
 
@@ -93,5 +93,3 @@ actual fun rememberUserMessageSink(): UserMessageSink = remember {
         override fun showShortMessage(message: String) = println(message)
     }
 }
-
-internal actual fun nativeChooseMathFontImportFilePath(): String? = null

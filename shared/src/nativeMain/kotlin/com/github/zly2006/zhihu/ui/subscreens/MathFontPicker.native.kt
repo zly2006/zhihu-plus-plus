@@ -20,7 +20,7 @@ package com.github.zly2006.zhihu.ui.subscreens
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import com.github.zly2006.zhihu.markdown.MAX_MATH_FONT_BYTES
-import com.github.zly2006.zhihu.platform.nativeChooseMathFontImportFilePath
+import com.github.zly2006.zhihu.platform.nativeChooseImportFilePath
 import com.github.zly2006.zhihu.platform.nativeIsDesktop
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import kotlinx.coroutines.CancellationException
@@ -38,7 +38,7 @@ internal actual fun rememberMathFontPicker(onPicked: (String, ByteArray) -> Unit
     val messages = rememberUserMessageSink()
     if (!nativeIsDesktop) return null
     return {
-        val selected = nativeChooseMathFontImportFilePath()
+        val selected = nativeChooseImportFilePath("导入公式字体")
         if (selected != null) {
             scope.launch {
                 try {

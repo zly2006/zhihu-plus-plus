@@ -81,9 +81,9 @@ internal actual fun nativeDownloadsDirectoryPath(): String =
         ?: "${NSHomeDirectory()}/Downloads"
 
 @OptIn(ExperimentalForeignApi::class)
-internal actual fun nativeChooseBlocklistImportFilePath(): String? {
+internal actual fun nativeChooseImportFilePath(title: String): String? {
     val panel = NSOpenPanel.openPanel()
-    panel.title = "导入屏蔽规则"
+    panel.title = title
     panel.canChooseFiles = true
     panel.canChooseDirectories = false
     panel.allowsMultipleSelection = false
@@ -108,13 +108,3 @@ fun showMacosUserMessage(
 }
 
 internal actual val platformBottomBarItemLimit: Int? = null
-
-@OptIn(ExperimentalForeignApi::class)
-internal actual fun nativeChooseMathFontImportFilePath(): String? {
-    val panel = NSOpenPanel.openPanel()
-    panel.title = "导入公式字体"
-    panel.canChooseFiles = true
-    panel.canChooseDirectories = false
-    panel.allowsMultipleSelection = false
-    return if (panel.runModal() == NSModalResponseOK) panel.URL?.path else null
-}
