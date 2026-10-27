@@ -48,11 +48,11 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.platform.rememberImageSaver
 import com.github.zly2006.zhihu.platform.rememberImageSharer
-import com.hrm.markdown.parser.ast.Document
-import com.hrm.markdown.parser.ast.NativeBlock
-import com.hrm.markdown.parser.ast.SegmentHighlight
-import com.hrm.markdown.renderer.LocalOnSegmentHighlightClick
-import com.hrm.markdown.renderer.MarkdownImageData
+import me.zly2006.markdown.parser.ast.Document
+import me.zly2006.markdown.parser.ast.NativeBlock
+import me.zly2006.markdown.parser.ast.SegmentHighlight
+import me.zly2006.markdown.renderer.LocalOnSegmentHighlightClick
+import me.zly2006.markdown.renderer.MarkdownImageData
 import org.tiqian.compose.material3.CjkText
 import org.tiqian.compose.ruby
 import org.tiqian.markdown.MarkdownCustomBlock

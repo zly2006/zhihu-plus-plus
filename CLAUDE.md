@@ -246,6 +246,10 @@ Compose 页面需要在进入前台时刷新数据，应优先让协程直接跟
 
 补字段或函数注释时必须使用当前语言的文档注释风格，不能把一种语言的格式硬套到另一种语言。例子：Kotlin 字段和属性说明使用 KDoc `/** ... */`，Rust 字段和函数说明使用 rustdoc `///`；即使用户口头说“Javadoc”，也要按目标语言选择对应的文档注释形式，并用中文写清字段语义。
 
+### Markdown 依赖维护
+
+Markdown 及其 LaTeX、CodeHigh 支持模块使用已发布的 Maven 构件，不得恢复应用内的副本或重复引入旧坐标。版本、包名和更新流程以 `docs/markdown-library-dependency.md` 为准。
+
 ## 构建与测试
 
 ```bash
