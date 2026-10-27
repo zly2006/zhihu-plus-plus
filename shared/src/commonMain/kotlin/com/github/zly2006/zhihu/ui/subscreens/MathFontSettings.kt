@@ -85,10 +85,9 @@ internal fun MathFontSettings() {
                     }
                 }
             }
-            OutlinedButton(onClick = { picker?.invoke() }, enabled = picker != null && !busy, modifier = Modifier.testTag("mathFont.import")) {
+            OutlinedButton(onClick = picker, enabled = !busy, modifier = Modifier.testTag("mathFont.import")) {
                 Text(if (busy) "正在导入…" else "导入字体")
             }
         }
-        if (picker == null) Text("当前平台暂不支持导入字体。")
     }
 }

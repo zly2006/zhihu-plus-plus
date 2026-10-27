@@ -90,7 +90,7 @@ internal actual fun rememberFilePicker(
     mimeTypes: List<String>,
     extensions: List<String>,
     onPicked: (() -> Pair<String, RawSource>) -> Unit,
-): (() -> Unit)? = {
+): () -> Unit = {
     val panel = NSOpenPanel.openPanel()
     panel.title = title
     panel.canChooseFiles = true
