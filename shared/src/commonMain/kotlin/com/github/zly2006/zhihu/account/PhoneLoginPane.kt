@@ -61,6 +61,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
@@ -74,6 +75,7 @@ expect fun decodePhoneLoginCaptchaImage(content: String): ImageBitmap?
 @Composable
 fun PhoneLoginPane(onLoginSuccess: (String) -> Unit) {
     val accountStore = rememberZhihuAccountStore()
+    val userMessages = rememberUserMessageSink()
     val loginClient = remember { ZhihuPhoneLoginClient() }
     DisposableEffect(loginClient) {
         onDispose(loginClient::close)
@@ -408,6 +410,10 @@ fun PhoneLoginPane(onLoginSuccess: (String) -> Unit) {
 
         Button(
             onClick = {
+                if (!agreementAccepted) {
+                    userMessages.showShortMessage("请先阅读并同意《知乎协议》《个人信息保护指引》")
+                    return@Button
+                }
                 scope.launch {
                     isLoggingIn = true
                     errorMessage = null
@@ -427,12 +433,9 @@ fun PhoneLoginPane(onLoginSuccess: (String) -> Unit) {
                     }
                 }
             },
-            enabled = agreementAccepted &&
-                hasRequestedDigits &&
-                validPhoneNumber &&
-                digits.length == 6 &&
-                !isSendingDigits &&
-                !isLoggingIn,
+            enabled = !isSendingDigits &&
+                !isLoggingIn &&
+                (!agreementAccepted || (hasRequestedDigits && validPhoneNumber && digits.length == 6)),
             modifier = Modifier
                 .fillMaxWidth()
                 .testTag("phone_login_submit"),
