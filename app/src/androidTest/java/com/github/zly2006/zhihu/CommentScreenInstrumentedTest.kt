@@ -516,6 +516,7 @@ class CommentScreenInstrumentedTest {
             commentText: String,
             environment: ZhihuApiEnvironment,
             replyToCommentId: String?,
+            syncToPin: Boolean,
             onSuccess: () -> Unit,
         ) = Unit
     }
@@ -549,6 +550,7 @@ class CommentScreenInstrumentedTest {
             commentText: String,
             environment: ZhihuApiEnvironment,
             replyToCommentId: String?,
+            syncToPin: Boolean,
             onSuccess: () -> Unit,
         ) {
             submissions += Submission(commentText, replyToCommentId)

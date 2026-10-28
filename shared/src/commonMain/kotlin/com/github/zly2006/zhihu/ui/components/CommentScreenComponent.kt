@@ -88,6 +88,9 @@ fun CommentScreenComponent(
     var commentDrafts by rememberSaveable(contentStateKey) {
         mutableStateOf<Map<String, String>>(emptyMap())
     }
+    var commentSyncToPinDrafts by rememberSaveable(contentStateKey) {
+        mutableStateOf<Set<String>>(emptySet())
+    }
     var rootListResetToken by rememberSaveable(contentStateKey) { mutableIntStateOf(0) }
     val rootListState = rememberSaveable(
         contentStateKey,
@@ -144,6 +147,14 @@ fun CommentScreenComponent(
         }
     }
 
+    fun updateCommentSyncToPin(key: String, value: Boolean) {
+        commentSyncToPinDrafts = if (value) {
+            commentSyncToPinDrafts + key
+        } else {
+            commentSyncToPinDrafts - key
+        }
+    }
+
     if (commentsVisible) {
         MyModalBottomSheet(
             onDismissRequest = { dismissRootComments() },
@@ -167,6 +178,8 @@ fun CommentScreenComponent(
                 },
                 commentInput = commentDrafts[contentStateKey].orEmpty(),
                 onCommentInputChange = { updateCommentDraft(contentStateKey, it) },
+                syncToPin = contentStateKey in commentSyncToPinDrafts,
+                onSyncToPinChange = { updateCommentSyncToPin(contentStateKey, it) },
                 listState = rootListState,
                 pageTurnEnabled =
                     (content is Article || content is Pin) &&
@@ -203,6 +216,8 @@ fun CommentScreenComponent(
                 onChildCommentClick = { },
                 commentInput = commentDrafts[childDraftKey].orEmpty(),
                 onCommentInputChange = { updateCommentDraft(childDraftKey, it) },
+                syncToPin = childDraftKey in commentSyncToPinDrafts,
+                onSyncToPinChange = { updateCommentSyncToPin(childDraftKey, it) },
                 listState = childListState,
                 initialComment = pendingChildComment,
                 pageTurnEnabled = childTarget.article is Article || childTarget.article is Pin,

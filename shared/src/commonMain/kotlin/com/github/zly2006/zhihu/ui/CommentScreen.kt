@@ -76,6 +76,7 @@ import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -188,6 +189,7 @@ const val COMMENT_EMOJI_BUTTON_TAG = "comment_emoji_button"
 const val COMMENT_EMOJI_PICKER_TAG = "comment_emoji_picker"
 const val COMMENT_EMOJI_ITEM_TAG_PREFIX = "comment_emoji_item_"
 const val COMMENT_SEND_BUTTON_TAG = "comment_send_button"
+const val COMMENT_SYNC_TO_PIN_TAG = "comment_sync_to_pin"
 const val COMMENT_SORT_SCORE_TAG = "comment_sort_score"
 const val COMMENT_SORT_TIME_TAG = "comment_sort_time"
 const val COMMENT_IMAGE_MENU_OPEN_TAG = "comment_image_menu_open"
@@ -443,6 +445,8 @@ fun CommentScreen(
     onChildCommentClick: (CommentModel) -> Unit,
     commentInput: String,
     onCommentInputChange: (String) -> Unit,
+    syncToPin: Boolean = false,
+    onSyncToPinChange: (Boolean) -> Unit = {},
     listState: LazyListState = rememberLazyListState(),
     initialComment: DataHolder.Comment? = null,
     onInitialChildCommentResolved: (CommentModel, DataHolder.Comment) -> Unit = { _, _ -> },
@@ -658,11 +662,13 @@ fun CommentScreen(
             commentText = commentFieldValue.text,
             environment = paginationEnvironment,
             replyToCommentId = replyToComment?.item?.id,
+            syncToPin = syncToPin && rootContent !is SegmentCommentHolder,
         ) {
             focusManager.clearFocus(force = true)
             keyboardController?.hide()
             commentFieldValue = TextFieldValue("")
             onCommentInputChange("")
+            onSyncToPinChange(false)
             replyToComment = null
             showEmojiPicker = false
             isSending = false
@@ -1134,6 +1140,31 @@ fun CommentScreen(
                                     color = MaterialTheme.colorScheme.onSurface,
                                 ),
                             )
+
+                            if (rootContent !is SegmentCommentHolder) {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Row(
+                                    modifier = Modifier
+                                        .clickable(enabled = !isSending) {
+                                            onSyncToPinChange(!syncToPin)
+                                        }.testTag(COMMENT_SYNC_TO_PIN_TAG),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Checkbox(
+                                        checked = syncToPin,
+                                        onCheckedChange = null,
+                                        enabled = !isSending,
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "同时发布到想法",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                            }
 
                             IconButton(
                                 onClick = { submitComment() },

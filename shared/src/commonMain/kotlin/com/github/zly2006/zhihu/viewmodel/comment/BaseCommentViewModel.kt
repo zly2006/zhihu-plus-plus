@@ -118,6 +118,7 @@ abstract class BaseCommentViewModel(
         commentText: String,
         environment: ZhihuApiEnvironment,
         replyToCommentId: String? = null,
+        syncToPin: Boolean = false,
         onSuccess: () -> Unit,
     )
 
