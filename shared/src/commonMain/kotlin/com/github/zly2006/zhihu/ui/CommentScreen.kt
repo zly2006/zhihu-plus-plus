@@ -56,7 +56,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -116,7 +115,6 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
@@ -447,6 +445,8 @@ fun CommentScreen(
     onChildCommentClick: (CommentModel) -> Unit,
     commentInput: String,
     onCommentInputChange: (String) -> Unit,
+    syncToPin: Boolean = false,
+    onSyncToPinChange: (Boolean) -> Unit = {},
     listState: LazyListState = rememberLazyListState(),
     initialComment: DataHolder.Comment? = null,
     onInitialChildCommentResolved: (CommentModel, DataHolder.Comment) -> Unit = { _, _ -> },
@@ -461,7 +461,6 @@ fun CommentScreen(
     val resolvedContent = content()
     var isSending by remember { mutableStateOf(false) }
     var replyToComment by remember { mutableStateOf<CommentModel?>(null) }
-    var syncToPin by remember(resolvedContent) { mutableStateOf(false) }
     var showEmojiPicker by remember { mutableStateOf(false) }
     var commentPendingDeletion by remember { mutableStateOf<CommentModel?>(null) }
     var isDeletingComment by remember { mutableStateOf(false) }
@@ -513,7 +512,7 @@ fun CommentScreen(
             ChildCommentViewModel(resolvedContent, initialComment)
         }
 
-        else -> viewModel<BaseCommentViewModel>(key = viewModelKey) {
+        else -> viewModel(key = viewModelKey) {
             RootCommentViewModel(resolvedContent, initialCommentId).apply {
                 sortOrder = when (initialReadingCommentOrder) {
                     ReadingCommentOrder.Score -> CommentSortOrder.SCORE
@@ -669,8 +668,8 @@ fun CommentScreen(
             keyboardController?.hide()
             commentFieldValue = TextFieldValue("")
             onCommentInputChange("")
+            onSyncToPinChange(false)
             replyToComment = null
-            syncToPin = false
             showEmojiPicker = false
             isSending = false
             coroutineScope.launch {
@@ -1068,12 +1067,7 @@ fun CommentScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .heightIn(min = 40.dp, max = 140.dp)
-                                .padding(
-                                    start = 8.dp,
-                                    top = 8.dp,
-                                    end = 8.dp,
-                                    bottom = if (rootContent is SegmentCommentHolder) 8.dp else 4.dp,
-                                ),
+                                .padding(8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             IconButton(
@@ -1147,6 +1141,31 @@ fun CommentScreen(
                                 ),
                             )
 
+                            if (rootContent !is SegmentCommentHolder) {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Row(
+                                    modifier = Modifier
+                                        .clickable(enabled = !isSending) {
+                                            onSyncToPinChange(!syncToPin)
+                                        }.testTag(COMMENT_SYNC_TO_PIN_TAG),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Checkbox(
+                                        checked = syncToPin,
+                                        onCheckedChange = null,
+                                        enabled = !isSending,
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "同时发布到想法",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                            }
+
                             IconButton(
                                 onClick = { submitComment() },
                                 modifier = Modifier
@@ -1169,43 +1188,6 @@ fun CommentScreen(
                                         } else {
                                             MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                                         },
-                                    )
-                                }
-                            }
-                        }
-
-                        if (rootContent !is SegmentCommentHolder) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 12.dp)
-                                    .padding(bottom = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(6.dp))
-                                        .toggleable(
-                                            value = syncToPin,
-                                            enabled = !isSending,
-                                            role = Role.Checkbox,
-                                            onValueChange = { syncToPin = it },
-                                        ).padding(horizontal = 4.dp, vertical = 2.dp)
-                                        .testTag(COMMENT_SYNC_TO_PIN_TAG),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Checkbox(
-                                        checked = syncToPin,
-                                        onCheckedChange = null,
-                                        enabled = !isSending,
-                                        modifier = Modifier.size(18.dp),
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = "同时发布到想法",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1,
                                     )
                                 }
                             }

@@ -60,6 +60,7 @@ class RootCommentViewModelTest {
         assertEquals("39", position["end"]!!.jsonObject["offset"]!!.jsonPrimitive.content)
         assertEquals("KFR9BNtv", position["end"]!!.jsonObject["paragraph_id"]!!.jsonPrimitive.content)
         assertFalse("segment_id" in body)
+        assertFalse("selected_settings" in body)
     }
 
     @Test

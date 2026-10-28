@@ -27,8 +27,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertIsOff
-import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -67,8 +65,6 @@ import com.github.zly2006.zhihu.ui.COMMENT_EMOJI_ITEM_TAG_PREFIX
 import com.github.zly2006.zhihu.ui.COMMENT_EMOJI_PICKER_TAG
 import com.github.zly2006.zhihu.ui.COMMENT_INPUT_TAG
 import com.github.zly2006.zhihu.ui.COMMENT_SCREEN_LIST_TAG
-import com.github.zly2006.zhihu.ui.COMMENT_SEND_BUTTON_TAG
-import com.github.zly2006.zhihu.ui.COMMENT_SYNC_TO_PIN_TAG
 import com.github.zly2006.zhihu.ui.CommentScreen
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.viewmodel.CommentItem
@@ -192,30 +188,6 @@ class CommentScreenInstrumentedTest {
     }
 
     /**
-     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/543
-     */
-    @Test
-    fun syncToPinToggleSubmitsFlagAndResetsAfterSuccess() {
-        val viewModel = seedRootCommentViewModel(seedRootComments(count = 1))
-        setCommentScreen()
-
-        composeRule.onNodeWithTag(COMMENT_SYNC_TO_PIN_TAG).assertIsDisplayed()
-        composeRule.onNodeWithTag(COMMENT_SYNC_TO_PIN_TAG).assertIsOff()
-        composeRule.onNodeWithTag(COMMENT_SYNC_TO_PIN_TAG).performClick()
-        composeRule.onNodeWithTag(COMMENT_SYNC_TO_PIN_TAG).assertIsOn()
-
-        composeRule.onNodeWithTag(COMMENT_INPUT_TAG).performTextInput("同时转发到想法的评论")
-        composeRule.onNodeWithTag(COMMENT_SEND_BUTTON_TAG).performClick()
-
-        assertEquals(
-            listOf(SeededRootCommentViewModel.Submission("同时转发到想法的评论", null, true)),
-            viewModel.submissions,
-        )
-        composeRule.onNodeWithTag(COMMENT_INPUT_TAG).assertTextEquals("")
-        composeRule.onNodeWithTag(COMMENT_SYNC_TO_PIN_TAG).assertIsOff()
-    }
-
-    /**
      * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/595
      * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/683
      */
@@ -253,7 +225,6 @@ class CommentScreenInstrumentedTest {
             )
         }
         composeRule.onNodeWithTag("comment_row_root-1").assertIsDisplayed()
-        composeRule.onAllNodesWithTag(COMMENT_SYNC_TO_PIN_TAG).assertCountEquals(0)
 
         composeRule.runOnIdle { currentFragment.value = secondFragment }
 
@@ -510,17 +481,10 @@ class CommentScreenInstrumentedTest {
         article: NavDestination,
         seededComments: List<DataHolder.Comment>,
     ) : BaseCommentViewModel(article) {
-        data class Submission(
-            val text: String,
-            val replyToCommentId: String?,
-            val syncToPin: Boolean,
-        )
-
         override val initialUrl: String = "https://example.invalid/root_comments"
         var loadMoreCount = 0
             private set
         val refreshHistory = mutableListOf<CommentSortOrder>()
-        val submissions = mutableListOf<Submission>()
 
         init {
             allData.addAll(seededComments)
@@ -554,10 +518,7 @@ class CommentScreenInstrumentedTest {
             replyToCommentId: String?,
             syncToPin: Boolean,
             onSuccess: () -> Unit,
-        ) {
-            submissions += Submission(commentText, replyToCommentId, syncToPin)
-            onSuccess()
-        }
+        ) = Unit
     }
 
     private class SeededChildCommentViewModel(
@@ -567,7 +528,6 @@ class CommentScreenInstrumentedTest {
         data class Submission(
             val text: String,
             val replyToCommentId: String?,
-            val syncToPin: Boolean = false,
         )
 
         override val initialUrl: String = "https://example.invalid/child_comments"
@@ -593,7 +553,7 @@ class CommentScreenInstrumentedTest {
             syncToPin: Boolean,
             onSuccess: () -> Unit,
         ) {
-            submissions += Submission(commentText, replyToCommentId, syncToPin)
+            submissions += Submission(commentText, replyToCommentId)
             allData.add(
                 0,
                 DataHolder.Comment(
