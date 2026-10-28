@@ -25,19 +25,25 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -55,6 +61,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
@@ -68,12 +75,19 @@ expect fun decodePhoneLoginCaptchaImage(content: String): ImageBitmap?
 @Composable
 fun PhoneLoginPane(onLoginSuccess: (String) -> Unit) {
     val accountStore = rememberZhihuAccountStore()
+    val userMessages = rememberUserMessageSink()
     val loginClient = remember { ZhihuPhoneLoginClient() }
     DisposableEffect(loginClient) {
         onDispose(loginClient::close)
     }
 
     val scope = rememberCoroutineScope()
+    var country by remember { mutableStateOf(ZhihuPhoneCountry("中国", "+86")) }
+    var countries by remember { mutableStateOf<List<ZhihuPhoneCountry>>(emptyList()) }
+    var showCountries by remember { mutableStateOf(false) }
+    var countrySearch by remember { mutableStateOf("") }
+    var countriesError by remember { mutableStateOf<String?>(null) }
+    var countriesAttempt by remember { mutableIntStateOf(0) }
     var phoneNumber by remember { mutableStateOf("") }
     var digits by remember { mutableStateOf("") }
     var captchaInput by remember { mutableStateOf("") }
@@ -86,6 +100,77 @@ fun PhoneLoginPane(onLoginSuccess: (String) -> Unit) {
     var resendSeconds by remember { mutableIntStateOf(0) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
+    val validPhoneNumber = runCatching { normalizePhoneNumber(phoneNumber, country.code) }.isSuccess
+    LaunchedEffect(phoneNumber, country) {
+        digits = ""
+        hasRequestedDigits = false
+        captchaRequired = false
+        captchaImageBase64 = null
+        captchaInput = ""
+        errorMessage = null
+    }
+    LaunchedEffect(showCountries, countriesAttempt) {
+        if (showCountries && countries.isEmpty()) {
+            countriesError = null
+            try {
+                countries = loginClient.supportedCountries()
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                countriesError = error.message ?: "加载国家/地区失败"
+            }
+        }
+    }
+    if (showCountries) {
+        AlertDialog(
+            onDismissRequest = { showCountries = false },
+            title = { Text("选择国家/地区") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = countrySearch,
+                        onValueChange = { countrySearch = it },
+                        label = { Text("搜索名称或区号") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().testTag("phone_login_country_search"),
+                    )
+                    when {
+                        countries.isNotEmpty() -> {
+                            val matches = countries.filter {
+                                it.name.contains(countrySearch.trim(), ignoreCase = true) ||
+                                    it.code.contains(countrySearch.trim())
+                            }
+                            if (matches.isEmpty()) {
+                                Text("没有匹配的国家/地区")
+                            }
+                            LazyColumn(Modifier.heightIn(max = 360.dp)) {
+                                items(matches, key = { it.name }) { option ->
+                                    ListItem(
+                                        headlineContent = { Text(option.name) },
+                                        trailingContent = { Text(option.code) },
+                                        modifier = Modifier
+                                            .clickable {
+                                                country = option
+                                                showCountries = false
+                                            }.testTag("phone_login_country_${option.name}"),
+                                    )
+                                }
+                            }
+                        }
+                        countriesError != null -> {
+                            Text(countriesError.orEmpty(), color = MaterialTheme.colorScheme.error)
+                            TextButton(onClick = { countriesAttempt++ }) { Text("重试") }
+                        }
+                        else -> CircularProgressIndicator()
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showCountries = false }) { Text("取消") }
+            },
+        )
+    }
+
     LaunchedEffect(resendSeconds) {
         if (resendSeconds > 0) {
             delay(1_000)
@@ -97,7 +182,7 @@ fun PhoneLoginPane(onLoginSuccess: (String) -> Unit) {
         errorMessage = null
         isSendingDigits = true
         try {
-            when (val result = loginClient.requestDigits(phoneNumber)) {
+            when (val result = loginClient.requestDigits(phoneNumber, country.code)) {
                 ZhihuPhoneDigitsResult.Sent -> {
                     hasRequestedDigits = true
                     captchaRequired = false
@@ -161,18 +246,20 @@ fun PhoneLoginPane(onLoginSuccess: (String) -> Unit) {
         OutlinedTextField(
             value = phoneNumber,
             onValueChange = { value ->
-                val nextPhoneNumber = value.filter(Char::isDigit).take(11)
-                if (phoneNumber != nextPhoneNumber) {
-                    phoneNumber = nextPhoneNumber
-                    digits = ""
-                    hasRequestedDigits = false
-                    captchaRequired = false
-                    captchaImageBase64 = null
-                    captchaInput = ""
-                }
+                phoneNumber = value.filter { it in '0'..'9' || it == '+' }.take(16)
             },
             label = { Text("手机号") },
-            leadingIcon = { Text("+86") },
+            leadingIcon = {
+                TextButton(
+                    onClick = {
+                        countrySearch = ""
+                        showCountries = true
+                    },
+                    enabled = !isSendingDigits && !isLoggingIn,
+                    modifier = Modifier.testTag("phone_login_country"),
+                ) { Text(country.code) }
+            },
+            enabled = !isSendingDigits && !isLoggingIn,
             singleLine = true,
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Phone,
@@ -280,7 +367,7 @@ fun PhoneLoginPane(onLoginSuccess: (String) -> Unit) {
             Button(
                 onClick = { scope.launch { sendDigits() } },
                 enabled = agreementAccepted &&
-                    phoneNumber.length == 11 &&
+                    validPhoneNumber &&
                     resendSeconds == 0 &&
                     !isSendingDigits &&
                     !isLoggingIn,
@@ -323,11 +410,15 @@ fun PhoneLoginPane(onLoginSuccess: (String) -> Unit) {
 
         Button(
             onClick = {
+                if (!agreementAccepted) {
+                    userMessages.showShortMessage("请先阅读并同意《知乎协议》《个人信息保护指引》")
+                    return@Button
+                }
                 scope.launch {
                     isLoggingIn = true
                     errorMessage = null
                     try {
-                        val token = loginClient.signIn(phoneNumber, digits)
+                        val token = loginClient.signIn(phoneNumber, digits, country.code)
                         if (accountStore.login(token)) {
                             onLoginSuccess(accountStore.session.username)
                         } else {
@@ -342,12 +433,9 @@ fun PhoneLoginPane(onLoginSuccess: (String) -> Unit) {
                     }
                 }
             },
-            enabled = agreementAccepted &&
-                hasRequestedDigits &&
-                phoneNumber.length == 11 &&
-                digits.length == 6 &&
-                !isSendingDigits &&
-                !isLoggingIn,
+            enabled = !isSendingDigits &&
+                !isLoggingIn &&
+                (!agreementAccepted || (hasRequestedDigits && validPhoneNumber && digits.length == 6)),
             modifier = Modifier
                 .fillMaxWidth()
                 .testTag("phone_login_submit"),
