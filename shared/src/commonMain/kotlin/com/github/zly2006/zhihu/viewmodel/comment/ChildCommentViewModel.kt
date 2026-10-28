@@ -33,8 +33,6 @@ import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
 
 /**
  * 注意：此view model不按照正常VM生命期管理，不要使用viewModel()函数创建
@@ -75,6 +73,7 @@ class ChildCommentViewModel(
         commentText: String,
         environment: ZhihuApiEnvironment,
         replyToCommentId: String?,
+        syncToPin: Boolean,
         onSuccess: () -> Unit,
     ) {
         val commentHolder = content as CommentHolder
@@ -82,14 +81,11 @@ class ChildCommentViewModel(
 
         viewModelScope.launch {
             try {
-                // Escape HTML special characters to prevent HTML injection
-                val escapedText = commentText.escapeCommentHtml()
-
-                // Use buildJsonObject to properly escape JSON special characters
-                val requestBody = buildJsonObject {
-                    put("content", "<p>$escapedText</p>")
-                    put("reply_comment_id", replyToCommentId ?: commentHolder.commentId)
-                }
+                val requestBody = commentHolder.buildSubmitCommentBody(
+                    commentText = commentText,
+                    replyToCommentId = replyToCommentId,
+                    syncToPin = syncToPin,
+                )
 
                 val response = environment.postSigned(commentHolder.article.submitCommentUrl) {
                     contentType(ContentType.Application.Json)

@@ -56,6 +56,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -76,6 +77,7 @@ import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -114,6 +116,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
@@ -188,6 +191,7 @@ const val COMMENT_EMOJI_BUTTON_TAG = "comment_emoji_button"
 const val COMMENT_EMOJI_PICKER_TAG = "comment_emoji_picker"
 const val COMMENT_EMOJI_ITEM_TAG_PREFIX = "comment_emoji_item_"
 const val COMMENT_SEND_BUTTON_TAG = "comment_send_button"
+const val COMMENT_SYNC_TO_PIN_TAG = "comment_sync_to_pin"
 const val COMMENT_SORT_SCORE_TAG = "comment_sort_score"
 const val COMMENT_SORT_TIME_TAG = "comment_sort_time"
 const val COMMENT_IMAGE_MENU_OPEN_TAG = "comment_image_menu_open"
@@ -457,6 +461,7 @@ fun CommentScreen(
     val resolvedContent = content()
     var isSending by remember { mutableStateOf(false) }
     var replyToComment by remember { mutableStateOf<CommentModel?>(null) }
+    var syncToPin by remember(resolvedContent) { mutableStateOf(false) }
     var showEmojiPicker by remember { mutableStateOf(false) }
     var commentPendingDeletion by remember { mutableStateOf<CommentModel?>(null) }
     var isDeletingComment by remember { mutableStateOf(false) }
@@ -508,7 +513,7 @@ fun CommentScreen(
             ChildCommentViewModel(resolvedContent, initialComment)
         }
 
-        else -> viewModel(key = viewModelKey) {
+        else -> viewModel<BaseCommentViewModel>(key = viewModelKey) {
             RootCommentViewModel(resolvedContent, initialCommentId).apply {
                 sortOrder = when (initialReadingCommentOrder) {
                     ReadingCommentOrder.Score -> CommentSortOrder.SCORE
@@ -658,12 +663,14 @@ fun CommentScreen(
             commentText = commentFieldValue.text,
             environment = paginationEnvironment,
             replyToCommentId = replyToComment?.item?.id,
+            syncToPin = syncToPin && rootContent !is SegmentCommentHolder,
         ) {
             focusManager.clearFocus(force = true)
             keyboardController?.hide()
             commentFieldValue = TextFieldValue("")
             onCommentInputChange("")
             replyToComment = null
+            syncToPin = false
             showEmojiPicker = false
             isSending = false
             coroutineScope.launch {
@@ -1061,7 +1068,12 @@ fun CommentScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .heightIn(min = 40.dp, max = 140.dp)
-                                .padding(8.dp),
+                                .padding(
+                                    start = 8.dp,
+                                    top = 8.dp,
+                                    end = 8.dp,
+                                    bottom = if (rootContent is SegmentCommentHolder) 8.dp else 4.dp,
+                                ),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             IconButton(
@@ -1157,6 +1169,43 @@ fun CommentScreen(
                                         } else {
                                             MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                                         },
+                                    )
+                                }
+                            }
+                        }
+
+                        if (rootContent !is SegmentCommentHolder) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp)
+                                    .padding(bottom = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .toggleable(
+                                            value = syncToPin,
+                                            enabled = !isSending,
+                                            role = Role.Checkbox,
+                                            onValueChange = { syncToPin = it },
+                                        ).padding(horizontal = 4.dp, vertical = 2.dp)
+                                        .testTag(COMMENT_SYNC_TO_PIN_TAG),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Checkbox(
+                                        checked = syncToPin,
+                                        onCheckedChange = null,
+                                        enabled = !isSending,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "同时发布到想法",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
                                     )
                                 }
                             }
