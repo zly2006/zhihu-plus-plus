@@ -1,0 +1,40 @@
+body {
+    width: 280px;
+    margin: 0;
+    padding: 14px;
+    color: #1f2328;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    font-size: 14px;
+    background: #fff;
+}
+
+.header {
+    margin-bottom: 8px;
+    color: #646a73;
+    font-size: 12px;
+}
+
+#status {
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.45;
+}
+
+#hint {
+    margin-top: 6px;
+    color: #8a919c;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+#login {
+    width: 100%;
+    margin-top: 12px;
+    padding: 8px 0;
+    border: 0;
+    border-radius: 18px;
+    color: #fff;
+    font-size: 14px;
+    background: #0066ff;
+    cursor: pointer;
+}

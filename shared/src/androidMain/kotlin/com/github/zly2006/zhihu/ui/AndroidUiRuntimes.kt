@@ -58,6 +58,7 @@ import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.util.EmojiManager
 import com.github.zly2006.zhihu.util.Log
+import com.github.zly2006.zhihu.util.OPEN_IN_BROWSER_PLUGIN_VERSION
 import com.github.zly2006.zhihu.util.OpenInBrowser
 import com.github.zly2006.zhihu.util.createEmojiInlineContent
 import com.github.zly2006.zhihu.util.fuckHonorService
@@ -164,7 +165,9 @@ actual fun rememberArticleBrowserOpener(): ArticleBrowserOpener {
             override fun invoke(article: Article) {
                 coroutineScope.launch {
                     OpenInBrowser.openUrlInBrowser(context, article)
-                    userMessages.showMessage("已发送到浏览器")
+                    userMessages.showMessage(
+                        "已发送到电脑。请使用最新版浏览器扩展（v$OPEN_IN_BROWSER_PLUGIN_VERSION）打开；如果长时间没反应，请检查电脑浏览器是否登录了与手机相同的知乎账号。",
+                    )
                 }
             }
         }
