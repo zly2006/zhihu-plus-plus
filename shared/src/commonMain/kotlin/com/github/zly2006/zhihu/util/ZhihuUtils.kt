@@ -115,7 +115,9 @@ fun formatRelativeTime(
             val dateTime = Instant
                 .fromEpochSeconds(epochSeconds)
                 .toLocalDateTime(timeZone)
-            "${(dateTime.month.ordinal + 1).twoDigitString()}-${dateTime.day.twoDigitString()} ${dateTime.hour.twoDigitString()}:${dateTime.minute.twoDigitString()}"
+            val currentYear = Instant.fromEpochSeconds(nowEpochSeconds).toLocalDateTime(timeZone).year
+            val yearPrefix = if (dateTime.year == currentYear) "" else "${dateTime.year}-"
+            "$yearPrefix${(dateTime.month.ordinal + 1).twoDigitString()}-${dateTime.day.twoDigitString()} ${dateTime.hour.twoDigitString()}:${dateTime.minute.twoDigitString()}"
         }
     }
 }
