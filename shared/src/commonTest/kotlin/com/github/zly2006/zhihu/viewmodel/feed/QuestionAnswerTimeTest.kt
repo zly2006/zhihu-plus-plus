@@ -48,6 +48,6 @@ class QuestionAnswerTimeTest {
             object : FeedDisplayEnvironment {},
             CommonFeed(id = "answer-1", target = answer),
         )
-        assertTrue(item.details.endsWith(" · $year-03-22 19:07"), item.details)
+        assertTrue(item.details.endsWith(" · $year-03-22"), item.details)
     }
 }

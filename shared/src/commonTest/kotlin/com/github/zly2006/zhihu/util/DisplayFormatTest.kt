@@ -54,9 +54,9 @@ class DisplayFormatTest {
     }
 
     @Test
-    fun absoluteTimeDistinguishesYearsWithoutDroppingMinutes() {
+    fun absoluteTimeUsesDateOnlyForOtherYears() {
         val now = LocalDateTime(2026, 11, 2, 12, 0).toInstant(TimeZone.UTC).epochSeconds
-        for ((year, expected) in listOf(2026 to "03-22 19:07", 2025 to "2025-03-22 19:07")) {
+        for ((year, expected) in listOf(2026 to "03-22 19:07", 2025 to "2025-03-22")) {
             val timestamp = LocalDateTime(year, 3, 22, 19, 7).toInstant(TimeZone.UTC).epochSeconds
             assertEquals(expected, formatRelativeTime(timestamp, now, TimeZone.UTC))
         }
@@ -66,9 +66,9 @@ class DisplayFormatTest {
     fun absoluteTimeComparesYearsInTheDisplayTimeZone() {
         val now = LocalDateTime(2026, 1, 1, 0, 30).toInstant(TimeZone.UTC).epochSeconds
         val timestamp = LocalDateTime(2025, 12, 20, 12, 0).toInstant(TimeZone.UTC).epochSeconds
-        assertEquals("2025-12-20 12:00", formatRelativeTime(timestamp, now, TimeZone.UTC))
+        assertEquals("2025-12-20", formatRelativeTime(timestamp, now, TimeZone.UTC))
         assertEquals("12-20 04:00", formatRelativeTime(timestamp, now, TimeZone.of("America/Los_Angeles")))
-        assertEquals("2025-12-20 20:00", formatRelativeTime(timestamp, now, TimeZone.of("Asia/Shanghai")))
+        assertEquals("2025-12-20", formatRelativeTime(timestamp, now, TimeZone.of("Asia/Shanghai")))
         assertEquals("2天前", formatRelativeTime(now - 172_800, now, TimeZone.UTC))
     }
 
