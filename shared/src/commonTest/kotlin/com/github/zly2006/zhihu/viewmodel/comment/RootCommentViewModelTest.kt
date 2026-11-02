@@ -17,8 +17,12 @@
 
 package com.github.zly2006.zhihu.viewmodel.comment
 
+import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.ArticleType
+import com.github.zly2006.zhihu.navigation.CommentHolder
 import com.github.zly2006.zhihu.navigation.SegmentCommentHolder
 import com.github.zly2006.zhihu.viewmodel.comment.RootCommentViewModel.Companion.submitCommentUrl
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
@@ -43,7 +47,7 @@ class RootCommentViewModelTest {
             target.submitCommentUrl,
         )
 
-        val body = target.buildSubmitCommentBody("，", replyToCommentId = null)
+        val body = target.buildSubmitCommentBody("，", replyToCommentId = null, syncToPin = true)
         val segment = body["segment"]!!.jsonObject
         val position = segment["position"]!!.jsonObject
 
@@ -56,5 +60,40 @@ class RootCommentViewModelTest {
         assertEquals("39", position["end"]!!.jsonObject["offset"]!!.jsonPrimitive.content)
         assertEquals("KFR9BNtv", position["end"]!!.jsonObject["paragraph_id"]!!.jsonPrimitive.content)
         assertFalse("segment_id" in body)
+        assertFalse("selected_settings" in body)
+    }
+
+    @Test
+    fun normalCommentIncludesPublishSyncPinSettingOnlyWhenEnabled() {
+        val article = Article(type = ArticleType.Answer, id = 9001L)
+
+        val defaultBody = article.buildSubmitCommentBody("普通评论", replyToCommentId = null)
+        assertEquals("<p>普通评论</p>", defaultBody["content"]!!.jsonPrimitive.content)
+        assertFalse("reply_comment_id" in defaultBody)
+        assertFalse("selected_settings" in defaultBody)
+
+        val syncedRootBody = article.buildSubmitCommentBody(
+            commentText = "转发到想法的评论",
+            replyToCommentId = null,
+            syncToPin = true,
+        )
+        assertEquals("<p>转发到想法的评论</p>", syncedRootBody["content"]!!.jsonPrimitive.content)
+        assertEquals(
+            listOf("publish_sync_pin"),
+            syncedRootBody["selected_settings"]!!.jsonArray.map { it.jsonPrimitive.content },
+        )
+
+        val childHolder = CommentHolder(commentId = "root-comment-1", article = article)
+        val syncedChildBody = childHolder.buildSubmitCommentBody(
+            commentText = "子评论同步想法",
+            replyToCommentId = null,
+            syncToPin = true,
+        )
+        assertEquals("<p>子评论同步想法</p>", syncedChildBody["content"]!!.jsonPrimitive.content)
+        assertEquals("root-comment-1", syncedChildBody["reply_comment_id"]!!.jsonPrimitive.content)
+        assertEquals(
+            listOf("publish_sync_pin"),
+            syncedChildBody["selected_settings"]!!.jsonArray.map { it.jsonPrimitive.content },
+        )
     }
 }

@@ -54,7 +54,9 @@ import com.github.zly2006.zhihu.theme.Typography
 import com.github.zly2006.zhihu.ui.CommentScreen
 import com.github.zly2006.zhihu.ui.commentThreadKey
 import com.github.zly2006.zhihu.ui.consumePendingCommentId
+import com.github.zly2006.zhihu.ui.rememberAccountSettingsAccountState
 import com.github.zly2006.zhihu.viewmodel.CommentItem
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 
@@ -78,15 +80,16 @@ fun CommentScreenComponent(
     var authorCommentPolicyAcknowledged by remember {
         mutableStateOf(settings.getBoolean(ZH_PLUS_AUTHOR_COMMENT_POLICY_ACKNOWLEDGED_KEY, false))
     }
-    val contentStateKey = content.commentThreadKey()
+    val accountId = rememberAccountSettingsAccountState().value.id
+    val contentStateKey = "$accountId:${content.commentThreadKey()}"
     var activeChildComment by rememberSaveable(contentStateKey, saver = activeChildCommentSaver) {
         mutableStateOf<CommentItem?>(null)
     }
     var pendingChildComment by remember(contentStateKey) {
         mutableStateOf<DataHolder.Comment?>(null)
     }
-    var commentDrafts by rememberSaveable(contentStateKey) {
-        mutableStateOf<Map<String, String>>(emptyMap())
+    var commentDrafts by rememberSaveable(contentStateKey, saver = commentDraftsSaver) {
+        mutableStateOf<Map<String, CommentDraft>>(emptyMap())
     }
     var rootListResetToken by rememberSaveable(contentStateKey) { mutableIntStateOf(0) }
     val rootListState = rememberSaveable(
@@ -136,12 +139,8 @@ fun CommentScreenComponent(
         onDismiss()
     }
 
-    fun updateCommentDraft(key: String, value: String) {
-        commentDrafts = if (value.isEmpty()) {
-            commentDrafts - key
-        } else {
-            commentDrafts + (key to value)
-        }
+    fun updateCommentDraft(key: String, draft: CommentDraft) {
+        commentDrafts = commentDrafts + (key to draft)
     }
 
     if (commentsVisible) {
@@ -165,8 +164,15 @@ fun CommentScreenComponent(
                         activeChildComment = commentItem
                     }
                 },
-                commentInput = commentDrafts[contentStateKey].orEmpty(),
-                onCommentInputChange = { updateCommentDraft(contentStateKey, it) },
+                commentInput = commentDrafts[contentStateKey]?.text.orEmpty(),
+                onCommentInputChange = {
+                    updateCommentDraft(contentStateKey, (commentDrafts[contentStateKey] ?: CommentDraft()).copy(text = it))
+                },
+                syncToPinOverride = commentDrafts[contentStateKey]?.syncToPin,
+                onSyncToPinChange = {
+                    updateCommentDraft(contentStateKey, (commentDrafts[contentStateKey] ?: CommentDraft()).copy(syncToPin = it))
+                },
+                onCommentSent = { commentDrafts = commentDrafts - contentStateKey },
                 listState = rootListState,
                 pageTurnEnabled =
                     (content is Article || content is Pin) &&
@@ -201,8 +207,15 @@ fun CommentScreenComponent(
                 content = { childTarget },
                 activeCommentItem = activeChildComment,
                 onChildCommentClick = { },
-                commentInput = commentDrafts[childDraftKey].orEmpty(),
-                onCommentInputChange = { updateCommentDraft(childDraftKey, it) },
+                commentInput = commentDrafts[childDraftKey]?.text.orEmpty(),
+                onCommentInputChange = {
+                    updateCommentDraft(childDraftKey, (commentDrafts[childDraftKey] ?: CommentDraft()).copy(text = it))
+                },
+                syncToPinOverride = commentDrafts[childDraftKey]?.syncToPin,
+                onSyncToPinChange = {
+                    updateCommentDraft(childDraftKey, (commentDrafts[childDraftKey] ?: CommentDraft()).copy(syncToPin = it))
+                },
+                onCommentSent = { commentDrafts = commentDrafts - childDraftKey },
                 listState = childListState,
                 initialComment = pendingChildComment,
                 pageTurnEnabled = childTarget.article is Article || childTarget.article is Pin,
@@ -276,4 +289,15 @@ private val activeChildCommentSaver = Saver<MutableState<CommentItem?>, List<Str
             },
         )
     },
+)
+
+@Serializable
+private data class CommentDraft(
+    val text: String = "",
+    val syncToPin: Boolean? = null,
+)
+
+private val commentDraftsSaver = Saver<MutableState<Map<String, CommentDraft>>, String>(
+    save = { ZhihuJson.json.encodeToString(it.value) },
+    restore = { mutableStateOf(ZhihuJson.json.decodeFromString<Map<String, CommentDraft>>(it)) },
 )

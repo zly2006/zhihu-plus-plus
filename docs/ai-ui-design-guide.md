@@ -99,6 +99,12 @@ URL 解析集中在 `resolveContent()`。支持知乎问题、回答、文章、
 | `use_custom_nav_host` | 自定义导航 | 持久化的技术性导航开关 | 当前主要在设置页读写；实现效果前先 `rg` 运行时读取点 |
 | `enable_predictive_back` | 预测性返回 | 持久化的 Android 14+ 返回动画开关 | 当前主要在设置页读写；实现效果前先 `rg` 运行时读取点 |
 
+### 评论发布
+
+评论输入框下方左侧的“同时发布到想法”复选框只影响本次评论；相邻箭头菜单设置后续新评论的默认行为。默认关闭，按账号持久化在 `commentSyncToPinDefault:<account-id>`，通过 `rememberObservedSetting` 实时观察。修改默认值保留当前草稿的单次选择；发送成功后新评论重新使用账号默认值。普通根评论与子回复共用此语义，段评不显示或发送同步选项。
+
+验证入口为普通评论和子回复输入栏：检查单次勾选、默认菜单、发送后继承、单次取消、弹层关闭恢复和账号隔离。稳定 tag 为 `comment_sync_to_pin`、`comment_sync_default_menu`、`comment_sync_default_off`、`comment_sync_default_on`。
+
 ### 推荐系统与内容过滤
 
 | preference key | 入口 | 主要影响 | 注意 |
