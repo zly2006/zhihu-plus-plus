@@ -84,6 +84,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -1174,28 +1176,39 @@ fun CommentScreen(
                                         ).testTag(COMMENT_SYNC_TO_PIN_TAG),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    Checkbox(checked = syncToPin, onCheckedChange = null, enabled = !isSending)
+                                    Checkbox(
+                                        checked = syncToPin,
+                                        onCheckedChange = null,
+                                        enabled = !isSending,
+                                        modifier = Modifier.padding(end = 8.dp),
+                                    )
                                     Text("同时发布到想法", style = MaterialTheme.typography.bodySmall)
                                 }
-                                Box {
-                                    IconButton(
-                                        onClick = { showSyncDefaultMenu = true },
-                                        enabled = !isSending && accountId.isNotBlank(),
-                                        modifier = Modifier.testTag(COMMENT_SYNC_DEFAULT_MENU_TAG),
+                                ExposedDropdownMenuBox(
+                                    expanded = showSyncDefaultMenu,
+                                    onExpandedChange = { showSyncDefaultMenu = it },
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(48.dp)
+                                            .menuAnchor(
+                                                ExposedDropdownMenuAnchorType.PrimaryNotEditable,
+                                                enabled = !isSending && accountId.isNotBlank(),
+                                            ).testTag(COMMENT_SYNC_DEFAULT_MENU_TAG),
+                                        contentAlignment = Alignment.CenterStart,
                                     ) {
-                                        Icon(Icons.Default.ArrowDropDown, contentDescription = "设置同步想法的默认行为")
+                                        Icon(
+                                            Icons.Default.ArrowDropDown,
+                                            contentDescription = "设置同步想法的默认行为",
+                                            modifier = Modifier.padding(start = 4.dp),
+                                        )
                                     }
-                                    DropdownMenu(
+                                    ExposedDropdownMenu(
                                         expanded = showSyncDefaultMenu,
                                         onDismissRequest = { showSyncDefaultMenu = false },
+                                        matchAnchorWidth = false,
                                     ) {
-                                        Text(
-                                            "用于后续新评论，本条仍可单独调整。",
-                                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                        listOf(false to "默认不同步", true to "默认同步到想法").forEach { (value, label) ->
+                                        listOf(false to "只同步一次", true to "默认同步到想法").forEach { (value, label) ->
                                             DropdownMenuItem(
                                                 text = { Text(label) },
                                                 leadingIcon = {
@@ -1207,8 +1220,7 @@ fun CommentScreen(
                                                 },
                                                 modifier = Modifier.testTag(if (value) COMMENT_SYNC_DEFAULT_ON_TAG else COMMENT_SYNC_DEFAULT_OFF_TAG),
                                                 onClick = {
-                                                    // 修改未来默认值时，固定当前草稿的选择，避免本次发布范围随之改变。
-                                                    onSyncToPinChange(syncToPin)
+                                                    onSyncToPinChange(true)
                                                     readingSettings.putBoolean(syncPreferenceKey, value)
                                                     defaultSyncToPin = value
                                                     showSyncDefaultMenu = false
