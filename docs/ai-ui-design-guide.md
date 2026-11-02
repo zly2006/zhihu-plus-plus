@@ -101,9 +101,9 @@ URL 解析集中在 `resolveContent()`。支持知乎问题、回答、文章、
 
 ### 评论发布
 
-评论输入框下方左侧的“同时发布到想法”复选框只影响本次评论；相邻箭头菜单提供“只同步一次”和“默认同步到想法”，选择任一项都会勾选本次同步，并分别关闭或开启后续评论的默认同步。默认关闭，按账号持久化在 `commentSyncToPinDefault:<account-id>`，通过 `rememberObservedSetting` 实时观察。发送成功后新评论重新使用账号默认值。普通根评论与子回复共用此语义，段评不显示或发送同步选项。
+评论输入框下方左侧显示“同时发布到想法”复选框。由未勾选切换到勾选时，在复选框处弹出范围菜单，提供“只同步一次”和“默认同步到想法”；选择后确认本次同步，并分别关闭或开启后续评论的默认同步。关闭菜单而未选择时保持未勾选；取消勾选只影响本条，不弹菜单。默认关闭，按账号持久化在 `commentSyncToPinDefault:<account-id>`，通过 `rememberObservedSetting` 实时观察。发送成功后新评论重新使用账号默认值。普通根评论与子回复共用此语义，段评不显示或发送同步选项。
 
-验证入口为普通评论和子回复输入栏：检查单次勾选、默认菜单、发送后继承、单次取消、弹层关闭恢复和账号隔离。稳定 tag 为 `comment_sync_to_pin`、`comment_sync_default_menu`、`comment_sync_default_off`、`comment_sync_default_on`。
+验证入口为普通评论和子回复输入栏：检查单次勾选、默认菜单、发送后继承、单次取消、弹层关闭恢复和账号隔离。稳定 tag 为 `comment_sync_to_pin`、`comment_sync_default_off`、`comment_sync_default_on`。
 
 ### 推荐系统与内容过滤
 

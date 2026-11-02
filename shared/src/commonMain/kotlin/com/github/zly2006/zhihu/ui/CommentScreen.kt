@@ -67,7 +67,6 @@ import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.material.icons.automirrored.outlined.Comment
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.filled.Archive
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
@@ -196,7 +195,6 @@ const val COMMENT_EMOJI_PICKER_TAG = "comment_emoji_picker"
 const val COMMENT_EMOJI_ITEM_TAG_PREFIX = "comment_emoji_item_"
 const val COMMENT_SEND_BUTTON_TAG = "comment_send_button"
 const val COMMENT_SYNC_TO_PIN_TAG = "comment_sync_to_pin"
-const val COMMENT_SYNC_DEFAULT_MENU_TAG = "comment_sync_default_menu"
 const val COMMENT_SYNC_DEFAULT_OFF_TAG = "comment_sync_default_off"
 const val COMMENT_SYNC_DEFAULT_ON_TAG = "comment_sync_default_on"
 const val COMMENT_SORT_SCORE_TAG = "comment_sort_score"
@@ -1165,43 +1163,36 @@ fun CommentScreen(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             if (rootContent !is SegmentCommentHolder) {
-                                Row(
-                                    modifier = Modifier
-                                        .sizeIn(minHeight = 48.dp)
-                                        .toggleable(
-                                            value = syncToPin,
-                                            enabled = !isSending,
-                                            role = Role.Checkbox,
-                                            onValueChange = onSyncToPinChange,
-                                        ).testTag(COMMENT_SYNC_TO_PIN_TAG),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Checkbox(
-                                        checked = syncToPin,
-                                        onCheckedChange = null,
-                                        enabled = !isSending,
-                                        modifier = Modifier.padding(end = 8.dp),
-                                    )
-                                    Text("同时发布到想法", style = MaterialTheme.typography.bodySmall)
-                                }
                                 ExposedDropdownMenuBox(
                                     expanded = showSyncDefaultMenu,
                                     onExpandedChange = { showSyncDefaultMenu = it },
                                 ) {
-                                    Box(
+                                    Row(
                                         modifier = Modifier
-                                            .size(48.dp)
-                                            .menuAnchor(
-                                                ExposedDropdownMenuAnchorType.PrimaryNotEditable,
-                                                enabled = !isSending && accountId.isNotBlank(),
-                                            ).testTag(COMMENT_SYNC_DEFAULT_MENU_TAG),
-                                        contentAlignment = Alignment.CenterStart,
+                                            .sizeIn(minHeight = 48.dp)
+                                            // 只复用锚点定位，是否打开菜单由下方的勾选动作决定。
+                                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = false)
+                                            .toggleable(
+                                                value = syncToPin || showSyncDefaultMenu,
+                                                enabled = !isSending,
+                                                role = Role.Checkbox,
+                                                onValueChange = { checked ->
+                                                    if (checked) {
+                                                        showSyncDefaultMenu = true
+                                                    } else {
+                                                        onSyncToPinChange(false)
+                                                    }
+                                                },
+                                            ).testTag(COMMENT_SYNC_TO_PIN_TAG),
+                                        verticalAlignment = Alignment.CenterVertically,
                                     ) {
-                                        Icon(
-                                            Icons.Default.ArrowDropDown,
-                                            contentDescription = "设置同步想法的默认行为",
-                                            modifier = Modifier.padding(start = 4.dp),
+                                        Checkbox(
+                                            checked = syncToPin || showSyncDefaultMenu,
+                                            onCheckedChange = null,
+                                            enabled = !isSending,
+                                            modifier = Modifier.padding(end = 8.dp),
                                         )
+                                        Text("同时发布到想法", style = MaterialTheme.typography.bodySmall)
                                     }
                                     ExposedDropdownMenu(
                                         expanded = showSyncDefaultMenu,
