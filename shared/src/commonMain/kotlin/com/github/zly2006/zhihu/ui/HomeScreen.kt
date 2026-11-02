@@ -108,21 +108,14 @@ import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.filter.RemoteHistorySync
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Search
 import com.github.zly2006.zhihu.navigation.WritePin
 import com.github.zly2006.zhihu.navigation.requestLoginNavigation
-import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_ACTION_OPEN_ANSWER
-import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_ACTION_OPEN_ARTICLE
-import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_ACTION_OPEN_PIN
-import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_ACTION_OPEN_UPDATE_SETTINGS
-import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_ACTION_OPEN_URL
-import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_ACTION_OPEN_WEBVIEW
-import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_ACTION_SET_SETTING
 import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_REFRESH_INTERVAL_MILLIS
+import com.github.zly2006.zhihu.notification.HomeNotificationAction
 import com.github.zly2006.zhihu.notification.OnlineHomeNotification
 import com.github.zly2006.zhihu.notification.OnlineHomeNotificationRepository
 import com.github.zly2006.zhihu.notification.rememberNotificationSettingsStore
@@ -177,11 +170,6 @@ import kotlinx.io.files.SystemFileSystem
 import kotlinx.io.readString
 import kotlinx.io.writeString
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.booleanOrNull
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.intOrNull
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlin.time.Clock
 
 const val PREFERENCE_NAME = "com.github.zly2006.zhihu_preferences"
@@ -749,56 +737,16 @@ fun HomeScreen(
                                             { Text(accept.text) }
                                         },
                                         onAccept = {
-                                            val accept = notification.accept
-                                            markRead()
-                                            when (accept?.key) {
-                                                HOME_NOTIFICATION_ACTION_OPEN_URL -> {
-                                                    accept.value
-                                                        ?.jsonPrimitive
-                                                        ?.contentOrNull
-                                                        ?.let(openExternalUrl::invoke)
-                                                }
-                                                HOME_NOTIFICATION_ACTION_OPEN_WEBVIEW -> {
-                                                    accept.value
-                                                        ?.jsonPrimitive
-                                                        ?.contentOrNull
-                                                        ?.let(openWebViewUrl::invoke)
-                                                }
-                                                HOME_NOTIFICATION_ACTION_OPEN_UPDATE_SETTINGS -> {
-                                                    navigator.onNavigate(Account.SystemAndUpdateSettings())
-                                                }
-                                                HOME_NOTIFICATION_ACTION_OPEN_PIN -> {
-                                                    accept.value?.jsonPrimitive?.contentOrNull?.toLongOrNull()?.let {
-                                                        navigator.onNavigate(Pin(it))
-                                                    }
-                                                }
-                                                HOME_NOTIFICATION_ACTION_OPEN_ANSWER -> {
-                                                    accept.value?.jsonPrimitive?.contentOrNull?.toLongOrNull()?.let {
-                                                        navigator.onNavigate(Article(type = ArticleType.Answer, id = it))
-                                                    }
-                                                }
-                                                HOME_NOTIFICATION_ACTION_OPEN_ARTICLE -> {
-                                                    accept.value?.jsonPrimitive?.contentOrNull?.toLongOrNull()?.let {
-                                                        navigator.onNavigate(Article(type = ArticleType.Article, id = it))
-                                                    }
-                                                }
-                                                HOME_NOTIFICATION_ACTION_SET_SETTING -> {
-                                                    val setting = accept.value?.jsonObject
-                                                    val name = setting?.get("setting_name")?.jsonPrimitive?.contentOrNull
-                                                    when (setting?.get("value_type")?.jsonPrimitive?.contentOrNull) {
-                                                        "boolean" -> setting["value"]?.jsonPrimitive?.booleanOrNull?.let {
-                                                            settings.putBoolean(name!!, it)
-                                                        }
-                                                        "string" -> setting["value"]?.jsonPrimitive?.contentOrNull?.let {
-                                                            settings.putString(name!!, it)
-                                                        }
-                                                        "int" -> setting["value"]?.jsonPrimitive?.intOrNull?.let {
-                                                            settings.putInt(name!!, it)
-                                                        }
-                                                    }
-                                                }
-                                                else -> userMessages.showShortMessage("当前版本不支持此通知操作")
+                                            when (val action = notification.accept?.action) {
+                                                is HomeNotificationAction.OpenUrl ->
+                                                    if (action.inWebView) openWebViewUrl(action.url) else openExternalUrl(action.url)
+                                                is HomeNotificationAction.Navigate -> navigator.onNavigate(action.destination)
+                                                is HomeNotificationAction.SetBoolean -> settings.putBoolean(action.name, action.value)
+                                                is HomeNotificationAction.SetString -> settings.putString(action.name, action.value)
+                                                is HomeNotificationAction.SetInt -> settings.putInt(action.name, action.value)
+                                                null -> return@AnnouncementCard
                                             }
+                                            markRead()
                                         },
                                         dismiss = { Text(notification.dismiss) },
                                         onDismiss = markRead,
