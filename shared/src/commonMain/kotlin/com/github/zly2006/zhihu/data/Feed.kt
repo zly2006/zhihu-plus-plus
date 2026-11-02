@@ -103,6 +103,7 @@ sealed interface Feed {
         val isCopyable: Boolean = false,
         val question: QuestionTarget,
         val thumbnail: String? = null,
+        val thumbnailInfo: DataHolder.ThumbnailInfo? = null,
         override val excerpt: String? = null,
         val reshipmentSettings: String = "",
         val content: String = "",
