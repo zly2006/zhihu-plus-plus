@@ -452,9 +452,6 @@ fun CommentScreen(
     onChildCommentClick: (CommentModel) -> Unit,
     commentInput: String,
     onCommentInputChange: (String) -> Unit,
-    syncToPinOverride: Boolean? = null,
-    onSyncToPinChange: (Boolean) -> Unit = {},
-    onCommentSent: () -> Unit = {},
     listState: LazyListState = rememberLazyListState(),
     initialComment: DataHolder.Comment? = null,
     onInitialChildCommentResolved: (CommentModel, DataHolder.Comment) -> Unit = { _, _ -> },
@@ -468,12 +465,14 @@ fun CommentScreen(
     var defaultSyncToPin by rememberObservedSetting(readingSettings, syncPreferenceKey) {
         getBoolean(syncPreferenceKey, false)
     }
-    val syncToPin = syncToPinOverride ?: defaultSyncToPin
+    val resolvedContent = content()
+    var syncToPin by remember(accountId, resolvedContent.commentThreadKey()) {
+        mutableStateOf(defaultSyncToPin)
+    }
     var showSyncDefaultMenu by remember(accountId) { mutableStateOf(false) }
     val initialReadingCommentOrder = remember(readingSettings) {
         loadReadingPreferences(readingSettings).commentOrder
     }
-    val resolvedContent = content()
     var isSending by remember { mutableStateOf(false) }
     var replyToComment by remember { mutableStateOf<CommentModel?>(null) }
     var showEmojiPicker by remember { mutableStateOf(false) }
@@ -683,7 +682,7 @@ fun CommentScreen(
             keyboardController?.hide()
             commentFieldValue = TextFieldValue("")
             onCommentInputChange("")
-            onCommentSent()
+            syncToPin = defaultSyncToPin
             replyToComment = null
             showEmojiPicker = false
             isSending = false
@@ -1125,7 +1124,6 @@ fun CommentScreen(
                                 value = commentFieldValue,
                                 onValueChange = {
                                     commentFieldValue = it
-                                    if (syncToPinOverride == null && it.text.isNotEmpty()) onSyncToPinChange(syncToPin)
                                     onCommentInputChange(it.text)
                                 },
                                 modifier = Modifier
@@ -1180,7 +1178,7 @@ fun CommentScreen(
                                                     if (checked) {
                                                         showSyncDefaultMenu = true
                                                     } else {
-                                                        onSyncToPinChange(false)
+                                                        syncToPin = false
                                                     }
                                                 },
                                             ).testTag(COMMENT_SYNC_TO_PIN_TAG),
@@ -1211,7 +1209,7 @@ fun CommentScreen(
                                                 },
                                                 modifier = Modifier.testTag(if (value) COMMENT_SYNC_DEFAULT_ON_TAG else COMMENT_SYNC_DEFAULT_OFF_TAG),
                                                 onClick = {
-                                                    onSyncToPinChange(true)
+                                                    syncToPin = true
                                                     readingSettings.putBoolean(syncPreferenceKey, value)
                                                     defaultSyncToPin = value
                                                     showSyncDefaultMenu = false
@@ -1287,7 +1285,6 @@ fun CommentScreen(
                                                     cursorOffsetInInsert = emoji.placeholder.length,
                                                 )
                                                 commentFieldValue = updatedValue
-                                                if (syncToPinOverride == null) onSyncToPinChange(syncToPin)
                                                 onCommentInputChange(updatedValue.text)
                                             },
                                             modifier = Modifier
