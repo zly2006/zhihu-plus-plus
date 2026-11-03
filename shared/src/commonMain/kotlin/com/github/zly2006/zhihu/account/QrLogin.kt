@@ -52,18 +52,21 @@ import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
+import io.ktor.client.request.request
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withTimeoutOrNull
-import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
 
@@ -114,30 +117,64 @@ data class ZhihuQrScanInfo(
     val error: ZhihuQrScanError? = null,
 )
 
+internal class QrLoginRiskControlException(
+    message: String,
+    val redirectUrl: String,
+) : IllegalStateException(message)
+
+private class QrLoginRequestException(
+    message: String,
+) : IllegalStateException(message)
+
+private suspend fun HttpResponse.checkQrLoginResponse(): JsonElement? {
+    val body = bodyAsText()
+    val json = runCatching { ZhihuJson.json.parseToJsonElement(body) }.getOrNull()
+    val error = (json as? JsonObject)?.get("error")?.let {
+        runCatching { ZhihuJson.decodeJson(ZhihuQrScanError.serializer(), it) }.getOrNull()
+    }
+    if (status == HttpStatusCode.Forbidden) {
+        throw QrLoginRiskControlException(
+            error?.message?.takeIf { it.isNotBlank() } ?: "知乎限制了当前登录请求，请先完成安全验证。",
+            error?.redirect?.takeIf { it.isNotBlank() } ?: ZHIHU_RISK_CONTROL_URL,
+        )
+    }
+    if (status.value >= 400 || error?.code != null) {
+        throw QrLoginRequestException(
+            error?.message?.takeIf { it.isNotBlank() } ?: "知乎登录请求失败：${status.value}",
+        )
+    }
+    return json
+}
+
 suspend fun prefetchQrLoginContext(
     client: HttpClient,
     cookies: Map<String, String>,
 ) {
-    client.get(ZHIHU_SIGNIN_URL) {
-        createDesktopHeaders(ZHIHU_HOME_URL).forEach { (key, value) ->
-            header(key, value)
-        }
-    }
-
-    runCatching {
-        client.post(UDID_URL) {
-            createZhihuLoginHeaders(cookies, ZHIHU_SIGNIN_REFERER_URL).forEach { (key, value) ->
+    client
+        .get(ZHIHU_SIGNIN_URL) {
+            createDesktopHeaders(ZHIHU_HOME_URL).forEach { (key, value) ->
                 header(key, value)
             }
-            setBody("{}")
-        }
-    }
+        }.checkQrLoginResponse()
 
-    runCatching {
-        client.get(CAPTCHA_V2_URL) {
-            createZhihuLoginHeaders(cookies, ZHIHU_SIGNIN_REFERER_URL).forEach { (key, value) ->
-                header(key, value)
-            }
+    for ((url, method) in listOf(UDID_URL to HttpMethod.Post, CAPTCHA_V2_URL to HttpMethod.Get)) {
+        try {
+            client
+                .request(url) {
+                    this.method = method
+                    createZhihuLoginHeaders(cookies, ZHIHU_SIGNIN_REFERER_URL).forEach { (key, value) ->
+                        header(key, value)
+                    }
+                    if (method == HttpMethod.Post) setBody("{}")
+                }.checkQrLoginResponse()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: QrLoginRiskControlException) {
+            throw e
+        } catch (e: QrLoginRequestException) {
+            throw e
+        } catch (_: Exception) {
+            // 预热接口的网络失败不阻止获取二维码；服务端拒绝和协程取消必须中止。
         }
     }
 }
@@ -152,14 +189,12 @@ suspend fun requestQrCode(
         }
         setBody("{}")
     }
-    val body = response.bodyAsText()
-    val result = decodeZhihuLoginJsonTyped(
-        ZhihuQrCodeResponse.serializer(),
-        ZhihuJson.json.parseToJsonElement(body),
-    )
+    val json = response.checkQrLoginResponse()
+        ?: throw QrLoginRequestException("二维码获取失败：知乎返回了无效响应")
+    val result = ZhihuJson.decodeJson(ZhihuQrCodeResponse.serializer(), json)
     val token = result.token ?: result.qrcodeToken
-    if (response.status.value >= 400 || token.isNullOrBlank() || result.link.isNullOrBlank()) {
-        throw IllegalStateException("二维码获取失败：${response.status.value}")
+    if (token.isNullOrBlank() || result.link.isNullOrBlank()) {
+        throw QrLoginRequestException("二维码获取失败：${response.status.value}")
     }
     return result.copy(token = token)
 }
@@ -173,7 +208,6 @@ suspend fun pollQrCodeLogin(
     onRiskControl: (String?, String?) -> Unit,
 ): Boolean {
     var hasPromptedConfirm = false
-    var hasPromptedRiskControl = false
 
     while (currentEpochMillis() <= deadline) {
         currentCoroutineContext().ensureActive()
@@ -186,30 +220,10 @@ suspend fun pollQrCodeLogin(
                     }
                 }
             } ?: throw IllegalStateException("二维码登录轮询超时")
-            val body = response.bodyAsText()
-            val scanInfo = runCatching {
-                decodeZhihuLoginJsonTyped(
-                    ZhihuQrScanInfo.serializer(),
-                    ZhihuJson.json.parseToJsonElement(body),
-                )
-            }.getOrDefault(ZhihuQrScanInfo())
-            if (response.status == HttpStatusCode.Forbidden) {
-                onRiskControl(
-                    scanInfo.error?.message ?: "知乎限制了当前网络环境的登录请求，请先完成网络环境验证。",
-                    scanInfo.error?.redirect ?: ZHIHU_RISK_CONTROL_URL,
-                )
-                return false
-            }
-
+            val json = response.checkQrLoginResponse()
+                ?: throw QrLoginRequestException("二维码登录轮询返回了无效响应")
+            val scanInfo = ZhihuJson.decodeJson(ZhihuQrScanInfo.serializer(), json)
             syncCookiesFromScanInfo(cookies, scanInfo)
-
-            if (isRiskControlResponse(response.status.value, scanInfo)) {
-                if (!hasPromptedRiskControl) {
-                    hasPromptedRiskControl = true
-                    onRiskControl(scanInfo.error?.message, scanInfo.error?.redirect)
-                }
-                return false
-            }
 
             if (scanInfo.status == 1 && !hasPromptedConfirm) {
                 hasPromptedConfirm = true
@@ -236,6 +250,13 @@ suspend fun pollQrCodeLogin(
                 }
             }
         } catch (e: CancellationException) {
+            throw e
+        } catch (e: QrLoginRiskControlException) {
+            onRiskControl(e.message, e.redirectUrl)
+            return false
+        } catch (e: QrLoginRequestException) {
+            throw e
+        } catch (e: SerializationException) {
             throw e
         } catch (_: Exception) {
             // 临时网络抖动时继续轮询
@@ -331,14 +352,6 @@ fun isQrLoginExpired(scanInfo: ZhihuQrScanInfo): Boolean {
     return scanInfo.status == 2 || loginStatus in setOf("EXPIRED", "QR_CODE_EXPIRED", "LOGIN_EXPIRED")
 }
 
-fun isRiskControlResponse(
-    statusCode: Int,
-    scanInfo: ZhihuQrScanInfo,
-): Boolean {
-    val errorBody = scanInfo.error ?: return false
-    return statusCode == 403 && (errorBody.code == 40352 || errorBody.needLogin == true)
-}
-
 fun normalizeDeadline(expiresAt: Long?): Long {
     val now = currentEpochMillis()
     if (expiresAt == null || expiresAt <= 0) {
@@ -361,33 +374,23 @@ fun normalizeDeadline(expiresAt: Long?): Long {
 
 private fun currentEpochMillis(): Long = Clock.System.now().toEpochMilliseconds()
 
-private fun <T> decodeZhihuLoginJsonTyped(serializer: KSerializer<T>, json: JsonElement): T {
-    val normalized = ZhihuJson.snakeCaseToCamelCase(json)
-    try {
-        return ZhihuJson.decodeJson(serializer, json)
-    } catch (e: SerializationException) {
-        throw SerializationException("Failed to parse QR login JSON: ${e.message}\n\n$normalized", e)
-    }
-}
-
 @Composable
 fun SharedQrLoginPane(
+    client: HttpClient,
+    cookies: MutableMap<String, String>,
     onLoginSuccess: suspend (Map<String, String>) -> Boolean,
     modifier: Modifier = Modifier,
     generateQrBitmap: (String) -> ImageBitmap = ::generateQrLoginBitmap,
-    initialCookies: Map<String, String> = emptyMap(),
     qrReadyMessage: String = "请打开知乎++ App 扫一扫",
     onQrReady: () -> Unit = {},
 ) {
     var refreshKey by rememberSaveable { mutableIntStateOf(0) }
     var qrBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
     var statusText by remember { mutableStateOf("正在获取二维码") }
-    var sessionCookies by remember { mutableStateOf(initialCookies.toMap()) }
+    var sessionCookies by remember { mutableStateOf(cookies.toMap()) }
     var riskControlUrl by remember { mutableStateOf<String?>(null) }
     var riskControlMessage by remember { mutableStateOf<String?>(null) }
     var isWorking by remember { mutableStateOf(true) }
-    val cookies = remember(refreshKey) { sessionCookies.toMutableMap() }
-    val client = rememberLoginHttpClient(cookies)
 
     LaunchedEffect(refreshKey) {
         qrBitmap = null
@@ -441,6 +444,15 @@ fun SharedQrLoginPane(
             }
         } catch (e: CancellationException) {
             throw e
+        } catch (e: QrLoginRiskControlException) {
+            sessionCookies = cookies.toMap()
+            riskControlMessage = e.message
+            riskControlUrl = e.redirectUrl
+            statusText = e.message.orEmpty()
+            isWorking = false
+        } catch (e: SerializationException) {
+            statusText = "知乎登录响应格式异常，请重试"
+            isWorking = false
         } catch (e: Exception) {
             statusText = e.message ?: "二维码获取失败，请重试"
             isWorking = false
@@ -483,7 +495,8 @@ fun SharedQrLoginPane(
                         url = currentRiskControlUrl,
                         cookies = sessionCookies,
                         onCookiesChanged = { updatedCookies ->
-                            sessionCookies = sessionCookies + updatedCookies
+                            cookies.putAll(updatedCookies)
+                            sessionCookies = cookies.toMap()
                         },
                     )
                 } else {

@@ -84,7 +84,11 @@ actual fun decodePhoneLoginCaptchaImage(content: String) = runCatching {
 @Composable
 actual fun QrLoginPane(onLoginSuccess: (String) -> Unit) {
     val store = defaultDesktopAccountStore
+    val cookies = remember { store.session.cookies.toMutableMap() }
+    val client = rememberLoginHttpClient(cookies)
     SharedQrLoginPane(
+        client = client,
+        cookies = cookies,
         onLoginSuccess = { cookies ->
             if (store.login(cookies.toMutableMap())) {
                 onLoginSuccess(store.session.username)
@@ -93,7 +97,6 @@ actual fun QrLoginPane(onLoginSuccess: (String) -> Unit) {
                 false
             }
         },
-        initialCookies = store.session.cookies,
     )
 }
 
@@ -101,16 +104,16 @@ actual fun QrLoginPane(onLoginSuccess: (String) -> Unit) {
 actual fun WebLoginPane(onLoginSuccess: (String) -> Unit) {
     val store = defaultDesktopAccountStore
     val scope = rememberCoroutineScope()
-    var currentUrl by remember { mutableStateOf<String?>(null) }
+    var lastVerifiedCookies by remember { mutableStateOf<Map<String, String>?>(null) }
     var isVerifying by remember { mutableStateOf(false) }
 
     DesktopWebviewComp(
         url = ZHIHU_SIGNIN_URL,
         modifier = Modifier.fillMaxSize(),
         initialCookies = store.session.cookies,
-        onPageFinished = { currentUrl = it },
         onCookiesChanged = { cookies ->
-            if (currentUrl == ZHIHU_HOME_URL && !isVerifying) {
+            if (!cookies["z_c0"].isNullOrBlank() && cookies != lastVerifiedCookies && !isVerifying) {
+                lastVerifiedCookies = cookies
                 isVerifying = true
                 scope.launch {
                     try {
