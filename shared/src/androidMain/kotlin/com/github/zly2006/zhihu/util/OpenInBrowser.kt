@@ -37,6 +37,8 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
+const val OPEN_IN_BROWSER_PLUGIN_VERSION = "1.0.0"
+
 object OpenInBrowser {
     suspend fun openUrlInBrowser(context: Context, destination: NavDestination): Boolean {
         val urlToken = AccountData.data.self?.urlToken ?: return false

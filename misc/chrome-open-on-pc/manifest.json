@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "Zhihu++ 在电脑打开",
+  "description": "在浏览器工具栏中查看并打开 Zhihu++ 发送到电脑的最新内容。",
+  "version": "1.0.0",
+  "action": {
+    "default_title": "Zhihu++ 在电脑打开",
+    "default_popup": "popup.html"
+  },
+  "host_permissions": [
+    "https://www.zhihu.com/*"
+  ]
+}
