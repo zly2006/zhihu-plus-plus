@@ -167,6 +167,7 @@ private val settingsSearchEntries = buildList {
     add(appearanceEntry("appearance.landscapeListDetail", "横屏双栏布局", "控制平板和电脑横屏时是否同时显示列表与详情。", LANDSCAPE_LIST_DETAIL_PREFERENCE_KEY, listOf("双栏", "分栏", "平板", "横屏")))
     add(appearanceEntry("appearance.bottomSheetCorners", "禁用 popup 圆角", "评论等 popup 顶部改为直角。", DISABLE_BOTTOM_SHEET_ROUNDED_CORNERS_PREFERENCE_KEY, listOf("评论圆角", "popup", "直角")))
     add(appearanceEntry("appearance.fontScale", "字号与行高", "调整正文阅读字号和行距。", "fontScale", listOf("字体大小", "内容字体", "正文字号", "行距")))
+    add(appearanceEntry("appearance.mathFont", "公式字体", "导入并选择 OpenType 数学字体。", "selectedMathFont", listOf("公式", "数学", "字体", "OTF", "TTF")))
     add(appearanceEntry("appearance.showFeedThumbnail", "显示 Feed 卡片缩略图", "控制信息流卡片图片显示。", "showFeedThumbnail", listOf("图片", "封面")))
     add(appearanceEntry("appearance.showRefreshFab", "显示刷新 FAB 按钮", "控制首页和列表的浮动刷新按钮。", "showRefreshFab", listOf("刷新按钮", "浮动按钮")))
     add(appearanceEntry("appearance.feedCardStyle", "信息流样式", "切换卡片或分割线样式。", "feedCardStyle", listOf("Feed", "列表样式", "卡片样式", "分割线")))

@@ -100,7 +100,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.fleeksoft.ksoup.Ksoup
 import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.decodeQuestionContentDetail
+import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.Topic
@@ -326,6 +328,12 @@ fun QuestionScreen(
                 FeedCard(
                     item = item,
                     readingQueueSourceId = answerReadingQueueSourceId,
+                    thumbnailUrl = (item.feed?.target as? Feed.AnswerTarget)
+                        ?.thumbnailInfo
+                        ?.thumbnails
+                        ?.filterIsInstance<DataHolder.ThumbnailRich>()
+                        ?.firstOrNull()
+                        ?.url,
                     modifier = Modifier.testTag("question_feed_item_${item.stableKey}"),
                 ) { _, destination ->
                     answerSwitchState.pendingNavigator = viewModel.createAnswerNavigatorFor(item, paginationEnvironment)

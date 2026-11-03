@@ -18,8 +18,10 @@
 package com.github.zly2006.zhihu.data
 
 import com.github.zly2006.zhihu.viewmodel.za.parseMobileHomeFeedDisplayItem
+import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -37,6 +39,21 @@ class RealZhihuApiCorpusTest {
         val answer = assertIs<Feed.AnswerTarget>(decodeTarget("answer-detail.json"))
         assertTrue(answer.content.startsWith("<p"))
         assertTrue(answer.author?.id?.startsWith("redacted-person-") == true)
+
+        for (sample in fixtureJson("question-answer-thumbnails.json").jsonArray) {
+            val questionAnswer = assertIs<Feed.AnswerTarget>(ZhihuJson.decodeJson<Feed.Target>(sample))
+            val info = assertNotNull(questionAnswer.thumbnailInfo)
+            val raw = sample.jsonObject.getValue("thumbnail_info").jsonObject
+            assertEquals(raw.getValue("count").jsonPrimitive.int, info.count)
+            assertEquals(
+                raw.getValue("thumbnails").jsonArray.map {
+                    it.jsonObject
+                        .getValue("url")
+                        .jsonPrimitive.content
+                },
+                info.thumbnails.filterIsInstance<DataHolder.ThumbnailRich>().map { it.url },
+            )
+        }
 
         val comment = ZhihuJson.decodeJson<DataHolder.Comment>(fixtureJson("comment.json"))
         assertEquals("comment", comment.type)

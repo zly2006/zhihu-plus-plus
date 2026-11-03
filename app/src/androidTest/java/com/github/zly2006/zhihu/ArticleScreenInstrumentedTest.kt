@@ -103,8 +103,8 @@ import com.github.zly2006.zhihu.ui.subscreens.PREF_SHOW_PAGE_TURN_FAB
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import com.github.zly2006.zhihu.viewmodel.sharedArticleAnswerSwitchState
-import com.hrm.markdown.renderer.MarkdownImageData
 import io.ktor.client.HttpClient
+import me.zly2006.markdown.renderer.MarkdownImageData
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue

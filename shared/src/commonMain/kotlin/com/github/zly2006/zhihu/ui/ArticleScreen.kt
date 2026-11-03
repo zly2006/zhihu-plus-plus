@@ -967,10 +967,16 @@ fun ArticleScreen(
                                 ArticleType.Answer -> "回答"
                                 ArticleType.Article -> "文章"
                             }
-                            val hasVotersSocialCredit = viewModel.votersTotal > 0
-                            if (!hasVotersSocialCredit && viewModel.aigcSupportVoterCount <= 0) return
                             Spacer(modifier = Modifier.height(8.dp))
-                            if (hasVotersSocialCredit) {
+                            // 切换回答时正文先从缓存恢复，赞同信息稍后加载；先预留一行，避免正文跳动。
+                            Box(
+                                modifier = Modifier.fillMaxWidth().height(
+                                    with(density) {
+                                        MaterialTheme.typography.bodySmall.lineHeight
+                                            .toDp()
+                                    },
+                                ),
+                            ) {
                                 val text = viewModel.votersSocialText.ifBlank {
                                     "${formatCompactCount(viewModel.votersTotal)} 人赞同了该$contentLabel"
                                 }
@@ -989,12 +995,12 @@ fun ArticleScreen(
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = votersTextModifier,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
                                 )
                             }
                             if (viewModel.aigcSupportVoterCount > 0) {
-                                if (hasVotersSocialCredit) {
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                }
+                                Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     text = "有 ${formatCompactCount(viewModel.aigcSupportVoterCount)} 人认为此${contentLabel}包含AIGC内容",
                                     style = MaterialTheme.typography.bodySmall,
@@ -1019,35 +1025,28 @@ fun ArticleScreen(
                                 }
                                 Spacer(Modifier.height(12.dp))
                             }
-                            val hasPinnedDate = pinAnswerDate
-                            val hasSocialCredit = viewModel.votersTotal > 0 || viewModel.aigcSupportVoterCount > 0
                             val endorsements = viewModel.endorsements
-                            val hasEndorsements = endorsements.isNotEmpty()
-                            if (hasPinnedDate || hasSocialCredit || hasEndorsements) {
-                                Column(
-                                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                                    horizontalAlignment = Alignment.Start,
-                                ) {
-                                    if (hasPinnedDate) {
-                                        DateTexts()
-                                    }
-                                    ArticleVotersSocialCredit()
-                                    if (hasEndorsements) {
-                                        if (hasPinnedDate || hasSocialCredit) {
-                                            Spacer(modifier = Modifier.height(8.dp))
-                                        }
-                                        FlowRow(
-                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                                        ) {
-                                            endorsements.forEach { endorsement ->
-                                                AnswerEndorsementChip(endorsement)
-                                            }
+                            Column(
+                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                                horizontalAlignment = Alignment.Start,
+                            ) {
+                                if (pinAnswerDate) {
+                                    DateTexts()
+                                }
+                                ArticleVotersSocialCredit()
+                                if (endorsements.isNotEmpty()) {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    FlowRow(
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        endorsements.forEach { endorsement ->
+                                            AnswerEndorsementChip(endorsement)
                                         }
                                     }
                                 }
-                                Spacer(modifier = Modifier.height(16.dp))
                             }
+                            Spacer(modifier = Modifier.height(16.dp))
                             if (useWebView && isLegacyWebViewSupported) {
                                 // WebView 正文渲染已经废弃，只保留为紧急回退路径；正文外 UI 不再为它单独分支。
                                 ArticleWebViewContent(
