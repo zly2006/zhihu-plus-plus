@@ -56,6 +56,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -66,6 +67,7 @@ import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.material.icons.automirrored.outlined.Comment
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.filled.Archive
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
@@ -76,10 +78,13 @@ import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -114,6 +119,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
@@ -188,6 +194,9 @@ const val COMMENT_EMOJI_BUTTON_TAG = "comment_emoji_button"
 const val COMMENT_EMOJI_PICKER_TAG = "comment_emoji_picker"
 const val COMMENT_EMOJI_ITEM_TAG_PREFIX = "comment_emoji_item_"
 const val COMMENT_SEND_BUTTON_TAG = "comment_send_button"
+const val COMMENT_SYNC_TO_PIN_TAG = "comment_sync_to_pin"
+const val COMMENT_SYNC_DEFAULT_OFF_TAG = "comment_sync_default_off"
+const val COMMENT_SYNC_DEFAULT_ON_TAG = "comment_sync_default_on"
 const val COMMENT_SORT_SCORE_TAG = "comment_sort_score"
 const val COMMENT_SORT_TIME_TAG = "comment_sort_time"
 const val COMMENT_IMAGE_MENU_OPEN_TAG = "comment_image_menu_open"
@@ -451,10 +460,19 @@ fun CommentScreen(
 ) {
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
     val readingSettings = rememberSettingsStore()
+    val accountId = rememberAccountSettingsAccountState().value.id
+    val syncPreferenceKey = "commentSyncToPinDefault:$accountId"
+    var defaultSyncToPin by rememberObservedSetting(readingSettings, syncPreferenceKey) {
+        getBoolean(syncPreferenceKey, false)
+    }
+    val resolvedContent = content()
+    var syncToPin by remember(accountId, resolvedContent.commentThreadKey()) {
+        mutableStateOf(defaultSyncToPin)
+    }
+    var showSyncDefaultMenu by remember(accountId) { mutableStateOf(false) }
     val initialReadingCommentOrder = remember(readingSettings) {
         loadReadingPreferences(readingSettings).commentOrder
     }
-    val resolvedContent = content()
     var isSending by remember { mutableStateOf(false) }
     var replyToComment by remember { mutableStateOf<CommentModel?>(null) }
     var showEmojiPicker by remember { mutableStateOf(false) }
@@ -658,11 +676,13 @@ fun CommentScreen(
             commentText = commentFieldValue.text,
             environment = paginationEnvironment,
             replyToCommentId = replyToComment?.item?.id,
+            syncToPin = syncToPin && rootContent !is SegmentCommentHolder,
         ) {
             focusManager.clearFocus(force = true)
             keyboardController?.hide()
             commentFieldValue = TextFieldValue("")
             onCommentInputChange("")
+            syncToPin = defaultSyncToPin
             replyToComment = null
             showEmojiPicker = false
             isSending = false
@@ -1134,11 +1154,76 @@ fun CommentScreen(
                                     color = MaterialTheme.colorScheme.onSurface,
                                 ),
                             )
+                        }
 
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            if (rootContent !is SegmentCommentHolder) {
+                                ExposedDropdownMenuBox(
+                                    expanded = showSyncDefaultMenu,
+                                    onExpandedChange = { showSyncDefaultMenu = it },
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .sizeIn(minHeight = 48.dp)
+                                            // 只复用锚点定位，是否打开菜单由下方的勾选动作决定。
+                                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = false)
+                                            .toggleable(
+                                                value = syncToPin || showSyncDefaultMenu,
+                                                enabled = !isSending,
+                                                role = Role.Checkbox,
+                                                onValueChange = { checked ->
+                                                    if (checked) {
+                                                        showSyncDefaultMenu = true
+                                                    } else {
+                                                        syncToPin = false
+                                                    }
+                                                },
+                                            ).testTag(COMMENT_SYNC_TO_PIN_TAG),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Checkbox(
+                                            checked = syncToPin || showSyncDefaultMenu,
+                                            onCheckedChange = null,
+                                            enabled = !isSending,
+                                            modifier = Modifier.padding(end = 8.dp),
+                                        )
+                                        Text("同时发布到想法", style = MaterialTheme.typography.bodySmall)
+                                    }
+                                    ExposedDropdownMenu(
+                                        expanded = showSyncDefaultMenu,
+                                        onDismissRequest = { showSyncDefaultMenu = false },
+                                        matchAnchorWidth = false,
+                                    ) {
+                                        listOf(false to "只同步一次", true to "默认同步到想法").forEach { (value, label) ->
+                                            DropdownMenuItem(
+                                                text = { Text(label) },
+                                                leadingIcon = {
+                                                    if (defaultSyncToPin == value) {
+                                                        Icon(Icons.Default.Check, contentDescription = "已选择")
+                                                    } else {
+                                                        Spacer(Modifier.size(24.dp))
+                                                    }
+                                                },
+                                                modifier = Modifier.testTag(if (value) COMMENT_SYNC_DEFAULT_ON_TAG else COMMENT_SYNC_DEFAULT_OFF_TAG),
+                                                onClick = {
+                                                    syncToPin = true
+                                                    readingSettings.putBoolean(syncPreferenceKey, value)
+                                                    defaultSyncToPin = value
+                                                    showSyncDefaultMenu = false
+                                                },
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            Spacer(Modifier.weight(1f))
                             IconButton(
                                 onClick = { submitComment() },
                                 modifier = Modifier
-                                    .size(24.dp)
+                                    .size(48.dp)
                                     .testTag(COMMENT_SEND_BUTTON_TAG),
                                 enabled = !isSending && commentFieldValue.text.isNotBlank(),
                             ) {
