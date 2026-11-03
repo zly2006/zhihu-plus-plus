@@ -45,6 +45,19 @@ class ZhihuPhoneLoginClientTest {
     }
 
     @Test
+    fun internationalNumbersRetainTheirSelectedCallingCode() {
+        assertEquals("+85291234567", normalizePhoneNumber("9123 4567", "+852"))
+        assertEquals("+886912345678", normalizePhoneNumber("+886912345678", "+886"))
+        assertEquals("+14155552671", normalizePhoneNumber("415-555-2671", "+1"))
+        assertEquals("+8613800138000", normalizePhoneNumber("8613800138000"))
+        assertFailsWith<IllegalArgumentException> { normalizePhoneNumber("12345678") }
+        assertFailsWith<IllegalArgumentException> { normalizePhoneNumber("+85291234567", "+1") }
+        assertFailsWith<IllegalArgumentException> { normalizePhoneNumber("", "+852") }
+        assertFailsWith<IllegalArgumentException> { normalizePhoneNumber("123456789012345", "+1") }
+        assertFailsWith<IllegalArgumentException> { normalizePhoneNumber("１２３４５６７８", "+852") }
+    }
+
+    @Test
     fun guestCaptchaCheckAndDigitsRequestMatchOfficialProtocol() = runTest {
         val cookies = mutableMapOf<String, String>()
         var requestIndex = 0
@@ -226,7 +239,7 @@ class ZhihuPhoneLoginClientTest {
                         assertEncryptedBody(
                             "client_id=8d5227e0aaaa4797a763ac64e0c3b8&digits=123456&grant_type=digits&" +
                                 "signature=096465d8a44361e0393c87ab61b0d48a088b2cfb&source=com.zhihu.android&" +
-                                "timestamp=1700000000&username=%2B8613800138000",
+                                "timestamp=1700000000&username=%2B85291234567",
                             request.body,
                         )
                         respondJson(
@@ -250,8 +263,8 @@ class ZhihuPhoneLoginClientTest {
             },
             cookies,
         )
-        assertIs<ZhihuPhoneDigitsResult.Sent>(client.requestDigits("13800138000"))
-        val token = client.signIn("+8613800138000", "123456")
+        assertIs<ZhihuPhoneDigitsResult.Sent>(client.requestDigits("91234567", "+852"))
+        val token = client.signIn("91234567", "123456", "+852")
 
         assertEquals("account-access", token.accessToken)
         assertEquals("account-refresh", token.refreshToken)

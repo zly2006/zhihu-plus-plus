@@ -106,8 +106,20 @@ class ZhihuPhoneLoginClient : AutoCloseable {
     private var deviceId: String? = null
     private var webDeviceCookie = cookies.remove("d_c0")?.takeIf(String::isNotBlank)
 
-    suspend fun requestDigits(phoneNumber: String): ZhihuPhoneDigitsResult {
-        val username = normalizePhoneNumber(phoneNumber)
+    suspend fun supportedCountries(): List<ZhihuPhoneCountry> {
+        val response = httpClient.get("$PHONE_LOGIN_API_BASE_URL/sms/supported_countries") {
+            applyMobileHeaders()
+        }
+        check(response.status.isSuccess()) { "加载国家/地区失败（HTTP ${response.status.value}）" }
+        val result = ZhihuJson.decodeJson<PhoneCountriesResponse>(
+            ZhihuJson.json.parseToJsonElement(response.bodyAsText()),
+        )
+        check(result.data.isNotEmpty()) { "服务器未返回可用的国家/地区" }
+        return result.data
+    }
+
+    suspend fun requestDigits(phoneNumber: String, countryCode: String = "+86"): ZhihuPhoneDigitsResult {
+        val username = normalizePhoneNumber(phoneNumber, countryCode)
         ensureGuestToken()
 
         val captchaState = requestCaptchaState()
@@ -186,8 +198,9 @@ class ZhihuPhoneLoginClient : AutoCloseable {
     suspend fun signIn(
         phoneNumber: String,
         digits: String,
+        countryCode: String = "+86",
     ): ZhihuMobileLoginToken {
-        val username = normalizePhoneNumber(phoneNumber)
+        val username = normalizePhoneNumber(phoneNumber, countryCode)
         require(digits.isNotBlank()) { "短信验证码不能为空" }
         ensureGuestToken()
 
@@ -368,21 +381,38 @@ var phoneLoginCookiesForTesting: MutableMap<String, String>? = null
 var phoneLoginDeviceInfoForTesting: ZhihuPhoneLoginDeviceInfo? = null
 var phoneLoginNowEpochSecondsForTesting: (() -> Long)? = null
 
-private fun normalizePhoneNumber(phoneNumber: String): String {
-    val compact = phoneNumber
-        .trim()
-        .replace(" ", "")
-        .replace("-", "")
+internal fun normalizePhoneNumber(phoneNumber: String, countryCode: String = "+86"): String {
+    require(
+        countryCode.startsWith('+') &&
+            countryCode.drop(1).let { code ->
+                code.length in 1..4 && code.first() in '1'..'9' && code.all { it in '0'..'9' }
+            },
+    ) { "请选择正确的国际区号" }
+    val compact = phoneNumber.trim().replace(" ", "").replace("-", "")
     val local = when {
-        compact.startsWith("+86") -> compact.removePrefix("+86")
-        compact.startsWith("86") && compact.length == 13 -> compact.removePrefix("86")
+        compact.startsWith(countryCode) -> compact.removePrefix(countryCode)
+        countryCode == "+86" && compact.startsWith("86") && compact.length == 13 -> compact.removePrefix("86")
         else -> compact
     }
-    require(local.length == 11 && local.all(Char::isDigit) && local.startsWith('1')) {
-        "请输入正确的中国大陆手机号"
+    require(local.isNotEmpty() && local.all { it in '0'..'9' } && countryCode.length - 1 + local.length <= 15) {
+        "请输入正确的手机号"
     }
-    return "+86$local"
+    if (countryCode == "+86") {
+        require(local.length == 11 && local.startsWith('1')) { "请输入正确的中国大陆手机号" }
+    }
+    return "$countryCode$local"
 }
+
+@Serializable
+data class ZhihuPhoneCountry(
+    val name: String,
+    val code: String,
+)
+
+@Serializable
+private data class PhoneCountriesResponse(
+    val data: List<ZhihuPhoneCountry>,
+)
 
 @Serializable
 private data class GuestTokenResponse(
