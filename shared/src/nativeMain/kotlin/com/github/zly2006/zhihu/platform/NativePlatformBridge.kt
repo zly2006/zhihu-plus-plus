@@ -32,8 +32,6 @@ internal expect fun nativeAppPrivateDirectoryPath(): String
 
 internal expect fun nativeDownloadsDirectoryPath(): String
 
-internal expect fun nativeChooseBlocklistImportFilePath(): String?
-
 internal fun nativeBundledResourcePath(relativePath: String): String? =
     NSBundle.mainBundle.resourcePath?.let { resourceDirectory -> "$resourceDirectory/$relativePath" }
 

@@ -1,0 +1,489 @@
+[
+  {
+    "allow_segment_interaction": 1,
+    "answer_type": "normal",
+    "attached_info": "ogEQCAQQAxj3/JjNDCDQ2PKaApICJQoJNjQ1MTg4MjU5EgozMzgzMTE1MzgzGAQiCklNQUdFX1RFWFQ=",
+    "author": {
+      "avatar_url": "https://picx.zhimg.com/v2-abed1a8c04700ba7d72b45195223e0ff_l.jpg?source=1def8aca",
+      "avatar_url_template": "https://picx.zhimg.com/v2-abed1a8c04700ba7d72b45195223e0ff.jpg?source=1def8aca",
+      "badge": [],
+      "badge_v2": {
+        "detail_badges": [],
+        "icon": "",
+        "merged_badges": [],
+        "night_icon": "",
+        "title": ""
+      },
+      "exposed_medal": {
+        "avatar_url": "https://pic1.zhimg.com/v2-6da117205088242db9cd82e48b28640d_l.png?source=1def8aca",
+        "description": "被 1000 个人关注",
+        "medal_avatar_frame": "",
+        "medal_id": "972477022068568064",
+        "medal_name": "备受瞩目",
+        "mini_avatar_url": "https://picx.zhimg.com/v2-6da117205088242db9cd82e48b28640d_r.png?source=1def8aca"
+      },
+      "gender": -1,
+      "headline": "",
+      "id": "redacted-person",
+      "is_advertiser": false,
+      "is_followed": false,
+      "is_following": false,
+      "is_org": false,
+      "is_privacy": false,
+      "kvip_info": {
+        "is_vip": true,
+        "target_url": "https://www.zhihu.com/kvip/purchase",
+        "vip_icon": {
+          "night_mode_url": "https://picx.zhimg.com/v2-57fe7feb4813331d5eca02ef731e12c9.jpg?source=88ceefae",
+          "url": "https://pic1.zhimg.com/v2-57fe7feb4813331d5eca02ef731e12c9.jpg?source=88ceefae"
+        }
+      },
+      "name": "匿名作者",
+      "type": "people",
+      "url": "https://www.zhihu.com/people/redacted-person",
+      "url_token": "redacted-person",
+      "user_type": "people"
+    },
+    "business_type": "normal",
+    "comment_count": 738,
+    "content_mark": {},
+    "content_need_truncated": false,
+    "created_time": 1706728133,
+    "decorative_labels": [],
+    "excerpt": "是的。这个行业的黄金时代已经结束了，未来只会走下坡路。就在昨天，顶尖大厂暗示未来还会有裁员。现在我身边都是失业待业的程序员。就连很多8+年经验的senior都找不到工作。整个行业的价值在快速塌缩了，需求变少，涌入行业的人却越来越多，未来必定是僧多粥少的惨烈局面，预测薪资会回落到普通蓝领工人的水平。现在很多公司还在观望，还没有开始动刀子，但是这个刀子是一定会动的，迟早都是要动的，因此未来的裁员只会连绵不绝…",
+    "extras": "",
+    "favlists_count": 1875,
+    "force_login_when_click_read_more": false,
+    "has_publishing_draft": false,
+    "id": "3383115383",
+    "is_collapsed": false,
+    "is_copyable": true,
+    "is_jump_native": false,
+    "is_mine": false,
+    "is_navigator": false,
+    "is_sticky": false,
+    "is_visible": true,
+    "matrix_tips": "2334 赞同 · 1875 收藏",
+    "navigator_vote": false,
+    "question": {
+      "created": 1680367513,
+      "id": "593275984",
+      "question_type": "normal",
+      "relationship": null,
+      "title": "程序员未来是不是会大量失业？",
+      "type": "question",
+      "updated_time": 1680367513,
+      "url": "https://www.zhihu.com/api/v4/questions/593275984"
+    },
+    "reaction": {
+      "relation": {
+        "faved": false,
+        "liked": false
+      },
+      "statistics": {
+        "down_vote_count": 114,
+        "favorites": 1875,
+        "like_count": 210
+      }
+    },
+    "reaction_instruction": {},
+    "relationship": {
+      "is_favorited": false,
+      "upvoted_followees": [],
+      "voting": 0
+    },
+    "relevant_info": {
+      "is_relevant": false,
+      "relevant_text": "",
+      "relevant_type": ""
+    },
+    "segment_infos": [
+      {
+        "marks": [
+          {
+            "end_index": 355,
+            "seg_info": {
+              "comment_count": 0,
+              "is_like": false,
+              "is_span": false,
+              "like_count": 10,
+              "my_comment_count": 0,
+              "seg_ids": [
+                "1756620415504691201"
+              ]
+            },
+            "start_index": 343
+          }
+        ],
+        "pid": "u82Ya4VB",
+        "text": "是的。这个行业的黄金时代已经结束了，未来只会走下坡路。就在昨天，顶尖大厂暗示未来还会有裁员。现在我身边都是失业待业的程序员。就连很多8+年经验的senior都找不到工作。整个行业的价值在快速塌缩了，需求变少，涌入行业的人却越来越多，未来必定是僧多粥少的惨烈局面，预测薪资会回落到普通蓝领工人的水平。现在很多公司还在观望，还没有开始动刀子，但是这个刀子是一定会动的，迟早都是要动的，因此未来的裁员只会连绵不绝，一年比一年更多。更何况现在AI学会写代码了，现在一个程序员就能完成3人工作量，这意味着最起码有一半的程序员的工作已经没有存在的意义了，即使现在侥幸保住了工作，也不过是在混吃等死罢了。我预测，最迟到2027年，AI就能替代50%的程序员，整个行业会严重缩水，热钱消散，资本撤离。当潮水退去，才知道谁在裸泳。程序员就是裸泳者，如今水已经退到大腿根了，再退下去就真的没有遮羞布了，到时候哭爹喊娘都没用。趁现在转行还来得及，不至于狼狈得底裤都不剩。我身边几个聪明的人已经在找退路了，有的回学校读MBA，有的读PHD，有的转金融、法律，家里有条件的就去读医学院了。我自己也在申请MBA。转行真的太幸苦了，但是没办法，如今这个局面，转行是唯一的出路。很后悔当初选了计算机，现在计算机专业真有向天坑专业发展的趋势了。"
+      }
+    ],
+    "sticky_info": "",
+    "thanks_count": 210,
+    "thumbnail_info": {
+      "count": 0,
+      "thumbnails": [],
+      "type": "thumbnail_info"
+    },
+    "type": "answer",
+    "updated_time": 1787225410,
+    "url": "https://www.zhihu.com/api/v4/answers/3383115383",
+    "visible_only_to_author": false,
+    "vote_next_step": "vote",
+    "voteup_count": 2334
+  },
+  {
+    "allow_segment_interaction": 1,
+    "answer_type": "normal",
+    "attached_info": "ogEUCAQQAxjLx862loyWpxog0NjymgKSAi4KCTcyMzAwMDQ4MxITMTg5NTU0OTY2ODUyOTc3NTU2MxgEIgpJTUFHRV9URVhU",
+    "author": {
+      "avatar_url": "https://pic1.zhimg.com/v2-d8717dcafbb1f22814df1477c5cb1e0f_l.jpg?source=1def8aca",
+      "avatar_url_template": "https://pica.zhimg.com/v2-d8717dcafbb1f22814df1477c5cb1e0f.jpg?source=1def8aca",
+      "badge": [],
+      "badge_v2": {
+        "detail_badges": [],
+        "icon": "",
+        "merged_badges": [],
+        "night_icon": "",
+        "title": ""
+      },
+      "exposed_medal": {
+        "avatar_url": "https://pica.zhimg.com/v2-af4cab5cf582659b6fdea90f42a2fb17_l.png?source=1def8aca",
+        "description": "评论 100 次",
+        "medal_avatar_frame": "",
+        "medal_id": "972462538273792000",
+        "medal_name": "乐于交流",
+        "mini_avatar_url": "https://picx.zhimg.com/v2-af4cab5cf582659b6fdea90f42a2fb17_r.png?source=1def8aca"
+      },
+      "gender": 1,
+      "headline": "",
+      "id": "redacted-person",
+      "is_advertiser": false,
+      "is_followed": false,
+      "is_following": false,
+      "is_org": false,
+      "is_privacy": false,
+      "name": "匿名作者",
+      "type": "people",
+      "url": "https://www.zhihu.com/people/redacted-person",
+      "url_token": "redacted-person",
+      "user_type": "people"
+    },
+    "business_type": "normal",
+    "comment_count": 67,
+    "content_mark": {},
+    "content_need_truncated": false,
+    "created_time": 1744714258,
+    "decorative_labels": [],
+    "excerpt": "[图片] 在逆向开发领域，不大可能的，业务需求一直是饱和的，不少人还在外面兼职接活儿：1，某票务APP协议分析，Sign算法还原，开发自动抢票，抢优惠券工具~ 2，某海外航空app注册登录，下单协议破解，抢购特价机票，脱机运行~ 3，whatsapp/Line协议分析，突破限制，自动加好友，自动聊天工具~ 4，某短视频APP，逆向获取评论协议，评论区/直播间自动截流~ 5，某外买配送类APP，修改设备环境和虚拟定位，设置条件抢优质配送单~ 6，某海…",
+    "extras": "",
+    "favlists_count": 595,
+    "force_login_when_click_read_more": false,
+    "has_publishing_draft": false,
+    "id": "1895549668529775563",
+    "is_collapsed": false,
+    "is_copyable": true,
+    "is_jump_native": false,
+    "is_mine": false,
+    "is_navigator": false,
+    "is_sticky": false,
+    "is_visible": true,
+    "matrix_tips": "257 赞同 · 595 收藏",
+    "navigator_vote": false,
+    "question": {
+      "created": 1680367513,
+      "id": "593275984",
+      "question_type": "normal",
+      "relationship": null,
+      "title": "程序员未来是不是会大量失业？",
+      "type": "question",
+      "updated_time": 1680367513,
+      "url": "https://www.zhihu.com/api/v4/questions/593275984"
+    },
+    "reaction": {
+      "relation": {
+        "faved": false,
+        "liked": false
+      },
+      "statistics": {
+        "down_vote_count": 8,
+        "favorites": 595,
+        "like_count": 13
+      }
+    },
+    "reaction_instruction": {},
+    "relationship": {
+      "is_favorited": false,
+      "upvoted_followees": [],
+      "voting": 0
+    },
+    "relevant_info": {
+      "is_relevant": false,
+      "relevant_text": "",
+      "relevant_type": ""
+    },
+    "sticky_info": "",
+    "thanks_count": 13,
+    "thumbnail_info": {
+      "count": 1,
+      "thumbnails": [
+        {
+          "height": 375,
+          "token": "v2-d4e49469d89079f500cd67ab8ae0c954",
+          "type": "image",
+          "url": "https://picx.zhimg.com/80/v2-d4e49469d89079f500cd67ab8ae0c954_720w.jpg?source=1def8aca",
+          "width": 800
+        }
+      ],
+      "type": "thumbnail_info"
+    },
+    "type": "answer",
+    "updated_time": 1744774260,
+    "url": "https://www.zhihu.com/api/v4/answers/1895549668529775563",
+    "visible_only_to_author": false,
+    "vote_next_step": "vote",
+    "voteup_count": 257
+  },
+  {
+    "allow_segment_interaction": 1,
+    "answer_type": "normal",
+    "attached_info": "ogEQCAQQAxi1ueKICyDQ2PKaApICJQoJNTcwMzAwMzQ3EgoyOTcxMTgwMjEzGAQiCklNQUdFX1RFWFQ=",
+    "author": {
+      "avatar_url": "https://picx.zhimg.com/v2-7abf00131ebe77e2aec5bf7a6c667228_l.jpg?source=1def8aca",
+      "avatar_url_template": "https://pic1.zhimg.com/v2-7abf00131ebe77e2aec5bf7a6c667228.jpg?source=1def8aca",
+      "badge": [],
+      "badge_v2": {
+        "detail_badges": [],
+        "icon": "",
+        "merged_badges": [],
+        "night_icon": "",
+        "title": ""
+      },
+      "exposed_medal": {
+        "avatar_url": "",
+        "description": "",
+        "medal_id": "0",
+        "medal_name": ""
+      },
+      "gender": 1,
+      "headline": "",
+      "id": "redacted-person",
+      "is_advertiser": false,
+      "is_followed": false,
+      "is_following": false,
+      "is_org": false,
+      "is_privacy": false,
+      "name": "匿名作者",
+      "type": "people",
+      "url": "https://www.zhihu.com/people/redacted-person",
+      "url_token": "redacted-person",
+      "user_type": "people"
+    },
+    "business_type": "normal",
+    "comment_count": 80,
+    "content_mark": {},
+    "content_need_truncated": false,
+    "created_time": 1680767038,
+    "decorative_labels": [],
+    "excerpt": "在3月27号OpenAI发表了一篇论文《GPTs are GPTs: An early look at the labor market impact potential of large language models》也就是大语言模型对劳动力市场的潜在影响。 [图片] 里面提到在鹰酱那有80%的工作会受到影响，19%的工作会因为GPT大幅提升工作效率，不会被替代的还是那些得亲力亲为的劳动力。 [图片] 受波及较大的是编程和写作相关的职业。。。（这不就是我嘛，偶尔写代码代码之余就是个写文章的 未来AI要完全替代程序员还有很…",
+    "extras": "",
+    "favlists_count": 92,
+    "force_login_when_click_read_more": false,
+    "has_publishing_draft": false,
+    "id": "2971180213",
+    "is_collapsed": false,
+    "is_copyable": true,
+    "is_jump_native": false,
+    "is_mine": false,
+    "is_navigator": false,
+    "is_sticky": false,
+    "is_visible": true,
+    "matrix_tips": "204 赞同 · 92 收藏",
+    "navigator_vote": false,
+    "question": {
+      "created": 1680367513,
+      "id": "593275984",
+      "question_type": "normal",
+      "relationship": null,
+      "title": "程序员未来是不是会大量失业？",
+      "type": "question",
+      "updated_time": 1680367513,
+      "url": "https://www.zhihu.com/api/v4/questions/593275984"
+    },
+    "reaction": {
+      "relation": {
+        "faved": false,
+        "liked": false
+      },
+      "statistics": {
+        "down_vote_count": 8,
+        "favorites": 92,
+        "like_count": 25
+      }
+    },
+    "reaction_instruction": {},
+    "relationship": {
+      "is_favorited": false,
+      "upvoted_followees": [],
+      "voting": 0
+    },
+    "relevant_info": {
+      "is_relevant": false,
+      "relevant_text": "",
+      "relevant_type": ""
+    },
+    "sticky_info": "",
+    "thanks_count": 25,
+    "thumbnail_info": {
+      "count": 2,
+      "thumbnails": [
+        {
+          "height": 460,
+          "token": "v2-9c3df7a88dea20b4f1ed2c14f261ed43",
+          "type": "image",
+          "url": "https://pic1.zhimg.com/80/v2-9c3df7a88dea20b4f1ed2c14f261ed43_720w.jpg?source=1def8aca",
+          "width": 660
+        },
+        {
+          "height": 146,
+          "token": "v2-3d3973d94d5a4644feca03be86c31179",
+          "type": "image",
+          "url": "https://pica.zhimg.com/80/v2-3d3973d94d5a4644feca03be86c31179_720w.jpg?source=1def8aca",
+          "width": 690
+        }
+      ],
+      "type": "thumbnail_info"
+    },
+    "type": "answer",
+    "updated_time": 1680767038,
+    "url": "https://www.zhihu.com/api/v4/answers/2971180213",
+    "visible_only_to_author": false,
+    "vote_next_step": "vote",
+    "voteup_count": 204
+  },
+  {
+    "allow_segment_interaction": 1,
+    "answer_type": "normal",
+    "attached_info": "ogEQCAQQAxjqvOSHCyDQ2PKaApICJQoJNTY5OTI0MzQxEgoyOTY5MTE2MjY2GAQiCklNQUdFX1RFWFQ=",
+    "author": {
+      "avatar_url": "https://pica.zhimg.com/v2-de8d93fb1e484499346fda54e882f034_l.jpg?source=1def8aca",
+      "avatar_url_template": "https://picx.zhimg.com/v2-de8d93fb1e484499346fda54e882f034.jpg?source=1def8aca",
+      "badge": [],
+      "badge_v2": {
+        "detail_badges": [],
+        "icon": "",
+        "merged_badges": [],
+        "night_icon": "",
+        "title": ""
+      },
+      "exposed_medal": {
+        "avatar_url": "",
+        "description": "",
+        "medal_id": "0",
+        "medal_name": ""
+      },
+      "gender": 1,
+      "headline": "",
+      "id": "redacted-person",
+      "is_advertiser": false,
+      "is_followed": false,
+      "is_following": false,
+      "is_org": false,
+      "is_privacy": false,
+      "name": "匿名作者",
+      "type": "people",
+      "url": "https://www.zhihu.com/people/redacted-person",
+      "url_token": "redacted-person",
+      "user_type": "people"
+    },
+    "business_type": "normal",
+    "comment_count": 108,
+    "content_mark": {},
+    "content_need_truncated": false,
+    "created_time": 1680659095,
+    "decorative_labels": [],
+    "excerpt": "更新：还是保守了，微软CEO说会有10亿技术开发者 微软 CEO 纳德拉称「AI 将创造新工作机会，会出现 10 亿技术开发者 」，你对此有何看法？ ---原文--- 会。大量程序员失业的同时，也会出现大量独立开发者。 因为当你转换一下思路，AI可以取代程序员、设计师、产品经理，这其实意味着： 程序员+AI=一个公司独立开发者是什么简单来说，独立开发者就是一个人负责产品的开发和运营并且做到盈利。国…",
+    "extras": "",
+    "favlists_count": 1050,
+    "force_login_when_click_read_more": false,
+    "has_publishing_draft": false,
+    "id": "2969116266",
+    "is_collapsed": false,
+    "is_copyable": true,
+    "is_jump_native": false,
+    "is_mine": false,
+    "is_navigator": false,
+    "is_sticky": false,
+    "is_visible": true,
+    "matrix_tips": "499 赞同 · 1050 收藏",
+    "navigator_vote": false,
+    "question": {
+      "created": 1680367513,
+      "id": "593275984",
+      "question_type": "normal",
+      "relationship": null,
+      "title": "程序员未来是不是会大量失业？",
+      "type": "question",
+      "updated_time": 1680367513,
+      "url": "https://www.zhihu.com/api/v4/questions/593275984"
+    },
+    "reaction": {
+      "relation": {
+        "faved": false,
+        "liked": false
+      },
+      "statistics": {
+        "down_vote_count": 32,
+        "favorites": 1050,
+        "like_count": 155
+      }
+    },
+    "reaction_instruction": {},
+    "relationship": {
+      "is_favorited": false,
+      "upvoted_followees": [],
+      "voting": 0
+    },
+    "relevant_info": {
+      "is_relevant": false,
+      "relevant_text": "",
+      "relevant_type": ""
+    },
+    "sticky_info": "",
+    "thanks_count": 155,
+    "thumbnail_info": {
+      "count": 3,
+      "thumbnails": [
+        {
+          "height": 1232,
+          "token": "v2-8c6632c117198e5e0f171bc456678058",
+          "type": "image",
+          "url": "https://pic1.zhimg.com/80/v2-8c6632c117198e5e0f171bc456678058_720w.jpg?source=1def8aca",
+          "width": 2218
+        },
+        {
+          "height": 1254,
+          "token": "v2-173842fc82d8763c85043b94dbd445d3",
+          "type": "image",
+          "url": "https://pica.zhimg.com/80/v2-173842fc82d8763c85043b94dbd445d3_720w.jpg?source=1def8aca",
+          "width": 1622
+        },
+        {
+          "height": 972,
+          "token": "v2-dfd3f6446aa40fbc42436e4bfe1782c0",
+          "type": "image",
+          "url": "https://picx.zhimg.com/80/v2-dfd3f6446aa40fbc42436e4bfe1782c0_720w.jpg?source=1def8aca",
+          "width": 1410
+        }
+      ],
+      "type": "thumbnail_info"
+    },
+    "type": "answer",
+    "updated_time": 1684382534,
+    "url": "https://www.zhihu.com/api/v4/answers/2969116266",
+    "visible_only_to_author": false,
+    "vote_next_step": "vote",
+    "voteup_count": 499
+  }
+]

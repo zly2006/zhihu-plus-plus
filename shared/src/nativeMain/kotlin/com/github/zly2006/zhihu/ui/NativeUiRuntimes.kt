@@ -24,7 +24,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.text.Placeholder
@@ -32,11 +31,9 @@ import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.unit.em
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.notification.NotificationSettingsStore
-import com.github.zly2006.zhihu.platform.UserMessageSink
 import com.github.zly2006.zhihu.platform.nativeAppPrivateDirectoryPath
 import com.github.zly2006.zhihu.platform.nativeAppVersionName
 import com.github.zly2006.zhihu.platform.nativeBundledResourcePath
-import com.github.zly2006.zhihu.platform.nativeChooseBlocklistImportFilePath
 import com.github.zly2006.zhihu.platform.nativeIsDesktop
 import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.platform.rememberExternalUrlOpener
@@ -45,13 +42,11 @@ import com.github.zly2006.zhihu.viewmodel.NativePaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.NotificationEnvironment
 import com.github.zly2006.zhihu.viewmodel.filter.encodeBlocklistBackup
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
-import com.github.zly2006.zhihu.viewmodel.filter.importBlocklistBackupFromJsonText
 import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ByteVar
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.readBytes
 import kotlinx.cinterop.reinterpret
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -204,43 +199,6 @@ actual fun rememberAppVersionInfo(): String = nativeAppVersionName
 actual fun ZhihuHtmlWebViewContent(html: String): Unit = error("$platformName 暂不支持 HTML WebView 渲染")
 
 actual val isLegacyWebViewSupported: Boolean = false
-
-@Composable
-actual fun rememberBlocklistRuleImporter(
-    userMessages: UserMessageSink,
-    onImported: (String) -> Unit,
-): BlocklistRuleImporter {
-    val database = remember { getContentFilterDatabase() }
-    val coroutineScope = rememberCoroutineScope()
-    val currentOnImported by rememberUpdatedState(onImported)
-    return remember(database, coroutineScope, userMessages) {
-        object : BlocklistRuleImporter {
-            override fun invoke() {
-                val selectedFilePath = nativeChooseBlocklistImportFilePath()
-                if (selectedFilePath != null) {
-                    coroutineScope.launch {
-                        try {
-                            val text = readNativeFileBytes(selectedFilePath)?.decodeToString()
-                                ?: error("读取文件失败")
-                            val summary = importBlocklistBackupFromJsonText(
-                                keywordDao = database.blockedKeywordDao(),
-                                userDao = database.blockedUserDao(),
-                                questionAuthorDao = database.blockedQuestionAuthorDao(),
-                                topicDao = database.blockedTopicDao(),
-                                text = text,
-                            )
-                            currentOnImported(summary)
-                        } catch (error: CancellationException) {
-                            throw error
-                        } catch (error: Exception) {
-                            userMessages.showShortMessage("导入失败：${error.message}")
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
 
 @Composable
 @OptIn(BetaInteropApi::class, ExperimentalForeignApi::class)

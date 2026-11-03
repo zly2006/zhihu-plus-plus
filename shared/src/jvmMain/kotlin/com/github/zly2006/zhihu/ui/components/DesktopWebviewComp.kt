@@ -21,10 +21,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.awt.SwingPanel
@@ -32,8 +30,8 @@ import com.github.zly2006.zhihu.account.ZHIHU_DESKTOP_USER_AGENT
 import javafx.application.Platform
 import javafx.embed.swing.JFXPanel
 import javafx.scene.Scene
-import javafx.scene.web.WebEngine
-import javafx.scene.web.WebView
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * 桌面端内嵌 WebView 组件，使用 JavaFX WebView + SwingPanel 嵌入 Compose Desktop。
@@ -43,9 +41,9 @@ import javafx.scene.web.WebView
  * @param url 需要加载的页面 URL
  * @param modifier Compose Modifier
  * @param userAgent 浏览器 User-Agent，默认使用知乎桌面端 UA
- * @param initialCookies 预设 cookies，在页面加载前通过 JavaScript 注入
+ * @param initialCookies 预设 cookies，在首个网络请求前写入 WebKit CookieHandler
  * @param onPageFinished 页面加载完成时的回调，携带当前 URL
- * @param onCookiesChanged 页面加载完成后回传当前页面的 cookies
+ * @param onCookiesChanged cookie 变化时的回调，携带当前页面可见的全部 cookies（含 HttpOnly）
  */
 @Composable
 fun DesktopWebviewComp(
@@ -56,57 +54,37 @@ fun DesktopWebviewComp(
     onPageFinished: (url: String?) -> Unit = {},
     onCookiesChanged: (Map<String, String>) -> Unit = {},
 ) {
-    var engineState by remember { mutableStateOf<WebEngine?>(null) }
-
-    DisposableEffect(Unit) {
+    val pageFinished = rememberUpdatedState(onPageFinished)
+    val cookiesChanged = rememberUpdatedState(onCookiesChanged)
+    val panel = remember { JFXPanel() }
+    val sessionRef = remember(panel) { AtomicReference<DesktopWebviewSession?>() }
+    val disposed = remember(panel) { AtomicBoolean(false) }
+    DisposableEffect(panel) {
+        // 关闭隐式退出，避免验证页或登录页销毁后 JavaFX 工具包退出，导致再次打开时只得到空白页。
+        Platform.setImplicitExit(false)
         onDispose {
+            disposed.set(true)
             Platform.runLater {
-                engineState?.load(null)
+                sessionRef.getAndSet(null)?.close()
+                panel.scene = null
             }
         }
     }
-
     SwingPanel(
         modifier = modifier,
-        factory = {
-            JFXPanel().also { jfxPanel ->
-                jfxPanel.enableInputMethods(false)
-                Platform.runLater {
-                    val webView = WebView().apply {
-                        engine.userAgent = userAgent
-                        isContextMenuEnabled = true
+        factory = { panel.also { it.enableInputMethods(false) } },
+        update = { jfxPanel ->
+            Platform.runLater {
+                if (disposed.get()) return@runLater
+                val session = sessionRef.get()
+                    ?: DesktopWebviewSession(
+                        onPageFinished = { pageFinished.value(it) },
+                        onCookiesChanged = { cookiesChanged.value(it) },
+                    ).also {
+                        sessionRef.set(it)
+                        jfxPanel.scene = Scene(it.view)
                     }
-                    val engine = webView.engine
-                    engineState = engine
-
-                    // 监听页面加载完成，与 Android 端 WebViewClient.onPageFinished 对应
-                    engine.loadWorker.stateProperty().addListener { _, _, newState ->
-                        if (newState == javafx.concurrent.Worker.State.SUCCEEDED) {
-                            val currentUrl = engine.location
-                            onPageFinished(currentUrl)
-                            readCookies(engine)?.let { onCookiesChanged(it) }
-                        }
-                    }
-
-                    // 注入初始 cookies（用于风控验证的会话上下文）
-                    if (initialCookies.isNotEmpty()) {
-                        val cookieScript = initialCookies.entries.joinToString(";") { (name, value) ->
-                            "document.cookie='$name=$value;path=/;domain=.zhihu.com'"
-                        }
-                        engine.documentProperty().addListener { _, _, doc ->
-                            if (doc != null) {
-                                engine.executeScript(cookieScript)
-                            }
-                        }
-                    }
-
-                    jfxPanel.scene = Scene(webView)
-
-                    // 加载目标 URL
-                    if (url != null) {
-                        engine.load(url)
-                    }
-                }
+                session.load(url, userAgent, initialCookies)
             }
         },
     )
@@ -137,34 +115,5 @@ fun DesktopRiskControlWebView(
                 onCookiesChanged(updatedCookies)
             },
         )
-    }
-}
-
-/**
- * 从 JavaFX WebView 的 WebEngine 中读取页面 cookies。
- *
- * 通过 JavaScript 在页面上下文中读取 document.cookie，
- * 对应 Android 端的 CookieManager.getCookie()。
- *
- * 注意：document.cookie 不包含 HttpOnly cookies，
- * 但对于风控验证页面（用于人机验证的会话 cookie），此限制不影响功能。
- */
-private fun readCookies(engine: WebEngine): Map<String, String>? {
-    return try {
-        val cookieString = engine.executeScript("document.cookie") as? String
-            ?: return null
-        if (cookieString.isBlank()) return null
-        cookieString
-            .split(";")
-            .mapNotNull { entry ->
-                val trimmed = entry.trim()
-                if (trimmed.isBlank() || !trimmed.contains("=")) return@mapNotNull null
-                val name = trimmed.substringBefore("=").trim()
-                val value = trimmed.substringAfter("=").trim()
-                if (name.isNotBlank() && value.isNotBlank()) name to value else null
-            }.toMap()
-            .ifEmpty { null }
-    } catch (_: Exception) {
-        null
     }
 }

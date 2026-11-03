@@ -17,7 +17,9 @@
 
 package com.github.zly2006.zhihu.util
 
+import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toInstant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -48,6 +50,36 @@ class DisplayFormatTest {
                 nowEpochSeconds = 604_800,
                 timeZone = TimeZone.UTC,
             ),
+        )
+    }
+
+    @Test
+    fun absoluteTimeUsesDateOnlyForOtherYears() {
+        val now = LocalDateTime(2026, 11, 2, 12, 0).toInstant(TimeZone.UTC).epochSeconds
+        for ((year, expected) in listOf(2026 to "03-22 19:07", 2025 to "2025-03-22")) {
+            val timestamp = LocalDateTime(year, 3, 22, 19, 7).toInstant(TimeZone.UTC).epochSeconds
+            assertEquals(expected, formatRelativeTime(timestamp, now, TimeZone.UTC))
+        }
+    }
+
+    @Test
+    fun absoluteTimeComparesYearsInTheDisplayTimeZone() {
+        val now = LocalDateTime(2026, 1, 1, 0, 30).toInstant(TimeZone.UTC).epochSeconds
+        val timestamp = LocalDateTime(2025, 12, 20, 12, 0).toInstant(TimeZone.UTC).epochSeconds
+        assertEquals("2025-12-20", formatRelativeTime(timestamp, now, TimeZone.UTC))
+        assertEquals("12-20 04:00", formatRelativeTime(timestamp, now, TimeZone.of("America/Los_Angeles")))
+        assertEquals("2025-12-20", formatRelativeTime(timestamp, now, TimeZone.of("Asia/Shanghai")))
+        assertEquals("2天前", formatRelativeTime(now - 172_800, now, TimeZone.UTC))
+    }
+
+    @Test
+    fun fullDateTimeIncludesSecondsInSystemTimeZone() {
+        val epochSeconds = LocalDateTime(1970, 1, 1, 0, 0, 0)
+            .toInstant(TimeZone.currentSystemDefault())
+            .epochSeconds
+        assertEquals(
+            "1970-01-01 00:00:00",
+            formatFullDateTime(epochSeconds = epochSeconds),
         )
     }
 }

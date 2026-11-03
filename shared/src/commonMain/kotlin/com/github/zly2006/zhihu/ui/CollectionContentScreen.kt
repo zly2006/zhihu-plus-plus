@@ -68,10 +68,10 @@ import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
+import com.github.zly2006.zhihu.util.formatFullDateTime
 import com.github.zly2006.zhihu.viewmodel.CollectionContentEnvironment
 import com.github.zly2006.zhihu.viewmodel.CollectionContentViewModel
 import com.github.zly2006.zhihu.viewmodel.CollectionHtmlExportDialogState
-import com.github.zly2006.zhihu.viewmodel.formatArticleDateTime
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.sharedArticleAnswerSwitchState
 
@@ -223,7 +223,7 @@ internal fun CollectionContentBody(
                         viewModel.collection?.itemCount?.let { "$it 条收藏" },
                         viewModel.collection?.likeCount?.let { "$it 个赞同" },
                         viewModel.collection?.commentCount?.let { "$it 条评论" },
-                        viewModel.collection?.updatedTime?.let { "${formatArticleDateTime(it)} 更新" },
+                        viewModel.collection?.updatedTime?.let { "${formatFullDateTime(it)} 更新" },
                     ).fastJoinToString(" · "),
                     modifier = Modifier
                         .fillMaxWidth()

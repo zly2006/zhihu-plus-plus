@@ -25,6 +25,7 @@ import io.ktor.client.statement.request
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Url
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.number
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -114,8 +115,32 @@ fun formatRelativeTime(
             val dateTime = Instant
                 .fromEpochSeconds(epochSeconds)
                 .toLocalDateTime(timeZone)
-            "${(dateTime.month.ordinal + 1).twoDigitString()}-${dateTime.day.twoDigitString()} ${dateTime.hour.twoDigitString()}:${dateTime.minute.twoDigitString()}"
+            val currentYear = Instant.fromEpochSeconds(nowEpochSeconds).toLocalDateTime(timeZone).year
+            val date = "${(dateTime.month.ordinal + 1).twoDigitString()}-${dateTime.day.twoDigitString()}"
+            if (dateTime.year == currentYear) {
+                "$date ${dateTime.hour.twoDigitString()}:${dateTime.minute.twoDigitString()}"
+            } else {
+                "${dateTime.year}-$date"
+            }
         }
+    }
+}
+
+@OptIn(ExperimentalTime::class)
+fun formatFullDateTime(epochSeconds: Long): String {
+    val dateTime = Instant.fromEpochSeconds(epochSeconds).toLocalDateTime(TimeZone.currentSystemDefault())
+    return buildString {
+        append(dateTime.year.toString().padStart(4, '0'))
+        append('-')
+        append(dateTime.month.number.twoDigitString())
+        append('-')
+        append(dateTime.day.twoDigitString())
+        append(' ')
+        append(dateTime.hour.twoDigitString())
+        append(':')
+        append(dateTime.minute.twoDigitString())
+        append(':')
+        append(dateTime.second.twoDigitString())
     }
 }
 

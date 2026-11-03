@@ -78,10 +78,10 @@ import com.github.zly2006.zhihu.ui.subscreens.DUO3_TIQIAN_MATH_FONT_PREFERENCE_K
 import com.github.zly2006.zhihu.ui.subscreens.PREF_BLOCK_SPACING
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
-import com.hrm.markdown.parser.ast.Document
-import com.hrm.markdown.renderer.Markdown
-import com.hrm.markdown.renderer.MarkdownImageData
-import com.hrm.markdown.renderer.MarkdownTheme
+import me.zly2006.markdown.parser.ast.Document
+import me.zly2006.markdown.renderer.Markdown
+import me.zly2006.markdown.renderer.MarkdownImageData
+import me.zly2006.markdown.renderer.MarkdownTheme
 
 @Composable
 fun RenderImage(
@@ -356,7 +356,9 @@ private fun RenderMarkdownDocument(
                             footer = footer,
                         )
                     } else {
-                        val mathFont = rememberMarkdownMathFont()
+                        val selectedMathFont = rememberSelectedMathFont()
+                        val importedMathFont = rememberImportedMathFont()
+                        val mathFont = if (selectedMathFont == null) rememberMarkdownMathFont() else importedMathFont
                         val defaultTheme = MarkdownTheme.material3()
                         val scaledFontSize = 16.sp * fontSize / 100
                         val theme = defaultTheme.copy(

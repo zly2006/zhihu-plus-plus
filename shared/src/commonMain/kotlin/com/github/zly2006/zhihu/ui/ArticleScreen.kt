@@ -70,6 +70,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -79,6 +80,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -153,15 +155,16 @@ import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_PAGE_TURN_SWITCH_ANSWER
 import com.github.zly2006.zhihu.ui.subscreens.DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.PREF_PAGE_TURN_SWITCH_ANSWER
 import com.github.zly2006.zhihu.util.formatCompactCount
+import com.github.zly2006.zhihu.util.formatFullDateTime
 import com.github.zly2006.zhihu.util.smoothGradient
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.addReadHistory
-import com.github.zly2006.zhihu.viewmodel.formatArticleDateTime
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.sharedArticleAnswerSwitchState
 import com.materialkolor.ktx.harmonize
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import zhihu.shared.generated.resources.Res
 import zhihu.shared.generated.resources.ic_vote_down_24dp
@@ -199,6 +202,7 @@ fun ArticleScreen(
         ?: remember { mutableStateOf(null) }
 
     val scrollState = rememberScrollState()
+    val coroutineScope = rememberCoroutineScope()
     val settings = rememberSettingsStore()
     val isTitleAutoHide by rememberObservedSetting(settings, "titleAutoHide") { getBoolean("titleAutoHide", false) }
     val autoHideArticleBottomBar by rememberObservedSetting(settings, "autoHideArticleBottomBar") {
@@ -358,6 +362,14 @@ fun ArticleScreen(
             }
             AnswerDoubleTapAction.ToggleImmersive -> {
                 isImmersiveMode = !isImmersiveMode
+            }
+            AnswerDoubleTapAction.JumpToTop -> coroutineScope.launch {
+                scrollState.scrollTo(0)
+            }
+            AnswerDoubleTapAction.JumpToBottom -> coroutineScope.launch {
+                if (latestEffectiveScrollMaxValue != Int.MAX_VALUE) {
+                    scrollState.scrollTo(latestEffectiveScrollMaxValue)
+                }
             }
         }
     }
@@ -936,13 +948,13 @@ fun ArticleScreen(
                         @Composable
                         fun ColumnScope.DateTexts() {
                             Text(
-                                "发布于 " + formatArticleDateTime(viewModel.createdAt),
+                                "发布于 " + formatFullDateTime(viewModel.createdAt),
                                 color = Color.Gray,
                                 fontSize = 11.sp,
                             )
                             if (viewModel.createdAt != viewModel.updatedAt) {
                                 Text(
-                                    "编辑于 " + formatArticleDateTime(viewModel.updatedAt),
+                                    "编辑于 " + formatFullDateTime(viewModel.updatedAt),
                                     color = Color.Gray,
                                     fontSize = 11.sp,
                                 )
@@ -955,10 +967,16 @@ fun ArticleScreen(
                                 ArticleType.Answer -> "回答"
                                 ArticleType.Article -> "文章"
                             }
-                            val hasVotersSocialCredit = viewModel.votersTotal > 0
-                            if (!hasVotersSocialCredit && viewModel.aigcSupportVoterCount <= 0) return
                             Spacer(modifier = Modifier.height(8.dp))
-                            if (hasVotersSocialCredit) {
+                            // 切换回答时正文先从缓存恢复，赞同信息稍后加载；先预留一行，避免正文跳动。
+                            Box(
+                                modifier = Modifier.fillMaxWidth().height(
+                                    with(density) {
+                                        MaterialTheme.typography.bodySmall.lineHeight
+                                            .toDp()
+                                    },
+                                ),
+                            ) {
                                 val text = viewModel.votersSocialText.ifBlank {
                                     "${formatCompactCount(viewModel.votersTotal)} 人赞同了该$contentLabel"
                                 }
@@ -977,12 +995,12 @@ fun ArticleScreen(
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = votersTextModifier,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
                                 )
                             }
                             if (viewModel.aigcSupportVoterCount > 0) {
-                                if (hasVotersSocialCredit) {
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                }
+                                Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     text = "有 ${formatCompactCount(viewModel.aigcSupportVoterCount)} 人认为此${contentLabel}包含AIGC内容",
                                     style = MaterialTheme.typography.bodySmall,
@@ -1007,35 +1025,28 @@ fun ArticleScreen(
                                 }
                                 Spacer(Modifier.height(12.dp))
                             }
-                            val hasPinnedDate = pinAnswerDate
-                            val hasSocialCredit = viewModel.votersTotal > 0 || viewModel.aigcSupportVoterCount > 0
                             val endorsements = viewModel.endorsements
-                            val hasEndorsements = endorsements.isNotEmpty()
-                            if (hasPinnedDate || hasSocialCredit || hasEndorsements) {
-                                Column(
-                                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                                    horizontalAlignment = Alignment.Start,
-                                ) {
-                                    if (hasPinnedDate) {
-                                        DateTexts()
-                                    }
-                                    ArticleVotersSocialCredit()
-                                    if (hasEndorsements) {
-                                        if (hasPinnedDate || hasSocialCredit) {
-                                            Spacer(modifier = Modifier.height(8.dp))
-                                        }
-                                        FlowRow(
-                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                                        ) {
-                                            endorsements.forEach { endorsement ->
-                                                AnswerEndorsementChip(endorsement)
-                                            }
+                            Column(
+                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                                horizontalAlignment = Alignment.Start,
+                            ) {
+                                if (pinAnswerDate) {
+                                    DateTexts()
+                                }
+                                ArticleVotersSocialCredit()
+                                if (endorsements.isNotEmpty()) {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    FlowRow(
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        endorsements.forEach { endorsement ->
+                                            AnswerEndorsementChip(endorsement)
                                         }
                                     }
                                 }
-                                Spacer(modifier = Modifier.height(16.dp))
                             }
+                            Spacer(modifier = Modifier.height(16.dp))
                             if (useWebView && isLegacyWebViewSupported) {
                                 // WebView 正文渲染已经废弃，只保留为紧急回退路径；正文外 UI 不再为它单独分支。
                                 ArticleWebViewContent(
@@ -1312,10 +1323,12 @@ fun ArticleScreen(
     if (showDoubleTapActionDialog) {
         MyModalBottomSheet(
             onDismissRequest = { showDoubleTapActionDialog = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
@@ -1371,6 +1384,24 @@ fun ArticleScreen(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text("设为开关沉浸式")
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    listOf(AnswerDoubleTapAction.JumpToTop, AnswerDoubleTapAction.JumpToBottom).forEach { action ->
+                        Button(
+                            onClick = {
+                                showDoubleTapActionDialog = false
+                                saveAnswerDoubleTapAction(action)
+                                performAnswerDoubleTapAction(action)
+                                userMessages.showMessage("已将双击回答动作设为：${action.label}")
+                            },
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Text(action.label)
+                        }
+                    }
                 }
             }
         }

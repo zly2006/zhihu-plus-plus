@@ -19,7 +19,7 @@ package com.github.zly2006.zhihu.markdown
 
 import androidx.compose.foundation.ScrollState
 import androidx.compose.runtime.Composable
-import com.hrm.markdown.parser.ast.Document
+import me.zly2006.markdown.parser.ast.Document
 
 internal expect val isTiqianMarkdownRendererAvailable: Boolean
 
