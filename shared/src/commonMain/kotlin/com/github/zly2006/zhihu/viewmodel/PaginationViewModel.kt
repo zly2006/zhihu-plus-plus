@@ -44,8 +44,8 @@ import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
 import com.github.zly2006.zhihu.ui.ArticleAnswerTransitionDirection
 import com.github.zly2006.zhihu.util.Log
-import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
 import com.github.zly2006.zhihu.util.signZhihuFetchRequest
+import com.github.zly2006.zhihu.util.zhihuAccountClientKey
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
 import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
 import io.ktor.client.HttpClient
@@ -277,11 +277,9 @@ interface ZhihuApiEnvironment {
     }
 
     suspend fun refreshToken() {
-        val client = httpClient()
-        ZhihuCredentialRefresher.refreshZhihuToken(
-            ZhihuCredentialRefresher.fetchRefreshToken(client),
-            client,
-        )
+        val accountClient = httpClient().attributes.getOrNull(zhihuAccountClientKey)
+            ?: error("请先登录后再刷新登录状态")
+        check(accountClient.credentialRefresher.refresh(force = true)) { "缺少移动端刷新凭据或刚刚尝试过刷新，请稍后重试" }
     }
 
     suspend fun handleFetchFailure(

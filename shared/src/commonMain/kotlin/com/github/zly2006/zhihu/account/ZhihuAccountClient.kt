@@ -20,26 +20,44 @@ package com.github.zly2006.zhihu.account
 import androidx.compose.runtime.Composable
 import com.github.zly2006.zhihu.data.fetchVerifiedZhihuSession
 import com.github.zly2006.zhihu.data.installZhihuCommonClientConfig
+import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
+import com.github.zly2006.zhihu.util.zhihuAccountClientKey
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.engine.HttpClientEngineFactory
+import kotlinx.atomicfu.locks.reentrantLock
+import kotlinx.atomicfu.locks.withLock
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 class ZhihuAccountClient internal constructor(
-    private val accountState: ZhihuAccountState,
+    private val accountStore: ZhihuAccountStore,
 ) : AutoCloseable {
+    private val accountState: ZhihuAccountState
+        get() = accountStore.accountState
+    private val accountId = accountState.value.activeAccountId
+    private var closed = false
+    internal val isCurrent: Boolean
+        get() = !closed && accountState.value.activeAccountId == accountId
+    val credentialRefresher: ZhihuCredentialRefresher
+        get() = accountStore.credentialRefresherFor(accountId)
     private val cookies = accountState.value.session.cookies
         .toMutableMap()
     private val client = createAccountHttpClient(cookies, accountState.value.session.userAgent) {
-        accountState.save(load().copy(cookies = cookies.toMutableMap()))
+        accountStore.sessionLock.withLock {
+            if (isCurrent) accountState.save(load().copy(cookies = cookies.toMutableMap()))
+        }
+    }
+
+    init {
+        client.attributes.put(zhihuAccountClientKey, this)
     }
 
     fun load(): ZhihuAccountSession = accountState.value.session
 
-    fun save(session: ZhihuAccountSession) {
-        require(load().hasSameIdentityAs(session)) {
+    fun save(session: ZhihuAccountSession) = accountStore.sessionLock.withLock {
+        require(isCurrent && load().hasSameIdentityAs(session)) {
             "ZhihuAccountClient 只能刷新同一账号的 session；切换身份必须替换 client"
         }
         persistSession(session)
@@ -60,20 +78,25 @@ class ZhihuAccountClient internal constructor(
     suspend fun refreshAndSaveProfile(): ZhihuAccountSession? {
         val current = load()
         val refreshed = fetchVerifiedZhihuSession(client, current.cookies, current.userAgent) ?: return null
-        return refreshed
-            .copy(
-                mobileAccessToken = current.mobileAccessToken,
-                mobileRefreshToken = current.mobileRefreshToken,
-                mobileTokenType = current.mobileTokenType,
-                mobileTokenExpiresAt = current.mobileTokenExpiresAt,
-            ).also(::persistSession)
+        return accountStore.sessionLock.withLock {
+            if (!isCurrent) return@withLock null
+            val latest = load()
+            if (latest.profile?.id != null && latest.profile.id != refreshed.profile?.id) return@withLock null
+            latest
+                .copy(
+                    username = refreshed.username,
+                    profile = refreshed.profile,
+                    self = refreshed.self,
+                ).also(::persistSession)
+        }
     }
 
     suspend fun <T> withAuthenticatedClient(
         block: suspend (client: HttpClient, cookies: Map<String, String>) -> T,
     ): T = block(client, cookies)
 
-    override fun close() {
+    override fun close() = accountStore.sessionLock.withLock {
+        closed = true
         client.close()
     }
 }
@@ -81,8 +104,10 @@ class ZhihuAccountClient internal constructor(
 class ZhihuAccountStore internal constructor(
     repository: ZhihuAccountRepository,
 ) : AutoCloseable {
-    private val accountState = ZhihuAccountState(repository)
-    private var mutableClient = ZhihuAccountClient(accountState)
+    internal val sessionLock = reentrantLock()
+    internal val accountState = ZhihuAccountState(repository)
+    private val credentialRefreshers = mutableMapOf<String?, ZhihuCredentialRefresher>()
+    private var mutableClient = ZhihuAccountClient(this)
 
     val accountsState: StateFlow<ZhihuAccounts> = accountState.state.asStateFlow()
     val session: ZhihuAccountSession
@@ -90,9 +115,9 @@ class ZhihuAccountStore internal constructor(
     val accounts: List<ZhihuSavedAccount>
         get() = accountState.value.accounts
     val client: ZhihuAccountClient
-        get() = mutableClient
+        get() = sessionLock.withLock { mutableClient }
 
-    fun save(session: ZhihuAccountSession) {
+    fun save(session: ZhihuAccountSession) = sessionLock.withLock {
         if (this.session.hasSameIdentityAs(session)) {
             mutableClient.save(session)
         } else {
@@ -100,12 +125,14 @@ class ZhihuAccountStore internal constructor(
         }
     }
 
-    fun replaceSession(session: ZhihuAccountSession) {
+    fun replaceSession(session: ZhihuAccountSession) = sessionLock.withLock {
+        credentialRefreshers.remove(accountState.value.activeAccountId)
         accountState.saveCurrent(session)
         replaceClient()
     }
 
-    fun clear() {
+    fun clear() = sessionLock.withLock {
+        credentialRefreshers.remove(accountState.value.activeAccountId)
         accountState.removeCurrent()
         replaceClient()
     }
@@ -115,19 +142,26 @@ class ZhihuAccountStore internal constructor(
         val savedSession = accountState.value.accounts
             .firstOrNull { it.id == id }
             ?.session ?: return false
-        val verified = verifyCandidateSession(savedSession.cookies.toMutableMap(), savedSession.userAgent)
-            ?.copy(
-                mobileAccessToken = savedSession.mobileAccessToken,
-                mobileRefreshToken = savedSession.mobileRefreshToken,
-                mobileTokenType = savedSession.mobileTokenType,
-                mobileTokenExpiresAt = savedSession.mobileTokenExpiresAt,
-            ) ?: return false
-        accountState.select(id, verified)
-        replaceClient()
-        return true
+        val verified = verifyCandidateSession(savedSession.cookies.toMutableMap(), savedSession.userAgent) ?: return false
+        return sessionLock.withLock {
+            val latest = accountState.value.accounts
+                .firstOrNull { it.id == id }
+                ?.session ?: return@withLock false
+            if (!latest.hasSameIdentityAs(verified)) return@withLock false
+            val selected = latest.copy(
+                username = verified.username,
+                profile = verified.profile,
+                self = verified.self,
+                cookies = if (latest.cookies == savedSession.cookies) verified.cookies else latest.cookies,
+            )
+            accountState.select(id, selected)
+            replaceClient()
+            true
+        }
     }
 
-    fun removeAccount(id: String) {
+    fun removeAccount(id: String) = sessionLock.withLock {
+        credentialRefreshers.remove(id)
         val activeAccountId = accountState.value.activeAccountId
         accountState.remove(id)
         if (id == activeAccountId) replaceClient()
@@ -150,8 +184,9 @@ class ZhihuAccountStore internal constructor(
         return true
     }
 
-    private fun selectVerifiedSession(session: ZhihuAccountSession) {
+    private fun selectVerifiedSession(session: ZhihuAccountSession) = sessionLock.withLock {
         accountState.selectOrAdd(session)
+        credentialRefreshers.remove(accountState.value.activeAccountId)
         replaceClient()
     }
 
@@ -169,10 +204,50 @@ class ZhihuAccountStore internal constructor(
 
     private fun replaceClient() {
         mutableClient.close()
-        mutableClient = ZhihuAccountClient(accountState)
+        mutableClient = ZhihuAccountClient(this)
     }
 
-    override fun close() = mutableClient.close()
+    internal fun credentialRefresherFor(accountId: String?): ZhihuCredentialRefresher = sessionLock.withLock {
+        credentialRefreshers.getOrPut(accountId) { ZhihuCredentialRefresher(this, accountId) }
+    }
+
+    internal fun renewalSession(accountId: String?, refresher: ZhihuCredentialRefresher): ZhihuAccountSession? = sessionLock.withLock {
+        if (!mutableClient.isCurrent || accountState.value.activeAccountId != accountId || credentialRefreshers[accountId] !== refresher) {
+            return@withLock null
+        }
+        session
+    }
+
+    internal fun saveRenewedSession(
+        accountId: String?,
+        refresher: ZhihuCredentialRefresher,
+        expectedRefreshToken: String,
+        token: ZhihuMobileLoginToken,
+    ): Boolean = sessionLock.withLock {
+        if (!mutableClient.isCurrent || accountId == null || credentialRefreshers[accountId] !== refresher) return@withLock false
+        val latest = accountState.value.accounts
+            .firstOrNull { it.id == accountId }
+            ?.session ?: return@withLock false
+        if (!latest.login || latest.mobileRefreshToken != expectedRefreshToken || latest.profile?.id != token.accountId) return@withLock false
+        val updated = latest.copy(
+            cookies = (latest.cookies + token.cookies).toMutableMap(),
+            mobileAccessToken = token.accessToken,
+            mobileRefreshToken = token.refreshToken,
+            mobileTokenType = token.tokenType,
+            mobileTokenExpiresAt = token.expiresAt,
+        )
+        if (accountState.value.activeAccountId == accountId) {
+            mutableClient.save(updated)
+        } else {
+            accountState.saveAccount(accountId, updated)
+        }
+        true
+    }
+
+    override fun close() = sessionLock.withLock {
+        mutableClient.close()
+        credentialRefreshers.clear()
+    }
 }
 
 internal class ZhihuAccountState(
@@ -204,6 +279,11 @@ internal class ZhihuAccountState(
             )
         }
         persist(updated)
+    }
+
+    fun saveAccount(id: String, session: ZhihuAccountSession) {
+        val current = value
+        persist(current.copy(accounts = current.accounts.map { if (it.id == id) it.copy(session = session) else it }))
     }
 
     fun selectOrAdd(session: ZhihuAccountSession) {

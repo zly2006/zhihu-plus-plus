@@ -17,26 +17,91 @@
 
 package com.github.zly2006.zhihu.data
 
+import com.github.zly2006.zhihu.account.ZhihuAccountProfileSnapshot
+import com.github.zly2006.zhihu.account.ZhihuAccountRepository
+import com.github.zly2006.zhihu.account.ZhihuAccountSession
+import com.github.zly2006.zhihu.account.ZhihuAccountSessionStore
+import com.github.zly2006.zhihu.account.ZhihuAccountStore
+import com.github.zly2006.zhihu.account.accountHttpClientEngineForTesting
+import com.github.zly2006.zhihu.account.phoneLoginNowEpochSecondsForTesting
 import com.github.zly2006.zhihu.util.jsonObject
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class ZhihuAccountTest {
-    @BeforeTest
-    fun resetAuthRefreshThrottle() {
-        resetZhihuAuthenticatedRequestRefreshThrottleForTesting()
+    @Test
+    fun capturedExpiredMeRequestRenewsAndRestoresTheSameAccount() = runTest {
+        val requests = mutableListOf<String>()
+        val engine = MockEngine { request ->
+            requests += "${request.method.value} ${request.url.host}${request.url.encodedPath}"
+            when (request.url.encodedPath) {
+                "/api/account/prod/sign_in" -> respond(
+                    CAPTURED_MOBILE_REFRESH_BODY,
+                    headers = headersOf(HttpHeaders.ContentType to listOf("application/json"), HttpHeaders.SetCookie to CAPTURED_MOBILE_REFRESH_COOKIES),
+                )
+                "/api/v4/me" -> if (request.headers[HttpHeaders.Cookie].orEmpty().contains("z_c0=captured-z-c0")) {
+                    respond(CAPTURED_RESTORED_ME_BODY, headers = headersOf(HttpHeaders.ContentType, "application/json"))
+                } else {
+                    respond(CAPTURED_EXPIRED_TICKET_BODY, HttpStatusCode.Unauthorized, headersOf(HttpHeaders.ContentType, "application/json"))
+                }
+                else -> error("Unrecorded request: ${request.url.host}${request.url.encodedPath}")
+            }
+        }
+        var saved: String? = null
+        val repository = ZhihuAccountRepository(object : ZhihuAccountSessionStore {
+            override fun readText() = saved
+
+            override fun writeText(text: String) {
+                saved = text
+            }
+
+            override fun delete() {
+                saved = null
+            }
+        })
+        repository.save(
+            ZhihuAccountSession(
+                login = true,
+                username = "Captured User",
+                profile = ZhihuAccountProfileSnapshot(id = "captured-person", name = "Captured User"),
+                cookies = mutableMapOf("z_c0" to "expired-cookie", "d_c0" to "captured-device-cookie"),
+                mobileAccessToken = "expired-access-token",
+                mobileRefreshToken = "saved-refresh-token",
+                mobileTokenExpiresAt = 1_793_756_790L,
+            ),
+        )
+        accountHttpClientEngineForTesting = engine
+        phoneLoginNowEpochSecondsForTesting = { 1_793_779_695L }
+        val store = ZhihuAccountStore(repository)
+        try {
+            val response = fetchZhihuAuthenticatedJson(store.client.httpClient(), ZHIHU_ME_URL)
+            assertEquals("captured-person", response?.get("id")?.jsonPrimitive?.content)
+            assertEquals(listOf("GET www.zhihu.com/api/v4/me", "POST api.zhihu.com/api/account/prod/sign_in", "GET www.zhihu.com/api/v4/me"), requests)
+            val restored = repository.load()
+            assertEquals("captured-refresh-token", restored.mobileRefreshToken)
+            assertEquals("captured-access-token", restored.mobileAccessToken)
+            assertEquals(1796371695L, restored.mobileTokenExpiresAt)
+            assertEquals("captured-device-cookie", restored.cookies["d_c0"])
+            assertEquals("captured-z-c0", restored.cookies["z_c0"])
+            assertEquals("captured-q-c0", restored.cookies["q_c0"])
+            assertEquals("captured-xsrf", restored.cookies["_xsrf"])
+            assertEquals("captured-BEC", restored.cookies["BEC"])
+        } finally {
+            store.close()
+            accountHttpClientEngineForTesting = null
+            phoneLoginNowEpochSecondsForTesting = null
+            engine.close()
+        }
     }
 
     @Test
@@ -78,122 +143,6 @@ class ZhihuAccountTest {
         )
     }
 
-    @Test
-    fun fetchAuthenticatedJsonRefreshesUnauthorizedRequestOnce() = runTest {
-        val requests = mutableListOf<String>()
-        val cookies = mutableMapOf("z_c0" to "token")
-        val client = HttpClient(
-            MockEngine { request ->
-                requests += "${request.method.value} ${request.url.encodedPath}"
-                when (requests.size) {
-                    1 -> respond(
-                        content = """{"error":"unauthorized"}""",
-                        status = HttpStatusCode.Unauthorized,
-                        headers = headersOf(HttpHeaders.ContentType, "application/json"),
-                    )
-                    2 -> respond(
-                        content = """{"refresh_token":"refresh-token"}""",
-                        status = HttpStatusCode.OK,
-                        headers = headersOf(HttpHeaders.ContentType, "application/json"),
-                    )
-                    3 -> respond(
-                        content = """{"access_token":"access-token"}""",
-                        status = HttpStatusCode.OK,
-                        headers = headersOf(HttpHeaders.ContentType, "application/json"),
-                    )
-                    else -> respond(
-                        content = """{"ok":true}""",
-                        status = HttpStatusCode.OK,
-                        headers = headersOf(HttpHeaders.ContentType, "application/json"),
-                    )
-                }
-            },
-        ) {
-            installZhihuCommonClientConfig(
-                cookies = cookies,
-                userAgent = "test-agent",
-            )
-        }
-
-        val response = fetchZhihuAuthenticatedJson(
-            client = client,
-            url = "https://www.zhihu.com/api/v4/test",
-        ) {
-            method = HttpMethod.Get
-        }
-
-        assertEquals("true", response?.get("ok")?.jsonPrimitive?.content)
-        assertEquals(
-            listOf(
-                "GET /api/v4/test",
-                "POST /api/account/prod/token/refresh",
-                "POST /api/v3/oauth/sign_in",
-                "GET /api/v4/test",
-            ),
-            requests,
-        )
-    }
-
-    @Test
-    fun executeAuthenticatedRequestKeepsCallerOwnedResponseBody() = runTest {
-        val requests = mutableListOf<String>()
-        val cookies = mutableMapOf("z_c0" to "token")
-        val client = HttpClient(
-            MockEngine { request ->
-                requests += "${request.method.value} ${request.url.encodedPath}"
-                when (requests.size) {
-                    1 -> respond(
-                        content = """{"error":"unauthorized"}""",
-                        status = HttpStatusCode.Unauthorized,
-                        headers = headersOf(HttpHeaders.ContentType, "application/json"),
-                    )
-                    2 -> respond(
-                        content = """{"refresh_token":"refresh-token"}""",
-                        status = HttpStatusCode.OK,
-                        headers = headersOf(HttpHeaders.ContentType, "application/json"),
-                    )
-                    3 -> respond(
-                        content = """{"access_token":"access-token"}""",
-                        status = HttpStatusCode.OK,
-                        headers = headersOf(HttpHeaders.ContentType, "application/json"),
-                    )
-                    else -> respond(
-                        content = """{"follower_count":42}""",
-                        status = HttpStatusCode.OK,
-                        headers = headersOf(HttpHeaders.ContentType, "application/json"),
-                    )
-                }
-            },
-        ) {
-            installZhihuCommonClientConfig(
-                cookies = cookies,
-                userAgent = "test-agent",
-            )
-        }
-
-        val response = executeZhihuAuthenticatedRequest(
-            client = client,
-            url = "https://www.zhihu.com/api/v4/members/alice/followers",
-        ) {
-            method = HttpMethod.Post
-        }
-
-        assertEquals(HttpStatusCode.OK, response.status)
-        assertEquals(
-            "42",
-            response.jsonObject()["follower_count"]?.jsonPrimitive?.content,
-        )
-        assertEquals(
-            listOf(
-                "POST /api/v4/members/alice/followers",
-                "POST /api/account/prod/token/refresh",
-                "POST /api/v3/oauth/sign_in",
-                "POST /api/v4/members/alice/followers",
-            ),
-            requests,
-        )
-    }
-
     private fun mockClient(
         status: HttpStatusCode,
         body: String,
@@ -214,3 +163,19 @@ class ZhihuAccountTest {
         )
     }
 }
+
+// Captured 2026-11-04 from /api/v4/me and Android prod/sign_in; see docs/mobile-session-refresh.md.
+// Every response field and cookie attribute is retained; only identity and credential values are deidentified.
+internal const val CAPTURED_EXPIRED_TICKET_BODY = """{"error":{"code":100,"name":"AuthenticationInvalidRequest","message":"ERR_LOGIN_TICKET_EXPIRED"}}
+"""
+internal const val CAPTURED_MOBILE_REFRESH_BODY = """{"uid":"captured-person","user_id":123456789,"token_type":"bearer","access_token":"captured-access-token","refresh_token":"captured-refresh-token","expires_in":2591999,"cookie":{"q_c0":"captured-q-c0","z_c0":"captured-z-c0"},"unlock_ticket":null,"lock_in":null,"verification":null,"expires_at":1796371695}
+"""
+internal const val CAPTURED_RESTORED_ME_BODY = """{"id":"captured-person","url_token":"captured-user","name":"Captured User","use_default_avatar":false,"avatar_url":"https://picx.zhimg.com/v2-00000000000000000000000000000000_xl.jpg?source=32738c0c&needBackground=1","avatar_url_template":"https://picx.zhimg.com/v2-00000000000000000000000000000000_l.jpg?source=32738c0c&needBackground=1","is_org":false,"type":"people","url":"https://www.zhihu.com/api/v4/people/scanmenge","user_type":"people","headline":"Captured profile","headline_render":"Captured profile","gender":0,"is_advertiser":false,"ip_info":"已脱敏","vip_info":{"is_vip":false,"vip_type":0,"rename_days":"0","entrance_v2":null,"rename_frequency":0,"rename_await_days":42},"kvip_info":{"is_vip":false},"answer_count":35,"question_count":1,"articles_count":5,"columns_count":0,"zvideo_count":0,"favorite_count":5,"pins_count":15,"voteup_count":4882,"thanked_count":16279,"line_comment_count":722,"line_like_count":0,"line_comment_only_count":0,"available_medals_count":0,"org_verify_status":null,"uid":"123456789","default_notifications_count":0,"follow_notifications_count":0,"vote_thank_notifications_count":0,"messages_count":0,"creation_count":56,"is_realname":true,"has_applying_column":false,"has_add_baike_summary_permission":false,"editor_info":["bio","topic"],"ai_assistant_info":null,"can_create_sub_account":true,"account_type":1,"sub_account_control_status":0,"extra":null}
+"""
+internal const val CAPTURED_INVALID_REFRESH_BODY = """{"error":{"code":100008,"name":"ERR_INVALID_REFRESH_TOKEN","message":"refresh_token 已失效"}}
+"""
+internal val CAPTURED_MOBILE_REFRESH_COOKIES = listOf(
+    "z_c0=captured-z-c0; Path=/; Domain=zhihu.com; Expires=Fri, 04 Dec 2026 08:08:15 GMT; HttpOnly; Secure",
+    "_xsrf=captured-xsrf; path=/; domain=zhihu.com; expires=Sun, 22-Apr-29 08:08:16 GMT",
+    "BEC=captured-BEC;Path=/;Max-Age=3600",
+)
