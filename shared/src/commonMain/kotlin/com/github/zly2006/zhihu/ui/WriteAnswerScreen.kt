@@ -94,7 +94,6 @@ import com.github.zly2006.zhihu.ui.components.replaceSelection
 import com.github.zly2006.zhihu.util.json
 import com.github.zly2006.zhihu.util.raiseForStatus
 import com.github.zly2006.zhihu.viewmodel.fetchContentDetail
-import com.github.zly2006.zhihu.viewmodel.postSigned
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import io.ktor.client.request.header
 import io.ktor.client.request.setBody
@@ -206,7 +205,7 @@ fun WriteAnswerScreen(
                 val xsrf = environment.authenticatedCookies()["_xsrf"]
                     ?: error("缺少 _xsrf Cookie，无法写入回答草稿；请先确保已登录。")
                 environment
-                    .postSigned("https://www.zhihu.com/api/v4/questions/${destination.questionId}/draft") {
+                    .post("https://www.zhihu.com/api/v4/questions/${destination.questionId}/draft") {
                         contentType(ContentType.Application.Json)
                         header(
                             HttpHeaders.Referrer,
@@ -222,7 +221,7 @@ fun WriteAnswerScreen(
                     }.raiseForStatus(dumpRequest = true)
                 if (publish) {
                     val response = environment
-                        .postSigned("https://www.zhihu.com/api/v4/content/publish") {
+                        .post("https://www.zhihu.com/api/v4/content/publish") {
                             contentType(ContentType.Application.Json)
                             header("x-xsrftoken", xsrf)
                             setBody(

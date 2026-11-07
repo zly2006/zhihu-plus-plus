@@ -18,6 +18,7 @@
 package com.github.zly2006.zhihu.viewmodel.comment
 
 import com.github.zly2006.zhihu.account.ZhihuAccountClient
+import com.github.zly2006.zhihu.account.ZhihuRequestProfile
 import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
@@ -75,7 +76,7 @@ class RootCommentAnchorTest {
     ) = object : ZhihuApiEnvironment {
         override val accountClient: ZhihuAccountClient? = null
 
-        override fun httpClient() = HttpClient(MockEngine { error("Unexpected HTTP request") })
+        override fun httpClient(profile: ZhihuRequestProfile) = HttpClient(MockEngine { error("Unexpected HTTP request") })
 
         override suspend fun fetchJson(url: String, include: String): JsonObject? {
             val commentId = url.substringAfterLast('/')

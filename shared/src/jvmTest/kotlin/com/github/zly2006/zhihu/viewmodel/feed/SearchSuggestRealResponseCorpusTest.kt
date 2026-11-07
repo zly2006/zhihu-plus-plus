@@ -18,6 +18,7 @@
 package com.github.zly2006.zhihu.viewmodel.feed
 
 import com.github.zly2006.zhihu.account.ZhihuAccountClient
+import com.github.zly2006.zhihu.account.ZhihuRequestProfile
 import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import io.ktor.client.HttpClient
@@ -112,7 +113,7 @@ class SearchSuggestRealResponseCorpusTest {
     ) = object : PaginationEnvironment {
         override val accountClient: ZhihuAccountClient? = null
 
-        override fun httpClient() = HttpClient(
+        override fun httpClient(profile: ZhihuRequestProfile) = HttpClient(
             MockEngine { request ->
                 onRequest(request.url.toString())
                 val body = respondFixture?.let(::fixture) ?: "<html><body>500 Internal Server Error</body></html>"

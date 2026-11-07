@@ -88,6 +88,8 @@ private fun createMacosSettingsStore(filePath: String): SettingsStore {
         }
 
         override fun remove(key: String) = propertiesFile.remove(key)
+
+        override fun removeByPrefix(prefix: String) = propertiesFile.removeByPrefix(prefix)
     }
 }
 
@@ -135,6 +137,15 @@ private class MacosPropertiesFile(
         if (values.remove(key) != null) {
             save()
             listeners.toList().forEach { it(key) }
+        }
+    }
+
+    fun removeByPrefix(prefix: String) = locked {
+        val removed = values.keys.filter { it.startsWith(prefix) }
+        if (removed.isNotEmpty()) {
+            removed.forEach(values::remove)
+            save()
+            removed.forEach { key -> listeners.toList().forEach { it(key) } }
         }
     }
 

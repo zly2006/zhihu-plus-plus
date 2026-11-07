@@ -19,11 +19,11 @@ package com.github.zly2006.zhihu.viewmodel
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import com.github.zly2006.zhihu.account.NativeHistoryStorage
 import com.github.zly2006.zhihu.account.ZhihuAccountClient
 import com.github.zly2006.zhihu.account.defaultNativeAccountStore
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.FeedDisplayItem
+import com.github.zly2006.zhihu.data.LocalHistoryStore
 import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.filter.ContentOpenFrom
@@ -33,6 +33,7 @@ import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.notification.nativeNotificationSettingsStore
 import com.github.zly2006.zhihu.platform.copyNativePlainText
+import com.github.zly2006.zhihu.platform.nativeAppPrivateDirectoryPath
 import com.github.zly2006.zhihu.platform.nativeSettingsStore
 import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.util.Log
@@ -98,7 +99,7 @@ internal class NativePaginationEnvironment(
     NotificationEnvironment {
     private val accountStore = defaultNativeAccountStore
     private val settingsStore = nativeSettingsStore("settings.properties")
-    private val historyStorage = NativeHistoryStorage()
+    private val historyStorage = LocalHistoryStore.forFile("${nativeAppPrivateDirectoryPath()}/history.json")
     private val contentFilterDatabase = getContentFilterDatabase()
     private val localRecommendationEngine by lazy {
         getNativeLocalContentDatabase()?.contentDao()?.let { dao ->
@@ -111,8 +112,6 @@ internal class NativePaginationEnvironment(
 
     override val accountClient: ZhihuAccountClient
         get() = accountStore.client
-
-    override fun xsrfToken(): String = accountStore.session.cookies["_xsrf"].orEmpty()
 
     override fun feedDisplaySettings(): FeedDisplaySettings = FeedDisplaySettings(
         qualityFilterMode = QualityFilterMode.OFF,
@@ -242,9 +241,9 @@ internal class NativePaginationEnvironment(
     }
 
     override suspend fun clearAllHistory() {
-        historyStorage.clearAndSave()
+        historyStorage.clear()
         if (accountStore.session.cookies["d_c0"] == null) return
-        postSigned("https://api.zhihu.com/read_history/batch_del") {
+        post("https://api.zhihu.com/read_history/batch_del") {
             contentType(KtorContentType.Application.Json)
             setBody(
                 buildJsonObject {

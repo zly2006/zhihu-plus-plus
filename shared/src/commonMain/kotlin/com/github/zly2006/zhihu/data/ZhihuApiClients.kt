@@ -17,7 +17,10 @@
 
 package com.github.zly2006.zhihu.data
 
+import io.ktor.client.HttpClientConfig
+import io.ktor.client.plugins.UserAgent
 import io.ktor.client.plugins.cookies.CookiesStorage
+import io.ktor.client.plugins.defaultRequest
 import io.ktor.http.Cookie
 import io.ktor.http.CookieEncoding
 import io.ktor.http.Url
@@ -68,3 +71,22 @@ data class ZhihuVotersResponse(
     val paging: ZhihuPaging,
     val data: List<DataHolder.Author> = emptyList(),
 )
+
+internal val ZHIHU_MOBILE_HEADERS = mapOf(
+    "x-api-version" to "3.1.8",
+    "x-app-version" to "10.61.0",
+    "x-app-za" to
+        "OS=Android&Release=12&Model=sdk_gphone64_arm64&VersionName=10.61.0&VersionCode=26107&Product=com.zhihu.android&Width=1440&Height=2952&Installer=%E7%81%B0%E5%BA%A6&DeviceType=AndroidPhone&Brand=google",
+)
+
+const val ZHIHU_ANDROID_USER_AGENT = "com.zhihu.android/Futureve/10.61.0 Mozilla/5.0 (Linux; Android 12; sdk_gphone64_arm64 " +
+    "Build/SE1A.220630.001.A1; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/57.0.1000.10 Mobile Safari/537.36"
+
+internal fun HttpClientConfig<*>.installZhihuMobileClientProfile() {
+    install(UserAgent) { agent = ZHIHU_ANDROID_USER_AGENT }
+    defaultRequest {
+        ZHIHU_MOBILE_HEADERS.forEach { (name, value) ->
+            if (!headers.contains(name)) headers.append(name, value)
+        }
+    }
+}

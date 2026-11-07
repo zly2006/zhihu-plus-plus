@@ -18,6 +18,7 @@
 package com.github.zly2006.zhihu.filter
 
 import com.github.zly2006.zhihu.account.ZhihuAccountClient
+import com.github.zly2006.zhihu.account.ZhihuRequestProfile
 import com.github.zly2006.zhihu.data.FeedDisplayItem
 import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.data.toFeedDisplayItemNavDestinationJson
@@ -146,7 +147,7 @@ class RemoteHistorySyncTest {
         private val environment = object : PaginationEnvironment {
             override val accountClient: ZhihuAccountClient? = null
 
-            override fun httpClient() = client
+            override fun httpClient(profile: ZhihuRequestProfile) = client
 
             override suspend fun fetchJson(url: String, include: String): JsonObject {
                 assertEquals("", include)

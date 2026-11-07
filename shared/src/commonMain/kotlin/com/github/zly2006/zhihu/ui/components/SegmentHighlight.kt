@@ -60,8 +60,6 @@ import com.github.zly2006.zhihu.platform.rememberPlainTextClipboard
 import com.github.zly2006.zhihu.util.SegmentHighlightSpan
 import com.github.zly2006.zhihu.util.json
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
-import com.github.zly2006.zhihu.viewmodel.deleteSigned
-import com.github.zly2006.zhihu.viewmodel.postSigned
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
@@ -239,13 +237,13 @@ private suspend fun toggleSegmentLike(
     if (environment.authenticatedCookies()["d_c0"] == null) return highlight.meta
 
     return if (highlight.meta.isLike) {
-        environment.deleteSigned(url) {
+        environment.delete(url) {
             contentType(ContentType.Application.Json)
             setBody(buildSegmentUnlikeBody(highlight))
         }
         updateSegmentMetaAfterUnlike(highlight)
     } else {
-        val response = environment.postSigned(url) {
+        val response = environment.post(url) {
             contentType(ContentType.Application.Json)
             setBody(buildSegmentLikeBody(highlight))
         }

@@ -25,6 +25,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.account.ZhihuAccountClient
+import com.github.zly2006.zhihu.account.ZhihuRequestProfile
 import com.github.zly2006.zhihu.data.AigcVoteVoter
 import com.github.zly2006.zhihu.data.ContentDetailCache
 import com.github.zly2006.zhihu.data.DataHolder
@@ -50,13 +51,14 @@ import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
 import io.ktor.client.HttpClient
 import io.ktor.client.call.NoTransformationFoundException
 import io.ktor.client.request.HttpRequestBuilder
-import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.post
+import io.ktor.client.request.request
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
+import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.URLProtocol
 import io.ktor.http.contentType
@@ -247,22 +249,36 @@ interface ArticleImageExportRenderer {
 interface ZhihuApiEnvironment {
     val accountClient: ZhihuAccountClient?
 
-    fun httpClient(): HttpClient = accountClient?.httpClient() ?: error("匿名环境必须提供 HTTP 客户端")
+    fun httpClient(profile: ZhihuRequestProfile = ZhihuRequestProfile.Web): HttpClient = accountClient?.httpClient(profile) ?: error("匿名环境必须提供 HTTP 客户端")
 
     fun authenticatedCookies(): Map<String, String> = accountClient?.load()?.cookies.orEmpty()
 
-    suspend fun <T> withAuthenticatedClient(
-        block: suspend (client: HttpClient, cookies: Map<String, String>) -> T,
-    ): T {
+    suspend fun request(url: String, method: HttpMethod = HttpMethod.Get, profile: ZhihuRequestProfile = ZhihuRequestProfile.Web, block: suspend HttpRequestBuilder.() -> Unit = {}): HttpResponse {
         val owner = accountClient
-        return if (owner != null) owner.withAuthenticatedClient(block) else block(httpClient(), authenticatedCookies())
+        return if (owner != null) {
+            owner.request(url, method, profile, block)
+        } else {
+            httpClient(profile).request(url) {
+                this.method = method
+                block()
+                if (profile == ZhihuRequestProfile.Web) {
+                    val cookies = authenticatedCookies()
+                    cookies["_xsrf"]?.takeIf(String::isNotBlank)?.let { headers["x-xsrftoken"] = it }
+                    signZhihuFetchRequest(cookies)
+                }
+            }
+        }
     }
 
-    private suspend fun get(url: String, block: suspend HttpRequestBuilder.() -> Unit = {}): HttpResponse =
-        accountClient?.get(url, block) ?: httpClient().get(url) {
-            block()
-            signZhihuFetchRequest(authenticatedCookies())
-        }
+    suspend fun get(url: String, profile: ZhihuRequestProfile = ZhihuRequestProfile.Web, block: suspend HttpRequestBuilder.() -> Unit = {}): HttpResponse = request(url, HttpMethod.Get, profile, block)
+
+    suspend fun post(url: String, profile: ZhihuRequestProfile = ZhihuRequestProfile.Web, block: suspend HttpRequestBuilder.() -> Unit = {}): HttpResponse = request(url, HttpMethod.Post, profile, block)
+
+    suspend fun put(url: String, profile: ZhihuRequestProfile = ZhihuRequestProfile.Web, block: suspend HttpRequestBuilder.() -> Unit = {}): HttpResponse = request(url, HttpMethod.Put, profile, block)
+
+    suspend fun patch(url: String, profile: ZhihuRequestProfile = ZhihuRequestProfile.Web, block: suspend HttpRequestBuilder.() -> Unit = {}): HttpResponse = request(url, HttpMethod.Patch, profile, block)
+
+    suspend fun delete(url: String, profile: ZhihuRequestProfile = ZhihuRequestProfile.Web, block: suspend HttpRequestBuilder.() -> Unit = {}): HttpResponse = request(url, HttpMethod.Delete, profile, block)
 
     suspend fun fetchJson(url: String, include: String): JsonObject? {
         val response = get(url) {
@@ -280,8 +296,6 @@ interface ZhihuApiEnvironment {
         tag: String?,
         error: Exception,
     )
-
-    fun xsrfToken(): String = ""
 
     fun logDecodeFailure(
         tag: String?,
@@ -320,7 +334,7 @@ suspend fun ZhihuApiEnvironment.addReadHistory(
 ) {
     if (authenticatedCookies()["d_c0"] == null) return
     runCatching {
-        postSigned("https://www.zhihu.com/api/v4/read_history/add") {
+        post("https://www.zhihu.com/api/v4/read_history/add") {
             contentType(ContentType.Application.Json)
             setBody(
                 buildJsonObject {
@@ -333,7 +347,7 @@ suspend fun ZhihuApiEnvironment.addReadHistory(
 }
 
 internal suspend fun ZhihuApiEnvironment.deleteOnlineHistoryItem(item: OnlineHistoryDeletePair) {
-    val response = postSigned("https://api.zhihu.com/read_history/batch_del") {
+    val response = post("https://api.zhihu.com/read_history/batch_del") {
         contentType(ContentType.Application.Json)
         setBody(
             buildJsonObject {
@@ -355,29 +369,7 @@ internal suspend fun ZhihuApiEnvironment.deleteOnlineHistoryItem(item: OnlineHis
     check(response.status.isSuccess()) { "删除在线历史记录失败: ${response.status}" }
 }
 
-suspend fun ZhihuApiEnvironment.postSigned(
-    url: String,
-    block: HttpRequestBuilder.() -> Unit = {},
-): HttpResponse = withAuthenticatedClient { client, cookies ->
-    client.post(url) {
-        block()
-        signZhihuFetchRequest(cookies)
-    }
-}
-
-suspend fun ZhihuApiEnvironment.deleteSigned(
-    url: String,
-    block: HttpRequestBuilder.() -> Unit = {},
-): HttpResponse = withAuthenticatedClient { client, cookies ->
-    client.delete(url) {
-        block()
-        signZhihuFetchRequest(cookies)
-    }
-}
-
 interface MobileHomeFeedEnvironment : ZhihuApiEnvironment {
-    fun mobileHomeFeedHttpClient(): HttpClient = httpClient()
-
     suspend fun handleMobileHomeFeedFailure(error: Exception) {
         handleFetchFailure("AndroidHomeFeedViewModel", error)
     }

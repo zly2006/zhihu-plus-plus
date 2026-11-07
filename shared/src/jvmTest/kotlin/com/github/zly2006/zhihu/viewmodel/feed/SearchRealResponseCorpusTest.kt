@@ -18,6 +18,7 @@
 package com.github.zly2006.zhihu.viewmodel.feed
 
 import com.github.zly2006.zhihu.account.ZhihuAccountClient
+import com.github.zly2006.zhihu.account.ZhihuRequestProfile
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.data.target
@@ -105,7 +106,7 @@ class SearchRealResponseCorpusTest {
         fun environment(status: HttpStatusCode = HttpStatusCode.OK) = object : PaginationEnvironment {
             override val accountClient: ZhihuAccountClient? = null
 
-            override fun httpClient() = HttpClient(MockEngine { respond("{}", status) })
+            override fun httpClient(profile: ZhihuRequestProfile) = HttpClient(MockEngine { respond("{}", status) })
 
             override fun authenticatedCookies() = mapOf("d_c0" to "test")
 

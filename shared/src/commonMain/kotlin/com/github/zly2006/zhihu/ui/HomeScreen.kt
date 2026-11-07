@@ -99,6 +99,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
+import com.github.zly2006.zhihu.account.ZhihuRequestProfile
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.MOBILE_NOTIFICATION_MESSAGE_URL
@@ -316,8 +317,7 @@ fun HomeScreen(
     LaunchedEffect(Unit) {
         try {
             unreadCount = paginationEnvironment
-                .mobileHomeFeedHttpClient()
-                .get("$MOBILE_NOTIFICATION_MESSAGE_URL?limit=20")
+                .get("$MOBILE_NOTIFICATION_MESSAGE_URL?limit=20", profile = ZhihuRequestProfile.Mobile)
                 .json<MobileNotificationMessageOverview>()
                 .totalUnreadCount
         } catch (_: Exception) {

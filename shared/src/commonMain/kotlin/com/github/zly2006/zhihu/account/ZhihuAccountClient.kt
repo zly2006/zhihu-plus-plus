@@ -21,6 +21,7 @@ import androidx.compose.runtime.Composable
 import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.data.fetchVerifiedZhihuSession
 import com.github.zly2006.zhihu.data.installZhihuCommonClientConfig
+import com.github.zly2006.zhihu.data.installZhihuMobileClientProfile
 import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
 import com.github.zly2006.zhihu.util.raiseForStatus
 import com.github.zly2006.zhihu.util.signZhihuFetchRequest
@@ -29,8 +30,10 @@ import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.engine.HttpClientEngineFactory
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.get
+import io.ktor.client.request.request
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import kotlinx.atomicfu.locks.reentrantLock
 import kotlinx.atomicfu.locks.withLock
@@ -40,6 +43,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+
+enum class ZhihuRequestProfile { Web, Mobile }
 
 class ZhihuAccountClient internal constructor(
     private val accountStore: ZhihuAccountStore,
@@ -81,17 +86,24 @@ class ZhihuAccountClient internal constructor(
         accountState.save(session.copy(cookies = cookies.toMutableMap()))
     }
 
-    suspend fun get(
+    suspend fun request(
         url: String,
+        method: HttpMethod = HttpMethod.Get,
+        profile: ZhihuRequestProfile = ZhihuRequestProfile.Web,
         block: suspend HttpRequestBuilder.() -> Unit = {},
     ): HttpResponse {
         check(isCurrent) { "账号客户端已失效" }
         val requestCookie = cookies["z_c0"]
-        val response = client.get(url) {
+        val transport = httpClient(profile)
+        val response = transport.request(url) {
+            this.method = method
             block()
-            signZhihuFetchRequest(cookies)
+            if (profile == ZhihuRequestProfile.Web) {
+                cookies["_xsrf"]?.takeIf(String::isNotBlank)?.let { headers["x-xsrftoken"] = it }
+                signZhihuFetchRequest(cookies)
+            }
         }
-        if (response.status != HttpStatusCode.Unauthorized) return response
+        if (method != HttpMethod.Get || response.status != HttpStatusCode.Unauthorized) return response
 
         if (!isCurrent) return response
         val body = response.bodyAsText()
@@ -105,14 +117,33 @@ class ZhihuAccountClient internal constructor(
         }.getOrDefault(false)
         if (!ticketExpired) return response
         if (!credentialRefresher.refresh(force = true, rejectedCookie = requestCookie) || !isCurrent) return response
-        return client
-            .get(url) {
+        return transport
+            .request(url) {
+                this.method = method
                 block()
-                signZhihuFetchRequest(cookies)
+                if (profile == ZhihuRequestProfile.Web) {
+                    cookies["_xsrf"]?.takeIf(String::isNotBlank)?.let { headers["x-xsrftoken"] = it }
+                    signZhihuFetchRequest(cookies)
+                }
             }.raiseForStatus()
     }
 
-    fun httpClient(): HttpClient = client
+    suspend fun get(url: String, profile: ZhihuRequestProfile = ZhihuRequestProfile.Web, block: suspend HttpRequestBuilder.() -> Unit = {}): HttpResponse = request(url, HttpMethod.Get, profile, block)
+
+    suspend fun post(url: String, profile: ZhihuRequestProfile = ZhihuRequestProfile.Web, block: suspend HttpRequestBuilder.() -> Unit = {}): HttpResponse = request(url, HttpMethod.Post, profile, block)
+
+    suspend fun put(url: String, profile: ZhihuRequestProfile = ZhihuRequestProfile.Web, block: suspend HttpRequestBuilder.() -> Unit = {}): HttpResponse = request(url, HttpMethod.Put, profile, block)
+
+    suspend fun patch(url: String, profile: ZhihuRequestProfile = ZhihuRequestProfile.Web, block: suspend HttpRequestBuilder.() -> Unit = {}): HttpResponse = request(url, HttpMethod.Patch, profile, block)
+
+    suspend fun delete(url: String, profile: ZhihuRequestProfile = ZhihuRequestProfile.Web, block: suspend HttpRequestBuilder.() -> Unit = {}): HttpResponse = request(url, HttpMethod.Delete, profile, block)
+
+    private val mobileClient = lazy { client.config { installZhihuMobileClientProfile() } }
+
+    fun httpClient(profile: ZhihuRequestProfile = ZhihuRequestProfile.Web): HttpClient {
+        check(isCurrent) { "账号客户端已失效" }
+        return if (profile == ZhihuRequestProfile.Mobile) mobileClient.value else client
+    }
 
     fun temporaryHttpClient(cookies: MutableMap<String, String>): HttpClient =
         createAccountHttpClient(cookies, load().userAgent)
@@ -133,12 +164,9 @@ class ZhihuAccountClient internal constructor(
         }
     }
 
-    suspend fun <T> withAuthenticatedClient(
-        block: suspend (client: HttpClient, cookies: Map<String, String>) -> T,
-    ): T = block(client, cookies)
-
     override fun close() = accountStore.sessionLock.withLock {
         closed = true
+        if (mobileClient.isInitialized()) mobileClient.value.close()
         client.close()
     }
 }
@@ -224,6 +252,75 @@ class ZhihuAccountStore internal constructor(
         ) ?: return false
         selectVerifiedSession(session)
         return true
+    }
+
+    suspend fun completeIdentityChange(
+        sourceClient: ZhihuAccountClient,
+        body: String,
+        expectedAccountId: String? = null,
+    ): ZhihuIdentityChangeResult {
+        val token = ZhihuJson.decodeJson<ZhihuIdentityToken>(ZhihuJson.json.parseToJsonElement(body))
+        check(token.accessToken.isNotBlank()) { "服务器未返回新账号凭证" }
+        check(token.cookie["z_c0"].isNullOrBlank().not()) { "服务器未返回新账号 Cookie" }
+        val oldSession = sessionLock.withLock {
+            check(sourceClient.isCurrent) { "账号已切换，请重新操作" }
+            sourceClient.load()
+        }
+        val newCookies = oldSession.cookies.toMutableMap().apply { putAll(token.cookie) }
+        val client = sourceClient.temporaryHttpClient(newCookies)
+        return try {
+            val response = client.get("https://api.zhihu.com/people/self") {
+                applyIdentityHeaders(
+                    oldSession.copy(
+                        mobileAccessToken = token.accessToken,
+                        mobileTokenType = token.tokenType,
+                    ),
+                )
+            }
+            val rawProfile = ZhihuJson.json
+                .parseToJsonElement(
+                    response.identitySuccessBody("初始化新账号"),
+                ).jsonObject
+            val profile = ZhihuJson.decodeJson<ZhihuIdentityProfile>(rawProfile)
+            check(profile.id.isNotBlank() && profile.name.isNotBlank()) { "服务器返回的账号资料不完整" }
+            check(expectedAccountId == null || profile.id == expectedAccountId) { "服务器返回的账号与目标账号不一致" }
+            val nextSession = oldSession.copy(
+                login = true,
+                username = profile.name,
+                cookies = newCookies,
+                profile = ZhihuAccountProfileSnapshot(
+                    id = profile.id,
+                    name = profile.name,
+                    urlToken = profile.urlToken,
+                    userType = profile.userType,
+                    avatarUrl = profile.avatarUrl,
+                ),
+                self = rawProfile,
+                mobileAccessToken = token.accessToken,
+                mobileRefreshToken = token.refreshToken,
+                mobileTokenType = token.tokenType,
+                mobileTokenExpiresAt = token.expiresAt,
+            )
+            sessionLock.withLock {
+                check(sourceClient.isCurrent) { "账号已切换，请重新操作" }
+                replaceSession(nextSession)
+            }
+            ZhihuIdentityChangeResult(
+                account = ZhihuIdentityAccount(
+                    id = profile.id,
+                    urlToken = profile.urlToken,
+                    name = profile.name,
+                    avatarUrl = profile.avatarUrl,
+                    isActive = true,
+                    canCreateSubAccount = profile.canCreateSubAccount,
+                    accountType = profile.accountType,
+                    subAccountControlStatus = profile.subAccountControlStatus,
+                ),
+                session = nextSession,
+            )
+        } finally {
+            client.close()
+        }
     }
 
     private fun selectVerifiedSession(session: ZhihuAccountSession) = sessionLock.withLock {

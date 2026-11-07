@@ -53,10 +53,10 @@ import com.github.zly2006.zhihu.ui.QUESTION_SORT_UPDATED_TAG
 import com.github.zly2006.zhihu.ui.QUESTION_WRITE_ANSWER_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.QuestionScreen
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.SharedAndroidPaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.feed.QuestionFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedUser
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
-import com.github.zly2006.zhihu.viewmodel.paginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.sharedArticleAnswerSwitchState
 import io.ktor.http.HttpMethod
 import kotlinx.coroutines.runBlocking
@@ -353,7 +353,9 @@ class QuestionScreenInstrumentedTest {
         questionId: Long,
     ) : QuestionFeedViewModel(questionId) {
         suspend fun processForTest(context: android.content.Context, data: List<Feed>) {
-            processResponse(paginationEnvironment(context), data, JsonArray(emptyList()))
+            SharedAndroidPaginationEnvironment(context, allowGuestAccess).use { environment ->
+                processResponse(environment, data, JsonArray(emptyList()))
+            }
         }
     }
 

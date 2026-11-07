@@ -102,8 +102,6 @@ import com.github.zly2006.zhihu.ui.components.rememberShareActionExecutor
 import com.github.zly2006.zhihu.util.raiseForStatus
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
-import com.github.zly2006.zhihu.viewmodel.deleteSigned
-import com.github.zly2006.zhihu.viewmodel.postSigned
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import io.ktor.http.Url
 import kotlinx.coroutines.CancellationException
@@ -357,7 +355,7 @@ class TopicViewModel(
         )
         return runCatching {
             val endpoint = "https://www.zhihu.com/api/v4/topics/$topicId/followers"
-            if (following) environment.postSigned(endpoint) else environment.deleteSigned(endpoint)
+            if (following) environment.post(endpoint) else environment.delete(endpoint)
         }.mapCatching { response ->
             response.raiseForStatus()
             Unit

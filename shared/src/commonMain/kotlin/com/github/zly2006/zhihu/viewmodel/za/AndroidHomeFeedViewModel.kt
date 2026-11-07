@@ -18,6 +18,7 @@
 package com.github.zly2006.zhihu.viewmodel.za
 
 import androidx.lifecycle.viewModelScope
+import com.github.zly2006.zhihu.account.ZhihuRequestProfile
 import com.github.zly2006.zhihu.data.CommonFeed
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
@@ -36,7 +37,6 @@ import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedInteractionViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.replaceHomeFeedItemsWithFilteredResult
-import com.github.zly2006.zhihu.viewmodel.postSigned
 import io.ktor.client.request.forms.MultiPartFormDataContent
 import io.ktor.client.request.forms.formData
 import io.ktor.client.request.get
@@ -65,7 +65,7 @@ class AndroidHomeFeedViewModel :
 
     public override suspend fun fetchFeeds(environment: PaginationEnvironment) {
         try {
-            val response = environment.mobileHomeFeedHttpClient().get(lastPaging?.next ?: initialUrl)
+            val response = environment.get(lastPaging?.next ?: initialUrl, profile = ZhihuRequestProfile.Mobile)
             if (response.status.isSuccess()) {
                 val jojo = response.jsonObject()
                 val data = jojo["data"]?.jsonArray ?: throw IllegalStateException("No data found in response")
@@ -140,7 +140,7 @@ class AndroidHomeFeedViewModel :
                     else -> null
                 }
                 if (payloadItem != null) {
-                    environment.postSigned("https://www.zhihu.com/lastread/touch") {
+                    environment.post("https://www.zhihu.com/lastread/touch") {
                         header("x-requested-with", "fetch")
                         setBody(
                             MultiPartFormDataContent(

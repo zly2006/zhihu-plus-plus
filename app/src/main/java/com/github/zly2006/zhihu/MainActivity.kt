@@ -47,7 +47,7 @@ import coil3.memory.MemoryCache
 import coil3.request.crossfade
 import com.github.zly2006.zhihu.account.androidZhihuAccountStore
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.HistoryStorage
+import com.github.zly2006.zhihu.data.LocalHistoryStore
 import com.github.zly2006.zhihu.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
@@ -100,7 +100,7 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
-    lateinit var history: HistoryStorage
+    val history by lazy { LocalHistoryStore.forFile(filesDir.resolve("history.json").absolutePath) }
     val httpClient
         get() = com.github.zly2006.zhihu.account
             .androidZhihuAccountStore(this)
@@ -145,7 +145,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         clearShareImageCache(this)
         continuousUsageReminderManager = ContinuousUsageReminderManager(this)
-        history = HistoryStorage(this)
         AccountData.loadData(this)
         AndroidThemeSettings.initialize(this)
         androidKeywordSemanticMatcher = NlpServiceKeywordSemanticMatcher

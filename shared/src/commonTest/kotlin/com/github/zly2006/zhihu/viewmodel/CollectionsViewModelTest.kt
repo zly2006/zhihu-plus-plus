@@ -18,6 +18,7 @@
 package com.github.zly2006.zhihu.viewmodel
 
 import com.github.zly2006.zhihu.account.ZhihuAccountClient
+import com.github.zly2006.zhihu.account.ZhihuRequestProfile
 import com.github.zly2006.zhihu.data.Collection
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
@@ -139,7 +140,7 @@ class CollectionsViewModelTest {
     private fun testEnvironment(client: HttpClient) = object : ZhihuApiEnvironment {
         override val accountClient: ZhihuAccountClient? = null
 
-        override fun httpClient() = client
+        override fun httpClient(profile: ZhihuRequestProfile) = client
 
         override fun authenticatedCookies() = mapOf("d_c0" to "test-cookie")
 

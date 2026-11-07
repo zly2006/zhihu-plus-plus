@@ -46,16 +46,17 @@ class ArticleExportEnvironmentInstrumentedTest {
     @Test
     fun androidEnvironmentBuildsOfflineArticleExportHtml() = runBlocking {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val environment = SharedAndroidPaginationEnvironment(context, allowGuestAccess = true)
+        SharedAndroidPaginationEnvironment(context, allowGuestAccess = true).use { environment ->
 
-        val html = environment.buildOfflineArticleExportHtml(
-            content = sampleArticleContent(),
-            includeAppAttribution = true,
-            httpClient = environment.httpClient(),
-        )
+            val html = environment.buildOfflineArticleExportHtml(
+                content = sampleArticleContent(),
+                includeAppAttribution = true,
+                httpClient = environment.httpClient(),
+            )
 
-        assertTrue(html.contains("导出环境回归"))
-        assertTrue(html.length > 1_000)
+            assertTrue(html.contains("导出环境回归"))
+            assertTrue(html.length > 1_000)
+        }
     }
 
     /**
@@ -67,36 +68,37 @@ class ArticleExportEnvironmentInstrumentedTest {
     @Test
     fun articleImageRendererUsesStableContentHeightBeforeFullLayout() = runBlocking {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val environment = SharedAndroidPaginationEnvironment(context, allowGuestAccess = true)
-        val renderer = environment.articleImageExportRenderer()
-        val prepared = renderer.prepareExportWebView(
-            htmlContent = environment.buildArticleExportHtml(
-                content = sampleLongAnswerContent(),
-                includeAppAttribution = true,
-                extraSectionsHtml = "",
-            ),
-            timeoutMs = 15_000,
-        ) as AndroidPreparedExportWebView
-        val bitmap = renderer.captureExportBitmap(prepared) as Bitmap
-        try {
-            assertTrue(prepared.contentHeightPx < 60_000)
-            assertEquals(prepared.expectedBitmapWidthPx(context), bitmap.width)
-            assertEquals(prepared.expectedBitmapHeightPx(context), bitmap.height)
-            assertTrue(
-                "导出图上半部分应包含首段正文的青色标记",
-                bitmap.hasMarkerPixels(red = 0, green = 255, blue = 255, startY = 0, endY = bitmap.height / 2),
-            )
-            assertTrue(
-                "导出图下半部分应包含末段正文的品红标记，不能只画出标题或前几段",
-                bitmap.hasMarkerPixels(red = 255, green = 0, blue = 255, startY = bitmap.height / 2, endY = bitmap.height),
-            )
-            ByteArrayOutputStream().use { output ->
-                assertTrue(bitmap.compress(Bitmap.CompressFormat.JPEG, 70, output))
-                assertTrue(output.size() > 0)
+        SharedAndroidPaginationEnvironment(context, allowGuestAccess = true).use { environment ->
+            val renderer = environment.articleImageExportRenderer()
+            val prepared = renderer.prepareExportWebView(
+                htmlContent = environment.buildArticleExportHtml(
+                    content = sampleLongAnswerContent(),
+                    includeAppAttribution = true,
+                    extraSectionsHtml = "",
+                ),
+                timeoutMs = 15_000,
+            ) as AndroidPreparedExportWebView
+            val bitmap = renderer.captureExportBitmap(prepared) as Bitmap
+            try {
+                assertTrue(prepared.contentHeightPx < 60_000)
+                assertEquals(prepared.expectedBitmapWidthPx(context), bitmap.width)
+                assertEquals(prepared.expectedBitmapHeightPx(context), bitmap.height)
+                assertTrue(
+                    "导出图上半部分应包含首段正文的青色标记",
+                    bitmap.hasMarkerPixels(red = 0, green = 255, blue = 255, startY = 0, endY = bitmap.height / 2),
+                )
+                assertTrue(
+                    "导出图下半部分应包含末段正文的品红标记，不能只画出标题或前几段",
+                    bitmap.hasMarkerPixels(red = 255, green = 0, blue = 255, startY = bitmap.height / 2, endY = bitmap.height),
+                )
+                ByteArrayOutputStream().use { output ->
+                    assertTrue(bitmap.compress(Bitmap.CompressFormat.JPEG, 70, output))
+                    assertTrue(output.size() > 0)
+                }
+            } finally {
+                bitmap.recycle()
+                renderer.destroyExportWebView(prepared)
             }
-        } finally {
-            bitmap.recycle()
-            renderer.destroyExportWebView(prepared)
         }
     }
 

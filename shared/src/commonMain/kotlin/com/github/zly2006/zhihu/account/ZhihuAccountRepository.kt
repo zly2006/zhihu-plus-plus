@@ -81,7 +81,7 @@ class ZhihuAccountRepository(
     fun loadAccounts(): ZhihuAccounts = runCatching {
         val text = store.readText()?.takeIf { it.isNotBlank() } ?: return@runCatching ZhihuAccounts()
         val element = json.parseToJsonElement(text)
-        if (element is JsonObject && "accounts" in element) {
+        val loaded = if (element is JsonObject && "accounts" in element) {
             json.decodeFromString<ZhihuAccounts>(text)
         } else {
             val session = json.decodeFromString<ZhihuAccountSession>(text)
@@ -92,6 +92,15 @@ class ZhihuAccountRepository(
                 ZhihuAccounts()
             }
         }
+        loaded.copy(
+            accounts = loaded.accounts.map { account ->
+                val session = account.session
+                val profile = session.profile ?: session.self?.let { raw ->
+                    runCatching { ZhihuJson.decodeJson<ZhihuAccountProfileSnapshot>(raw) }.getOrNull()?.takeIf { it.id.isNotBlank() }
+                }
+                if (profile == session.profile) account else account.copy(session = session.copy(profile = profile))
+            },
+        )
     }.getOrDefault(ZhihuAccounts())
 
     fun load(): ZhihuAccountSession = loadAccounts().session

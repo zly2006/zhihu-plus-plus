@@ -19,9 +19,16 @@ package com.github.zly2006.zhihu.test
 
 import android.content.Context
 import android.os.Bundle
-import com.github.zly2006.zhihu.data.AccountData
+import com.github.zly2006.zhihu.account.ZhihuAccountProfileSnapshot
+import com.github.zly2006.zhihu.account.ZhihuAccountRepository
+import com.github.zly2006.zhihu.account.ZhihuAccountSession
+import com.github.zly2006.zhihu.account.ZhihuAccountSessionStore
+import com.github.zly2006.zhihu.account.androidZhihuAccountStore
 import com.github.zly2006.zhihu.data.Person
+import com.github.zly2006.zhihu.data.ZHIHU_ANDROID_USER_AGENT
+import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import kotlinx.serialization.json.encodeToJsonElement
 
 object InstrumentedTestEnvironment {
     const val DATA_MODE_ARG = "zhpp_data_mode"
@@ -54,9 +61,17 @@ object InstrumentedTestEnvironment {
 
         when (currentDataMode) {
             DataMode.MOCK -> {
-                AccountData.saveData(
-                    context,
-                    AccountData.Data(
+                val self = Person(
+                    id = "android-test-user-id",
+                    url = "https://www.zhihu.com/people/android-test-user",
+                    userType = "people",
+                    urlToken = "android-test-user",
+                    name = "AndroidTestUser",
+                    headline = "androidTest seeded login state",
+                    avatarUrl = "",
+                )
+                androidZhihuAccountStore(context).save(
+                    ZhihuAccountSession(
                         login = true,
                         username = "AndroidTestUser",
                         cookies = mutableMapOf(
@@ -64,14 +79,13 @@ object InstrumentedTestEnvironment {
                             "d_c0" to "android-test-dc0",
                             "_xsrf" to "android-test-xsrf",
                         ),
-                        userAgent = AccountData.ANDROID_USER_AGENT,
-                        self = Person(
+                        userAgent = ZHIHU_ANDROID_USER_AGENT,
+                        self = ZhihuJson.json.encodeToJsonElement(self),
+                        profile = ZhihuAccountProfileSnapshot(
                             id = "android-test-user-id",
-                            url = "https://www.zhihu.com/people/android-test-user",
                             userType = "people",
                             urlToken = "android-test-user",
                             name = "AndroidTestUser",
-                            headline = "androidTest seeded login state",
                             avatarUrl = "",
                         ),
                     ),
@@ -81,11 +95,10 @@ object InstrumentedTestEnvironment {
 
             DataMode.REAL -> {
                 val secretAccountData = loadRealAccountData(context)
-                AccountData.saveData(
-                    context,
+                androidZhihuAccountStore(context).save(
                     secretAccountData.copy(
                         login = secretAccountData.login || secretAccountData.cookies.isNotEmpty(),
-                        userAgent = secretAccountData.userAgent.ifBlank { AccountData.ANDROID_USER_AGENT },
+                        userAgent = secretAccountData.userAgent.ifBlank { ZHIHU_ANDROID_USER_AGENT },
                     ),
                 )
                 ZhihuMockApi.reset()
@@ -93,9 +106,15 @@ object InstrumentedTestEnvironment {
         }
     }
 
-    private fun loadRealAccountData(context: Context): AccountData.Data = try {
-        val json = context.filesDir.resolve("account.json").readText()
-        AccountData.json.decodeFromString(AccountData.Data.serializer(), json)
+    private fun loadRealAccountData(context: Context): ZhihuAccountSession = try {
+        val file = context.filesDir.resolve("account.json")
+        ZhihuAccountRepository(object : ZhihuAccountSessionStore {
+            override fun readText(): String = file.readText()
+
+            override fun writeText(text: String) = error("Read-only real-account fixture")
+
+            override fun delete() = error("Read-only real-account fixture")
+        }).load().also { require(it.cookies.isNotEmpty()) { "Missing restored account cookies" } }
     } catch (e: Exception) {
         throw IllegalStateException(
             "Real-data mode requires account JSON restored manually to target app files/account.json before instrumentation",

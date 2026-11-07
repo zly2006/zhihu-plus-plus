@@ -31,8 +31,6 @@ fun Context.asApiEnvironment(): ZhihuApiEnvironment {
         override val accountClient: ZhihuAccountClient
             get() = androidZhihuAccountStore(appContext).client
 
-        override fun xsrfToken(): String = AccountData.data.cookies["_xsrf"] ?: ""
-
         override suspend fun handleFetchFailure(
             tag: String?,
             error: Exception,

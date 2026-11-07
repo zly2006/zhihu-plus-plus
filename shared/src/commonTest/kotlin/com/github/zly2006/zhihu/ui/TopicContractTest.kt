@@ -18,6 +18,7 @@
 package com.github.zly2006.zhihu.ui
 
 import com.github.zly2006.zhihu.account.ZhihuAccountClient
+import com.github.zly2006.zhihu.account.ZhihuRequestProfile
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.data.installZhihuCommonClientConfig
@@ -186,7 +187,7 @@ class TopicContractTest {
         val environment = object : ZhihuApiEnvironment {
             override val accountClient: ZhihuAccountClient? = null
 
-            override fun httpClient() = client
+            override fun httpClient(profile: ZhihuRequestProfile) = client
 
             override fun authenticatedCookies() = mapOf("d_c0" to "test")
 

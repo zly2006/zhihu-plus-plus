@@ -26,7 +26,6 @@ import com.github.zly2006.zhihu.data.asApiEnvironment
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.NavDestination
-import com.github.zly2006.zhihu.viewmodel.postSigned
 import io.ktor.client.call.body
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
@@ -49,7 +48,7 @@ object OpenInBrowser {
             .firstOrNull { it.description == "com.github.zly2006.zhplus.openinbrowser" }
             ?: ZhihuJson.decodeJson<Collection>(
                 environment
-                    .postSigned("https://www.zhihu.com/api/v4/collections") {
+                    .post("https://www.zhihu.com/api/v4/collections") {
                         contentType(ContentType.Application.Json)
                         setBody(
                             buildJsonObject {

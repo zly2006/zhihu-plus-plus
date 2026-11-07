@@ -12,7 +12,9 @@
 
 ## 客户端与 Cookie 的归属
 
-认证 GET 由 `ZhihuAccountClient.get` 直接执行、签名和恢复，不再通过 `HttpClient.attributes` 反查账号对象。环境必须显式提供账号客户端或选择独立客户端；账号请求从开始到重试使用同一个客户端和 Cookie jar。`load()` 读取该实例绑定的账号槽位，旧实例不会读到切换后的另一账号。
+认证请求统一由 `ZhihuAccountClient.request` 执行，GET、POST、PUT、PATCH、DELETE 共用这一入口。`ZhihuRequestProfile` 明确区分 Web 签名与移动端请求头；环境同样提供对应方法，通知、私信和推荐不再绕过账号客户端。只有 GET 可以在精确识别过期票据后恢复并重试一次，写操作不自动重放。
+
+环境必须显式提供账号客户端或选择独立客户端，不再通过 `HttpClient.attributes` 反查账号对象。Web 与移动端 transport 共用该账号的 Cookie jar 和回写回调，并随账号客户端关闭。`load()` 读取该实例绑定的账号槽位，旧实例不会读到切换后的另一账号。匿名推荐使用独立、无账号 Cookie 的客户端；页面和朗读服务只负责关闭自己创建的客户端。Android 的 `AccountData` 仅为只读兼容视图，不再复制完整凭据并覆盖回写。
 
 重试所需的 Cookie 值从该包装器已有映射中记录，不拆解请求头。手机号协议继续复用 `createAccountHttpClient` 安装的 `HttpCookies/ZhihuCookieStorage` 发送 Cookie，删除重复设置请求头。手工导入复用现有 `parseCookieAssignments`，接受分号两侧的空白；WebView、扫码和桌面浏览器外部字符串仍保留各自已有的值语义，避免去引号改变签名输入。
 
@@ -20,7 +22,7 @@
 
 启动预刷新必须同时满足：当前账号仍有效、已经登录、具有明确账号 id 和非空移动端 refresh token、已知到期时间，且已过期或剩余时间不超过一天。游客、仅导入 Cookie 的账号、到期时间未知或有效期充足时不发请求，也不提示刷新失败。NLP 模型的原有每日初始化条件独立保留。
 
-请求遇到 401 时，只对 `error.code=100` 且 message 为 `ERR_LOGIN_TICKET_EXPIRED` 或项目已识别的 `ERR_TICKET_NOT_EXIST` 执行恢复。一般 401、403、网络错误和业务权限错误不触发续期；没有移动端凭据时原样交给调用方。成功后只重试原请求一次。
+GET 请求遇到 401 时，只对 `error.code=100` 且 message 为 `ERR_LOGIN_TICKET_EXPIRED` 或项目已识别的 `ERR_TICKET_NOT_EXIST` 执行恢复。一般 401、403、网络错误和业务权限错误不触发续期；没有移动端凭据时原样交给调用方。成功后只重试原请求一次。
 
 账号存储按账号槽位持有续期协调器，并用互斥锁合并并发失败请求。切换客户端后仍复用原账号的协调器和冷却状态；重新认证或删除账号时使旧协调器失效。已经换过 Cookie 的请求直接用新会话重试；每次真正尝试后至少冷却一分钟，失败也计入。手动刷新使用相同移动端协议，仅跳过临近到期判断，不跳过登录、凭据、账号归属和冷却约束。
 

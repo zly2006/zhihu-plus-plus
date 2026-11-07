@@ -115,10 +115,8 @@ import com.github.zly2006.zhihu.util.twoDigitString
 import com.github.zly2006.zhihu.viewmodel.ContentLoadEnvironment
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import com.github.zly2006.zhihu.viewmodel.addReadHistory
-import com.github.zly2006.zhihu.viewmodel.deleteSigned
 import com.github.zly2006.zhihu.viewmodel.loadVotersPage
 import com.github.zly2006.zhihu.viewmodel.nextUrlOrNull
-import com.github.zly2006.zhihu.viewmodel.postSigned
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.replaceOrAppendUniqueVoters
 import io.ktor.client.request.setBody
@@ -152,9 +150,9 @@ private suspend fun togglePinLike(
 ): PinLikeResult {
     val endpoint = "https://www.zhihu.com/api/v4/pins/${pin.id}/voters/up"
     val jojo = if (isLiked) {
-        environment.deleteSigned(endpoint).jsonObject()
+        environment.delete(endpoint).jsonObject()
     } else {
-        environment.postSigned(endpoint).jsonObject()
+        environment.post(endpoint).jsonObject()
     }
     return PinLikeResult(
         isLiked = !isLiked,
@@ -172,7 +170,7 @@ private suspend fun submitPinPollVote(
             add(optionId)
         }
     }.toString()
-    environment.postSigned("https://www.zhihu.com/api/v4/polls/$pollId") {
+    environment.post("https://www.zhihu.com/api/v4/polls/$pollId") {
         contentType(ContentType.Application.Json)
         setBody(requestBody)
     }

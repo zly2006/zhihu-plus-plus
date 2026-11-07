@@ -29,6 +29,7 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.app.ActivityCompat
@@ -36,6 +37,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import com.github.zly2006.zhihu.account.ZhihuAccountClient
+import com.github.zly2006.zhihu.account.ZhihuRequestProfile
 import com.github.zly2006.zhihu.account.accountHttpClientEngineForTesting
 import com.github.zly2006.zhihu.account.androidZhihuAccountStore
 import com.github.zly2006.zhihu.data.AIGC_MARKING_ENABLED_PREFERENCE_KEY
@@ -44,11 +46,11 @@ import com.github.zly2006.zhihu.data.AigcVoteVoter
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.FeedDisplayItem
-import com.github.zly2006.zhihu.data.HistoryStorage
+import com.github.zly2006.zhihu.data.LocalHistoryStore
 import com.github.zly2006.zhihu.data.QualityFilterSettings
-import com.github.zly2006.zhihu.data.ZhihuCookieStorage
 import com.github.zly2006.zhihu.data.ZhihuJson.json
 import com.github.zly2006.zhihu.data.asApiEnvironment
+import com.github.zly2006.zhihu.data.installZhihuMobileClientProfile
 import com.github.zly2006.zhihu.data.navDestination
 import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.filter.ContentOpenEventSupport
@@ -84,14 +86,11 @@ import com.github.zly2006.zhihu.viewmodel.local.getLocalContentDatabase
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.plugins.UserAgent
-import io.ktor.client.plugins.api.createClientPlugin
 import io.ktor.client.plugins.cache.HttpCache
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.plugins.cookies.HttpCookies
 import io.ktor.client.request.setBody
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
-import io.ktor.util.appendAll
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
@@ -110,12 +109,6 @@ interface AndroidContextPaginationEnvironment : PaginationEnvironment {
     val context: Context
 }
 
-private val ZHIHU_PP_ANDROID_HEADERS = createClientPlugin("ZhihuPPAndroidHeaders", { }) {
-    onRequest { request, _ ->
-        request.headers.appendAll(AccountData.ANDROID_HEADERS)
-    }
-}
-
 private const val AIGC_VOTE_CLIENT_ID_KEY = "aigcVoteClientId"
 internal const val AIGC_VOTE_SERVER_URL_KEY = "aigcVoteServerUrl"
 private const val DEFAULT_ANDROID_AIGC_VOTE_SERVER_URL = "https://aigc-vote.ai.fintechedu.cn"
@@ -124,14 +117,16 @@ open class SharedAndroidPaginationEnvironment(
     override val context: Context,
     private val allowGuestAccess: Boolean,
 ) : AndroidContextPaginationEnvironment,
-    CollectionContentEnvironment {
+    CollectionContentEnvironment,
+    AutoCloseable {
     private val localRecommendationEngine by lazy {
         val dao = getLocalContentDatabase(context).contentDao()
         buildLocalRecommendationEngine(dao, context.asApiEnvironment())
     }
+    private val historyStorage by lazy { LocalHistoryStore.forFile(context.filesDir.resolve("history.json").absolutePath) }
     private val settingsStore by lazy { androidSettingsStore(context) }
     private val userMessageSink by lazy { androidUserMessageSink(context) }
-    private val aigcVoteHttpClient by lazy {
+    private val aigcVoteClient = lazy {
         HttpClient {
             install(ContentNegotiation) {
                 json(json)
@@ -142,37 +137,34 @@ open class SharedAndroidPaginationEnvironment(
     override val accountClient: ZhihuAccountClient?
         get() = if (allowGuestAccess && !settingsStore.getBoolean("loginForRecommendation", true)) null else androidZhihuAccountStore(context).client
 
-    override fun httpClient(): HttpClient = accountClient?.httpClient() ?: HttpClient {
-        install(HttpCache)
-        install(ContentNegotiation) { json(json) }
-        install(UserAgent) { agent = AccountData.data.userAgent }
-    }
+    private val guestWebClient = lazy { createGuestHttpClient(ZhihuRequestProfile.Web) }
+    private val guestMobileClient = lazy { createGuestHttpClient(ZhihuRequestProfile.Mobile) }
 
-    override fun mobileHomeFeedHttpClient(): HttpClient {
-        val loginForRecommendation = settingsStore.getBoolean("loginForRecommendation", true)
+    private fun createGuestHttpClient(profile: ZhihuRequestProfile): HttpClient {
         val configure: HttpClientConfig<*>.() -> Unit = {
-            install(ContentNegotiation) {
-                json(json)
-            }
-            install(UserAgent) {
-                agent = AccountData.ANDROID_USER_AGENT
-            }
-            install(ZHIHU_PP_ANDROID_HEADERS)
-            if (loginForRecommendation) {
-                install(HttpCookies) {
-                    storage = ZhihuCookieStorage(AccountData.data.cookies) {
-                        AccountData.saveData(context, AccountData.data)
-                    }
-                }
+            install(ContentNegotiation) { json(json) }
+            if (profile == ZhihuRequestProfile.Mobile) {
+                installZhihuMobileClientProfile()
+            } else {
+                install(HttpCache)
+                install(UserAgent) { agent = AccountData.data.userAgent }
             }
         }
         return accountHttpClientEngineForTesting?.let { HttpClient(it, configure) } ?: HttpClient(configure)
     }
 
+    override fun httpClient(profile: ZhihuRequestProfile): HttpClient = accountClient?.httpClient(profile) ?: if (profile == ZhihuRequestProfile.Mobile) guestMobileClient.value else guestWebClient.value
+
+    override fun close() {
+        if (guestMobileClient.isInitialized()) guestMobileClient.value.close()
+        if (guestWebClient.isInitialized()) guestWebClient.value.close()
+        if (aigcVoteClient.isInitialized()) aigcVoteClient.value.close()
+    }
+
     override fun isAigcVoteEnabled(): Boolean =
         settingsStore.getBoolean(AIGC_MARKING_ENABLED_PREFERENCE_KEY, false)
 
-    override fun aigcVoteHttpClient(): HttpClient = aigcVoteHttpClient
+    override fun aigcVoteHttpClient(): HttpClient = aigcVoteClient.value
 
     override fun aigcVoteBaseUrl(): String = aigcVoteServerUrl()
 
@@ -238,10 +230,10 @@ open class SharedAndroidPaginationEnvironment(
         reverseBlock = settingsStore.getBoolean("reverseBlock", false),
     )
 
-    override fun localHistory(): List<NavDestination> = HistoryStorage(context).history
+    override fun localHistory(): List<NavDestination> = historyStorage.history
 
     override suspend fun postHistoryDestination(destination: NavDestination) {
-        HistoryStorage(context).add(destination)
+        historyStorage.add(destination)
     }
 
     override suspend fun isUserBlocked(userId: String): Boolean =
@@ -385,8 +377,8 @@ open class SharedAndroidPaginationEnvironment(
     }
 
     override suspend fun clearAllHistory() {
-        HistoryStorage(context).clearAndSave()
-        postSigned("https://api.zhihu.com/read_history/batch_del") {
+        historyStorage.clear()
+        post("https://api.zhihu.com/read_history/batch_del") {
             contentType(KtorContentType.Application.Json)
             setBody(
                 buildJsonObject {
@@ -656,25 +648,13 @@ class SharedAndroidNotificationEnvironment(
 ) : SharedAndroidPaginationEnvironment(context, allowGuestAccess),
     NotificationEnvironment
 
-fun PaginationViewModel<*>.paginationEnvironment(context: Context): AndroidContextPaginationEnvironment =
-    SharedAndroidPaginationEnvironment(context, allowGuestAccess)
-
 @Composable
 actual fun rememberPaginationEnvironment(allowGuestAccess: Boolean): PaginationEnvironment {
     val context = LocalContext.current
-    return remember(context, allowGuestAccess) { SharedAndroidPaginationEnvironment(context, allowGuestAccess) }
+    val environment = remember(context, allowGuestAccess) { SharedAndroidPaginationEnvironment(context, allowGuestAccess) }
+    DisposableEffect(environment) { onDispose { environment.close() } }
+    return environment
 }
-
-fun PaginationViewModel<*>.refresh(context: Context) {
-    refresh(paginationEnvironment(context))
-}
-
-fun PaginationViewModel<*>.loadMore(context: Context) {
-    loadMore(paginationEnvironment(context))
-}
-
-fun PaginationViewModel<*>.httpClient(context: Context): HttpClient =
-    paginationEnvironment(context).httpClient()
 
 private fun Context.canSafelyShowDialog(): Boolean {
     val activity = this as? Activity ?: return false

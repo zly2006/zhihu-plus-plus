@@ -23,9 +23,9 @@ import com.github.zly2006.zhihu.account.ZhihuAccountClient
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.FeedDisplayItem
+import com.github.zly2006.zhihu.data.LocalHistoryStore
 import com.github.zly2006.zhihu.data.navDestination
 import com.github.zly2006.zhihu.data.target
-import com.github.zly2006.zhihu.desktop.DesktopHistoryStorage
 import com.github.zly2006.zhihu.desktop.copyDesktopPlainText
 import com.github.zly2006.zhihu.desktop.defaultDesktopAccountStore
 import com.github.zly2006.zhihu.desktop.desktopZhihuDataFile
@@ -116,7 +116,7 @@ class DesktopPaginationEnvironment(
     NotificationEnvironment {
     private val store = defaultDesktopAccountStore
     private val settingsStore = desktopSettingsStore()
-    private val historyStorage = DesktopHistoryStorage()
+    private val historyStorage = LocalHistoryStore.forFile(desktopZhihuDataFile("history.json").absolutePath)
     private val contentFilterDb = desktopContentFilterDb
     private val localRecommendationEngine by lazy {
         val databaseFile = desktopZhihuDataFile("local-content.db")
@@ -127,8 +127,6 @@ class DesktopPaginationEnvironment(
 
     override val accountClient: ZhihuAccountClient
         get() = store.client
-
-    override fun xsrfToken(): String = store.session.cookies["_xsrf"] ?: ""
 
     override suspend fun handleFetchFailure(
         tag: String?,
@@ -280,9 +278,9 @@ class DesktopPaginationEnvironment(
     }
 
     override suspend fun clearAllHistory() {
-        historyStorage.clearAndSave()
+        historyStorage.clear()
         if (store.session.cookies["d_c0"] == null) return
-        postSigned("https://api.zhihu.com/read_history/batch_del") {
+        post("https://api.zhihu.com/read_history/batch_del") {
             contentType(KtorContentType.Application.Json)
             setBody(
                 buildJsonObject {
