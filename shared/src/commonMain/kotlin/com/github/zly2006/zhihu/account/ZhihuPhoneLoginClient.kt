@@ -18,7 +18,6 @@
 package com.github.zly2006.zhihu.account
 
 import com.github.zly2006.zhihu.data.ZhihuJson
-import com.github.zly2006.zhihu.data.toCookieHeaderString
 import com.github.zly2006.zhihu.util.ZhihuMessageBodyEncryptor
 import com.github.zly2006.zhihu.util.hmacSha1Hex
 import io.ktor.client.request.HttpRequestBuilder
@@ -368,9 +367,6 @@ class ZhihuPhoneLoginClient : AutoCloseable {
         accept(ContentType.Application.Json)
         header(HttpHeaders.UserAgent, ZHIHU_ANDROID_PHONE_LOGIN_USER_AGENT)
         header(HttpHeaders.Authorization, authorization)
-        cookies.toCookieHeaderString().takeIf(String::isNotBlank)?.let {
-            header(HttpHeaders.Cookie, it)
-        }
         deviceId?.let { header("x-udid", it) }
         header("x-api-version", "3.0.93")
         header("x-app-version", "11.4.0")

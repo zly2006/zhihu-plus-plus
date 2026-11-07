@@ -17,10 +17,8 @@
 
 package com.github.zly2006.zhihu.util
 
-import com.github.zly2006.zhihu.account.ZhihuAccountClient
 import com.github.zly2006.zhihu.account.ZhihuAccountStore
 import com.github.zly2006.zhihu.account.ZhihuPhoneLoginClient
-import io.ktor.util.AttributeKey
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.time.Clock
@@ -28,8 +26,6 @@ import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.TimeMark
 import kotlin.time.TimeSource
-
-internal val zhihuAccountClientKey = AttributeKey<ZhihuAccountClient>("ZhihuAccountClient")
 
 /** Per-account mobile renewal shared by startup, explicit refresh and expired-ticket retries. */
 class ZhihuCredentialRefresher internal constructor(

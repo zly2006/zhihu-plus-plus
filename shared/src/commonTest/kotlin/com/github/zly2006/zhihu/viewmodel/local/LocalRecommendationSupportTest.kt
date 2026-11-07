@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.viewmodel.local
 
+import com.github.zly2006.zhihu.account.ZhihuAccountClient
 import com.github.zly2006.zhihu.data.CommonFeed
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.navigation.Article
@@ -24,7 +25,6 @@ import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import com.github.zly2006.zhihu.viewmodel.local.LocalContentAffinity
 import com.github.zly2006.zhihu.viewmodel.local.LocalReasonPreference
-import io.ktor.client.HttpClient
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonArray
 import kotlin.io.path.createTempDirectory
@@ -425,9 +425,7 @@ class LocalRecommendationSupportTest {
         )
 
     private object NoopLocalRecommendationEnvironment : ZhihuApiEnvironment {
-        override fun httpClient(): HttpClient = error("测试不应创建 HTTP client")
-
-        override fun authenticatedCookies(): Map<String, String> = emptyMap()
+        override val accountClient: ZhihuAccountClient? = null
 
         override suspend fun handleFetchFailure(tag: String?, error: Exception) = Unit
     }

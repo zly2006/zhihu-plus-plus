@@ -84,7 +84,7 @@ class ZhihuAccountTest {
         phoneLoginNowEpochSecondsForTesting = { 1_793_779_695L }
         val store = ZhihuAccountStore(repository)
         try {
-            val response = fetchZhihuAuthenticatedJson(store.client.httpClient(), ZHIHU_ME_URL)
+            val response = store.client.get(ZHIHU_ME_URL).jsonObject()
             assertEquals("captured-person", response?.get("id")?.jsonPrimitive?.content)
             assertEquals(listOf("GET www.zhihu.com/api/v4/me", "POST api.zhihu.com/api/account/prod/sign_in", "GET www.zhihu.com/api/v4/me"), requests)
             val restored = repository.load()

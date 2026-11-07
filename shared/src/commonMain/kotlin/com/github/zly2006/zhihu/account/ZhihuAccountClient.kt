@@ -18,18 +18,28 @@
 package com.github.zly2006.zhihu.account
 
 import androidx.compose.runtime.Composable
+import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.data.fetchVerifiedZhihuSession
 import com.github.zly2006.zhihu.data.installZhihuCommonClientConfig
 import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
-import com.github.zly2006.zhihu.util.zhihuAccountClientKey
+import com.github.zly2006.zhihu.util.raiseForStatus
+import com.github.zly2006.zhihu.util.signZhihuFetchRequest
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.engine.HttpClientEngineFactory
+import io.ktor.client.request.HttpRequestBuilder
+import io.ktor.client.request.get
+import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.HttpStatusCode
 import kotlinx.atomicfu.locks.reentrantLock
 import kotlinx.atomicfu.locks.withLock
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 class ZhihuAccountClient internal constructor(
     private val accountStore: ZhihuAccountStore,
@@ -50,11 +60,12 @@ class ZhihuAccountClient internal constructor(
         }
     }
 
-    init {
-        client.attributes.put(zhihuAccountClientKey, this)
+    fun load(): ZhihuAccountSession {
+        val accounts = accountState.value
+        return accounts.accounts.firstOrNull { it.id == accountId }?.session
+            ?: accounts.session.takeIf { accountId == null && isCurrent }
+            ?: error("账号客户端已失效")
     }
-
-    fun load(): ZhihuAccountSession = accountState.value.session
 
     fun save(session: ZhihuAccountSession) = accountStore.sessionLock.withLock {
         require(isCurrent && load().hasSameIdentityAs(session)) {
@@ -68,6 +79,37 @@ class ZhihuAccountClient internal constructor(
         cookies.clear()
         cookies.putAll(updatedCookies)
         accountState.save(session.copy(cookies = cookies.toMutableMap()))
+    }
+
+    suspend fun get(
+        url: String,
+        block: suspend HttpRequestBuilder.() -> Unit = {},
+    ): HttpResponse {
+        check(isCurrent) { "账号客户端已失效" }
+        val requestCookie = cookies["z_c0"]
+        val response = client.get(url) {
+            block()
+            signZhihuFetchRequest(cookies)
+        }
+        if (response.status != HttpStatusCode.Unauthorized) return response
+
+        if (!isCurrent) return response
+        val body = response.bodyAsText()
+        val ticketExpired = runCatching {
+            val error = ZhihuJson.json
+                .parseToJsonElement(body)
+                .jsonObject["error"]
+                ?.jsonObject
+            error?.get("code")?.jsonPrimitive?.intOrNull == 100 &&
+                error["message"]?.jsonPrimitive?.content in setOf("ERR_LOGIN_TICKET_EXPIRED", "ERR_TICKET_NOT_EXIST")
+        }.getOrDefault(false)
+        if (!ticketExpired) return response
+        if (!credentialRefresher.refresh(force = true, rejectedCookie = requestCookie) || !isCurrent) return response
+        return client
+            .get(url) {
+                block()
+                signZhihuFetchRequest(cookies)
+            }.raiseForStatus()
     }
 
     fun httpClient(): HttpClient = client

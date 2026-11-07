@@ -17,11 +17,11 @@
 
 package com.github.zly2006.zhihu.ui
 
+import com.github.zly2006.zhihu.account.ZhihuAccountClient
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.viewmodel.ProfileLoadEnvironment
-import io.ktor.client.HttpClient
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.encodeToJsonElement
@@ -184,9 +184,7 @@ class PeopleScreenProfileTest {
     ) : ProfileLoadEnvironment {
         val requests = mutableListOf<Pair<String, String>>()
 
-        override fun httpClient(): HttpClient = error("The test overrides fetchJson")
-
-        override fun authenticatedCookies(): Map<String, String> = emptyMap()
+        override val accountClient: ZhihuAccountClient? = null
 
         override suspend fun fetchJson(
             url: String,

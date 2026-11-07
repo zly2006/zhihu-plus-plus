@@ -20,6 +20,7 @@ package com.github.zly2006.zhihu.viewmodel
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import com.github.zly2006.zhihu.account.NativeHistoryStorage
+import com.github.zly2006.zhihu.account.ZhihuAccountClient
 import com.github.zly2006.zhihu.account.defaultNativeAccountStore
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.FeedDisplayItem
@@ -49,7 +50,6 @@ import com.github.zly2006.zhihu.viewmodel.filter.toFeedFilterSettings
 import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
 import com.github.zly2006.zhihu.viewmodel.local.buildLocalRecommendationEngine
 import com.github.zly2006.zhihu.viewmodel.local.getNativeLocalContentDatabase
-import io.ktor.client.HttpClient
 import io.ktor.client.request.setBody
 import io.ktor.http.contentType
 import kotlinx.coroutines.runBlocking
@@ -109,13 +109,8 @@ internal class NativePaginationEnvironment(
         }
     }
 
-    override fun httpClient(): HttpClient = accountStore.client.httpClient()
-
-    override fun authenticatedCookies(): Map<String, String> = accountStore.session.cookies
-
-    override suspend fun <T> withAuthenticatedClient(
-        block: suspend (client: HttpClient, cookies: Map<String, String>) -> T,
-    ): T = accountStore.client.withAuthenticatedClient(block)
+    override val accountClient: ZhihuAccountClient
+        get() = accountStore.client
 
     override fun xsrfToken(): String = accountStore.session.cookies["_xsrf"].orEmpty()
 

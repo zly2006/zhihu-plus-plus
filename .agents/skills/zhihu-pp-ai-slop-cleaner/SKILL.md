@@ -17,6 +17,10 @@ description: Use for Zhihu++ maintenance work that scans Kotlin main sources for
 
 用户明确认可合并已有测试时，应保留这种整合方向。根因是实施前未充分检查已有覆盖，不能将反馈擅自解释成“不需要这些测试”，也不能把改文件归属当成已经完成了事前分析。
 
+## Cookie 与客户端状态的事实源
+
+已有账号客户端或 CookieStorage 持有结构化 Cookie 时，读取该状态，不要把请求头重新拆成字符串再解析。请求重试需要识别已发送凭据时，应在发起请求时从同一账号包装器保存必要值，并沿用它的生命周期校验；不要由旧请求反查全局当前账号。外部 Set-Cookie 或用户导入文本才属于解析输入，应优先复用项目现有解析器或 Ktor 标准 API，不能用 split/startsWith 拼一个只覆盖当前样本的协议解析器。
+
 ## Core Rule
 
 Treat low call count as a queue for review, not proof of deletion.

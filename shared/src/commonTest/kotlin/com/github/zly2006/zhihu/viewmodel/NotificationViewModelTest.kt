@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.viewmodel
 
+import com.github.zly2006.zhihu.account.ZhihuAccountClient
 import com.github.zly2006.zhihu.util.ZhihuMessageBodyEncryptor
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
@@ -48,11 +49,11 @@ class NotificationViewModelTest {
             },
         )
         val environment = object : MobileHomeFeedEnvironment {
+            override val accountClient: ZhihuAccountClient? = null
+
             override fun httpClient() = client
 
             override fun mobileHomeFeedHttpClient() = client
-
-            override fun authenticatedCookies() = emptyMap<String, String>()
 
             override suspend fun handleFetchFailure(tag: String?, error: Exception) = Unit
         }
@@ -109,11 +110,11 @@ class NotificationViewModelTest {
             },
         )
         val environment = object : MobileHomeFeedEnvironment {
+            override val accountClient: ZhihuAccountClient? = null
+
             override fun httpClient() = client
 
             override fun mobileHomeFeedHttpClient() = client
-
-            override fun authenticatedCookies() = emptyMap<String, String>()
 
             override suspend fun handleFetchFailure(tag: String?, error: Exception) = Unit
         }
@@ -151,11 +152,11 @@ class NotificationViewModelTest {
             },
         )
         val environment = object : MobileHomeFeedEnvironment {
+            override val accountClient: ZhihuAccountClient? = null
+
             override fun httpClient() = client
 
             override fun mobileHomeFeedHttpClient() = client
-
-            override fun authenticatedCookies() = emptyMap<String, String>()
 
             override suspend fun handleFetchFailure(tag: String?, error: Exception) = Unit
         }
@@ -195,11 +196,11 @@ class NotificationViewModelTest {
             install(ContentNegotiation) { json() }
         }
         val environment = object : MobileHomeFeedEnvironment {
+            override val accountClient: ZhihuAccountClient? = null
+
             override fun httpClient() = client
 
             override fun mobileHomeFeedHttpClient() = client
-
-            override fun authenticatedCookies() = emptyMap<String, String>()
 
             override suspend fun handleFetchFailure(tag: String?, error: Exception) = Unit
         }
@@ -365,11 +366,11 @@ class NotificationViewModelTest {
     }
 
     private fun privateMessageEnvironment(client: HttpClient) = object : MobileHomeFeedEnvironment {
+        override val accountClient: ZhihuAccountClient? = null
+
         override fun httpClient() = client
 
         override fun mobileHomeFeedHttpClient() = client
-
-        override fun authenticatedCookies() = emptyMap<String, String>()
 
         override suspend fun handleFetchFailure(tag: String?, error: Exception) = throw error
     }

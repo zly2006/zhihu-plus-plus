@@ -17,8 +17,8 @@
 
 package com.github.zly2006.zhihu.navigation
 
+import com.github.zly2006.zhihu.account.ZhihuAccountClient
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
-import io.ktor.client.HttpClient
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.test.runTest
@@ -361,9 +361,7 @@ class QuestionAnswerNavigatorTest {
     )
 
     private object NoopEnvironment : ZhihuApiEnvironment {
-        override fun httpClient(): HttpClient = error("not used")
-
-        override fun authenticatedCookies(): Map<String, String> = emptyMap()
+        override val accountClient: ZhihuAccountClient? = null
 
         override suspend fun handleFetchFailure(
             tag: String?,
@@ -374,9 +372,7 @@ class QuestionAnswerNavigatorTest {
     private class RecordingEnvironment : ZhihuApiEnvironment {
         val requestedUrls = mutableListOf<String>()
 
-        override fun httpClient(): HttpClient = error("not used")
-
-        override fun authenticatedCookies(): Map<String, String> = emptyMap()
+        override val accountClient: ZhihuAccountClient? = null
 
         override suspend fun fetchJson(
             url: String,
@@ -395,9 +391,7 @@ class QuestionAnswerNavigatorTest {
     private inner class FeedEnvironment(
         private val answerIds: List<Long>,
     ) : ZhihuApiEnvironment {
-        override fun httpClient(): HttpClient = error("not used")
-
-        override fun authenticatedCookies(): Map<String, String> = emptyMap()
+        override val accountClient: ZhihuAccountClient? = null
 
         override suspend fun fetchJson(
             url: String,
@@ -424,9 +418,7 @@ class QuestionAnswerNavigatorTest {
     ) : ZhihuApiEnvironment {
         val requestedUrls = mutableListOf<String>()
 
-        override fun httpClient(): HttpClient = error("not used")
-
-        override fun authenticatedCookies(): Map<String, String> = emptyMap()
+        override val accountClient: ZhihuAccountClient? = null
 
         override suspend fun fetchJson(
             url: String,

@@ -24,6 +24,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.github.zly2006.zhihu.account.ZhihuAccountClient
 import com.github.zly2006.zhihu.data.AigcVoteVoter
 import com.github.zly2006.zhihu.data.ContentDetailCache
 import com.github.zly2006.zhihu.data.DataHolder
@@ -33,8 +34,6 @@ import com.github.zly2006.zhihu.data.OnlineHistoryDeletePair
 import com.github.zly2006.zhihu.data.QualityFilterSettings
 import com.github.zly2006.zhihu.data.ZhihuJson.decodeJson
 import com.github.zly2006.zhihu.data.ZhihuPaging
-import com.github.zly2006.zhihu.data.executeZhihuAuthenticatedRequest
-import com.github.zly2006.zhihu.data.fetchZhihuAuthenticatedJson
 import com.github.zly2006.zhihu.data.fetchZhihuContentDetail
 import com.github.zly2006.zhihu.data.getOrFetchContentDetail
 import com.github.zly2006.zhihu.navigation.AnswerNavigator
@@ -44,20 +43,21 @@ import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
 import com.github.zly2006.zhihu.ui.ArticleAnswerTransitionDirection
 import com.github.zly2006.zhihu.util.Log
+import com.github.zly2006.zhihu.util.json
 import com.github.zly2006.zhihu.util.signZhihuFetchRequest
-import com.github.zly2006.zhihu.util.zhihuAccountClientKey
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
 import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
 import io.ktor.client.HttpClient
 import io.ktor.client.call.NoTransformationFoundException
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.delete
+import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
-import io.ktor.http.HttpMethod
+import io.ktor.http.HttpStatusCode
 import io.ktor.http.URLProtocol
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
@@ -245,42 +245,36 @@ interface ArticleImageExportRenderer {
 }
 
 interface ZhihuApiEnvironment {
-    fun httpClient(): HttpClient
+    val accountClient: ZhihuAccountClient?
 
-    fun authenticatedCookies(): Map<String, String>
+    fun httpClient(): HttpClient = accountClient?.httpClient() ?: error("匿名环境必须提供 HTTP 客户端")
+
+    fun authenticatedCookies(): Map<String, String> = accountClient?.load()?.cookies.orEmpty()
 
     suspend fun <T> withAuthenticatedClient(
         block: suspend (client: HttpClient, cookies: Map<String, String>) -> T,
-    ): T = block(httpClient(), authenticatedCookies())
+    ): T {
+        val owner = accountClient
+        return if (owner != null) owner.withAuthenticatedClient(block) else block(httpClient(), authenticatedCookies())
+    }
 
-    suspend fun fetchJson(
-        url: String,
-        include: String,
-    ): JsonObject? = withAuthenticatedClient { client, cookies ->
-        fetchZhihuAuthenticatedJson(client, url) {
-            method = HttpMethod.Get
+    private suspend fun get(url: String, block: suspend HttpRequestBuilder.() -> Unit = {}): HttpResponse =
+        accountClient?.get(url, block) ?: httpClient().get(url) {
+            block()
+            signZhihuFetchRequest(authenticatedCookies())
+        }
+
+    suspend fun fetchJson(url: String, include: String): JsonObject? {
+        val response = get(url) {
             url {
                 protocol = URLProtocol.HTTPS
-                if (include.isNotEmpty()) {
-                    parameters["include"] = include
-                }
+                if (include.isNotEmpty()) parameters["include"] = include
             }
-            signZhihuFetchRequest(cookies)
         }
+        return if (response.status == HttpStatusCode.NoContent) null else response.json() as? JsonObject
     }
 
-    suspend fun signedGetText(url: String): String = withAuthenticatedClient { client, cookies ->
-        executeZhihuAuthenticatedRequest(client, url) {
-            method = HttpMethod.Get
-            signZhihuFetchRequest(cookies)
-        }.bodyAsText()
-    }
-
-    suspend fun refreshToken() {
-        val accountClient = httpClient().attributes.getOrNull(zhihuAccountClientKey)
-            ?: error("请先登录后再刷新登录状态")
-        check(accountClient.credentialRefresher.refresh(force = true)) { "缺少移动端刷新凭据或刚刚尝试过刷新，请稍后重试" }
-    }
+    suspend fun signedGetText(url: String): String = get(url).bodyAsText()
 
     suspend fun handleFetchFailure(
         tag: String?,

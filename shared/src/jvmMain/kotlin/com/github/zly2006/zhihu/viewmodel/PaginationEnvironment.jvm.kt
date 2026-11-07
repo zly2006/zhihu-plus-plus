@@ -19,6 +19,7 @@ package com.github.zly2006.zhihu.viewmodel
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import com.github.zly2006.zhihu.account.ZhihuAccountClient
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.FeedDisplayItem
@@ -124,15 +125,10 @@ class DesktopPaginationEnvironment(
         buildLocalRecommendationEngine(dao, this)
     }
 
-    override fun httpClient(): HttpClient = store.client.httpClient()
+    override val accountClient: ZhihuAccountClient
+        get() = store.client
 
     override fun xsrfToken(): String = store.session.cookies["_xsrf"] ?: ""
-
-    override fun authenticatedCookies(): Map<String, String> = store.session.cookies
-
-    override suspend fun <T> withAuthenticatedClient(
-        block: suspend (client: HttpClient, cookies: Map<String, String>) -> T,
-    ): T = store.client.withAuthenticatedClient(block)
 
     override suspend fun handleFetchFailure(
         tag: String?,

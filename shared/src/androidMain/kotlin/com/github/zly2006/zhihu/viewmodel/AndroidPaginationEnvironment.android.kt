@@ -35,6 +35,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
+import com.github.zly2006.zhihu.account.ZhihuAccountClient
 import com.github.zly2006.zhihu.account.accountHttpClientEngineForTesting
 import com.github.zly2006.zhihu.account.androidZhihuAccountStore
 import com.github.zly2006.zhihu.data.AIGC_MARKING_ENABLED_PREFERENCE_KEY
@@ -138,20 +139,13 @@ open class SharedAndroidPaginationEnvironment(
         }
     }
 
-    override fun httpClient(): HttpClient {
-        val loginForRecommendation = settingsStore.getBoolean("loginForRecommendation", true)
-        if (allowGuestAccess && !loginForRecommendation) {
-            return HttpClient {
-                install(HttpCache)
-                install(ContentNegotiation) {
-                    json(json)
-                }
-                install(UserAgent) {
-                    agent = AccountData.data.userAgent
-                }
-            }
-        }
-        return androidZhihuAccountStore(context).client.httpClient()
+    override val accountClient: ZhihuAccountClient?
+        get() = if (allowGuestAccess && !settingsStore.getBoolean("loginForRecommendation", true)) null else androidZhihuAccountStore(context).client
+
+    override fun httpClient(): HttpClient = accountClient?.httpClient() ?: HttpClient {
+        install(HttpCache)
+        install(ContentNegotiation) { json(json) }
+        install(UserAgent) { agent = AccountData.data.userAgent }
     }
 
     override fun mobileHomeFeedHttpClient(): HttpClient {
@@ -193,15 +187,6 @@ open class SharedAndroidPaginationEnvironment(
                 avatarUrl = self.avatarUrl,
             )
         }
-
-    override fun authenticatedCookies(): Map<String, String> {
-        val loginForRecommendation = settingsStore.getBoolean("loginForRecommendation", true)
-        return if (allowGuestAccess && !loginForRecommendation) {
-            emptyMap()
-        } else {
-            AccountData.data.cookies
-        }
-    }
 
     private fun aigcVoteServerUrl(): String =
         settingsStore

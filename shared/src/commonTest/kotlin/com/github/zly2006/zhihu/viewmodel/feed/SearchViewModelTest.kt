@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.viewmodel.feed
 
+import com.github.zly2006.zhihu.account.ZhihuAccountClient
 import com.github.zly2006.zhihu.data.CommonFeed
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.Person
@@ -91,6 +92,8 @@ class SearchViewModelTest {
         status: HttpStatusCode = HttpStatusCode.OK,
         blockedUserIds: Set<String> = emptySet(),
     ) = object : PaginationEnvironment {
+        override val accountClient: ZhihuAccountClient? = null
+
         override fun httpClient() = HttpClient(
             MockEngine {
                 respond(response, status, headersOf(HttpHeaders.ContentType, "application/json"))

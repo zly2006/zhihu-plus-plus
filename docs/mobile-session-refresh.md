@@ -10,6 +10,12 @@
 
 服务端会轮换 refresh token。本轮旧令牌后续重用已经返回 `400 / 100008 / ERR_INVALID_REFRESH_TOKEN`。续期成功后必须同时保存返回的 access token、refresh token、token type、到期时间和 Cookie，不能只保存 z_c0。服务端也可能在续期成功时返回相同的 refresh token；不得把令牌字串变化当作成功条件。
 
+## 客户端与 Cookie 的归属
+
+认证 GET 由 `ZhihuAccountClient.get` 直接执行、签名和恢复，不再通过 `HttpClient.attributes` 反查账号对象。环境必须显式提供账号客户端或选择独立客户端；账号请求从开始到重试使用同一个客户端和 Cookie jar。`load()` 读取该实例绑定的账号槽位，旧实例不会读到切换后的另一账号。
+
+重试所需的 Cookie 值从该包装器已有映射中记录，不拆解请求头。手机号协议继续复用 `createAccountHttpClient` 安装的 `HttpCookies/ZhihuCookieStorage` 发送 Cookie，删除重复设置请求头。手工导入复用现有 `parseCookieAssignments`，接受分号两侧的空白；WebView、扫码和桌面浏览器外部字符串仍保留各自已有的值语义，避免去引号改变签名输入。
+
 ## 触发与并发
 
 启动预刷新必须同时满足：当前账号仍有效、已经登录、具有明确账号 id 和非空移动端 refresh token、已知到期时间，且已过期或剩余时间不超过一天。游客、仅导入 Cookie 的账号、到期时间未知或有效期充足时不发请求，也不提示刷新失败。NLP 模型的原有每日初始化条件独立保留。
