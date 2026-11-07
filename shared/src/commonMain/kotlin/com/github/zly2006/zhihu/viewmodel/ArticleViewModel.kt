@@ -72,7 +72,6 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.accept
 import io.ktor.client.request.get
-import io.ktor.client.request.header
 import io.ktor.client.request.parameter
 import io.ktor.client.request.post
 import io.ktor.client.request.put
@@ -442,10 +441,9 @@ class ArticleViewModel(
                     contentType = contentType,
                     title = title.ifBlank { "知乎内容" },
                 )
-                val response = environment.postSigned("https://www.zhihu.com/ai_ingress/stream/completion") {
+                val response = environment.post("https://www.zhihu.com/ai_ingress/stream/completion") {
                     accept(ContentType.Text.EventStream)
                     contentType(ContentType.Application.Json)
-                    header("x-xsrftoken", environment.xsrfToken())
                     setBody(serializeZhidaSummaryRequest(request))
                 }
                 if (!response.status.isSuccess()) {
@@ -590,7 +588,7 @@ class ArticleViewModel(
     ) {
         if (httpClient == null) return
         viewModelScope.launch {
-            environment.postSigned("https://www.zhihu.com/api/v4/collections") {
+            environment.post("https://www.zhihu.com/api/v4/collections") {
                 contentType(ContentType.Application.Json)
                 setBody(
                     buildJsonObject {
@@ -613,7 +611,7 @@ class ArticleViewModel(
                 }
 
                 val response = environment
-                    .postSigned(endpoint) {
+                    .post(endpoint) {
                         when (article.type) {
                             ArticleType.Answer -> setBody(mapOf("type" to newState.key))
                             ArticleType.Article -> setBody(mapOf("voting" to if (newState == VoteUpState.Up) 1 else 0))

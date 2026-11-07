@@ -18,7 +18,6 @@
 package com.github.zly2006.zhihu.account
 
 import com.github.zly2006.zhihu.data.ZhihuJson
-import com.github.zly2006.zhihu.data.toCookieHeaderString
 import com.github.zly2006.zhihu.util.ZhihuMessageBodyEncryptor
 import com.github.zly2006.zhihu.util.hmacSha1Hex
 import io.ktor.client.request.HttpRequestBuilder
@@ -28,6 +27,7 @@ import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
@@ -36,6 +36,8 @@ import io.ktor.http.contentType
 import io.ktor.http.formUrlEncode
 import io.ktor.http.isSuccess
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.time.Clock
@@ -65,6 +67,7 @@ data class ZhihuMobileLoginToken(
     val tokenType: String,
     val expiresAt: Long?,
     val cookies: Map<String, String>,
+    val accountId: String? = null,
 )
 
 data class ZhihuPhoneLoginDeviceInfo(
@@ -208,28 +211,66 @@ class ZhihuPhoneLoginClient : AutoCloseable {
                 "username" to username,
             )
         }
+        return decodeLoginToken(response, timestamp)
+    }
+
+    suspend fun refresh(refreshToken: String): ZhihuMobileLoginToken {
+        require(refreshToken.isNotBlank()) { "缺少移动端刷新凭据，请重新登录" }
+        val timestamp = currentEpochSeconds()
+        val signature = hmacSha1Hex(
+            MOBILE_CLIENT_SECRET,
+            "refresh_token$MOBILE_CLIENT_ID$MOBILE_SOURCE$timestamp",
+        )
+        val response = httpClient.post("$PHONE_LOGIN_API_BASE_URL$SIGN_IN_PATH") {
+            applyMobileHeaders()
+            setEncryptedForm(
+                "client_id" to MOBILE_CLIENT_ID,
+                "grant_type" to "refresh_token",
+                "signature" to signature,
+                "source" to MOBILE_SOURCE,
+                "timestamp" to timestamp.toString(),
+                "refresh_token" to refreshToken,
+            )
+        }
+        return decodeLoginToken(response, timestamp, isRefresh = true).also {
+            check(!it.refreshToken.isNullOrBlank() && !it.cookies["z_c0"].isNullOrBlank()) {
+                "刷新响应缺少必要登录凭据"
+            }
+            check(it.tokenType.isNotBlank()) { "刷新响应缺少令牌类型" }
+            check(it.expiresAt != null && it.expiresAt > timestamp) { "刷新响应缺少有效的到期时间" }
+        }
+    }
+
+    private suspend fun decodeLoginToken(
+        response: HttpResponse,
+        timestamp: Long,
+        isRefresh: Boolean = false,
+    ): ZhihuMobileLoginToken {
         val body = response.bodyAsText()
         if (!response.status.isSuccess()) {
             val message = runCatching {
                 val root = ZhihuJson.json.parseToJsonElement(body).jsonObject
                 (root["error"]?.jsonObject ?: root)["message"]?.jsonPrimitive?.content
             }.getOrNull()
-            error(message?.let { "手机号登录失败：$it" } ?: "手机号登录失败（HTTP ${response.status.value}）")
+            val operation = if (isRefresh) "刷新登录状态" else "手机号登录"
+            error(message?.let { "${operation}失败：$it" } ?: "${operation}失败（HTTP ${response.status.value}）")
         }
         val token = ZhihuJson.decodeJson<TokenResponse>(ZhihuJson.json.parseToJsonElement(body))
         check(token.accessToken.isNotBlank()) { "服务器未返回登录凭证" }
+        if (isRefresh) {
+            check(token.verification == null || token.verification == JsonNull) { "需要完成知乎身份验证，请重新登录" }
+        }
         cookies.putAll(token.cookie.filterValues(String::isNotBlank))
         if (cookies["d_c0"].isNullOrBlank()) {
-            cookies["d_c0"] = checkNotNull(webDeviceCookie) {
-                "服务器未返回必要的 Cookie d_c0"
-            }
+            webDeviceCookie?.let { cookies["d_c0"] = it }
         }
         return ZhihuMobileLoginToken(
             accessToken = token.accessToken,
             refreshToken = token.refreshToken,
             tokenType = token.tokenType,
-            expiresAt = token.expiresIn?.let(timestamp::plus),
+            expiresAt = token.expiresAt ?: token.expiresIn?.let(timestamp::plus),
             cookies = cookies.toMap(),
+            accountId = token.uid,
         )
     }
 
@@ -326,9 +367,6 @@ class ZhihuPhoneLoginClient : AutoCloseable {
         accept(ContentType.Application.Json)
         header(HttpHeaders.UserAgent, ZHIHU_ANDROID_PHONE_LOGIN_USER_AGENT)
         header(HttpHeaders.Authorization, authorization)
-        cookies.toCookieHeaderString().takeIf(String::isNotBlank)?.let {
-            header(HttpHeaders.Cookie, it)
-        }
         deviceId?.let { header("x-udid", it) }
         header("x-api-version", "3.0.93")
         header("x-app-version", "11.4.0")
@@ -414,6 +452,9 @@ private data class TokenResponse(
     val refreshToken: String? = null,
     val tokenType: String = "bearer",
     val expiresIn: Long? = null,
+    val expiresAt: Long? = null,
+    val uid: String? = null,
+    val verification: JsonElement? = null,
     val cookie: Map<String, String> = emptyMap(),
 )
 

@@ -98,7 +98,7 @@ interface SettingsStore {
 
     fun remove(key: String)
 
-    fun removeByPrefix(prefix: String) = Unit
+    fun removeByPrefix(prefix: String)
 
     fun observeKeyChanges(onChanged: (String) -> Unit): AutoCloseable = AutoCloseable { }
 }

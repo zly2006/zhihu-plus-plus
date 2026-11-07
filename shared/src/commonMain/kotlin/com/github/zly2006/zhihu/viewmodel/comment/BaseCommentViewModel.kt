@@ -28,8 +28,6 @@ import com.github.zly2006.zhihu.viewmodel.ContentBlocklistEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
-import com.github.zly2006.zhihu.viewmodel.deleteSigned
-import com.github.zly2006.zhihu.viewmodel.postSigned
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonArray
@@ -137,9 +135,9 @@ abstract class BaseCommentViewModel(
             try {
                 val likeUrl = "https://www.zhihu.com/api/v4/comments/$commentId/like"
                 val response = if (newLikeState) {
-                    environment.postSigned(likeUrl)
+                    environment.post(likeUrl)
                 } else {
-                    environment.deleteSigned(likeUrl)
+                    environment.delete(likeUrl)
                 }
 
                 if (response.status.isSuccess()) {
@@ -168,7 +166,7 @@ abstract class BaseCommentViewModel(
 
         viewModelScope.launch {
             try {
-                val response = environment.deleteSigned(
+                val response = environment.delete(
                     "https://www.zhihu.com/api/v4/comment_v5/comment/${commentData.id}",
                 )
                 if (response.status.isSuccess()) {

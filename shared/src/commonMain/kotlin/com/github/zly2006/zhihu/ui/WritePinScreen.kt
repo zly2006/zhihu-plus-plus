@@ -99,7 +99,6 @@ import com.github.zly2006.zhihu.ui.components.WriteContentMarkdownEditor
 import com.github.zly2006.zhihu.ui.components.WriteContentPreviewSheet
 import com.github.zly2006.zhihu.util.json
 import com.github.zly2006.zhihu.util.raiseForStatus
-import com.github.zly2006.zhihu.viewmodel.postSigned
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import io.ktor.client.request.header
 import io.ktor.client.request.setBody
@@ -266,7 +265,7 @@ fun WritePinScreen(destination: WritePin = WritePin()) {
             topicSuggestionError = null
             try {
                 val pinTopicSuggestion = environment
-                    .postSigned(
+                    .post(
                         "https://api.zhihu.com/content/publish/topics/recommend?" +
                             "recommend_type=pin&key_word=${query.query.encodeURLParameter(spaceToPlus = true)}",
                     ) {
@@ -343,7 +342,7 @@ fun WritePinScreen(destination: WritePin = WritePin()) {
                     ?: error("缺少 _xsrf Cookie，无法${if (publish) "发布" else "保存"}想法；请先确保已登录。")
                 if (publish) {
                     val response = environment
-                        .postSigned("https://www.zhihu.com/api/v4/content/publish") {
+                        .post("https://www.zhihu.com/api/v4/content/publish") {
                             contentType(ContentType.Application.Json)
                             header(HttpHeaders.Referrer, "https://www.zhihu.com/")
                             header("x-xsrftoken", xsrf)
@@ -357,7 +356,7 @@ fun WritePinScreen(destination: WritePin = WritePin()) {
                         ?: error("发布成功但无法解析 publish.id")
                 } else {
                     environment
-                        .postSigned("https://api.zhihu.com/content/drafts") {
+                        .post("https://api.zhihu.com/content/drafts") {
                             contentType(ContentType.Application.Json)
                             header(HttpHeaders.Referrer, "https://www.zhihu.com/")
                             header("x-xsrftoken", xsrf)

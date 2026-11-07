@@ -59,6 +59,10 @@ class MapSettingsStore(
         values[key] = value
     }
 
+    override fun removeByPrefix(prefix: String) {
+        values.keys.removeAll { it.startsWith(prefix) }
+    }
+
     override fun remove(key: String) {
         values.remove(key)
     }

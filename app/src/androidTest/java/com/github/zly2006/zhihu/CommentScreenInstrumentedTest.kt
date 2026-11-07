@@ -69,11 +69,11 @@ import com.github.zly2006.zhihu.ui.CommentScreen
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.viewmodel.CommentItem
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.SharedAndroidPaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedUser
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
-import com.github.zly2006.zhihu.viewmodel.paginationEnvironment
 import io.ktor.http.HttpMethod
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.encodeToString
@@ -500,7 +500,9 @@ class CommentScreenInstrumentedTest {
             CommentItem(comment, CommentHolder(comment.id, article))
 
         suspend fun processForTest(context: android.content.Context, data: List<DataHolder.Comment>) {
-            processResponse(paginationEnvironment(context), data, JsonArray(emptyList()))
+            SharedAndroidPaginationEnvironment(context, allowGuestAccess).use { environment ->
+                processResponse(environment, data, JsonArray(emptyList()))
+            }
         }
 
         override fun loadMore(environment: PaginationEnvironment) {

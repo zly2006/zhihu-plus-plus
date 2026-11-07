@@ -29,8 +29,6 @@ import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.util.raiseForStatus
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
-import com.github.zly2006.zhihu.viewmodel.deleteSigned
-import com.github.zly2006.zhihu.viewmodel.postSigned
 import io.ktor.http.encodeURLParameter
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
@@ -90,7 +88,7 @@ open class SearchViewModel(
         entities[index] = previous.copy(isFollowing = following)
         return runCatching {
             val endpoint = "https://www.zhihu.com/api/v4/topics/$topicId/followers"
-            val response = if (following) environment.postSigned(endpoint) else environment.deleteSigned(endpoint)
+            val response = if (following) environment.post(endpoint) else environment.delete(endpoint)
             response.raiseForStatus()
             Unit
         }.onFailure {

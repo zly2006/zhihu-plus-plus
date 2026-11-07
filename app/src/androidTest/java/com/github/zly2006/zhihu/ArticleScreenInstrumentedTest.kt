@@ -73,6 +73,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.github.zly2006.zhihu.account.ZhihuAccountClient
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.markdown.RenderImage
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
@@ -103,7 +104,6 @@ import com.github.zly2006.zhihu.ui.subscreens.PREF_SHOW_PAGE_TURN_FAB
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import com.github.zly2006.zhihu.viewmodel.sharedArticleAnswerSwitchState
-import io.ktor.client.HttpClient
 import me.zly2006.markdown.renderer.MarkdownImageData
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -1816,9 +1816,7 @@ class ArticleScreenInstrumentedTest {
         )
 
         val NO_OP_API_ENVIRONMENT = object : ZhihuApiEnvironment {
-            override fun httpClient(): HttpClient = error("No HTTP client in offline navigator test")
-
-            override fun authenticatedCookies(): Map<String, String> = emptyMap()
+            override val accountClient: ZhihuAccountClient? = null
 
             override suspend fun handleFetchFailure(
                 tag: String?,

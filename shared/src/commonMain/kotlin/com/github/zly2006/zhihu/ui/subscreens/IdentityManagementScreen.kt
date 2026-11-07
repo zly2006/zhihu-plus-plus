@@ -55,6 +55,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -67,13 +68,11 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.account.SwitchAccountRequest
-import com.github.zly2006.zhihu.account.ZhihuAccountProfileSnapshot
 import com.github.zly2006.zhihu.account.ZhihuAccountStore
+import com.github.zly2006.zhihu.account.ZhihuAccounts
 import com.github.zly2006.zhihu.account.ZhihuIdentityAccount
 import com.github.zly2006.zhihu.account.ZhihuIdentityAccountListResponse
-import com.github.zly2006.zhihu.account.ZhihuIdentityChangeResult
-import com.github.zly2006.zhihu.account.ZhihuIdentityProfile
-import com.github.zly2006.zhihu.account.ZhihuIdentityToken
+import com.github.zly2006.zhihu.account.ZhihuRequestProfile
 import com.github.zly2006.zhihu.account.ZhihuSavedAccount
 import com.github.zly2006.zhihu.account.applyIdentityHeaders
 import com.github.zly2006.zhihu.account.identitySuccessBody
@@ -87,13 +86,12 @@ import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import io.ktor.client.request.get
-import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
+import io.ktor.http.HttpMethod
 import io.ktor.http.contentType
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.jsonObject
 
 const val IDENTITY_MANAGEMENT_SCREEN_TAG = "identityManagement.screen"
 const val IDENTITY_MANAGEMENT_CREATE_TAG = "identityManagement.create"
@@ -119,69 +117,6 @@ data class IdentityManagementState(
             }
 }
 
-private suspend fun completeIdentityChange(
-    accountStore: ZhihuAccountStore,
-    body: String,
-    expectedAccountId: String? = null,
-): ZhihuIdentityChangeResult {
-    val token = ZhihuJson.decodeJson<ZhihuIdentityToken>(ZhihuJson.json.parseToJsonElement(body))
-    check(token.accessToken.isNotBlank()) { "服务器未返回新账号凭证" }
-    check(token.cookie["z_c0"].isNullOrBlank().not()) { "服务器未返回新账号 Cookie" }
-    val oldSession = accountStore.session
-    val newCookies = oldSession.cookies.toMutableMap().apply { putAll(token.cookie) }
-    val client = accountStore.client.temporaryHttpClient(newCookies)
-    return try {
-        val response = client.get("https://api.zhihu.com/people/self") {
-            applyIdentityHeaders(
-                oldSession.copy(
-                    mobileAccessToken = token.accessToken,
-                    mobileTokenType = token.tokenType,
-                ),
-            )
-        }
-        val rawProfile = ZhihuJson.json
-            .parseToJsonElement(
-                response.identitySuccessBody("初始化新账号"),
-            ).jsonObject
-        val profile = ZhihuJson.decodeJson<ZhihuIdentityProfile>(rawProfile)
-        check(profile.id.isNotBlank() && profile.name.isNotBlank()) { "服务器返回的账号资料不完整" }
-        check(expectedAccountId == null || profile.id == expectedAccountId) { "服务器返回的账号与目标账号不一致" }
-        val nextSession = oldSession.copy(
-            login = true,
-            username = profile.name,
-            cookies = newCookies,
-            profile = ZhihuAccountProfileSnapshot(
-                id = profile.id,
-                name = profile.name,
-                urlToken = profile.urlToken,
-                userType = profile.userType,
-                avatarUrl = profile.avatarUrl,
-            ),
-            self = ZhihuJson.snakeCaseToCamelCase(rawProfile),
-            mobileAccessToken = token.accessToken,
-            mobileRefreshToken = token.refreshToken,
-            mobileTokenType = token.tokenType,
-            mobileTokenExpiresAt = token.expiresAt,
-        )
-        accountStore.replaceSession(nextSession)
-        ZhihuIdentityChangeResult(
-            account = ZhihuIdentityAccount(
-                id = profile.id,
-                urlToken = profile.urlToken,
-                name = profile.name,
-                avatarUrl = profile.avatarUrl,
-                isActive = true,
-                canCreateSubAccount = profile.canCreateSubAccount,
-                accountType = profile.accountType,
-                subAccountControlStatus = profile.subAccountControlStatus,
-            ),
-            session = nextSession,
-        )
-    } finally {
-        client.close()
-    }
-}
-
 /**
  * “身份管理”页面。
  *
@@ -191,8 +126,17 @@ private suspend fun completeIdentityChange(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun IdentityManagementScreen() {
+    val store = rememberZhihuAccountStore()
+    val accounts by store.accountsState.collectAsState()
+    key(accounts.activeAccountId, accounts.session.profile?.id) {
+        IdentityManagementAccountScreen(store, accounts)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun IdentityManagementAccountScreen(accountStore: ZhihuAccountStore, savedAccounts: ZhihuAccounts) {
     val navigator = LocalNavigator.current
-    val accountStore = rememberZhihuAccountStore()
     val userMessages = rememberUserMessageSink()
     val coroutineScope = rememberCoroutineScope()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -212,7 +156,6 @@ fun IdentityManagementScreen() {
     var acceptedCreateRules by remember { mutableStateOf(false) }
     var switchLoginAccount by remember { mutableStateOf<ZhihuSavedAccount?>(null) }
     var removeLoginAccount by remember { mutableStateOf<ZhihuSavedAccount?>(null) }
-    val savedAccounts by accountStore.accountsState.collectAsState()
     val scrollState = rememberScrollState()
     val pageTurnTarget = rememberPageTurnTarget(
         scrollState = scrollState,
@@ -223,22 +166,26 @@ fun IdentityManagementScreen() {
         if (state.switchingToAccountId != null || state.creating) return
         state = state.copy(loading = true, errorMessage = null)
         state = try {
+            val sourceClient = accountStore.client
             state.copy(
                 accounts = ZhihuJson
                     .decodeJson<ZhihuIdentityAccountListResponse>(
                         ZhihuJson.json.parseToJsonElement(
-                            accountStore.client
-                                .httpClient()
-                                .get("https://api.zhihu.com/people/account/list") {
-                                    applyIdentityHeaders(accountStore.session)
+                            sourceClient
+                                .request("https://api.zhihu.com/people/account/list", profile = ZhihuRequestProfile.Mobile) {
+                                    applyIdentityHeaders(sourceClient.load())
                                 }.identitySuccessBody("获取身份列表"),
                         ),
                     ).data,
-                currentAccountId = accountStore.session.profile
+                currentAccountId = sourceClient
+                    .load()
+                    .profile
                     ?.id
                     .orEmpty(),
                 loading = false,
             )
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             state.copy(loading = false, errorMessage = e.message ?: "获取身份列表失败")
         }
@@ -450,15 +397,18 @@ fun IdentityManagementScreen() {
                                 state = state.copy(switchingToAccountId = account.id, errorMessage = null)
                                 try {
                                     require(account.id.isNotBlank()) { "目标账号不能为空" }
-                                    val response = accountStore.client.httpClient().post(
+                                    val sourceClient = accountStore.client
+                                    val response = sourceClient.request(
                                         "https://api.zhihu.com/account/switch",
+                                        HttpMethod.Post,
+                                        ZhihuRequestProfile.Mobile,
                                     ) {
-                                        applyIdentityHeaders(accountStore.session)
+                                        applyIdentityHeaders(sourceClient.load())
                                         contentType(ContentType.Application.Json)
                                         setBody(SwitchAccountRequest(account.id))
                                     }
-                                    val result = completeIdentityChange(
-                                        accountStore,
+                                    val result = accountStore.completeIdentityChange(
+                                        sourceClient,
                                         response.identitySuccessBody("切换账号"),
                                         account.id,
                                     )
@@ -467,6 +417,7 @@ fun IdentityManagementScreen() {
                                         switchingToAccountId = null,
                                     )
                                 } catch (e: Exception) {
+                                    if (e is CancellationException) throw e
                                     state = state.copy(
                                         switchingToAccountId = null,
                                         errorMessage = e.message ?: "切换账号失败",
@@ -538,13 +489,16 @@ fun IdentityManagementScreen() {
                                 check(state.canCreateSubAccount) { "当前账号暂不能创建新账号" }
                                 state = state.copy(creating = true, errorMessage = null)
                                 try {
-                                    val response = accountStore.client.httpClient().post(
+                                    val sourceClient = accountStore.client
+                                    val response = sourceClient.request(
                                         "https://api.zhihu.com/account/sub/register",
+                                        HttpMethod.Post,
+                                        ZhihuRequestProfile.Mobile,
                                     ) {
-                                        applyIdentityHeaders(accountStore.session)
+                                        applyIdentityHeaders(sourceClient.load())
                                     }
-                                    val result = completeIdentityChange(
-                                        accountStore,
+                                    val result = accountStore.completeIdentityChange(
+                                        sourceClient,
                                         response.identitySuccessBody("创建新账号"),
                                     )
                                     state = state.copy(
@@ -553,6 +507,7 @@ fun IdentityManagementScreen() {
                                         creating = false,
                                     )
                                 } catch (e: Exception) {
+                                    if (e is CancellationException) throw e
                                     state = state.copy(
                                         creating = false,
                                         errorMessage = e.message ?: "创建新账号失败",

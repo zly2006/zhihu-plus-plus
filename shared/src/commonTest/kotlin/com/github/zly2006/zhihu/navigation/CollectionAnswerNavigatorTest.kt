@@ -17,11 +17,11 @@
 
 package com.github.zly2006.zhihu.navigation
 
+import com.github.zly2006.zhihu.account.ZhihuAccountClient
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.viewmodel.CollectionItem
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
-import io.ktor.client.HttpClient
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonArray
@@ -85,9 +85,7 @@ class CollectionAnswerNavigatorTest {
     ) : ZhihuApiEnvironment {
         val requestedUrls = mutableListOf<String>()
 
-        override fun httpClient(): HttpClient = error("not used")
-
-        override fun authenticatedCookies(): Map<String, String> = emptyMap()
+        override val accountClient: ZhihuAccountClient? = null
 
         override suspend fun fetchJson(
             url: String,

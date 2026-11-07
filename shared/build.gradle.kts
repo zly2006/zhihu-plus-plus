@@ -176,6 +176,7 @@ kotlin {
             implementation("org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose:2.10.0")
             implementation("org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0")
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
+            implementation("org.jetbrains.kotlinx:atomicfu:0.28.0")
             implementation("io.ktor:ktor-client-core:3.5.0")
             implementation("io.ktor:ktor-client-content-negotiation:3.5.0")
             implementation("io.ktor:ktor-serialization-kotlinx-json:3.5.0")
