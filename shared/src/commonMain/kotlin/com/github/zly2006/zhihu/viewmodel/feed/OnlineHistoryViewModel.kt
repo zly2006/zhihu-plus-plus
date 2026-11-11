@@ -24,6 +24,7 @@ import com.github.zly2006.zhihu.data.OnlineHistoryItem
 import com.github.zly2006.zhihu.data.ZhihuJson.decodeJson
 import com.github.zly2006.zhihu.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.deleteOnlineHistoryItem
@@ -58,12 +59,34 @@ class OnlineHistoryViewModel : BaseFeedViewModel() {
             val matchedItem = localHistory.firstOrNull {
                 it == navDest
             }
+            val destination = if (navDest is Article) {
+                val cached = matchedItem as? Article ?: navDest
+                cached.copy(
+                    title = item.data.header.title
+                        .ifBlank { cached.title },
+                    authorName = item.data.content
+                        ?.authorName
+                        ?.takeIf(String::isNotBlank) ?: cached.authorName,
+                    excerpt = item.data.content
+                        ?.summary
+                        ?.takeIf(String::isNotBlank) ?: cached.excerpt,
+                    questionId = if (navDest.type == ArticleType.Answer) {
+                        item.data.extra.questionToken
+                            .toLongOrNull()
+                            ?.takeIf { it > 0 } ?: cached.questionId
+                    } else {
+                        cached.questionId
+                    },
+                )
+            } else {
+                navDest
+            }
             val displayItem = FeedDisplayItem(
                 title = item.data.header.title,
                 summary = item.data.content?.summary ?: "",
                 details = detailsText,
                 feed = null,
-                navDestinationJson = navDest?.toFeedDisplayItemNavDestinationJson(),
+                navDestinationJson = destination?.toFeedDisplayItemNavDestinationJson(),
                 avatarSrc = when (matchedItem) {
                     is Article -> matchedItem.avatarSrc
                     else -> null

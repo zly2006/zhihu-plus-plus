@@ -303,6 +303,9 @@ class ArticleViewModel(
                                     authorBio = answer.author.headline,
                                     avatarSrc = answer.author.avatarUrl,
                                     excerpt = answer.excerpt,
+                                    authorId = answer.author.id,
+                                    authorUrlToken = answer.author.urlToken,
+                                    questionId = answer.question.id,
                                 ),
                             )
                             environment.recordOpenEvent(article, answer.question.id)
@@ -381,6 +384,8 @@ class ArticleViewModel(
                                     authorBio = article.author.headline,
                                     avatarSrc = article.author.avatarUrl,
                                     excerpt = article.excerpt,
+                                    authorId = article.author.id,
+                                    authorUrlToken = article.author.urlToken,
                                 ),
                             )
                             environment.recordOpenEvent(this@ArticleViewModel.article, null)

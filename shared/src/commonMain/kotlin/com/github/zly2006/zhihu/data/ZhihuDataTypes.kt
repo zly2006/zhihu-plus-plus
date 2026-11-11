@@ -25,6 +25,7 @@ import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.navigation.withListPreview
 import com.github.zly2006.zhihu.util.jsonObject
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
@@ -126,9 +127,13 @@ private val feedNavigationJson = Json {
 }
 
 val FeedDisplayItem.navDestination: NavDestination?
-    get() = navDestinationJson
-        ?.let { runCatching { feedNavigationJson.decodeFromString<NavDestination>(it) }.getOrNull() }
-        ?: feed?.target?.navDestination
+    get() = (
+        navDestinationJson
+            ?.let { runCatching { feedNavigationJson.decodeFromString<NavDestination>(it) }.getOrNull() }
+            ?: feed?.target?.navDestination
+    )?.let { destination ->
+        if (isFiltered) destination else destination.withListPreview(title = title, authorName = authorName, avatarSrc = avatarSrc, excerpt = summary)
+    }
 
 fun NavDestination.toFeedDisplayItemNavDestinationJson(): String = feedNavigationJson.encodeToString<NavDestination>(this)
 

@@ -367,6 +367,28 @@ data class Topic(
     val section: String = "",
 ) : NavDestination
 
+/** 用已展示的卡片信息补齐目标的首帧数据；保留目标已有的原始标题、作者和导航上下文。 */
+fun NavDestination.withListPreview(
+    title: String? = null,
+    authorName: String? = null,
+    avatarSrc: String? = null,
+    excerpt: String? = null,
+): NavDestination = when (this) {
+    is Article -> copy(
+        title = this.title.takeUnless { it.isBlank() || it == "loading..." }
+            ?: title?.takeIf(String::isNotBlank) ?: this.title,
+        authorName = this.authorName.takeUnless { it.isBlank() || it == "loading..." }
+            ?: authorName?.takeIf(String::isNotBlank) ?: this.authorName,
+        avatarSrc = this.avatarSrc?.takeIf(String::isNotBlank) ?: avatarSrc?.takeIf(String::isNotBlank),
+        excerpt = this.excerpt?.takeIf(String::isNotBlank) ?: excerpt?.takeIf(String::isNotBlank),
+    )
+    is Question -> copy(
+        title = this.title.takeUnless { it.isBlank() || it == "loading..." }
+            ?: title?.takeIf(String::isNotBlank) ?: this.title,
+    )
+    else -> this
+}
+
 fun NavDestination.withReadingQueueSource(sourceId: String?): NavDestination = when (this) {
     is Article -> copy(readingQueueSourceId = sourceId)
     is Pin -> copy(readingQueueSourceId = sourceId)

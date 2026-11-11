@@ -87,6 +87,7 @@ import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.resolveContent
+import com.github.zly2006.zhihu.navigation.withListPreview
 import com.github.zly2006.zhihu.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.reading.ReadingPlaybackStatus
@@ -669,7 +670,9 @@ private fun PinContent(
                     .testTag(PIN_SCREEN_LINK_CARD_TAG)
                     .clickable {
                         val targetUrl = linkCard.url.takeIf { it.isNotBlank() }
-                        val destination = targetUrl?.let(::resolveContent)
+                        val destination = targetUrl
+                            ?.let(::resolveContent)
+                            ?.withListPreview(title = relatedTitle, excerpt = relatedPreview)
 
                         if (destination != null) {
                             navigator.onNavigate(destination)
