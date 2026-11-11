@@ -142,6 +142,9 @@ val Feed.Target.navDestination: NavDestination?
             authorBio = author?.headline ?: "",
             avatarSrc = author?.avatarUrl,
             excerpt = excerpt,
+            authorId = author?.id.orEmpty(),
+            authorUrlToken = author?.urlToken.orEmpty(),
+            questionId = question.id,
         )
 
         is Feed.ArticleTarget -> Article(
@@ -152,6 +155,8 @@ val Feed.Target.navDestination: NavDestination?
             authorBio = author.headline,
             avatarSrc = author.avatarUrl,
             excerpt = excerpt,
+            authorId = author.id,
+            authorUrlToken = author.urlToken.orEmpty(),
         )
 
         is Feed.PinTarget -> Pin(id = id, authorName = author.name)

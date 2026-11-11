@@ -240,6 +240,9 @@ data class Article(
     var avatarSrc: String? = null,
     var excerpt: String? = null,
     val readingQueueSourceId: String? = null,
+    val authorId: String = "",
+    val authorUrlToken: String = "",
+    val questionId: Long = 0L,
 ) : NavDestination {
     override fun hashCode(): Int = id.hashCode()
 
