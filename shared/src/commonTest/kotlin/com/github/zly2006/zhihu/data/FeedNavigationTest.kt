@@ -25,8 +25,58 @@ import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNull
 
 class FeedNavigationTest {
+    @Test
+    fun pendingBodiesStayWithTheirOriginalContentIdentity() {
+        val items = listOf(123L, 124L).map { id ->
+            FeedDisplayItem(
+                title = "标题 $id",
+                summary = "摘要",
+                details = "",
+                feed = CommonFeed(
+                    id = "$id",
+                    target = Feed.AnswerTarget(
+                        id = id,
+                        url = "",
+                        question = Feed.QuestionTarget(id = 456, _title = "标题", url = "", type = "question"),
+                        content = "<p data-pid=\"$id\">正文 $id</p>",
+                    ),
+                ),
+            )
+        }
+        val pending = items.map { assertIs<Article>(it.prepareNavigation()) }
+        pending.reversed().forEach { route ->
+            assertEquals("<p data-pid=\"${route.id}\">正文 ${route.id}</p>", ArticleViewModel(route, null).previewContent)
+        }
+        listOf(Article(type = ArticleType.Answer, id = 999), Article(type = ArticleType.Article, id = 123)).forEach { override ->
+            val route = assertIs<Article>(items.first().copy(navDestinationJson = override.toFeedDisplayItemNavDestinationJson()).prepareNavigation())
+            assertEquals("", ArticleViewModel(route, null).previewContent)
+        }
+    }
+
+    @Test
+    fun summaryOnlyAndFilteredCardsDoNotHandOffBodyContent() {
+        val target = Feed.AnswerTarget(
+            id = 123,
+            url = "",
+            question = Feed.QuestionTarget(id = 456, _title = "标题", url = "", type = "question"),
+            excerpt = "摘要",
+            content = "<p>不应泄露的正文</p>",
+        )
+        val item = FeedDisplayItem(title = "已屏蔽", summary = "屏蔽原因", details = "", feed = CommonFeed(id = "123", target = target), isFiltered = true)
+        val filtered = assertIs<Article>(item.prepareNavigation())
+        assertNull(filtered.contentPreviewKey)
+        assertEquals("", ArticleViewModel(filtered, null).previewContent)
+        val summaryOnly = item.copy(isFiltered = false, feed = CommonFeed(id = "123", target = target.copy(content = "")))
+        val route = assertIs<Article>(summaryOnly.prepareNavigation())
+        assertNull(route.contentPreviewKey)
+        val model = ArticleViewModel(route, null)
+        assertEquals("摘要", model.previewExcerpt)
+        assertEquals("", model.previewContent)
+    }
+
     @Test
     fun filteredCardsDoNotTreatFilterReasonsAsContentPreviews() {
         val route = Article(type = ArticleType.Answer, id = 123, title = "实际标题")

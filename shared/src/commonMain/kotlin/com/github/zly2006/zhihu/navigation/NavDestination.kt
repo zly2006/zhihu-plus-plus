@@ -243,6 +243,7 @@ data class Article(
     val authorId: String = "",
     val authorUrlToken: String = "",
     val questionId: Long = 0L,
+    val contentPreviewKey: String? = null,
 ) : NavDestination {
     override fun hashCode(): Int = id.hashCode()
 

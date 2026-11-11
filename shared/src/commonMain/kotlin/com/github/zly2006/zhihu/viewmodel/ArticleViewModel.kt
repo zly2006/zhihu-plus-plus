@@ -35,6 +35,7 @@ import com.github.zly2006.zhihu.data.AigcVoteReadEvent
 import com.github.zly2006.zhihu.data.AigcVoteReadEventsRequest
 import com.github.zly2006.zhihu.data.AigcVoteReadEventsResponse
 import com.github.zly2006.zhihu.data.AigcVoteReadEvidence
+import com.github.zly2006.zhihu.data.ArticleContentPreview
 import com.github.zly2006.zhihu.data.Collection
 import com.github.zly2006.zhihu.data.CollectionResponse
 import com.github.zly2006.zhihu.data.DataHolder
@@ -116,8 +117,10 @@ class ArticleViewModel(
     var authorAvatarSrc by mutableStateOf(article.avatarSrc.orEmpty())
     var authorBadge by mutableStateOf<OfficialBadge?>(null)
 
-    // 列表摘要不属于完整正文，不能用于阅读进度、回答缓存或导出。
+    // 列表预填仍待详情确认，不用于阅读进度、回答缓存或导出。
     val previewExcerpt = article.excerpt.orEmpty()
+    var previewContent by mutableStateOf(ArticleContentPreview.take(article).orEmpty())
+        private set
     var isLoading by mutableStateOf(httpClient != null)
         private set
     var content by mutableStateOf("")
@@ -292,6 +295,7 @@ class ArticleViewModel(
                             ipInfo = answer.ipInfo
                             endorsements = answer.endorsementItems
                             topics = emptyList()
+                            previewContent = ""
                             isLoading = false
 
                             environment.postHistoryDestination(
@@ -373,6 +377,7 @@ class ArticleViewModel(
                             createdAt = article.created
                             ipInfo = article.ipInfo
                             topics = article.topics.orEmpty()
+                            previewContent = ""
                             isLoading = false
 
                             environment.postHistoryDestination(
@@ -399,6 +404,7 @@ class ArticleViewModel(
                 } catch (e: Exception) {
                     Log.e("ArticleViewModel", "Failed to load content", e)
                 } finally {
+                    if (content.isNotEmpty() || attachment != null) previewContent = ""
                     isLoading = false
                 }
             }

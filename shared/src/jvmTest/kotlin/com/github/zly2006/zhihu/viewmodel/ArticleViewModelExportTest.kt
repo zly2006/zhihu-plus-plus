@@ -17,10 +17,13 @@
 
 package com.github.zly2006.zhihu.viewmodel
 
+import com.github.zly2006.zhihu.data.ArticleContentPreview
+import com.github.zly2006.zhihu.data.CommonFeed
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.FeedDisplayItem
 import com.github.zly2006.zhihu.data.Person
 import com.github.zly2006.zhihu.data.navDestination
+import com.github.zly2006.zhihu.data.prepareNavigation
 import com.github.zly2006.zhihu.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
@@ -39,6 +42,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 
 class ArticleViewModelExportTest {
     @Test
@@ -59,12 +63,23 @@ class ArticleViewModelExportTest {
                 author = author,
                 question = Feed.QuestionTarget(id = 456, _title = "列表问题", url = "", type = "question"),
                 excerpt = "列表回答摘要 &amp; 后续内容",
-                content = "<p>列表中的正文片段</p>",
+                content = "<p data-pid=\"first\">列表中的正文片段</p><p data-pid=\"second\"><strong>第二段正文</strong></p>",
             ),
-            Feed.ArticleTarget(id = 789, url = "", author = author, title = "列表文章", excerpt = "文章摘要"),
+            Feed.ArticleTarget(id = 789, url = "", author = author, title = "列表文章", excerpt = "文章摘要", content = "<p>文章第一段</p><p>文章第二段</p>"),
         )
         targets.forEach { target ->
-            val route = target.navDestination as Article
+            val route = FeedDisplayItem(
+                title = target.title,
+                summary = target.excerpt,
+                details = "",
+                feed = CommonFeed(id = target.title, target = target),
+            ).prepareNavigation("list-source") as Article
+            val previewHtml = when (target) {
+                is Feed.AnswerTarget -> target.content
+                is Feed.ArticleTarget -> target.content
+                else -> error("Unexpected target")
+            }
+            assertFalse(route.toFeedDisplayItemNavDestinationJson().contains(if (target is Feed.AnswerTarget) "列表中的正文片段" else "文章第一段"))
             // Also exercise the serialized navigation used by stored lists.
             val restored = FeedDisplayItem(
                 title = target.title,
@@ -82,7 +97,10 @@ class ArticleViewModelExportTest {
             assertEquals(author.urlToken, model.authorUrlToken)
             assertEquals(if (target is Feed.AnswerTarget) 456L else 0L, model.questionId)
             assertEquals(target.excerpt, model.previewExcerpt)
+            assertEquals(previewHtml, model.previewContent)
+            assertEquals("list-source", restored.readingQueueSourceId)
             assertEquals("", model.content)
+            assertEquals("", ArticleViewModel(restored, null).previewContent)
         }
     }
 
@@ -104,7 +122,8 @@ class ArticleViewModelExportTest {
         val client = HttpClient(MockEngine { respond("{}") })
         try {
             val route = Article(type = ArticleType.Article, id = 123, title = "列表标题", authorName = "列表作者", excerpt = "列表摘要")
-            val model = ArticleViewModel(route, client)
+            val previewHtml = "<p data-pid=\"preview\">列表中的已加载正文</p>"
+            val model = ArticleViewModel(ArticleContentPreview.attach(route, previewHtml), client)
             val environment = object : ArticleLoadEnvironment {
                 override fun httpClient() = client
 
@@ -134,12 +153,14 @@ class ArticleViewModelExportTest {
             assertEquals("列表作者", model.authorName)
             assertEquals("", model.content)
             assertEquals(true, model.isLoading)
+            assertEquals(previewHtml, model.previewContent)
             release.complete(Unit)
             withTimeout(5_000) { while (model.isLoading) delay(10) }
             assertEquals("详情标题", model.title)
             assertEquals("详情作者", model.authorName)
             assertEquals("detail-author", model.authorId)
             assertEquals("<p>完整正文</p>", model.content)
+            assertEquals("", model.previewContent)
             assertEquals(42, model.voteUpCount)
             assertEquals(7, model.commentCount)
         } finally {

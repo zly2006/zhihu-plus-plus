@@ -1058,7 +1058,17 @@ fun ArticleScreen(
                         }
 
                         if (viewModel.content.isEmpty() && viewModel.attachment == null) {
-                            if (viewModel.previewExcerpt.isNotBlank()) {
+                            if (viewModel.previewContent.isNotBlank() && !(useWebView && isLegacyWebViewSupported)) {
+                                RenderMarkdown(
+                                    html = viewModel.previewContent,
+                                    modifier = Modifier.testTag("article_preview").articleMarkdownSelectionWorkaround(),
+                                    scrollState = scrollState,
+                                    selectable = true,
+                                    enableScroll = false,
+                                    useTiqianRenderer = useTiqianMarkdown,
+                                )
+                                Spacer(Modifier.height(16.dp))
+                            } else if (viewModel.previewExcerpt.isNotBlank()) {
                                 Text(
                                     text = parseEmphasizedHtmlTextWithTheme(viewModel.previewExcerpt),
                                     style = MaterialTheme.typography.bodyLarge,
