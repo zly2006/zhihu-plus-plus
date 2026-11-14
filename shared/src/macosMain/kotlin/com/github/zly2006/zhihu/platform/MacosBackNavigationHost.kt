@@ -25,9 +25,9 @@ package com.github.zly2006.zhihu.platform
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
-import androidx.compose.ui.backhandler.LocalCompatNavigationEventDispatcherOwner
 import androidx.navigationevent.NavigationEventDispatcher
 import androidx.navigationevent.NavigationEventInput
+import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
 import platform.AppKit.NSEvent
 import platform.AppKit.NSResponder
 import platform.AppKit.NSWindow
@@ -134,7 +134,7 @@ private class MacosEscapeNavigationResponder(
  * 没有才在控件边界继续转发，不能为了省事恢复成抢占整个窗口的全局监听。
  *
  * responder 收到 ESC 后不直接调用页面回调，而是驱动一个标准 [NavigationEventInput]。该 input 注册在
- * Compose 窗口通过 [LocalCompatNavigationEventDispatcherOwner] 暴露的现有 dispatcher 上，所以 Dialog、
+ * Compose 窗口通过 [LocalNavigationEventDispatcherOwner] 暴露的现有 dispatcher 上，所以 Dialog、
  * Popup、页面 BackHandler、NavController 和主分页逻辑仍在同一注册表中按框架规则竞争。这里绝不能
  * `NavigationEventDispatcher()`，也绝不能再次提供新的 owner。长按 ESC 产生的 repeat 被忽略，避免一次
  * 按住按键连续弹完整个返回栈；每次独立 KeyDown 只完成一次返回。
@@ -170,7 +170,7 @@ fun MacosBackNavigationHost(
     window: NSWindow,
     content: @Composable () -> Unit,
 ) {
-    val dispatcherOwner = checkNotNull(LocalCompatNavigationEventDispatcherOwner.current) {
+    val dispatcherOwner = checkNotNull(LocalNavigationEventDispatcherOwner.current) {
         "Compose window navigation event dispatcher is unavailable"
     }
     val dispatcher = dispatcherOwner.navigationEventDispatcher
