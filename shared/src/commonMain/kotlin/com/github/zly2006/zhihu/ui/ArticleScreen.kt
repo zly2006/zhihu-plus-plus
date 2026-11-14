@@ -99,6 +99,10 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -122,6 +126,7 @@ import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.ui.article.AigcFlagSheet
 import com.github.zly2006.zhihu.ui.article.ArticleActionsMenu
+import com.github.zly2006.zhihu.ui.article.ArticleLoadingPlaceholder
 import com.github.zly2006.zhihu.ui.article.ArticleSummarySheet
 import com.github.zly2006.zhihu.ui.article.ArticleVideoAttachmentContent
 import com.github.zly2006.zhihu.ui.article.CachedAnswerPreview
@@ -156,6 +161,7 @@ import com.github.zly2006.zhihu.ui.subscreens.DUO3_TIQIAN_MARKDOWN_PREFERENCE_KE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_PAGE_TURN_SWITCH_ANSWER
 import com.github.zly2006.zhihu.util.formatCompactCount
 import com.github.zly2006.zhihu.util.formatFullDateTime
+import com.github.zly2006.zhihu.util.parseEmphasizedHtmlTextWithTheme
 import com.github.zly2006.zhihu.util.smoothGradient
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.addReadHistory
@@ -493,22 +499,34 @@ fun ArticleScreen(
                                 }
                             },
                             title = { expanded ->
-                                Text(
-                                    text = viewModel.title,
-                                    modifier = Modifier
-                                        .padding(if (expanded) PaddingValues(end = 16.dp) else PaddingValues())
-                                        .let {
-                                            if (article.type == ArticleType.Answer) {
-                                                it.clickable {
-                                                    navigator.onNavigate(Question(viewModel.questionId, viewModel.title))
+                                if (viewModel.title.isBlank() && viewModel.isLoading) {
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth().padding(end = 16.dp),
+                                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                                    ) {
+                                        ArticleLoadingPlaceholder(Modifier.fillMaxWidth().height(24.dp))
+                                        if (expanded) {
+                                            ArticleLoadingPlaceholder(Modifier.fillMaxWidth(0.7f).height(24.dp))
+                                        }
+                                    }
+                                } else {
+                                    Text(
+                                        text = viewModel.title,
+                                        modifier = Modifier
+                                            .padding(if (expanded) PaddingValues(end = 16.dp) else PaddingValues())
+                                            .let {
+                                                if (article.type == ArticleType.Answer && viewModel.questionId != 0L) {
+                                                    it.clickable {
+                                                        navigator.onNavigate(Question(viewModel.questionId, viewModel.title))
+                                                    }
+                                                } else {
+                                                    it
                                                 }
-                                            } else {
-                                                it
-                                            }
-                                        },
-                                    maxLines = if (expanded) Int.MAX_VALUE else 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
+                                            },
+                                        maxLines = if (expanded) Int.MAX_VALUE else 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
                             },
                             subtitle = { expanded ->
                                 Row(
@@ -517,7 +535,7 @@ fun ArticleScreen(
                                         .padding(if (expanded) PaddingValues(vertical = 16.dp) else PaddingValues(top = 2.dp, bottom = 8.dp))
                                         .padding(end = 16.dp)
                                         .fillMaxWidth()
-                                        .clickable {
+                                        .clickable(enabled = viewModel.authorId.isNotBlank() || viewModel.authorUrlToken.isNotBlank()) {
                                             navigator.onNavigate(
                                                 com.github.zly2006.zhihu.navigation.Person(
                                                     id = viewModel.authorId,
@@ -536,12 +554,18 @@ fun ArticleScreen(
                                                 .clip(CircleShape),
                                         )
                                     } else {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(if (expanded) 40.dp else 20.dp)
-                                                .clip(CircleShape)
-                                                .background(MaterialTheme.colorScheme.surfaceVariant),
-                                        )
+                                        if (viewModel.isLoading) {
+                                            ArticleLoadingPlaceholder(
+                                                Modifier.size(if (expanded) 40.dp else 20.dp).clip(CircleShape),
+                                            )
+                                        } else {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(if (expanded) 40.dp else 20.dp)
+                                                    .clip(CircleShape)
+                                                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                                            )
+                                        }
                                     }
 
                                     Spacer(modifier = Modifier.width(if (expanded) 8.dp else 4.dp))
@@ -550,14 +574,26 @@ fun ArticleScreen(
                                         modifier = Modifier.weight(1f),
                                     ) {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Text(
-                                                text = viewModel.authorName,
-                                                style = if (expanded) MaterialTheme.typography.titleSmall else MaterialTheme.typography.labelMedium,
-                                                color = if (expanded) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis,
-                                                modifier = Modifier.weight(1f, fill = false),
-                                            )
+                                            if (viewModel.authorName.isBlank() && viewModel.isLoading) {
+                                                ArticleLoadingPlaceholder(
+                                                    Modifier
+                                                        .width(96.dp)
+                                                        .height(
+                                                            with(density) {
+                                                                (if (expanded) MaterialTheme.typography.titleSmall else MaterialTheme.typography.labelMedium).lineHeight.toDp()
+                                                            },
+                                                        ).padding(vertical = 4.dp),
+                                                )
+                                            } else {
+                                                Text(
+                                                    text = viewModel.authorName,
+                                                    style = if (expanded) MaterialTheme.typography.titleSmall else MaterialTheme.typography.labelMedium,
+                                                    color = if (expanded) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis,
+                                                    modifier = Modifier.weight(1f, fill = false),
+                                                )
+                                            }
                                             if (viewModel.authorBadge != null) {
                                                 Spacer(modifier = Modifier.width(4.dp))
                                                 AuthorBadge(
@@ -566,7 +602,19 @@ fun ArticleScreen(
                                                 )
                                             }
                                         }
-                                        if (viewModel.authorBio.isNotEmpty() && expanded) {
+                                        if (expanded && viewModel.authorBio.isBlank() && viewModel.isLoading) {
+                                            ArticleLoadingPlaceholder(
+                                                Modifier
+                                                    .fillMaxWidth(0.65f)
+                                                    .height(
+                                                        with(density) {
+                                                            MaterialTheme.typography.bodyMedium.lineHeight
+                                                                .toDp()
+                                                        },
+                                                    ).padding(vertical = 4.dp)
+                                                    .testTag("article_author_bio_skeleton"),
+                                            )
+                                        } else if (viewModel.authorBio.isNotEmpty() && expanded) {
                                             Text(
                                                 text = viewModel.authorBio,
                                                 style = MaterialTheme.typography.bodyMedium,
@@ -906,7 +954,7 @@ fun ArticleScreen(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clickable {
+                                    .clickable(enabled = viewModel.authorId.isNotBlank() || viewModel.authorUrlToken.isNotBlank()) {
                                         navigator.onNavigate(
                                             com.github.zly2006.zhihu.navigation.Person(
                                                 id = viewModel.authorId,
@@ -1006,6 +1054,48 @@ fun ArticleScreen(
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.error,
                                 )
+                            }
+                        }
+
+                        if (viewModel.content.isEmpty() && viewModel.attachment == null) {
+                            if (viewModel.previewContent.isNotBlank() && !(useWebView && isLegacyWebViewSupported)) {
+                                RenderMarkdown(
+                                    html = viewModel.previewContent,
+                                    modifier = Modifier.testTag("article_preview").articleMarkdownSelectionWorkaround(),
+                                    scrollState = scrollState,
+                                    selectable = true,
+                                    enableScroll = false,
+                                    useTiqianRenderer = useTiqianMarkdown,
+                                )
+                                Spacer(Modifier.height(16.dp))
+                            } else if (viewModel.previewExcerpt.isNotBlank()) {
+                                Text(
+                                    text = parseEmphasizedHtmlTextWithTheme(viewModel.previewExcerpt),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    modifier = Modifier.fillMaxWidth().testTag("article_preview"),
+                                )
+                                Spacer(Modifier.height(16.dp))
+                            }
+                            if (viewModel.isLoading) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .testTag("article_body_skeleton")
+                                        .semantics {
+                                            contentDescription = "正在加载全文"
+                                            progressBarRangeInfo = ProgressBarRangeInfo.Indeterminate
+                                        },
+                                    verticalArrangement = Arrangement.spacedBy(24.dp),
+                                ) {
+                                    repeat(2) {
+                                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                            repeat(3) {
+                                                ArticleLoadingPlaceholder(Modifier.fillMaxWidth().height(16.dp))
+                                            }
+                                            ArticleLoadingPlaceholder(Modifier.fillMaxWidth(0.6f).height(16.dp))
+                                        }
+                                    }
+                                }
                             }
                         }
 

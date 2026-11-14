@@ -17,6 +17,9 @@
 
 package com.github.zly2006.zhihu.data
 
+import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockRequestHandleScope
@@ -27,11 +30,50 @@ import io.ktor.http.headersOf
 import io.ktor.util.network.UnresolvedAddressException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertIs
 
 class ZhihuDailyClientTest {
+    @Test
+    fun dailyStoryNavigationUsesTheListTitleWithoutAdditionalRequests() = runTest {
+        val story = DailyStory(100, "日报卡片标题", "https://daily.zhihu.com/story/100", "编辑推荐 · 3 分钟阅读", listOf("cover"), 0)
+        listOf(
+            "<a class='originUrl' href='https://www.zhihu.com/answer/123'>原文</a>",
+            "<a class='originUrl' href='https://example.com/unknown'>未知</a><div class='view-more'><a href='https://zhuanlan.zhihu.com/p/123'>更多</a></div>",
+            "<div class='view-more'><a href='https://www.zhihu.com/question/456'>更多</a></div>",
+        ).forEach { body ->
+            var requestCount = 0
+            val client = HttpClient(
+                MockEngine { request ->
+                    requestCount++
+                    assertEquals("https://daily.zhihu.com/api/7/story/100", request.url.toString())
+                    respond(buildJsonObject { put("body", body) }.toString(), headers = headersOf(HttpHeaders.ContentType, "application/json"))
+                },
+            ) {
+                installZhihuCommonClientConfig(cookies = mutableMapOf(), userAgent = "test-agent")
+            }
+            try {
+                val destination = client.fetchDailyStoryDestination(story)
+                when (destination) {
+                    is Article -> {
+                        val model = ArticleViewModel(destination, null)
+                        assertEquals(story.title, model.title)
+                        assertEquals("", model.authorName)
+                        assertEquals("", model.authorAvatarSrc)
+                    }
+                    else -> assertEquals(story.title, assertIs<Question>(destination).title)
+                }
+                assertEquals(1, requestCount)
+            } finally {
+                client.close()
+            }
+        }
+    }
+
     @Test
     fun fetchDailyStoriesForDateRequestsNextDayBeforeEndpoint() = runTest {
         val client = dailyMockClient { url ->

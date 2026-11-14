@@ -56,6 +56,7 @@ class MobileHomeFeedParserTest {
         assertEquals("回答标题", destination.title)
         assertEquals("作者名", destination.authorName)
         assertEquals("https://example.com/avatar.jpg", destination.avatarSrc)
+        assertEquals("回答摘要", destination.excerpt)
     }
 
     @Test

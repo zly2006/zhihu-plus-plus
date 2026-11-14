@@ -35,6 +35,7 @@ import com.github.zly2006.zhihu.data.AigcVoteReadEvent
 import com.github.zly2006.zhihu.data.AigcVoteReadEventsRequest
 import com.github.zly2006.zhihu.data.AigcVoteReadEventsResponse
 import com.github.zly2006.zhihu.data.AigcVoteReadEvidence
+import com.github.zly2006.zhihu.data.ArticleContentPreview
 import com.github.zly2006.zhihu.data.Collection
 import com.github.zly2006.zhihu.data.CollectionResponse
 import com.github.zly2006.zhihu.data.DataHolder
@@ -107,13 +108,20 @@ class ArticleViewModel(
     registerOnPause: (((() -> Unit) -> Unit))? = null,
 ) : ViewModel() {
     var permissionRequestCount by mutableIntStateOf(0)
-    var title by mutableStateOf("")
-    var authorId by mutableStateOf("")
-    var authorUrlToken by mutableStateOf("")
-    var authorName by mutableStateOf("")
-    var authorBio by mutableStateOf("")
-    var authorAvatarSrc by mutableStateOf("")
+    var title by mutableStateOf(article.title.takeUnless { it == "loading..." }.orEmpty())
+    var authorId by mutableStateOf(article.authorId)
+    var authorUrlToken by mutableStateOf(article.authorUrlToken)
+    var authorName by mutableStateOf(article.authorName.takeUnless { it == "loading..." }.orEmpty())
+    var authorBio by mutableStateOf(article.authorBio.takeUnless { it == "loading..." }.orEmpty())
+    var authorAvatarSrc by mutableStateOf(article.avatarSrc.orEmpty())
     var authorBadge by mutableStateOf<OfficialBadge?>(null)
+
+    // 列表预填仍待详情确认，不用于阅读进度、回答缓存或导出。
+    val previewExcerpt = article.excerpt.orEmpty()
+    var previewContent by mutableStateOf(ArticleContentPreview.take(article).orEmpty())
+        private set
+    var isLoading by mutableStateOf(httpClient != null)
+        private set
     var content by mutableStateOf("")
     var attachment by mutableStateOf<JsonElement?>(null)
     var voteUpCount by mutableIntStateOf(0)
@@ -130,7 +138,7 @@ class ArticleViewModel(
     var votersSocialText by mutableStateOf("")
         private set
     val voters = mutableStateListOf<DataHolder.Author>()
-    var questionId by mutableLongStateOf(0L)
+    var questionId by mutableLongStateOf(article.questionId)
     var answerNextIds by mutableStateOf<List<Long>>(emptyList())
         private set
     var collections = mutableStateListOf<Collection>()
@@ -251,6 +259,7 @@ class ArticleViewModel(
     @OptIn(ExperimentalStdlibApi::class)
     fun loadArticle(environment: ArticleLoadEnvironment) {
         if (httpClient == null) return
+        isLoading = true
         viewModelScope.launch {
             withContext(Dispatchers.Default) {
                 try {
@@ -285,6 +294,8 @@ class ArticleViewModel(
                             ipInfo = answer.ipInfo
                             endorsements = answer.endorsementItems
                             topics = emptyList()
+                            previewContent = ""
+                            isLoading = false
 
                             environment.postHistoryDestination(
                                 Article(
@@ -295,6 +306,9 @@ class ArticleViewModel(
                                     authorBio = answer.author.headline,
                                     avatarSrc = answer.author.avatarUrl,
                                     excerpt = answer.excerpt,
+                                    authorId = answer.author.id,
+                                    authorUrlToken = answer.author.urlToken,
+                                    questionId = answer.question.id,
                                 ),
                             )
                             environment.recordOpenEvent(article, answer.question.id)
@@ -362,6 +376,8 @@ class ArticleViewModel(
                             createdAt = article.created
                             ipInfo = article.ipInfo
                             topics = article.topics.orEmpty()
+                            previewContent = ""
+                            isLoading = false
 
                             environment.postHistoryDestination(
                                 Article(
@@ -372,6 +388,8 @@ class ArticleViewModel(
                                     authorBio = article.author.headline,
                                     avatarSrc = article.author.avatarUrl,
                                     excerpt = article.excerpt,
+                                    authorId = article.author.id,
+                                    authorUrlToken = article.author.urlToken,
                                 ),
                             )
                             environment.recordOpenEvent(this@ArticleViewModel.article, null)
@@ -384,6 +402,9 @@ class ArticleViewModel(
                     throw e
                 } catch (e: Exception) {
                     Log.e("ArticleViewModel", "Failed to load content", e)
+                } finally {
+                    if (content.isNotEmpty() || attachment != null) previewContent = ""
+                    isLoading = false
                 }
             }
         }

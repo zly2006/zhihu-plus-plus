@@ -77,26 +77,22 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
-import com.fleeksoft.ksoup.Ksoup
 import com.github.zly2006.zhihu.data.DailySection
 import com.github.zly2006.zhihu.data.DailyStory
+import com.github.zly2006.zhihu.data.fetchDailyStoryDestination
 import com.github.zly2006.zhihu.navigation.LocalNavigator
-import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.platform.isLiteVariant
 import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.util.formatDailyDate
-import com.github.zly2006.zhihu.util.jsonObject
 import com.github.zly2006.zhihu.util.twoDigitString
 import com.github.zly2006.zhihu.viewmodel.DailyViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
-import io.ktor.client.request.get
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
-import kotlinx.serialization.json.jsonPrimitive
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
@@ -365,24 +361,9 @@ fun DailyScreen(
                                     modifier = Modifier.testTag("daily_screen_story_${story.id}"),
                                     onClick = {
                                         scope.launch {
-                                            val response = withContext(Dispatchers.Default) {
-                                                httpClient
-                                                    .get("https://daily.zhihu.com/api/7/story/${story.id}")
-                                                    .jsonObject()
+                                            val destination = withContext(Dispatchers.Default) {
+                                                httpClient.fetchDailyStoryDestination(story)
                                             }
-                                            val body = response["body"]?.jsonPrimitive?.content
-                                            if (body == null) {
-                                                missingOriginStoryUrl = story.url
-                                                return@launch
-                                            }
-                                            val doc = Ksoup.parse(body)
-                                            val originUrl = doc.selectFirst("a.originUrl")?.attr("href")
-                                            val destination = originUrl
-                                                ?.let(::resolveContent)
-                                                ?: doc
-                                                    .selectFirst("div.view-more a")
-                                                    ?.attr("href")
-                                                    ?.let(::resolveContent)
                                             if (destination != null) {
                                                 navigator.onNavigate(destination)
                                             } else {

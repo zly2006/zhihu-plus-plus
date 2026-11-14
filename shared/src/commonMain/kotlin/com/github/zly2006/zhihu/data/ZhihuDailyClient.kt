@@ -17,11 +17,16 @@
 
 package com.github.zly2006.zhihu.data
 
+import com.fleeksoft.ksoup.Ksoup
+import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.navigation.resolveContent
+import com.github.zly2006.zhihu.navigation.withListPreview
 import com.github.zly2006.zhihu.util.jsonObject
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.util.network.UnresolvedAddressException
 import kotlinx.coroutines.CancellationException
+import kotlinx.serialization.json.jsonPrimitive
 
 private const val DAILY_PRIMARY_API_BASE = "https://news-at.zhihu.com/api/4/stories"
 
@@ -36,6 +41,15 @@ suspend fun HttpClient.fetchLatestDailyStories(): DailyStoriesResponse =
 
 suspend fun HttpClient.fetchDailyStoriesBefore(date: String): DailyStoriesResponse =
     fetchDailyStories("/before/$date")
+
+suspend fun HttpClient.fetchDailyStoryDestination(story: DailyStory): NavDestination? {
+    val response = get("https://daily.zhihu.com/api/7/story/${story.id}").jsonObject()
+    val body = response["body"]?.jsonPrimitive?.content ?: return null
+    val doc = Ksoup.parse(body)
+    val destination = doc.selectFirst("a.originUrl")?.attr("href")?.let(::resolveContent)
+        ?: doc.selectFirst("div.view-more a")?.attr("href")?.let(::resolveContent)
+    return destination?.withListPreview(title = story.title)
+}
 
 private suspend fun HttpClient.fetchDailyStories(path: String): DailyStoriesResponse = ZhihuJson.decodeJson(
     try {

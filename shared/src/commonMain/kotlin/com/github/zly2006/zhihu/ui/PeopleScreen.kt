@@ -514,6 +514,9 @@ private fun DataHolder.Answer.toPeopleAnswerDisplayItem(): FeedDisplayItem {
         authorBio = author.headline,
         avatarSrc = author.avatarUrl,
         excerpt = excerpt,
+        authorId = author.id,
+        authorUrlToken = author.urlToken,
+        questionId = question.id,
     )
     return FeedDisplayItem(
         title = question.title,
@@ -534,6 +537,8 @@ private fun DataHolder.Article.toPeopleArticleDisplayItem(): FeedDisplayItem {
         authorBio = author.headline,
         avatarSrc = author.avatarUrl,
         excerpt = excerpt,
+        authorId = author.id,
+        authorUrlToken = author.urlToken,
     )
     return FeedDisplayItem(
         title = title,
