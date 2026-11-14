@@ -52,7 +52,7 @@ class ZhihuAccountClientTest {
             val repository = ZhihuAccountRepository(ClientInMemoryAccountSessionStore()).apply { save(original) }
             val store = ZhihuAccountStore(repository)
             try {
-                assertFailsWith<IllegalStateException> { store.client.credentialRefresher.refresh(force = true) }
+                assertFailsWith<IllegalStateException> { store.refreshCredentials(force = true) }
                 assertEquals(original, repository.load())
             } finally {
                 store.close()

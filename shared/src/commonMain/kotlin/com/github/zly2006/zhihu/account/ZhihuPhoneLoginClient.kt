@@ -234,7 +234,7 @@ class ZhihuPhoneLoginClient : AutoCloseable {
         }
         return decodeLoginToken(response, timestamp, isRefresh = true).also {
             check(!it.refreshToken.isNullOrBlank() && !it.cookies["z_c0"].isNullOrBlank()) {
-                "刷新响应缺少必要登录凭据"
+                "刷新响应缺少必要登录凭据，请重新登录"
             }
             check(it.tokenType.isNotBlank()) { "刷新响应缺少令牌类型" }
             check(it.expiresAt != null && it.expiresAt > timestamp) { "刷新响应缺少有效的到期时间" }
