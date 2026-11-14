@@ -22,6 +22,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateMap
+import com.github.zly2006.zhihu.account.ZhihuRequestProfile
 import com.github.zly2006.zhihu.data.MOBILE_NOTIFICATION_MESSAGE_URL
 import com.github.zly2006.zhihu.data.MobileNotificationAuthor
 import com.github.zly2006.zhihu.data.MobileNotificationColumnHead
@@ -112,8 +113,7 @@ class NotificationViewModel :
         try {
             val url = lastPaging?.next ?: initialUrl
             val json = environment
-                .mobileHomeFeedHttpClient()
-                .get(url.replace("http://", "https://"))
+                .get(url.replace("http://", "https://"), profile = ZhihuRequestProfile.Mobile)
                 .jsonObject()
             val page = ZhihuJson.decodeJson<MobileNotificationMessageOverview>(json)
             val rawData = json["data"]?.jsonArray ?: JsonArray(emptyList())
@@ -167,7 +167,7 @@ class NotificationViewModel :
         if ((categoryUnreadCounts[category] ?: 0) <= 0) return true
 
         return try {
-            val response = environment.mobileHomeFeedHttpClient().post(category.readAllUrl)
+            val response = environment.post(category.readAllUrl, profile = ZhihuRequestProfile.Mobile)
             if (!response.status.isSuccess()) {
                 Log.e("NotificationViewModel", "Failed to mark ${category.entryName} notifications as read: ${response.status}")
                 false
@@ -218,8 +218,7 @@ class NotificationTimelineViewModel(
                 ?: error("NotificationSettingsStore is required for notification pagination")
             val url = lastPaging?.next ?: initialUrl
             val json = environment
-                .mobileHomeFeedHttpClient()
-                .get(url.replace("http://", "https://"))
+                .get(url.replace("http://", "https://"), profile = ZhihuRequestProfile.Mobile)
                 .jsonObject()
             val rawData = json["data"]?.jsonArray ?: JsonArray(emptyList())
             val data = rawData.mapNotNull {
@@ -267,7 +266,7 @@ class NotificationTimelineViewModel(
     }
 
     suspend fun markAsRead(environment: MobileHomeFeedEnvironment): Boolean = try {
-        val response = environment.mobileHomeFeedHttpClient().post(readAllUrl)
+        val response = environment.post(readAllUrl, profile = ZhihuRequestProfile.Mobile)
         if (!response.status.isSuccess()) {
             Log.e("NotificationTimelineViewModel", "Failed to mark $entryName notifications as read: ${response.status}")
             false
@@ -316,7 +315,7 @@ class PrivateMessageViewModel(
         isSending = true
         errorMessage = null
         return try {
-            val response = environment.mobileHomeFeedHttpClient().post(MOBILE_PRIVATE_MESSAGE_URL) {
+            val response = environment.post(MOBILE_PRIVATE_MESSAGE_URL, profile = ZhihuRequestProfile.Mobile) {
                 contentType(ContentType.Application.FormUrlEncoded)
                 header("X-Zse-93", "101_1_1.0")
                 val form = Parameters
@@ -370,7 +369,7 @@ class PrivateMessageViewModel(
         isRefreshingLatest = true
         val generation = refreshGeneration
         try {
-            val client = environment.mobileHomeFeedHttpClient()
+            val client = environment.accountClient
             val knownIds = allData.mapTo(mutableSetOf()) { it.stableId } - pendingSentIds
             val incoming = mutableListOf<ZhihuPrivateMessage>()
             val visitedUrls = mutableSetOf<String>()
@@ -378,9 +377,8 @@ class PrivateMessageViewModel(
             var firstPagePaging: ZhihuPaging? = null
 
             while (true) {
-                val json = client
-                    .get(pageUrl.replace("http://", "https://"))
-                    .jsonObject()
+                val url = pageUrl.replace("http://", "https://")
+                val json = (client?.get(url, ZhihuRequestProfile.Mobile) ?: environment.get(url, ZhihuRequestProfile.Mobile)).jsonObject()
                 val page = ZhihuJson.decodeJson<ZhihuPrivateMessagePage>(json)
                 if (generation != refreshGeneration) return
                 if (firstPagePaging == null) firstPagePaging = page.paging
@@ -430,20 +428,18 @@ class PrivateMessageViewModel(
     override suspend fun fetchFeeds(environment: PaginationEnvironment) {
         try {
             coroutineScope {
-                val client = environment.mobileHomeFeedHttpClient()
+                val client = environment.accountClient
                 val peerRequest = if (peer == null) {
                     async {
-                        client
-                            .get("$MOBILE_PRIVATE_MESSAGE_USER_URL/$peerId")
-                            .jsonObject()
+                        val url = "$MOBILE_PRIVATE_MESSAGE_USER_URL/$peerId"
+                        (client?.get(url, ZhihuRequestProfile.Mobile) ?: environment.get(url, ZhihuRequestProfile.Mobile)).jsonObject()
                     }
                 } else {
                     null
                 }
                 val pageRequest = async {
-                    client
-                        .get((lastPaging?.next ?: initialUrl).replace("http://", "https://"))
-                        .jsonObject()
+                    val url = (lastPaging?.next ?: initialUrl).replace("http://", "https://")
+                    (client?.get(url, ZhihuRequestProfile.Mobile) ?: environment.get(url, ZhihuRequestProfile.Mobile)).jsonObject()
                 }
 
                 val json = pageRequest.await()

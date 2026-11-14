@@ -26,7 +26,6 @@ import com.github.zly2006.zhihu.viewmodel.CommentItem
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import com.github.zly2006.zhihu.viewmodel.comment.RootCommentViewModel.Companion.submitCommentUrl
-import com.github.zly2006.zhihu.viewmodel.postSigned
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
@@ -91,7 +90,7 @@ class ChildCommentViewModel(
                     put("reply_comment_id", replyToCommentId ?: commentHolder.commentId)
                 }
 
-                val response = environment.postSigned(commentHolder.article.submitCommentUrl) {
+                val response = environment.post(commentHolder.article.submitCommentUrl) {
                     contentType(ContentType.Application.Json)
                     setBody(requestBody)
                 }

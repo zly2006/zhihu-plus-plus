@@ -25,6 +25,7 @@ import android.content.pm.PackageManager
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -306,9 +307,11 @@ actual fun rememberNotificationEnvironment(
     settingsStore: NotificationSettingsStore,
 ): com.github.zly2006.zhihu.viewmodel.NotificationEnvironment {
     val context = LocalContext.current
-    return remember(context, settingsStore) {
+    val environment = remember(context, settingsStore) {
         SharedAndroidNotificationEnvironment(context, false, settingsStore)
     }
+    DisposableEffect(environment) { onDispose { environment.close() } }
+    return environment
 }
 
 object AndroidArticleNavigationHandoff {

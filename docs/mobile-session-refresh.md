@@ -1,0 +1,35 @@
+# 移动端登录续期
+
+2026-11-04 使用真实过期会话验证：旧 Cookie 与 Bearer 返回 `401 / code=100 / ERR_LOGIN_TICKET_EXPIRED`。已保存的移动端 refresh token 可通过 `POST https://api.zhihu.com/api/account/prod/sign_in`、`grant_type=refresh_token` 换取新令牌和 Cookie，随后 Web 与 Android 身份校验均为原账号。旧 Web 两步刷新在这个过期样本上不可用。
+
+## 请求与响应
+
+请求使用 `ZhihuPhoneLoginClient` 的 Android 请求头、`Authorization: oauth <移动端 client_id>`、秒级时间戳、HMAC-SHA1 签名和移动端表单加密。刷新直接使用已保存的 refresh token，不初始化访客、不发送短信、不请求验证码。它与短信登录共用令牌交换和解析流程。
+
+响应中的 `uid` 是账号的字符串 id；真实样本已与 `/api/v4/me.id` 和 `/people/self.id` 交叉核对。`user_id` 是另一个数值标识，不能拿它替代 `uid` 做账号归属判断。`cookie` 包含 `q_c0` 和 `z_c0`，响应 Set-Cookie 也应合并；原来的设备 Cookie 保留。到期时间优先使用 `expires_at`，没有该字段时才使用请求时间加 `expires_in`。
+
+服务端会轮换 refresh token。本轮旧令牌后续重用已经返回 `400 / 100008 / ERR_INVALID_REFRESH_TOKEN`。续期成功后必须同时保存返回的 access token、refresh token、token type、到期时间和 Cookie，不能只保存 z_c0。服务端也可能在续期成功时返回相同的 refresh token；不得把令牌字串变化当作成功条件。
+
+## 客户端与 Cookie 的归属
+
+认证请求统一由 `ZhihuAccountClient.request` 执行，GET、POST、PUT、PATCH、DELETE 共用这一入口。`ZhihuRequestProfile` 明确区分 Web 签名与移动端请求头；环境同样提供对应方法，通知、私信和推荐不再绕过账号客户端。只有 GET 可以在精确识别过期票据后恢复并重试一次，写操作不自动重放。
+
+环境必须显式提供账号客户端或选择独立客户端，不再通过 `HttpClient.attributes` 反查账号对象。Web 与移动端 transport 共用该账号的 Cookie jar 和回写回调，并随账号客户端关闭。`load()` 读取该实例绑定的账号槽位，旧实例不会读到切换后的另一账号。匿名推荐使用独立、无账号 Cookie 的客户端；页面和朗读服务只负责关闭自己创建的客户端。Android 的 `AccountData` 仅为只读兼容视图，不再复制完整凭据并覆盖回写。
+
+重试所需的 Cookie 值从该包装器已有映射中记录，不拆解请求头。手机号协议继续复用 `createAccountHttpClient` 安装的 `HttpCookies/ZhihuCookieStorage` 发送 Cookie，删除重复设置请求头。手工导入复用现有 `parseCookieAssignments`，接受分号两侧的空白；WebView、扫码和桌面浏览器外部字符串仍保留各自已有的值语义，避免去引号改变签名输入。
+
+## 触发与并发
+
+启动预刷新必须同时满足：当前账号仍有效、已经登录、具有明确账号 id 和非空移动端 refresh token、已知到期时间，且已过期或剩余时间不超过一天。游客、仅导入 Cookie 的账号、到期时间未知或有效期充足时不发请求，也不提示刷新失败。NLP 模型的原有每日初始化条件独立保留。
+
+GET 请求遇到 401 时，只对 `error.code=100` 且 message 为 `ERR_LOGIN_TICKET_EXPIRED` 或项目已识别的 `ERR_TICKET_NOT_EXIST` 执行恢复。一般 401、403、网络错误和业务权限错误不触发续期；没有移动端凭据时原样交给调用方。成功后只重试原请求一次。
+
+账号存储按账号槽位持有续期协调器，并用互斥锁合并并发失败请求。切换客户端后仍复用原账号的协调器和冷却状态；重新认证或删除账号时使旧协调器失效。已经换过 Cookie 的请求直接用新会话重试；每次真正尝试后至少冷却一分钟，失败也计入。手动刷新使用相同移动端协议，仅跳过临近到期判断，不跳过登录、凭据、账号归属和冷却约束。
+
+刷新在独立的临时 Cookie 存储中完成，不让 Set-Cookie 先行污染已保存会话。响应返回后，在同一把跨平台锁内核对原账号槽位、协调器、uid 和原 refresh token，再一次保存全部凭据。若用户已切到其他账号，只更新原账号记录，不改变当前选择；原账号已删除、已重新认证或凭据已被替换时丢弃响应。当前账号通过其当前客户端更新 Cookie jar，已经关闭的旧客户端不再重试原请求。资料刷新只合并资料字段到最新会话，不回写请求前的旧凭据。服务端要求额外验证或响应缺少必要凭据时不覆盖旧会话。
+
+请求预算：普通启动 0 次；实际续期 1 次；过期请求恢复共 3 次（原请求、续期、重试）。账号 id 已在真实协议中验证，因此无需在令牌轮换和保存之间再插入可能失败的资料请求。
+
+## 验证边界
+
+真实样本只证明登录票据过期后的续期，不证明可以解除实际账号封禁、403 风控或强制身份验证。本次只新增两条有真实响应来源的回归：过期 GET /me 的恢复，以及旧 refresh token 重用后的 400/100008 拒绝。成功响应、401/400 正文与 Set-Cookie 来自 2026-11-04 的实际请求，保持字段、类型、转义和 Cookie 属性，仅一致脱敏身份与凭据；字符串 uid 与数值 user_id 保持不同。原有 17 条账号/手机号测试不因本次清理而删除。近到期阈值、并发、账号切换和合成异常 JSON 没有对应生产环境证据，未为它们保留新增永久测试。状态覆盖修复另以仓库外定向重放诊断，不将其称为生产取证。真实凭据和含身份的原始响应不进入仓库。

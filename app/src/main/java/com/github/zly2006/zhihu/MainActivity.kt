@@ -45,8 +45,9 @@ import coil3.disk.DiskCache
 import coil3.disk.directory
 import coil3.memory.MemoryCache
 import coil3.request.crossfade
+import com.github.zly2006.zhihu.account.androidZhihuAccountStore
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.HistoryStorage
+import com.github.zly2006.zhihu.data.LocalHistoryStore
 import com.github.zly2006.zhihu.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
@@ -84,7 +85,6 @@ import com.github.zly2006.zhihu.util.ContinuousUsageReminderManager
 import com.github.zly2006.zhihu.util.EmojiManager
 import com.github.zly2006.zhihu.util.PowerSaveModeCompat
 import com.github.zly2006.zhihu.util.ZHIHU_WEB_ZSE93
-import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
 import com.github.zly2006.zhihu.util.clearShareImageCache
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
@@ -100,7 +100,7 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
-    lateinit var history: HistoryStorage
+    val history by lazy { LocalHistoryStore.forFile(filesDir.resolve("history.json").absolutePath) }
     val httpClient
         get() = com.github.zly2006.zhihu.account
             .androidZhihuAccountStore(this)
@@ -145,7 +145,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         clearShareImageCache(this)
         continuousUsageReminderManager = ContinuousUsageReminderManager(this)
-        history = HistoryStorage(this)
         AccountData.loadData(this)
         AndroidThemeSettings.initialize(this)
         androidKeywordSemanticMatcher = NlpServiceKeywordSemanticMatcher
@@ -157,18 +156,22 @@ class MainActivity : ComponentActivity() {
         val settings = androidSettingsStore(this)
         val lastLaunchTimestamp = settings.getLong(KEY_LAST_LAUNCH_TIMESTAMP, 0L)
         val now = System.currentTimeMillis()
-        if (now - lastLaunchTimestamp >= TimeUnit.DAYS.toMillis(1)) {
-            val client = httpClient
-            lifecycleScope.launch(Dispatchers.IO) {
-                try {
-                    val refreshToken = ZhihuCredentialRefresher.fetchRefreshToken(client)
-                    ZhihuCredentialRefresher.refreshZhihuToken(refreshToken, client)
-                    Log.i(TAG, "Zhihu token refreshed successfully")
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to refresh Zhihu token", e)
-                    androidUserMessageSink(this@MainActivity)
-                        .showLongMessage("刷新登录状态失败，如多次看到此提示请重新登录")
+        val accountClient = androidZhihuAccountStore(this).client
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                if (accountClient.credentialRefresher.refresh()) {
+                    Log.i(TAG, "Zhihu mobile credentials renewed successfully")
                 }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to renew Zhihu mobile credentials", e)
+                androidUserMessageSink(this@MainActivity)
+                    .showLongMessage("刷新登录状态失败，请稍后重试")
+            }
+        }
+        if (now - lastLaunchTimestamp >= TimeUnit.DAYS.toMillis(1)) {
+            lifecycleScope.launch(Dispatchers.IO) {
                 if (!PowerSaveModeCompat.getPowerSaveMode(this@MainActivity).isPowerSaveMode) {
                     try {
                         SentenceEmbeddingManager.ensureModel(this@MainActivity)

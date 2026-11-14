@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.account
 
+import com.github.zly2006.zhihu.data.CAPTURED_INVALID_REFRESH_BODY
 import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -27,10 +28,38 @@ import io.ktor.http.headersOf
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNotSame
 import kotlin.test.assertSame
 
 class ZhihuAccountClientTest {
+    @Test
+    fun rejectedCapturedRefreshTokenDoesNotOverwriteTheSavedSession() = runTest {
+        withAccountEngine(
+            MockEngine {
+                respond(CAPTURED_INVALID_REFRESH_BODY, HttpStatusCode.BadRequest, headersOf(HttpHeaders.ContentType, "application/json"))
+            },
+        ) {
+            val original = ZhihuAccountSession(
+                login = true,
+                username = "Captured User",
+                profile = ZhihuAccountProfileSnapshot(id = "captured-person", name = "Captured User"),
+                cookies = mutableMapOf("z_c0" to "expired-cookie", "d_c0" to "captured-device-cookie"),
+                mobileAccessToken = "expired-access-token",
+                mobileRefreshToken = "rejected-refresh-token",
+                mobileTokenExpiresAt = 1_793_756_790L,
+            )
+            val repository = ZhihuAccountRepository(ClientInMemoryAccountSessionStore()).apply { save(original) }
+            val store = ZhihuAccountStore(repository)
+            try {
+                assertFailsWith<IllegalStateException> { store.client.credentialRefresher.refresh(force = true) }
+                assertEquals(original, repository.load())
+            } finally {
+                store.close()
+            }
+        }
+    }
+
     @Test
     fun sameIdentitySessionRefreshKeepsTheBoundClient() = runTest {
         withAccountEngine(emptyMockEngine()) {

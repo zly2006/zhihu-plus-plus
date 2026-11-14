@@ -33,8 +33,6 @@ import com.github.zly2006.zhihu.util.formatRelativeTime
 import com.github.zly2006.zhihu.viewmodel.FeedDisplayEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
-import com.github.zly2006.zhihu.viewmodel.deleteSigned
-import com.github.zly2006.zhihu.viewmodel.postSigned
 
 open class QuestionFeedViewModel(
     private val questionId: Long,
@@ -109,9 +107,9 @@ open class QuestionFeedViewModel(
             if (environment.authenticatedCookies()["d_c0"] == null) return
             val url = "https://www.zhihu.com/api/v4/questions/$questionId/followers"
             if (follow) {
-                environment.postSigned(url)
+                environment.post(url)
             } else {
-                environment.deleteSigned(url)
+                environment.delete(url)
             }
         } catch (e: Exception) {
             environment.handleFetchFailure("QuestionFeedViewModel", e)

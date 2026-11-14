@@ -120,9 +120,7 @@ import com.github.zly2006.zhihu.viewmodel.PaginationViewModel
 import com.github.zly2006.zhihu.viewmodel.ProfileLoadEnvironment
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import com.github.zly2006.zhihu.viewmodel.addReadHistory
-import com.github.zly2006.zhihu.viewmodel.deleteSigned
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
-import com.github.zly2006.zhihu.viewmodel.postSigned
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -405,9 +403,9 @@ class PersonViewModel(
         val followersUrl = "https://www.zhihu.com/api/v4/members/${person.urlToken}/followers"
         val newFollowingState = !isFollowing
         val response = if (newFollowingState) {
-            environment.postSigned(followersUrl)
+            environment.post(followersUrl)
         } else {
-            environment.deleteSigned(followersUrl)
+            environment.delete(followersUrl)
         }
         val jojo = response.raiseForStatus().jsonObject()
         followerCount = jojo["follower_count"]?.jsonPrimitive?.int ?: (followerCount + if (newFollowingState) 1 else -1)
@@ -418,9 +416,9 @@ class PersonViewModel(
         val blockUrl = "https://www.zhihu.com/api/v4/members/${person.urlToken}/actions/block"
         val newBlockingState = !isBlocking
         if (newBlockingState) {
-            environment.postSigned(blockUrl)
+            environment.post(blockUrl)
         } else {
-            environment.deleteSigned(blockUrl)
+            environment.delete(blockUrl)
         }.raiseForStatus()
         isBlocking = newBlockingState
     }

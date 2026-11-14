@@ -17,6 +17,8 @@
 
 package com.github.zly2006.zhihu.viewmodel.feed
 
+import com.github.zly2006.zhihu.account.ZhihuAccountClient
+import com.github.zly2006.zhihu.account.ZhihuRequestProfile
 import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import io.ktor.client.HttpClient
@@ -61,7 +63,7 @@ class SearchSuggestRealResponseCorpusTest {
 
     @Test
     fun failedRequestYieldsEmptySuggestListInsteadOfThrowing() = runTest {
-        // 模拟真实失败形态：网关返回 HTML 错误页而非 JSON，生产 fetchZhihuAuthenticatedJson 解码时抛异常，
+        // 模拟真实失败形态：网关返回 HTML 错误页而非 JSON，生产 fetchJson 解码时抛异常，
         // fetchSearchSuggest 必须容错返回空列表而不是让异常穿透到 UI 协程。
         val items = fetchSearchSuggest(
             environment(respondFixture = null, statusCode = HttpStatusCode.InternalServerError),
@@ -109,7 +111,9 @@ class SearchSuggestRealResponseCorpusTest {
         statusCode: HttpStatusCode = HttpStatusCode.OK,
         onRequest: (String) -> Unit = {},
     ) = object : PaginationEnvironment {
-        override fun httpClient() = HttpClient(
+        override val accountClient: ZhihuAccountClient? = null
+
+        override fun httpClient(profile: ZhihuRequestProfile) = HttpClient(
             MockEngine { request ->
                 onRequest(request.url.toString())
                 val body = respondFixture?.let(::fixture) ?: "<html><body>500 Internal Server Error</body></html>"

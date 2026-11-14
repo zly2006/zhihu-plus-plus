@@ -44,7 +44,6 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -60,15 +59,6 @@ import com.github.zly2006.zhihu.ui.FollowedQuestion as FollowedQuestionImpl
 import com.github.zly2006.zhihu.ui.FollowedTopic as FollowedTopicImpl
 
 const val ZHIHU_ME_URL = "https://www.zhihu.com/api/v4/me"
-
-@Serializable
-data class ZhihuAccountProfile(
-    val id: String = "",
-    val name: String = "",
-    val urlToken: String? = null,
-    val userType: String = "",
-    val avatarUrl: String? = null,
-)
 
 fun <T : HttpClientEngineConfig> HttpClientConfig<T>.installZhihuCommonClientConfig(
     cookies: MutableMap<String, String>,
@@ -104,19 +94,13 @@ suspend fun fetchVerifiedZhihuSession(
     userAgent: String = DEFAULT_ZHIHU_USER_AGENT,
 ): ZhihuAccountSession? {
     val account = fetchVerifiedZhihuAccount(client) ?: return null
-    val profile = ZhihuJson.decodeJson<ZhihuAccountProfile>(account)
+    val profile = ZhihuJson.decodeJson<ZhihuAccountProfileSnapshot>(account)
     return ZhihuAccountSession(
         login = true,
         username = profile.name,
         cookies = cookies.toMutableMap(),
         userAgent = userAgent,
-        profile = ZhihuAccountProfileSnapshot(
-            id = profile.id,
-            name = profile.name,
-            urlToken = profile.urlToken,
-            userType = profile.userType,
-            avatarUrl = profile.avatarUrl,
-        ),
+        profile = profile,
         self = account,
     )
 }

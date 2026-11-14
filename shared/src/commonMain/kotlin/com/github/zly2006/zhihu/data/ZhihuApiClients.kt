@@ -17,27 +17,14 @@
 
 package com.github.zly2006.zhihu.data
 
-import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
-import com.github.zly2006.zhihu.util.json
-import com.github.zly2006.zhihu.util.raiseForStatus
-import io.ktor.client.HttpClient
+import io.ktor.client.HttpClientConfig
+import io.ktor.client.plugins.UserAgent
 import io.ktor.client.plugins.cookies.CookiesStorage
-import io.ktor.client.request.HttpRequestBuilder
-import io.ktor.client.request.request
-import io.ktor.client.statement.HttpResponse
+import io.ktor.client.plugins.defaultRequest
 import io.ktor.http.Cookie
 import io.ktor.http.CookieEncoding
-import io.ktor.http.HttpStatusCode
 import io.ktor.http.Url
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonObject
-import kotlin.time.Clock
-
-private var lastRefreshMillis: Long = 0
-
-internal fun resetZhihuAuthenticatedRequestRefreshThrottleForTesting() {
-    lastRefreshMillis = 0
-}
 
 fun Map<String, String>.toCookieHeaderString(): String =
     entries
@@ -45,44 +32,6 @@ fun Map<String, String>.toCookieHeaderString(): String =
         .mapNotNull { (name, value) ->
             value.takeIf { it.isNotBlank() }?.let { "$name=$it" }
         }.joinToString("; ")
-
-suspend fun executeZhihuAuthenticatedRequest(
-    client: HttpClient,
-    url: String,
-    block: suspend HttpRequestBuilder.() -> Unit = {},
-): HttpResponse {
-    val response = client.request(url) {
-        block()
-    }
-    if (response.status != HttpStatusCode.Unauthorized) return response
-
-    if (Clock.System.now().toEpochMilliseconds() - lastRefreshMillis < 10_000) {
-        return response
-    }
-    val refreshToken = ZhihuCredentialRefresher.fetchRefreshToken(client)
-    ZhihuCredentialRefresher.refreshZhihuToken(refreshToken, client)
-    lastRefreshMillis = Clock.System.now().toEpochMilliseconds()
-    return client
-        .request(url) {
-            block()
-        }.raiseForStatus()
-}
-
-suspend fun fetchZhihuAuthenticatedJson(
-    client: HttpClient,
-    url: String,
-    block: suspend HttpRequestBuilder.() -> Unit = {},
-): JsonObject? {
-    val response = executeZhihuAuthenticatedRequest(
-        client = client,
-        url = url,
-        block = block,
-    )
-    if (response.status == HttpStatusCode.NoContent) {
-        return null
-    }
-    return response.json() as? JsonObject
-}
 
 class ZhihuCookieStorage(
     private val cookies: MutableMap<String, String>,
@@ -122,3 +71,22 @@ data class ZhihuVotersResponse(
     val paging: ZhihuPaging,
     val data: List<DataHolder.Author> = emptyList(),
 )
+
+internal val ZHIHU_MOBILE_HEADERS = mapOf(
+    "x-api-version" to "3.1.8",
+    "x-app-version" to "10.61.0",
+    "x-app-za" to
+        "OS=Android&Release=12&Model=sdk_gphone64_arm64&VersionName=10.61.0&VersionCode=26107&Product=com.zhihu.android&Width=1440&Height=2952&Installer=%E7%81%B0%E5%BA%A6&DeviceType=AndroidPhone&Brand=google",
+)
+
+const val ZHIHU_ANDROID_USER_AGENT = "com.zhihu.android/Futureve/10.61.0 Mozilla/5.0 (Linux; Android 12; sdk_gphone64_arm64 " +
+    "Build/SE1A.220630.001.A1; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/57.0.1000.10 Mobile Safari/537.36"
+
+internal fun HttpClientConfig<*>.installZhihuMobileClientProfile() {
+    install(UserAgent) { agent = ZHIHU_ANDROID_USER_AGENT }
+    defaultRequest {
+        ZHIHU_MOBILE_HEADERS.forEach { (name, value) ->
+            if (!headers.contains(name)) headers.append(name, value)
+        }
+    }
+}

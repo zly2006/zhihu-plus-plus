@@ -62,9 +62,10 @@ import java.util.Locale
 
 class ContentReadingService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private val environment by lazy {
+    private val environmentDelegate = lazy {
         SharedAndroidPaginationEnvironment(applicationContext, allowGuestAccess = true)
     }
+    private val environment by environmentDelegate
     private val audioManager by lazy { getSystemService(AudioManager::class.java) }
     private val wakeLock by lazy {
         getSystemService(PowerManager::class.java)
@@ -158,6 +159,7 @@ class ContentReadingService : Service() {
         releaseWakeLock()
         mediaSession.release()
         serviceScope.cancel()
+        if (environmentDelegate.isInitialized()) environment.close()
         if (AndroidReadingPlayerBridge.state.value.hasSession) {
             AndroidReadingPlayerBridge.publish(ReadingPlayerState())
         }

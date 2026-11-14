@@ -17,79 +17,55 @@
 
 package com.github.zly2006.zhihu.util
 
-import io.ktor.client.HttpClient
-import io.ktor.client.plugins.cookies.HttpCookies
-import io.ktor.client.plugins.cookies.get
-import io.ktor.client.plugins.pluginOrNull
-import io.ktor.client.request.header
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
-import io.ktor.http.Url
-import io.ktor.http.encodeURLParameter
-import kotlinx.serialization.json.jsonPrimitive
+import com.github.zly2006.zhihu.account.ZhihuAccountStore
+import com.github.zly2006.zhihu.account.ZhihuPhoneLoginClient
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.TimeMark
+import kotlin.time.TimeSource
 
-/**
- * 知乎 Token 刷新业务逻辑
- */
-object ZhihuCredentialRefresher {
-    private const val CLIENT_ID = "c3cef7c66a1843f8b3a9e6a1e3160e20"
-    private const val CLIENT_SECRET = "d1b964811afb40118a12068ff74a12f4"
-    private const val GRANT_TYPE = "refresh_token"
-    private const val SOURCE = "com.zhihu.web"
+/** Per-account mobile renewal shared by startup, explicit refresh and expired-ticket retries. */
+class ZhihuCredentialRefresher internal constructor(
+    private val accountStore: ZhihuAccountStore,
+    private val accountId: String?,
+) {
+    private val mutex = Mutex()
+    private var lastAttempt: TimeMark? = null
 
-    private fun generateRefreshPayload(refreshToken: String, timestamp: Long): Map<String, String> {
-        val message = "$GRANT_TYPE$CLIENT_ID$SOURCE$timestamp"
-        val signature = hmacSha1Hex(CLIENT_SECRET, message)
-
-        return mapOf(
-            "client_id" to CLIENT_ID,
-            "grant_type" to GRANT_TYPE,
-            "timestamp" to timestamp.toString(),
-            "source" to SOURCE,
-            "signature" to signature,
-            "refresh_token" to refreshToken,
-        )
-    }
-
-    suspend fun fetchRefreshToken(httpClient: HttpClient): String {
-        val jojo = httpClient
-            .post("https://www.zhihu.com/api/account/prod/token/refresh") {
-                header("Content-Type", "application/x-www-form-urlencoded;charset=UTF-8")
-                header("Origin", "https://www.zhihu.com")
-                header("Referer", "https://www.zhihu.com/signin")
-                header("x-requested-with", "fetch")
-            }.raiseForStatus()
-            .jsonObject()
-        return jojo["refresh_token"]!!.jsonPrimitive.content
-    }
-
-    /**
-     * 执行刷新 Token 操作
-     */
-    suspend fun refreshZhihuToken(refreshToken: String, httpClient: HttpClient): String {
-        httpClient.pluginOrNull(HttpCookies)?.get(Url("https://www.zhihu.com/"))?.get("z_c0")
-            ?: throw IllegalArgumentException("刷新失败：缺失关键 cookie z_c0，请重新登录")
-
-        val timestamp = Clock.System.now().toEpochMilliseconds()
-        val payloadMap = generateRefreshPayload(refreshToken, timestamp)
-
-        val formData = payloadMap.entries.joinToString("&") {
-            "${it.key.encodeURLParameter(spaceToPlus = true)}=${it.value.encodeURLParameter(spaceToPlus = true)}"
+    suspend fun refresh(force: Boolean = false, rejectedCookie: String? = null): Boolean = mutex.withLock {
+        val current = accountStore.renewalSession(accountId, this) ?: return@withLock false
+        val personId = current.profile?.id?.takeIf(String::isNotBlank)
+        val refreshToken = current.mobileRefreshToken?.takeIf(String::isNotBlank)
+        if (!current.login || personId == null || refreshToken == null) {
+            return@withLock false
         }
-        val encryptedData = ZseSigner.encryptZseV4(formData)
+        if (rejectedCookie != null &&
+            !current.cookies["z_c0"].isNullOrBlank() &&
+            current.cookies["z_c0"] != rejectedCookie
+        ) {
+            return@withLock true
+        }
+        if (!force) {
+            val expiresAt = current.mobileTokenExpiresAt ?: return@withLock false
+            if (expiresAt <= 0) return@withLock false
+            if (expiresAt > Clock.System.now().epochSeconds + 1.days.inWholeSeconds) return@withLock false
+        }
+        if (lastAttempt?.elapsedNow()?.let { it < 1.minutes } == true) return@withLock false
+        lastAttempt = TimeSource.Monotonic.markNow()
 
-        val jojo = httpClient
-            .post("https://www.zhihu.com/api/v3/oauth/sign_in") {
-                header("Content-Type", "application/x-www-form-urlencoded;charset=UTF-8")
-                header("Origin", "https://www.zhihu.com")
-                header("Referer", "https://www.zhihu.com/signin")
-                header("x-zse-83", "3_3.0")
-                header("x-requested-with", "fetch")
-                setBody(encryptedData.encodeToByteArray())
-            }.raiseForStatus()
-            .jsonObject()
-        return jojo["access_token"]!!.jsonPrimitive.content
+        // Renewal can rotate refresh tokens. Isolate Set-Cookie until the account and all replacement credentials are checked.
+        val mobileClient = ZhihuPhoneLoginClient()
+        val token = try {
+            mobileClient.refresh(refreshToken)
+        } finally {
+            mobileClient.close()
+            lastAttempt = TimeSource.Monotonic.markNow()
+        }
+        check(token.accountId == personId) { "刷新响应的账号与当前登录账号不一致" }
+        accountStore.saveRenewedSession(accountId, this, refreshToken, token)
     }
 }
 

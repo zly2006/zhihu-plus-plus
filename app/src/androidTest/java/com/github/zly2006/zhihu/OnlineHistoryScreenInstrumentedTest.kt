@@ -24,6 +24,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.github.zly2006.zhihu.account.ZhihuAccountClient
+import com.github.zly2006.zhihu.account.ZhihuRequestProfile
 import com.github.zly2006.zhihu.data.FeedDisplayItem
 import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
@@ -137,9 +139,9 @@ class OnlineHistoryScreenInstrumentedTest {
                 """.trimIndent(),
             ).jsonObject
         val environment = object : PaginationEnvironment {
-            override fun httpClient() = client
+            override val accountClient: ZhihuAccountClient? = null
 
-            override fun authenticatedCookies() = emptyMap<String, String>()
+            override fun httpClient(profile: ZhihuRequestProfile) = client
 
             override suspend fun fetchJson(url: String, include: String): JsonObject = response
 

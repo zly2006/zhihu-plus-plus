@@ -61,7 +61,7 @@ class CollectionsViewModel(
         isCreatingCollection = true
         createCollectionError = null
         return try {
-            val response = environment.postSigned("https://www.zhihu.com/api/v4/collections") {
+            val response = environment.post("https://www.zhihu.com/api/v4/collections") {
                 contentType(ContentType.Application.Json)
                 setBody(
                     buildJsonObject {
@@ -111,7 +111,7 @@ class CollectionsViewModel(
         deletingCollectionId = collection.id
         deleteCollectionError = null
         return try {
-            val response = environment.deleteSigned(
+            val response = environment.delete(
                 "https://www.zhihu.com/api/v4/collections/${collection.id}",
             )
             if (!response.status.isSuccess()) {

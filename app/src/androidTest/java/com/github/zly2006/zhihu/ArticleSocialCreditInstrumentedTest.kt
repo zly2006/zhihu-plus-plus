@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import com.github.zly2006.zhihu.account.ZhihuAccountClient
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.test.resetAppPreferences
@@ -14,7 +15,6 @@ import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import com.github.zly2006.zhihu.viewmodel.sharedArticleAnswerSwitchState
-import io.ktor.client.HttpClient
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
@@ -56,9 +56,7 @@ class ArticleSocialCreditInstrumentedTest {
             .fetchSemanticsNode()
             .boundsInRoot.top
         val environment = object : ZhihuApiEnvironment {
-            override fun httpClient(): HttpClient = error("No network needed")
-
-            override fun authenticatedCookies(): Map<String, String> = emptyMap()
+            override val accountClient: ZhihuAccountClient? = null
 
             override suspend fun handleFetchFailure(tag: String?, error: Exception) = Unit
 
