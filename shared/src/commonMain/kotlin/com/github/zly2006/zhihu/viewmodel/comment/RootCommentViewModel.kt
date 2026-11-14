@@ -42,6 +42,8 @@ import io.ktor.http.isSuccess
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
@@ -179,13 +181,18 @@ class RootCommentViewModel(
         commentText: String,
         environment: ZhihuApiEnvironment,
         replyToCommentId: String?,
+        syncToPin: Boolean,
         onSuccess: () -> Unit,
     ) {
         if (commentText.isBlank()) return
 
         viewModelScope.launch {
             try {
-                val requestBody = content.buildSubmitCommentBody(commentText, replyToCommentId)
+                val requestBody = content.buildSubmitCommentBody(
+                    commentText = commentText,
+                    replyToCommentId = replyToCommentId,
+                    syncToPin = syncToPin,
+                )
 
                 val response = environment.post(content.submitCommentUrl) {
                     contentType(ContentType.Application.Json)
@@ -210,11 +217,14 @@ class RootCommentViewModel(
 internal fun NavDestination.buildSubmitCommentBody(
     commentText: String,
     replyToCommentId: String?,
+    syncToPin: Boolean = false,
 ): JsonObject {
     val escapedText = commentText.escapeCommentHtml()
+    val effectiveReplyId = replyToCommentId ?: (this as? CommentHolder)?.commentId
+    val rootTarget = (this as? CommentHolder)?.article ?: this
     return buildJsonObject {
         put("content", "<p>$escapedText</p>")
-        replyToCommentId?.let { put("reply_comment_id", it) }
+        effectiveReplyId?.let { put("reply_comment_id", it) }
         if (this@buildSubmitCommentBody is SegmentCommentHolder) {
             // `unfriendly_check` 和 `selected_settings` 均为可选字段，发布段评时无需提交。
             put(
@@ -240,6 +250,13 @@ internal fun NavDestination.buildSubmitCommentBody(
                             )
                         },
                     )
+                },
+            )
+        } else if (syncToPin && rootTarget !is SegmentCommentHolder) {
+            put(
+                "selected_settings",
+                buildJsonArray {
+                    add(JsonPrimitive("publish_sync_pin"))
                 },
             )
         }

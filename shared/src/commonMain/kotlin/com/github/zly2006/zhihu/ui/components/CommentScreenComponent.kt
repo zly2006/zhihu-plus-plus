@@ -54,6 +54,7 @@ import com.github.zly2006.zhihu.theme.Typography
 import com.github.zly2006.zhihu.ui.CommentScreen
 import com.github.zly2006.zhihu.ui.commentThreadKey
 import com.github.zly2006.zhihu.ui.consumePendingCommentId
+import com.github.zly2006.zhihu.ui.rememberAccountSettingsAccountState
 import com.github.zly2006.zhihu.viewmodel.CommentItem
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
@@ -78,7 +79,8 @@ fun CommentScreenComponent(
     var authorCommentPolicyAcknowledged by remember {
         mutableStateOf(settings.getBoolean(ZH_PLUS_AUTHOR_COMMENT_POLICY_ACKNOWLEDGED_KEY, false))
     }
-    val contentStateKey = content.commentThreadKey()
+    val accountId = rememberAccountSettingsAccountState().value.id
+    val contentStateKey = "$accountId:${content.commentThreadKey()}"
     var activeChildComment by rememberSaveable(contentStateKey, saver = activeChildCommentSaver) {
         mutableStateOf<CommentItem?>(null)
     }
