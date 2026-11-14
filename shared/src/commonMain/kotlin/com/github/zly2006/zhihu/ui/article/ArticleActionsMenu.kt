@@ -34,6 +34,7 @@ import androidx.compose.material.icons.automirrored.filled.Comment
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FilterCenterFocus
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.GetApp
@@ -48,6 +49,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
@@ -55,8 +57,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewModelScope
+import com.github.zly2006.zhihu.account.rememberZhihuAccountStore
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
+import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.navigation.WriteAnswer
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.reading.ReadingContentType
 import com.github.zly2006.zhihu.reading.ReadingQueueItem
@@ -123,6 +128,8 @@ fun ArticleActionsMenu(
     onExportRequest: () -> Unit,
     onSetImmersiveDoubleTap: () -> Unit = {},
 ) {
+    val navigator = LocalNavigator.current
+    val accounts by rememberZhihuAccountStore().accountsState.collectAsState()
     val ttsState = rememberArticleTtsState()
     val toggleSpeech = rememberArticleSpeechToggler()
     val readingPlayer = rememberReadingPlayerController()
@@ -213,6 +220,29 @@ fun ArticleActionsMenu(
 
     @Composable
     fun Content() {
+        if (
+            article.type == ArticleType.Answer &&
+            accounts.session.login &&
+            viewModel.authorId.isNotBlank() &&
+            accounts.session.profile?.id == viewModel.authorId &&
+            viewModel.questionId > 0
+        ) {
+            MenuActionButton(
+                icon = Icons.Filled.Edit,
+                text = "编辑回答",
+                onClick = {
+                    onDismissRequest()
+                    navigator.onNavigate(
+                        WriteAnswer(
+                            questionId = viewModel.questionId,
+                            questionTitle = viewModel.title,
+                        ),
+                    )
+                },
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+
         MenuActionButton(
             icon = {
                 if (isReadingPlayerSupported && hasReadingSession) {
