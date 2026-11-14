@@ -24,7 +24,6 @@
 package com.github.zly2006.zhihu.macos.debug
 
 import androidx.compose.runtime.SideEffect
-import androidx.compose.ui.backhandler.LocalCompatNavigationEventDispatcherOwner
 import androidx.compose.ui.graphics.asSkiaBitmap
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.toPixelMap
@@ -52,6 +51,7 @@ import androidx.compose.ui.test.swipeUp
 import androidx.navigationevent.DirectNavigationEventInput
 import androidx.navigationevent.NavigationEventDispatcher
 import androidx.navigationevent.NavigationEventDispatcherOwner
+import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
 import com.github.zly2006.zhihu.account.LoginScreen
 import com.github.zly2006.zhihu.data.BACKGROUND_UI_DEBUG_DATA_HOME_ENV
 import com.github.zly2006.zhihu.data.macosBackgroundUiDebugDataDirectoryPath
@@ -154,7 +154,7 @@ fun main(args: Array<String>) {
             uiTest.runTest {
                 setContent {
                     val navigationEventDispatcherOwner =
-                        checkNotNull(LocalCompatNavigationEventDispatcherOwner.current) {
+                        checkNotNull(LocalNavigationEventDispatcherOwner.current) {
                             "Compose navigation event dispatcher is unavailable"
                         }
                     SideEffect {
