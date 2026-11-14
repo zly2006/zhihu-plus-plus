@@ -78,6 +78,7 @@ import com.github.zly2006.zhihu.ui.components.SettingItemOverall
 import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
+import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.launch
 
 const val DEVELOPER_SETTINGS_BACK_BUTTON_TAG = "developerSettings/backButton"
@@ -183,8 +184,8 @@ fun DeveloperSettingsScreen() {
 
                 Button(onClick = {
                     coroutineScope.launch {
-                        check(accountStore.client.credentialRefresher.refresh(force = true)) {
-                            "缺少移动端刷新凭据或刚刚尝试过刷新，请稍后重试"
+                        check(accountStore.refreshCredentials(force = true)) {
+                            "缺少移动端刷新凭据时请重新登录；刚刚尝试过刷新时请稍后重试"
                         }
                         userMessages.showShortMessage("刷新成功")
                     }
@@ -352,7 +353,7 @@ fun DeveloperSettingsScreen() {
                                             if (accountStore.login(cookies)) {
                                                 userMessages.showShortMessage("Cookie 验证通过，登录状态已更新")
                                             } else {
-                                                userMessages.showShortMessage("Cookie 验证失败，未更改当前登录状态，请检查后重试")
+                                                userMessages.showShortMessage("Cookie 验证失败，未更改当前登录状态，请检查 Cookie 是否有效")
                                             }
                                         } catch (e: Exception) {
                                             userMessages.showShortMessage("验证登录时发生错误：${e.message}")
@@ -445,7 +446,7 @@ fun DeveloperSettingsScreen() {
                             isLoading = true
                             coroutineScope.launch {
                                 try {
-                                    val body = environment.signedGetText(urlInput)
+                                    val body = environment.get(urlInput).bodyAsText()
                                     copyPlainText("Signed Request Response", body)
                                     responseText = body
                                     userMessages.showShortMessage("响应已复制到剪贴板")

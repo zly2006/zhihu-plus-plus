@@ -17,6 +17,8 @@
 
 package com.github.zly2006.zhihu.ui
 
+import com.github.zly2006.zhihu.account.ZhihuAccountClient
+import com.github.zly2006.zhihu.account.ZhihuRequestProfile
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import io.ktor.client.HttpClient
@@ -41,7 +43,9 @@ class PeopleColumnsResponseTest {
         // 2026-10-27 真实响应，包含外层 contributions_count 和内层 column。
         val response = Json.parseToJsonElement(checkNotNull(javaClass.getResource("/columns/contributions-2026-10-27.json")).readText()).jsonObject
         val environment = object : PaginationEnvironment {
-            override fun httpClient(): HttpClient = error("fetchJson handles this recorded response")
+            override val accountClient: ZhihuAccountClient? = null
+
+            override fun httpClient(profile: ZhihuRequestProfile): HttpClient = error("fetchJson handles this recorded response")
 
             override fun authenticatedCookies(): Map<String, String> = emptyMap()
 
@@ -85,7 +89,9 @@ class PeopleColumnsResponseTest {
         }
         val calls = mutableListOf<String>()
         val environment = object : PaginationEnvironment {
-            override fun httpClient(): HttpClient = error("recorded response")
+            override val accountClient: ZhihuAccountClient? = null
+
+            override fun httpClient(profile: ZhihuRequestProfile): HttpClient = error("recorded response")
 
             override fun authenticatedCookies(): Map<String, String> = emptyMap()
 

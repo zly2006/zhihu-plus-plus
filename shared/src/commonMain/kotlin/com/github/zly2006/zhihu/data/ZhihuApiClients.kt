@@ -24,6 +24,9 @@ import io.ktor.client.plugins.defaultRequest
 import io.ktor.http.Cookie
 import io.ktor.http.CookieEncoding
 import io.ktor.http.Url
+import kotlinx.atomicfu.locks.ReentrantLock
+import kotlinx.atomicfu.locks.reentrantLock
+import kotlinx.atomicfu.locks.withLock
 import kotlinx.serialization.Serializable
 
 fun Map<String, String>.toCookieHeaderString(): String =
@@ -35,6 +38,7 @@ fun Map<String, String>.toCookieHeaderString(): String =
 
 class ZhihuCookieStorage(
     private val cookies: MutableMap<String, String>,
+    private val cookieLock: ReentrantLock = reentrantLock(),
     private val onCookieChanged: () -> Unit = {},
 ) : CookiesStorage {
     override suspend fun addCookie(requestUrl: Url, cookie: Cookie) {
@@ -43,13 +47,15 @@ class ZhihuCookieStorage(
             return
         }
         if (cookie.domain?.endsWith("zhihu.com") != false) {
-            cookies[cookie.name] = cookie.value
-            onCookieChanged()
+            cookieLock.withLock {
+                cookies[cookie.name] = cookie.value
+                onCookieChanged()
+            }
         }
     }
 
-    override suspend fun get(requestUrl: Url): List<Cookie> = cookies.map {
-        Cookie(it.key, it.value, CookieEncoding.RAW, domain = "www.zhihu.com")
+    override suspend fun get(requestUrl: Url): List<Cookie> = cookieLock.withLock {
+        cookies.map { Cookie(it.key, it.value, CookieEncoding.RAW, domain = "www.zhihu.com") }
     }
 
     override fun close() = Unit
