@@ -43,6 +43,8 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
+import kotlinx.atomicfu.locks.ReentrantLock
+import kotlinx.atomicfu.locks.reentrantLock
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -65,12 +67,13 @@ fun <T : HttpClientEngineConfig> HttpClientConfig<T>.installZhihuCommonClientCon
     userAgent: String,
     onCookieChanged: () -> Unit = {},
     enableHttpCache: Boolean = false,
+    cookieLock: ReentrantLock = reentrantLock(),
 ) {
     if (enableHttpCache) {
         install(HttpCache)
     }
     install(HttpCookies) {
-        storage = ZhihuCookieStorage(cookies, onCookieChanged)
+        storage = ZhihuCookieStorage(cookies, cookieLock, onCookieChanged)
     }
     install(ContentNegotiation) {
         json(ZhihuJson.json)

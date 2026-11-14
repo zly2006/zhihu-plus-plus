@@ -56,7 +56,6 @@ import io.ktor.client.request.post
 import io.ktor.client.request.request
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
-import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
@@ -253,22 +252,16 @@ interface ZhihuApiEnvironment {
 
     fun authenticatedCookies(): Map<String, String> = accountClient?.load()?.cookies.orEmpty()
 
-    suspend fun request(url: String, method: HttpMethod = HttpMethod.Get, profile: ZhihuRequestProfile = ZhihuRequestProfile.Web, block: suspend HttpRequestBuilder.() -> Unit = {}): HttpResponse {
-        val owner = accountClient
-        return if (owner != null) {
-            owner.request(url, method, profile, block)
-        } else {
-            httpClient(profile).request(url) {
-                this.method = method
-                block()
-                if (profile == ZhihuRequestProfile.Web) {
-                    val cookies = authenticatedCookies()
-                    cookies["_xsrf"]?.takeIf(String::isNotBlank)?.let { headers["x-xsrftoken"] = it }
-                    signZhihuFetchRequest(cookies)
-                }
+    suspend fun request(url: String, method: HttpMethod = HttpMethod.Get, profile: ZhihuRequestProfile = ZhihuRequestProfile.Web, block: suspend HttpRequestBuilder.() -> Unit = {}): HttpResponse = accountClient?.request(url, method, profile, block)
+        ?: httpClient(profile).request(url) {
+            this.method = method
+            block()
+            if (profile == ZhihuRequestProfile.Web) {
+                val cookies = authenticatedCookies()
+                cookies["_xsrf"]?.takeIf(String::isNotBlank)?.let { headers["x-xsrftoken"] = it }
+                signZhihuFetchRequest(cookies)
             }
         }
-    }
 
     suspend fun get(url: String, profile: ZhihuRequestProfile = ZhihuRequestProfile.Web, block: suspend HttpRequestBuilder.() -> Unit = {}): HttpResponse = request(url, HttpMethod.Get, profile, block)
 
@@ -289,8 +282,6 @@ interface ZhihuApiEnvironment {
         }
         return if (response.status == HttpStatusCode.NoContent) null else response.json() as? JsonObject
     }
-
-    suspend fun signedGetText(url: String): String = get(url).bodyAsText()
 
     suspend fun handleFetchFailure(
         tag: String?,

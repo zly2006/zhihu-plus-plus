@@ -22,7 +22,6 @@ import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.data.fetchVerifiedZhihuSession
 import com.github.zly2006.zhihu.data.installZhihuCommonClientConfig
 import com.github.zly2006.zhihu.data.installZhihuMobileClientProfile
-import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
 import com.github.zly2006.zhihu.util.raiseForStatus
 import com.github.zly2006.zhihu.util.signZhihuFetchRequest
 import io.ktor.client.HttpClient
@@ -35,14 +34,22 @@ import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
+import kotlinx.atomicfu.locks.ReentrantLock
 import kotlinx.atomicfu.locks.reentrantLock
 import kotlinx.atomicfu.locks.withLock
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.TimeMark
+import kotlin.time.TimeSource
 
 enum class ZhihuRequestProfile { Web, Mobile }
 
@@ -55,14 +62,10 @@ class ZhihuAccountClient internal constructor(
     private var closed = false
     internal val isCurrent: Boolean
         get() = !closed && accountState.value.activeAccountId == accountId
-    val credentialRefresher: ZhihuCredentialRefresher
-        get() = accountStore.credentialRefresherFor(accountId)
     private val cookies = accountState.value.session.cookies
         .toMutableMap()
-    private val client = createAccountHttpClient(cookies, accountState.value.session.userAgent) {
-        accountStore.sessionLock.withLock {
-            if (isCurrent) accountState.save(load().copy(cookies = cookies.toMutableMap()))
-        }
+    private val client = createAccountHttpClient(cookies, accountState.value.session.userAgent, accountStore.sessionLock) {
+        if (isCurrent) accountState.save(load().copy(cookies = cookies.toMutableMap()))
     }
 
     fun load(): ZhihuAccountSession {
@@ -93,14 +96,16 @@ class ZhihuAccountClient internal constructor(
         block: suspend HttpRequestBuilder.() -> Unit = {},
     ): HttpResponse {
         check(isCurrent) { "账号客户端已失效" }
-        val requestCookie = cookies["z_c0"]
+        // 仅复制 Cookie 时持锁；签名计算和网络等待保持在锁外。
+        val requestCookies = accountStore.sessionLock.withLock { cookies.toMap() }
+        val requestCookie = requestCookies["z_c0"]
         val transport = httpClient(profile)
         val response = transport.request(url) {
             this.method = method
             block()
             if (profile == ZhihuRequestProfile.Web) {
-                cookies["_xsrf"]?.takeIf(String::isNotBlank)?.let { headers["x-xsrftoken"] = it }
-                signZhihuFetchRequest(cookies)
+                requestCookies["_xsrf"]?.takeIf(String::isNotBlank)?.let { headers["x-xsrftoken"] = it }
+                signZhihuFetchRequest(requestCookies)
             }
         }
         if (method != HttpMethod.Get || response.status != HttpStatusCode.Unauthorized) return response
@@ -116,14 +121,15 @@ class ZhihuAccountClient internal constructor(
                 error["message"]?.jsonPrimitive?.content in setOf("ERR_LOGIN_TICKET_EXPIRED", "ERR_TICKET_NOT_EXIST")
         }.getOrDefault(false)
         if (!ticketExpired) return response
-        if (!credentialRefresher.refresh(force = true, rejectedCookie = requestCookie) || !isCurrent) return response
+        if (!accountStore.refreshCredentials(force = true, rejectedCookie = requestCookie, sourceClient = this) || !isCurrent) return response
+        val retryCookies = accountStore.sessionLock.withLock { cookies.toMap() }
         return transport
             .request(url) {
                 this.method = method
                 block()
                 if (profile == ZhihuRequestProfile.Web) {
-                    cookies["_xsrf"]?.takeIf(String::isNotBlank)?.let { headers["x-xsrftoken"] = it }
-                    signZhihuFetchRequest(cookies)
+                    retryCookies["_xsrf"]?.takeIf(String::isNotBlank)?.let { headers["x-xsrftoken"] = it }
+                    signZhihuFetchRequest(retryCookies)
                 }
             }.raiseForStatus()
     }
@@ -176,7 +182,9 @@ class ZhihuAccountStore internal constructor(
 ) : AutoCloseable {
     internal val sessionLock = reentrantLock()
     internal val accountState = ZhihuAccountState(repository)
-    private val credentialRefreshers = mutableMapOf<String?, ZhihuCredentialRefresher>()
+
+    // 每个账号只保存续期互斥和最近尝试时间；锁实例同时标记本次登录生命周期。
+    private val credentialRefreshes = mutableMapOf<String, Pair<Mutex, TimeMark?>>()
     private var mutableClient = ZhihuAccountClient(this)
 
     val accountsState: StateFlow<ZhihuAccounts> = accountState.state.asStateFlow()
@@ -196,13 +204,13 @@ class ZhihuAccountStore internal constructor(
     }
 
     fun replaceSession(session: ZhihuAccountSession) = sessionLock.withLock {
-        credentialRefreshers.remove(accountState.value.activeAccountId)
-        accountState.saveCurrent(session)
+        credentialRefreshes.remove(accountState.value.activeAccountId)
+        accountState.save(session)
         replaceClient()
     }
 
     fun clear() = sessionLock.withLock {
-        credentialRefreshers.remove(accountState.value.activeAccountId)
+        credentialRefreshes.remove(accountState.value.activeAccountId)
         accountState.removeCurrent()
         replaceClient()
     }
@@ -231,7 +239,7 @@ class ZhihuAccountStore internal constructor(
     }
 
     fun removeAccount(id: String) = sessionLock.withLock {
-        credentialRefreshers.remove(id)
+        credentialRefreshes.remove(id)
         val activeAccountId = accountState.value.activeAccountId
         accountState.remove(id)
         if (id == activeAccountId) replaceClient()
@@ -325,7 +333,7 @@ class ZhihuAccountStore internal constructor(
 
     private fun selectVerifiedSession(session: ZhihuAccountSession) = sessionLock.withLock {
         accountState.selectOrAdd(session)
-        credentialRefreshers.remove(accountState.value.activeAccountId)
+        credentialRefreshes.remove(accountState.value.activeAccountId)
         replaceClient()
     }
 
@@ -346,46 +354,65 @@ class ZhihuAccountStore internal constructor(
         mutableClient = ZhihuAccountClient(this)
     }
 
-    internal fun credentialRefresherFor(accountId: String?): ZhihuCredentialRefresher = sessionLock.withLock {
-        credentialRefreshers.getOrPut(accountId) { ZhihuCredentialRefresher(this, accountId) }
-    }
-
-    internal fun renewalSession(accountId: String?, refresher: ZhihuCredentialRefresher): ZhihuAccountSession? = sessionLock.withLock {
-        if (!mutableClient.isCurrent || accountState.value.activeAccountId != accountId || credentialRefreshers[accountId] !== refresher) {
-            return@withLock null
+    suspend fun refreshCredentials(
+        force: Boolean = false,
+        rejectedCookie: String? = null,
+        sourceClient: ZhihuAccountClient = client,
+    ): Boolean {
+        val (accountId, mutex) = sessionLock.withLock {
+            if (sourceClient !== mutableClient || !sourceClient.isCurrent) return false
+            val accountId = accountState.value.activeAccountId ?: return false
+            accountId to credentialRefreshes.getOrPut(accountId) { Mutex() to null }.first
         }
-        session
-    }
-
-    internal fun saveRenewedSession(
-        accountId: String?,
-        refresher: ZhihuCredentialRefresher,
-        expectedRefreshToken: String,
-        token: ZhihuMobileLoginToken,
-    ): Boolean = sessionLock.withLock {
-        if (!mutableClient.isCurrent || accountId == null || credentialRefreshers[accountId] !== refresher) return@withLock false
-        val latest = accountState.value.accounts
-            .firstOrNull { it.id == accountId }
-            ?.session ?: return@withLock false
-        if (!latest.login || latest.mobileRefreshToken != expectedRefreshToken || latest.profile?.id != token.accountId) return@withLock false
-        val updated = latest.copy(
-            cookies = (latest.cookies + token.cookies).toMutableMap(),
-            mobileAccessToken = token.accessToken,
-            mobileRefreshToken = token.refreshToken,
-            mobileTokenType = token.tokenType,
-            mobileTokenExpiresAt = token.expiresAt,
-        )
-        if (accountState.value.activeAccountId == accountId) {
-            mutableClient.save(updated)
-        } else {
-            accountState.saveAccount(accountId, updated)
+        return mutex.withLock {
+            val current = sessionLock.withLock {
+                val attempt = credentialRefreshes[accountId] ?: return false
+                if (attempt.first !== mutex || sourceClient !== mutableClient || !sourceClient.isCurrent) return false
+                val current = session
+                if (!current.login || current.profile?.id.isNullOrBlank() || current.mobileRefreshToken.isNullOrBlank()) return false
+                if (rejectedCookie != null && !current.cookies["z_c0"].isNullOrBlank() && current.cookies["z_c0"] != rejectedCookie) return true
+                if (!force) {
+                    val expiresAt = current.mobileTokenExpiresAt ?: return false
+                    if (expiresAt <= 0 || expiresAt > Clock.System.now().epochSeconds + 1.days.inWholeSeconds) return false
+                }
+                if (attempt.second?.elapsedNow()?.let { it < 1.minutes } == true) return false
+                credentialRefreshes[accountId] = mutex to TimeSource.Monotonic.markNow()
+                current
+            }
+            val refreshToken = requireNotNull(current.mobileRefreshToken)
+            val token = try {
+                // 续期使用独立 Cookie jar；校验完成前不覆盖已保存的会话。
+                ZhihuPhoneLoginClient().use { it.refresh(refreshToken) }
+            } finally {
+                sessionLock.withLock {
+                    if (credentialRefreshes[accountId]?.first === mutex) {
+                        credentialRefreshes[accountId] = mutex to TimeSource.Monotonic.markNow()
+                    }
+                }
+            }
+            check(token.accountId == current.profile?.id) { "刷新响应的账号与当前登录账号不一致" }
+            sessionLock.withLock {
+                if (credentialRefreshes[accountId]?.first !== mutex) return false
+                val latest = accountState.value.accounts
+                    .firstOrNull { it.id == accountId }
+                    ?.session ?: return false
+                if (!latest.login || latest.mobileRefreshToken != refreshToken || latest.profile?.id != token.accountId) return false
+                val updated = latest.copy(
+                    cookies = (latest.cookies + token.cookies).toMutableMap(),
+                    mobileAccessToken = token.accessToken,
+                    mobileRefreshToken = token.refreshToken,
+                    mobileTokenType = token.tokenType,
+                    mobileTokenExpiresAt = token.expiresAt,
+                )
+                if (accountState.value.activeAccountId == accountId) mutableClient.save(updated) else accountState.saveAccount(accountId, updated)
+                true
+            }
         }
-        true
     }
 
     override fun close() = sessionLock.withLock {
         mutableClient.close()
-        credentialRefreshers.clear()
+        credentialRefreshes.clear()
     }
 }
 
@@ -397,10 +424,6 @@ internal class ZhihuAccountState(
         get() = state.value
 
     fun save(session: ZhihuAccountSession) {
-        saveCurrent(session)
-    }
-
-    fun saveCurrent(session: ZhihuAccountSession) {
         val current = value
         val activeId = current.activeAccountId
         val updated = if (activeId == null) {
@@ -469,10 +492,11 @@ internal class ZhihuAccountState(
 internal fun createAccountHttpClient(
     cookies: MutableMap<String, String>,
     userAgent: String,
+    cookieLock: ReentrantLock = reentrantLock(),
     onCookieChanged: () -> Unit = {},
 ): HttpClient {
     val configure: io.ktor.client.HttpClientConfig<*>.() -> Unit = {
-        installZhihuCommonClientConfig(cookies, userAgent, onCookieChanged)
+        installZhihuCommonClientConfig(cookies, userAgent, onCookieChanged, cookieLock = cookieLock)
     }
     return accountHttpClientEngineForTesting?.let { HttpClient(it, configure) }
         ?: HttpClient(accountHttpClientEngineFactory, configure)

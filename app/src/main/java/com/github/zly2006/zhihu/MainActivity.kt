@@ -156,10 +156,10 @@ class MainActivity : ComponentActivity() {
         val settings = androidSettingsStore(this)
         val lastLaunchTimestamp = settings.getLong(KEY_LAST_LAUNCH_TIMESTAMP, 0L)
         val now = System.currentTimeMillis()
-        val accountClient = androidZhihuAccountStore(this).client
+        val accountStore = androidZhihuAccountStore(this)
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                if (accountClient.credentialRefresher.refresh()) {
+                if (accountStore.refreshCredentials()) {
                     Log.i(TAG, "Zhihu mobile credentials renewed successfully")
                 }
             } catch (e: kotlinx.coroutines.CancellationException) {
@@ -167,7 +167,7 @@ class MainActivity : ComponentActivity() {
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to renew Zhihu mobile credentials", e)
                 androidUserMessageSink(this@MainActivity)
-                    .showLongMessage("刷新登录状态失败，请稍后重试")
+                    .showLongMessage("刷新登录状态失败，如多次看到此提示请重新登录")
             }
         }
         if (now - lastLaunchTimestamp >= TimeUnit.DAYS.toMillis(1)) {

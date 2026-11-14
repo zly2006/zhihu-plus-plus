@@ -20,7 +20,6 @@ package com.github.zly2006.zhihu.data
 import android.annotation.SuppressLint
 import android.content.Context
 import com.github.zly2006.zhihu.account.DEFAULT_ZHIHU_USER_AGENT
-import com.github.zly2006.zhihu.account.ZhihuAccountSession
 import com.github.zly2006.zhihu.account.androidZhihuAccountStore
 import com.github.zly2006.zhihu.account.currentAndroidZhihuAccountStore
 import com.github.zly2006.zhihu.data.Person
@@ -42,17 +41,17 @@ object AccountData {
     }
 
     val data: Data
-        get() = currentAndroidZhihuAccountStore().session.toAndroidData()
-
-    private fun ZhihuAccountSession.toAndroidData(): Data = Data(
-        login = login,
-        username = username,
-        cookies = cookies.toMap(),
-        userAgent = userAgent,
-        self = self?.let {
-            runCatching {
-                ZhihuJson.decodeJson<Person>(it)
-            }.getOrNull()
-        },
-    )
+        get() = currentAndroidZhihuAccountStore().session.run {
+            Data(
+                login = login,
+                username = username,
+                cookies = cookies.toMap(),
+                userAgent = userAgent,
+                self = self?.let {
+                    runCatching {
+                        ZhihuJson.decodeJson<Person>(it)
+                    }.getOrNull()
+                },
+            )
+        }
 }
