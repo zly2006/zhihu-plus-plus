@@ -326,16 +326,15 @@ fun WriteAnswerScreen(
         val answerId = existingAnswerId ?: return@LaunchedEffect
         if (content.text.isNotBlank()) return@LaunchedEffect
         isLoadingExistingAnswer = true
-        runCatching {
-            environment.fetchContentDetail(
+        try {
+            val answer = environment.fetchContentDetail(
                 Article(type = ArticleType.Answer, id = answerId),
             ) as? DataHolder.Answer
-        }.onSuccess { answer ->
             if (answer != null && content.text.isBlank()) {
                 tocEnabled = answer.settings?.tableOfContents?.enabled ?: false
                 content = TextFieldValue(zhihuHtmlToMarkdown(answer.editableContent ?: answer.content))
             }
-        }.onFailure { e ->
+        } catch (e: Exception) {
             errorDialogMessage = buildWriteOperationErrorMessage("加载已有回答失败", e)
         }
         isLoadingExistingAnswer = false
@@ -349,7 +348,7 @@ fun WriteAnswerScreen(
                         text =
                             when {
                                 isDetecting || isLoadingExistingAnswer -> "正在检测已有回答..."
-                                existingAnswerId != null -> "编辑已有回答"
+                                existingAnswerId != null -> "编辑回答"
                                 else -> "写回答"
                             },
                     )
