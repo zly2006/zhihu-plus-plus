@@ -17,6 +17,8 @@
 
 package com.github.zly2006.zhihu.data
 
+import com.github.zly2006.zhihu.account.ZhihuAccountClient
+import com.github.zly2006.zhihu.account.ZhihuRequestProfile
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
@@ -54,7 +56,9 @@ class OnlineHistoryTest {
             )
             listOf(emptyList(), listOf(cached)).forEach { local ->
                 val environment = object : PaginationEnvironment {
-                    override fun httpClient(): HttpClient = error("无需额外请求")
+                    override val accountClient: ZhihuAccountClient? = null
+
+                    override fun httpClient(profile: ZhihuRequestProfile): HttpClient = error("无需额外请求")
 
                     override fun authenticatedCookies() = emptyMap<String, String>()
 

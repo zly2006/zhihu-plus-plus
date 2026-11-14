@@ -65,7 +65,11 @@ class ZhihuAccountClient internal constructor(
     private val cookies = accountState.value.session.cookies
         .toMutableMap()
     private val client = createAccountHttpClient(cookies, accountState.value.session.userAgent, accountStore.sessionLock) {
-        if (isCurrent) accountState.save(load().copy(cookies = cookies.toMutableMap()))
+        if (isCurrent) {
+            val current = load()
+            // 以已保存会话为准；写入失败后的同值 Cookie 仍需重试保存。
+            if (current.cookies != cookies) accountState.save(current.copy(cookies = cookies.toMutableMap()))
+        }
     }
 
     fun load(): ZhihuAccountSession {

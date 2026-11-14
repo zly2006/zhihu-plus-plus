@@ -17,6 +17,8 @@
 
 package com.github.zly2006.zhihu.viewmodel
 
+import com.github.zly2006.zhihu.account.ZhihuAccountClient
+import com.github.zly2006.zhihu.account.ZhihuRequestProfile
 import com.github.zly2006.zhihu.data.ArticleContentPreview
 import com.github.zly2006.zhihu.data.CommonFeed
 import com.github.zly2006.zhihu.data.Feed
@@ -125,7 +127,9 @@ class ArticleViewModelExportTest {
             val previewHtml = "<p data-pid=\"preview\">列表中的已加载正文</p>"
             val model = ArticleViewModel(ArticleContentPreview.attach(route, previewHtml), client)
             val environment = object : ArticleLoadEnvironment {
-                override fun httpClient() = client
+                override val accountClient: ZhihuAccountClient? = null
+
+                override fun httpClient(profile: ZhihuRequestProfile) = client
 
                 override fun authenticatedCookies() = emptyMap<String, String>()
 

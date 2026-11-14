@@ -48,7 +48,6 @@ class ZhihuCookieStorage(
         }
         if (cookie.domain?.endsWith("zhihu.com") != false) {
             cookieLock.withLock {
-                if (cookies[cookie.name] == cookie.value) return
                 cookies[cookie.name] = cookie.value
                 onCookieChanged()
             }
