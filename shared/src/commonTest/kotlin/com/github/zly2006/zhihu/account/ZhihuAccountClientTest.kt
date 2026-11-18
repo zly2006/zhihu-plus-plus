@@ -363,6 +363,175 @@ class ZhihuAccountClientTest {
         }
     }
 
+    @Test
+    fun resolvingCommentIdentityKeepsTheGlobalAccountAndSourceCookies() = runTest {
+        val source = ZhihuAccountSession(
+            login = true,
+            username = "main",
+            profile = ZhihuAccountProfileSnapshot(id = "main", name = "Main"),
+            cookies = mutableMapOf("z_c0" to "main-cookie", "d_c0" to "device-cookie"),
+            mobileAccessToken = "main-access",
+        )
+        val storage = ClientInMemoryAccountSessionStore()
+        val repository = ZhihuAccountRepository(storage).apply { save(source) }
+        withAccountEngine(
+            MockEngine { request ->
+                assertEquals("/people/self", request.url.encodedPath)
+                assertEquals("bearer alias-access", request.headers[HttpHeaders.Authorization])
+                val cookie = request.headers[HttpHeaders.Cookie].orEmpty()
+                kotlin.test.assertTrue("z_c0=alias-cookie" in cookie)
+                kotlin.test.assertFalse("main-cookie" in cookie)
+                respond(
+                    content = """{"id":"alias","name":"Alias","url_token":"alias","avatar_url":"https://example.invalid/alias.png"}""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, "application/json"),
+                )
+            },
+        ) {
+            val store = ZhihuAccountStore(repository)
+            try {
+                val result = source.resolveIdentityChange(
+                    """{"access_token":"alias-access","refresh_token":"alias-refresh","cookie":{"z_c0":"alias-cookie"}}""",
+                    expectedAccountId = "alias",
+                )
+                assertEquals("alias", result.session.profile?.id)
+                assertEquals("https://example.invalid/alias.png", result.session.profile?.avatarUrl)
+                assertEquals("alias-refresh", result.session.mobileRefreshToken)
+                assertEquals("alias-cookie", result.session.cookies["z_c0"])
+                assertEquals("device-cookie", result.session.cookies["d_c0"])
+                assertEquals(source, store.session)
+                assertEquals(source, repository.load())
+                assertEquals("main-cookie", source.cookies["z_c0"])
+                assertEquals(1, storage.writeCount)
+                assertFailsWith<IllegalStateException> {
+                    source.resolveIdentityChange(
+                        """{"access_token":"alias-access","cookie":{"z_c0":"alias-cookie"}}""",
+                        expectedAccountId = "different-person",
+                    )
+                }
+                assertEquals(source, store.session)
+                assertEquals(1, storage.writeCount)
+            } finally {
+                store.close()
+            }
+        }
+    }
+
+    @Test
+    fun temporaryCommentIdentityRestoresTheSourceEvenWhenSendingFails() = runTest {
+        val source = ZhihuAccountSession(
+            login = true,
+            username = "Main",
+            profile = ZhihuAccountProfileSnapshot(id = "main", name = "Main"),
+            cookies = mutableMapOf("z_c0" to "main-cookie"),
+        )
+        val repository = ZhihuAccountRepository(ClientInMemoryAccountSessionStore()).apply { save(source) }
+        val targets = mutableListOf<String>()
+        withAccountEngine(
+            MockEngine { request ->
+                assertEquals("/account/switch", request.url.encodedPath)
+                val target = if (targets.isEmpty()) "alias" else "main"
+                targets += target
+                respond(
+                    """{"uid":"$target","access_token":"$target-access","refresh_token":"$target-refresh","cookie":{"z_c0":"$target-new-cookie"}}""",
+                    HttpStatusCode.OK,
+                    headersOf(HttpHeaders.ContentType, "application/json"),
+                )
+            },
+        ) {
+            val store = ZhihuAccountStore(repository)
+            val originalClient = store.client
+            try {
+                val failure = assertFailsWith<IllegalStateException> {
+                    store.withCommentIdentity("main", ZhihuAccountProfileSnapshot(id = "alias", name = "Alias")) { selected ->
+                        assertEquals("alias", selected.profile?.id)
+                        assertEquals("main", store.session.profile?.id)
+                        assertEquals(
+                            "alias",
+                            repository
+                                .loadAccounts()
+                                .accounts
+                                .single()
+                                .pendingCommentIdentity
+                                ?.profile
+                                ?.id,
+                        )
+                        error("send failed")
+                    }
+                }
+                assertEquals("send failed", failure.message)
+                assertEquals(listOf("alias", "main"), targets)
+                assertEquals("main", store.accountsState.value.activeAccountId)
+                assertEquals("main", store.session.profile?.id)
+                assertEquals("main-new-cookie", store.session.cookies["z_c0"])
+                assertEquals("main-new-cookie", store.client.load().cookies["z_c0"])
+                assertEquals(
+                    null,
+                    repository
+                        .loadAccounts()
+                        .accounts
+                        .single()
+                        .pendingCommentIdentity,
+                )
+                assertSame(originalClient, store.client)
+            } finally {
+                store.close()
+            }
+        }
+    }
+
+    @Test
+    fun interruptedCommentIdentityIsRestoredBeforeTheNextAccountRequest() = runTest {
+        val original = ZhihuAccountSession(
+            login = true,
+            username = "Main",
+            profile = ZhihuAccountProfileSnapshot(id = "main", name = "Main"),
+            cookies = mutableMapOf("z_c0" to "invalidated-main-cookie"),
+        )
+        val pending = original.copy(
+            profile = ZhihuAccountProfileSnapshot(id = "alias", name = "Alias"),
+            cookies = mutableMapOf("z_c0" to "alias-cookie"),
+        )
+        val repository = ZhihuAccountRepository(ClientInMemoryAccountSessionStore()).apply {
+            saveAccounts(ZhihuAccounts("main", listOf(ZhihuSavedAccount("main", original, pending))))
+        }
+        val calls = mutableListOf<String>()
+        withAccountEngine(
+            MockEngine { request ->
+                calls += request.url.encodedPath
+                if (request.url.encodedPath == "/account/switch") {
+                    kotlin.test.assertTrue("alias-cookie" in request.headers[HttpHeaders.Cookie].orEmpty())
+                    respond(
+                        """{"uid":"main","access_token":"restored-access","cookie":{"z_c0":"restored-main-cookie"}}""",
+                        HttpStatusCode.OK,
+                        headersOf(HttpHeaders.ContentType, "application/json"),
+                    )
+                } else {
+                    kotlin.test.assertTrue("restored-main-cookie" in request.headers[HttpHeaders.Cookie].orEmpty())
+                    respond("{}", HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json"))
+                }
+            },
+        ) {
+            val store = ZhihuAccountStore(repository)
+            try {
+                store.client.get("https://www.zhihu.com/api/v4/me")
+                assertEquals(listOf("/account/switch", "/api/v4/me"), calls)
+                assertEquals("main", store.accountsState.value.activeAccountId)
+                assertEquals(
+                    null,
+                    repository
+                        .loadAccounts()
+                        .accounts
+                        .single()
+                        .pendingCommentIdentity,
+                )
+                assertEquals("restored-main-cookie", repository.load().cookies["z_c0"])
+            } finally {
+                store.close()
+            }
+        }
+    }
+
     private fun emptyMockEngine(): HttpClientEngine =
         MockEngine {
             respond(

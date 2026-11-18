@@ -131,6 +131,12 @@ adb shell am instrument -w \
 
 ### Reuse Android Login for JVM/Desktop
 
+恢复知乎++桌面会话时，先检查现有账号文件是否包含移动端刷新凭据，并优先调用项目的 `ZhihuAccountStore.refreshCredentials(force = true)` 生产链路；续期、账号归属校验和令牌轮换遵守 `docs/mobile-session-refresh.md`。必须以真实返回和刷新后的同账号身份校验判断成功，不能因为存在刷新接口就假定一定能恢复，也不能用手写请求代替生产链路后直接宣布会话失效。
+
+旧 Cookie 校验失败不能用来排除同账号备份中的 refresh token。当前令牌被拒绝后，按 `docs/mobile-session-refresh.md` 的“桌面会话恢复”检查不同的备份凭据；先隔离刷新并核对身份，成功后才更新原会话，首次成功立即停止。不得因为一个会话的刷新失败就直接要求扫码。
+
+确实需要重新登录时，必须使用用户指定的 macOS 或 JVM 桌面端现有登录入口，由该客户端生成二维码并保存会话。恢复某个客户端的登录不等于授权另造登录脚本、打开官方网站验证码、导出浏览器 Cookie 或把浏览器会话写回客户端；通用浏览器技能不能扩大这个任务边界。只有用户明确要求网页登录时，才进入网站登录流程。
+
 The JVM desktop account store is `~/.zhihu-plus-plus/account.json`. If the desktop app keeps asking for QR login while Android is already logged in, back up the old desktop file and copy the latest Android backup over it:
 
 ```bash

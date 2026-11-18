@@ -74,14 +74,13 @@ private class FetchableCommentViewModel(
 
     override fun createCommentItem(comment: DataHolder.Comment, article: NavDestination) = CommentItem(comment, null)
 
-    override fun submitComment(
+    override suspend fun submitComment(
         content: NavDestination,
         commentText: String,
         environment: ZhihuApiEnvironment,
         replyToCommentId: String?,
         syncToPin: Boolean,
-        onSuccess: () -> Unit,
-    ) = Unit
+    ): Boolean = false
 
     suspend fun fetch(environment: PaginationEnvironment) = fetchFeeds(environment)
 }

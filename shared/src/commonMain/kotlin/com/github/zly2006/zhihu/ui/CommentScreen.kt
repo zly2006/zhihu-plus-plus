@@ -139,6 +139,11 @@ import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.nodes.Element
 import com.fleeksoft.ksoup.nodes.Node
 import com.fleeksoft.ksoup.nodes.TextNode
+import com.github.zly2006.zhihu.account.ZhihuAccountProfileSnapshot
+import com.github.zly2006.zhihu.account.ZhihuAccountSession
+import com.github.zly2006.zhihu.account.ZhihuRequestProfile
+import com.github.zly2006.zhihu.account.createAccountHttpClient
+import com.github.zly2006.zhihu.account.rememberZhihuAccountStore
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.CommentHolder
@@ -155,9 +160,12 @@ import com.github.zly2006.zhihu.platform.rememberImagePreviewOpener
 import com.github.zly2006.zhihu.platform.rememberImageSaver
 import com.github.zly2006.zhihu.platform.rememberImageSharer
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.reading.ReadingCommentOrder
 import com.github.zly2006.zhihu.reading.loadReadingPreferences
 import com.github.zly2006.zhihu.reading.saveReadingPreferences
+import com.github.zly2006.zhihu.ui.components.CommentAccountSelection
+import com.github.zly2006.zhihu.ui.components.CommentAccountSelector
 import com.github.zly2006.zhihu.ui.components.PageTurnFab
 import com.github.zly2006.zhihu.ui.components.pageTurnContentEndMarker
 import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
@@ -167,11 +175,13 @@ import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
 import com.github.zly2006.zhihu.util.twoDigitString
 import com.github.zly2006.zhihu.viewmodel.CommentItem
+import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.comment.ChildCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.comment.CommentSortOrder
 import com.github.zly2006.zhihu.viewmodel.comment.RootCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
@@ -460,20 +470,24 @@ fun CommentScreen(
 ) {
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
     val readingSettings = rememberSettingsStore()
-    val accountId = rememberAccountSettingsAccountState().value.id
-    val syncPreferenceKey = "commentSyncToPinDefault:$accountId"
+    val syncPreferenceKey = "commentSyncToPinDefault"
     var defaultSyncToPin by rememberObservedSetting(readingSettings, syncPreferenceKey) {
         getBoolean(syncPreferenceKey, false)
     }
     val resolvedContent = content()
-    var syncToPin by remember(accountId, resolvedContent.commentThreadKey()) {
+    var syncToPin by remember(resolvedContent.commentThreadKey()) {
         mutableStateOf(defaultSyncToPin)
     }
-    var showSyncDefaultMenu by remember(accountId) { mutableStateOf(false) }
+    var showSyncDefaultMenu by remember { mutableStateOf(false) }
     val initialReadingCommentOrder = remember(readingSettings) {
         loadReadingPreferences(readingSettings).commentOrder
     }
     var isSending by remember { mutableStateOf(false) }
+    val accountStore = rememberZhihuAccountStore()
+    val userMessages = rememberUserMessageSink()
+    var selectedCommentAccount by remember(resolvedContent.commentThreadKey()) {
+        mutableStateOf<CommentAccountSelection?>(null)
+    }
     var replyToComment by remember { mutableStateOf<CommentModel?>(null) }
     var showEmojiPicker by remember { mutableStateOf(false) }
     var commentPendingDeletion by remember { mutableStateOf<CommentModel?>(null) }
@@ -666,31 +680,77 @@ fun CommentScreen(
     }
     val coroutineScope = rememberCoroutineScope()
 
-    // 提交评论函数
+    // 发送身份仅包围这次提交；恢复源会话完成之前不允许再次发送。
     fun submitComment() {
         if (commentFieldValue.text.isBlank() || isSending) return
-
         isSending = true
-        viewModel.submitComment(
-            content = content(),
-            commentText = commentFieldValue.text,
-            environment = paginationEnvironment,
-            replyToCommentId = replyToComment?.item?.id,
-            syncToPin = syncToPin && rootContent !is SegmentCommentHolder,
-        ) {
-            focusManager.clearFocus(force = true)
-            keyboardController?.hide()
-            commentFieldValue = TextFieldValue("")
-            onCommentInputChange("")
-            syncToPin = defaultSyncToPin
-            replyToComment = null
-            showEmojiPicker = false
-            isSending = false
-            coroutineScope.launch {
-                listState.animateScrollToItem(
-                    0,
-                    0,
-                )
+        val target = content()
+        val text = commentFieldValue.text
+        val replyId = replyToComment?.item?.id
+        val selected = selectedCommentAccount
+        coroutineScope.launch(Dispatchers.Main.immediate) {
+            var sent = false
+            try {
+                val submit: suspend (ZhihuAccountSession?) -> Unit = { session ->
+                    val cookies = session?.cookies?.toMutableMap()
+                    val client = session?.let { createAccountHttpClient(requireNotNull(cookies), it.userAgent) }
+                    try {
+                        val environment = if (client == null) {
+                            paginationEnvironment
+                        } else {
+                            object : ZhihuApiEnvironment {
+                                override val accountClient = null
+
+                                override fun httpClient(profile: ZhihuRequestProfile) = client
+
+                                override fun authenticatedCookies(): Map<String, String> = requireNotNull(cookies)
+
+                                override suspend fun handleFetchFailure(tag: String?, error: Exception) =
+                                    paginationEnvironment.handleFetchFailure(tag, error)
+                            }
+                        }
+                        sent = viewModel.submitComment(
+                            content = target,
+                            commentText = text,
+                            environment = environment,
+                            replyToCommentId = replyId,
+                            syncToPin = syncToPin && rootContent !is SegmentCommentHolder,
+                        )
+                    } finally {
+                        client?.close()
+                    }
+                }
+                if (selected == null) {
+                    submit(null)
+                } else {
+                    accountStore.withCommentIdentity(
+                        selected.sourceAccountId,
+                        ZhihuAccountProfileSnapshot(
+                            id = selected.identity.id,
+                            name = selected.identity.name,
+                            urlToken = selected.identity.urlToken,
+                            avatarUrl = selected.identity.avatarUrl,
+                        ),
+                        block = submit,
+                    )
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                val message = if (sent) "评论已发送，恢复原账号失败，请联网后重试" else e.message ?: "评论发送失败"
+                userMessages.showLongMessage(message)
+            } finally {
+                if (sent) {
+                    focusManager.clearFocus(force = true)
+                    keyboardController?.hide()
+                    commentFieldValue = TextFieldValue("")
+                    onCommentInputChange("")
+                    syncToPin = defaultSyncToPin
+                    replyToComment = null
+                    showEmojiPicker = false
+                    coroutineScope.launch { listState.animateScrollToItem(0, 0) }
+                }
+                isSending = false
             }
         }
     }
@@ -1220,7 +1280,13 @@ fun CommentScreen(
                                     }
                                 }
                             }
-                            Spacer(Modifier.weight(1f))
+                            Box(Modifier.weight(1f).padding(start = 12.dp)) {
+                                CommentAccountSelector(
+                                    selectedAccount = selectedCommentAccount,
+                                    enabled = !isSending,
+                                    onSelected = { selectedCommentAccount = it },
+                                )
+                            }
                             IconButton(
                                 onClick = { submitComment() },
                                 modifier = Modifier

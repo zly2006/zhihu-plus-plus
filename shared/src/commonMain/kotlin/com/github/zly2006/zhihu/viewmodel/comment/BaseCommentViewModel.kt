@@ -111,14 +111,13 @@ abstract class BaseCommentViewModel(
         }
     }
 
-    abstract fun submitComment(
+    abstract suspend fun submitComment(
         content: NavDestination,
         commentText: String,
         environment: ZhihuApiEnvironment,
         replyToCommentId: String? = null,
         syncToPin: Boolean = false,
-        onSuccess: () -> Unit,
-    )
+    ): Boolean
 
     var isLikeLoading by mutableStateOf(false)
 

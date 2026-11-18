@@ -53,6 +53,8 @@ data class ZhihuAccountSession(
 data class ZhihuSavedAccount(
     val id: String,
     val session: ZhihuAccountSession,
+    /** 临时使用马甲号后用于切回原身份的最新凭据；恢复完成后清除。 */
+    val pendingCommentIdentity: ZhihuAccountSession? = null,
 )
 
 @Serializable

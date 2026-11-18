@@ -513,14 +513,13 @@ class CommentScreenInstrumentedTest {
             refreshHistory += sortOrder
         }
 
-        override fun submitComment(
+        override suspend fun submitComment(
             content: NavDestination,
             commentText: String,
             environment: ZhihuApiEnvironment,
             replyToCommentId: String?,
             syncToPin: Boolean,
-            onSuccess: () -> Unit,
-        ) = Unit
+        ): Boolean = false
     }
 
     private class SeededChildCommentViewModel(
@@ -547,14 +546,13 @@ class CommentScreenInstrumentedTest {
 
         override fun loadMore(environment: PaginationEnvironment) = Unit
 
-        override fun submitComment(
+        override suspend fun submitComment(
             content: NavDestination,
             commentText: String,
             environment: ZhihuApiEnvironment,
             replyToCommentId: String?,
             syncToPin: Boolean,
-            onSuccess: () -> Unit,
-        ) {
+        ): Boolean {
             submissions += Submission(commentText, replyToCommentId)
             allData.add(
                 0,
@@ -590,7 +588,7 @@ class CommentScreenInstrumentedTest {
                     childComments = emptyList(),
                 ),
             )
-            onSuccess()
+            return true
         }
     }
 

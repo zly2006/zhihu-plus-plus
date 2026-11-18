@@ -17,7 +17,6 @@
 
 package com.github.zly2006.zhihu.viewmodel.comment
 
-import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.navigation.CommentHolder
 import com.github.zly2006.zhihu.navigation.NavDestination
@@ -30,7 +29,6 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
-import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonArray
 
 /**
@@ -67,41 +65,40 @@ class ChildCommentViewModel(
         return commentItem
     }
 
-    override fun submitComment(
+    override suspend fun submitComment(
         content: NavDestination,
         commentText: String,
         environment: ZhihuApiEnvironment,
         replyToCommentId: String?,
         syncToPin: Boolean,
-        onSuccess: () -> Unit,
-    ) {
+    ): Boolean {
         val commentHolder = content as CommentHolder
-        if (commentText.isBlank()) return
+        if (commentText.isBlank()) return false
 
-        viewModelScope.launch {
-            try {
-                val requestBody = commentHolder.buildSubmitCommentBody(
-                    commentText = commentText,
-                    replyToCommentId = replyToCommentId,
-                    syncToPin = syncToPin,
-                )
+        try {
+            val requestBody = commentHolder.buildSubmitCommentBody(
+                commentText = commentText,
+                replyToCommentId = replyToCommentId,
+                syncToPin = syncToPin,
+            )
 
-                val response = environment.post(commentHolder.article.submitCommentUrl) {
-                    contentType(ContentType.Application.Json)
-                    setBody(requestBody)
-                }
-
-                if (response.status.isSuccess()) {
-                    // 评论成功后，把它添加到第一个。
-                    val model = response.json<DataHolder.Comment>()
-                    allData.add(0, model)
-                    onSuccess()
-                } else {
-                    errorMessage = "评论发送失败: ${response.status}"
-                }
-            } catch (e: Exception) {
-                errorMessage = "评论发送异常: ${e.message}"
+            val response = environment.post(commentHolder.article.submitCommentUrl) {
+                contentType(ContentType.Application.Json)
+                setBody(requestBody)
             }
+
+            if (response.status.isSuccess()) {
+                // 评论成功后，把它添加到第一个。
+                val model = response.json<DataHolder.Comment>()
+                allData.add(0, model)
+                return true
+            } else {
+                errorMessage = "评论发送失败: ${response.status}"
+            }
+        } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            errorMessage = "评论发送异常: ${e.message}"
         }
+        return false
     }
 }

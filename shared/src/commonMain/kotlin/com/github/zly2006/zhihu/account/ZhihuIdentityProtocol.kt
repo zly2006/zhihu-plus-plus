@@ -19,12 +19,16 @@ package com.github.zly2006.zhihu.account
 
 import com.github.zly2006.zhihu.data.ZhihuJson
 import io.ktor.client.request.accept
+import io.ktor.client.request.get
 import io.ktor.client.request.header
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.contentType
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.jsonObject
@@ -133,3 +137,89 @@ internal data class ZhihuIdentityProfile(
     val accountType: Int = 0,
     val subAccountControlStatus: Int = 0,
 )
+
+/** 验证身份切换签发的凭据；调用方决定是否将结果设为应用当前账号。 */
+internal suspend fun ZhihuAccountSession.resolveIdentityChange(
+    body: String,
+    expectedAccountId: String? = null,
+    knownProfile: ZhihuAccountProfileSnapshot? = null,
+): ZhihuIdentityChangeResult {
+    val token = ZhihuJson.decodeJson<ZhihuIdentityToken>(ZhihuJson.json.parseToJsonElement(body))
+    check(token.accessToken.isNotBlank()) { "服务器未返回新账号凭证" }
+    check(token.cookie["z_c0"].isNullOrBlank().not()) { "服务器未返回新账号 Cookie" }
+    val newCookies = this.cookies.toMutableMap().apply { putAll(token.cookie) }
+    val client = createAccountHttpClient(newCookies, userAgent)
+    return try {
+        val rawProfile = if (knownProfile == null) {
+            val response = client.get("https://api.zhihu.com/people/self") {
+                applyIdentityHeaders(
+                    this@resolveIdentityChange.copy(
+                        mobileAccessToken = token.accessToken,
+                        mobileTokenType = token.tokenType,
+                    ),
+                )
+            }
+            ZhihuJson.json
+                .parseToJsonElement(
+                    response.identitySuccessBody("初始化新账号"),
+                ).jsonObject
+        } else {
+            check(token.uid == knownProfile.id) { "服务器返回的凭据与目标账号不一致" }
+            null
+        }
+        val profile = rawProfile?.let { ZhihuJson.decodeJson<ZhihuIdentityProfile>(it) }
+            ?: ZhihuIdentityProfile(
+                id = requireNotNull(knownProfile).id,
+                name = knownProfile.name,
+                urlToken = knownProfile.urlToken,
+                userType = knownProfile.userType,
+                avatarUrl = knownProfile.avatarUrl,
+            )
+        check(profile.id.isNotBlank() && profile.name.isNotBlank()) { "服务器返回的账号资料不完整" }
+        check(expectedAccountId == null || profile.id == expectedAccountId) { "服务器返回的账号与目标账号不一致" }
+        val nextSession = this.copy(
+            login = true,
+            username = profile.name,
+            cookies = newCookies,
+            profile = ZhihuAccountProfileSnapshot(
+                id = profile.id,
+                name = profile.name,
+                urlToken = profile.urlToken,
+                userType = profile.userType,
+                avatarUrl = profile.avatarUrl,
+            ),
+            self = rawProfile,
+            mobileAccessToken = token.accessToken,
+            mobileRefreshToken = token.refreshToken,
+            mobileTokenType = token.tokenType,
+            mobileTokenExpiresAt = token.expiresAt,
+        )
+        ZhihuIdentityChangeResult(
+            account = ZhihuIdentityAccount(
+                id = profile.id,
+                urlToken = profile.urlToken,
+                name = profile.name,
+                avatarUrl = profile.avatarUrl,
+                isActive = true,
+                canCreateSubAccount = profile.canCreateSubAccount,
+                accountType = profile.accountType,
+                subAccountControlStatus = profile.subAccountControlStatus,
+            ),
+            session = nextSession,
+        )
+    } finally {
+        client.close()
+    }
+}
+
+internal suspend fun ZhihuAccountSession.switchCommentIdentity(target: ZhihuAccountProfileSnapshot): ZhihuAccountSession {
+    val body = createAccountHttpClient(cookies.toMutableMap(), userAgent).use { client ->
+        client
+            .post("https://api.zhihu.com/account/switch") {
+                applyIdentityHeaders(this@switchCommentIdentity)
+                contentType(ContentType.Application.Json)
+                setBody(SwitchAccountRequest(target.id))
+            }.identitySuccessBody("切换评论身份")
+    }
+    return resolveIdentityChange(body, target.id, knownProfile = target).session
+}

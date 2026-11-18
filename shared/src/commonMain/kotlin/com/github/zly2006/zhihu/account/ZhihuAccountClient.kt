@@ -37,11 +37,13 @@ import io.ktor.http.HttpStatusCode
 import kotlinx.atomicfu.locks.ReentrantLock
 import kotlinx.atomicfu.locks.reentrantLock
 import kotlinx.atomicfu.locks.withLock
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -90,7 +92,7 @@ class ZhihuAccountClient internal constructor(
         val updatedCookies = session.cookies.toMap()
         cookies.clear()
         cookies.putAll(updatedCookies)
-        accountState.save(session.copy(cookies = cookies.toMutableMap()))
+        if (load() != session) accountState.save(session.copy(cookies = cookies.toMutableMap()))
     }
 
     suspend fun request(
@@ -99,6 +101,8 @@ class ZhihuAccountClient internal constructor(
         profile: ZhihuRequestProfile = ZhihuRequestProfile.Web,
         block: suspend HttpRequestBuilder.() -> Unit = {},
     ): HttpResponse {
+        check(isCurrent) { "账号客户端已失效" }
+        accountStore.restorePendingCommentIdentities()
         check(isCurrent) { "账号客户端已失效" }
         // 仅复制 Cookie 时持锁；签名计算和网络等待保持在锁外。
         val requestCookies = accountStore.sessionLock.withLock { cookies.toMap() }
@@ -125,6 +129,7 @@ class ZhihuAccountClient internal constructor(
                 error["message"]?.jsonPrimitive?.content in setOf("ERR_LOGIN_TICKET_EXPIRED", "ERR_TICKET_NOT_EXIST")
         }.getOrDefault(false)
         if (!ticketExpired) return response
+        accountStore.restorePendingCommentIdentities()
         if (!accountStore.refreshCredentials(force = true, rejectedCookie = requestCookie, sourceClient = this) || !isCurrent) return response
         val retryCookies = accountStore.sessionLock.withLock { cookies.toMap() }
         return transport
@@ -190,6 +195,7 @@ class ZhihuAccountStore internal constructor(
     // 每个账号只保存续期互斥和最近尝试时间；锁实例同时标记本次登录生命周期。
     private val credentialRefreshes = mutableMapOf<String, Pair<Mutex, TimeMark?>>()
     private var mutableClient = ZhihuAccountClient(this)
+    private val commentIdentityMutex = Mutex()
 
     val accountsState: StateFlow<ZhihuAccounts> = accountState.state.asStateFlow()
     val session: ZhihuAccountSession
@@ -249,6 +255,62 @@ class ZhihuAccountStore internal constructor(
         if (id == activeAccountId) replaceClient()
     }
 
+    /** 仅在发送期间临时使用目标身份，并持久保留切回所需凭据。 */
+    suspend fun <T> withCommentIdentity(
+        sourceAccountId: String,
+        identity: ZhihuAccountProfileSnapshot,
+        block: suspend (ZhihuAccountSession) -> T,
+    ): T = commentIdentityMutex.withLock {
+        restorePendingCommentIdentitiesLocked()
+        val source = sessionLock.withLock {
+            accountState.value.accounts
+                .firstOrNull { it.id == sourceAccountId }
+                ?.session
+                ?: error("该账号已退出登录，请重新选择")
+        }
+        val originalProfile = requireNotNull(source.profile) { "账号资料不完整，请重新登录" }
+        if (identity.id == originalProfile.id) return@withLock block(source)
+
+        // 2026-11-18 实测：切换后原身份校验从 200 变为 401，旧刷新令牌随后也被服务端拒绝。
+        // 不能在展开菜单时切换，也不能只在内存中保存新凭据，否则进程退出后无法切回。
+        val selected = withContext(NonCancellable) {
+            source.switchCommentIdentity(identity).also {
+                sessionLock.withLock { accountState.savePendingCommentIdentity(sourceAccountId, it) }
+            }
+        }
+        try {
+            block(selected)
+        } finally {
+            withContext(NonCancellable) { restorePendingCommentIdentitiesLocked() }
+        }
+    }
+
+    internal suspend fun restorePendingCommentIdentities() = commentIdentityMutex.withLock {
+        restorePendingCommentIdentitiesLocked()
+    }
+
+    private suspend fun restorePendingCommentIdentitiesLocked() {
+        val pendingAccounts = sessionLock.withLock { accountState.value.accounts.filter { it.pendingCommentIdentity != null } }
+        for (account in pendingAccounts) {
+            val original = account.session
+            val restored = requireNotNull(account.pendingCommentIdentity)
+                .switchCommentIdentity(requireNotNull(original.profile))
+            sessionLock.withLock {
+                val latest = accountState.value.accounts.firstOrNull { it.id == account.id } ?: return@withLock
+                check(latest.pendingCommentIdentity == account.pendingCommentIdentity) { "账号凭据已更新，请重新操作" }
+                val updated = latest.session.copy(
+                    cookies = restored.cookies,
+                    mobileAccessToken = restored.mobileAccessToken,
+                    mobileRefreshToken = restored.mobileRefreshToken,
+                    mobileTokenType = restored.mobileTokenType,
+                    mobileTokenExpiresAt = restored.mobileTokenExpiresAt,
+                )
+                accountState.finishCommentIdentityRestore(account.id, updated)
+                if (accountState.value.activeAccountId == account.id) mutableClient.save(updated)
+            }
+        }
+    }
+
     suspend fun login(cookies: MutableMap<String, String>): Boolean {
         val session = verifyCandidateSession(cookies) ?: return false
         selectVerifiedSession(session)
@@ -271,68 +333,16 @@ class ZhihuAccountStore internal constructor(
         body: String,
         expectedAccountId: String? = null,
     ): ZhihuIdentityChangeResult {
-        val token = ZhihuJson.decodeJson<ZhihuIdentityToken>(ZhihuJson.json.parseToJsonElement(body))
-        check(token.accessToken.isNotBlank()) { "服务器未返回新账号凭证" }
-        check(token.cookie["z_c0"].isNullOrBlank().not()) { "服务器未返回新账号 Cookie" }
         val oldSession = sessionLock.withLock {
             check(sourceClient.isCurrent) { "账号已切换，请重新操作" }
             sourceClient.load()
         }
-        val newCookies = oldSession.cookies.toMutableMap().apply { putAll(token.cookie) }
-        val client = sourceClient.temporaryHttpClient(newCookies)
-        return try {
-            val response = client.get("https://api.zhihu.com/people/self") {
-                applyIdentityHeaders(
-                    oldSession.copy(
-                        mobileAccessToken = token.accessToken,
-                        mobileTokenType = token.tokenType,
-                    ),
-                )
-            }
-            val rawProfile = ZhihuJson.json
-                .parseToJsonElement(
-                    response.identitySuccessBody("初始化新账号"),
-                ).jsonObject
-            val profile = ZhihuJson.decodeJson<ZhihuIdentityProfile>(rawProfile)
-            check(profile.id.isNotBlank() && profile.name.isNotBlank()) { "服务器返回的账号资料不完整" }
-            check(expectedAccountId == null || profile.id == expectedAccountId) { "服务器返回的账号与目标账号不一致" }
-            val nextSession = oldSession.copy(
-                login = true,
-                username = profile.name,
-                cookies = newCookies,
-                profile = ZhihuAccountProfileSnapshot(
-                    id = profile.id,
-                    name = profile.name,
-                    urlToken = profile.urlToken,
-                    userType = profile.userType,
-                    avatarUrl = profile.avatarUrl,
-                ),
-                self = rawProfile,
-                mobileAccessToken = token.accessToken,
-                mobileRefreshToken = token.refreshToken,
-                mobileTokenType = token.tokenType,
-                mobileTokenExpiresAt = token.expiresAt,
-            )
-            sessionLock.withLock {
-                check(sourceClient.isCurrent) { "账号已切换，请重新操作" }
-                replaceSession(nextSession)
-            }
-            ZhihuIdentityChangeResult(
-                account = ZhihuIdentityAccount(
-                    id = profile.id,
-                    urlToken = profile.urlToken,
-                    name = profile.name,
-                    avatarUrl = profile.avatarUrl,
-                    isActive = true,
-                    canCreateSubAccount = profile.canCreateSubAccount,
-                    accountType = profile.accountType,
-                    subAccountControlStatus = profile.subAccountControlStatus,
-                ),
-                session = nextSession,
-            )
-        } finally {
-            client.close()
+        val result = oldSession.resolveIdentityChange(body, expectedAccountId)
+        sessionLock.withLock {
+            check(sourceClient.isCurrent) { "账号已切换，请重新操作" }
+            replaceSession(result.session)
         }
+        return result
     }
 
     private fun selectVerifiedSession(session: ZhihuAccountSession) = sessionLock.withLock {
@@ -450,6 +460,23 @@ internal class ZhihuAccountState(
     fun saveAccount(id: String, session: ZhihuAccountSession) {
         val current = value
         persist(current.copy(accounts = current.accounts.map { if (it.id == id) it.copy(session = session) else it }))
+    }
+
+    fun savePendingCommentIdentity(id: String, session: ZhihuAccountSession?) {
+        val current = value
+        require(current.accounts.any { it.id == id }) { "该账号已退出登录" }
+        persist(current.copy(accounts = current.accounts.map { if (it.id == id) it.copy(pendingCommentIdentity = session) else it }))
+    }
+
+    fun finishCommentIdentityRestore(id: String, session: ZhihuAccountSession) {
+        val current = value
+        persist(
+            current.copy(
+                accounts = current.accounts.map {
+                    if (it.id == id) it.copy(session = session, pendingCommentIdentity = null) else it
+                },
+            ),
+        )
     }
 
     fun selectOrAdd(session: ZhihuAccountSession) {
