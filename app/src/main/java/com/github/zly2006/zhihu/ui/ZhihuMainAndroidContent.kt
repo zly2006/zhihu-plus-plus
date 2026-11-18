@@ -85,6 +85,20 @@ fun AndroidZhihuMain(navController: NavHostController) {
                 else -> ExitTransition.None
             }
         },
+        articlePopExitTransition = {
+            when (sharedArticleAnswerSwitchState.answerTransitionDirection) {
+                ArticleAnswerTransitionDirection.VERTICAL_NEXT ->
+                    slideOutVertically(tween(300)) { -it } + fadeOut(tween(300))
+                ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS ->
+                    slideOutVertically(tween(300)) { it } + fadeOut(tween(300))
+                ArticleAnswerTransitionDirection.HORIZONTAL_NEXT ->
+                    slideOutHorizontally(tween(300)) { -it } + fadeOut(tween(300))
+                ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS ->
+                    slideOutHorizontally(tween(300)) { it } + fadeOut(tween(300))
+                else -> null
+            }
+        },
+        articlePopEnterTransition = { null },
         articleContent = { article, navEntry ->
             val viewModel: ArticleViewModel = viewModel(navEntry) {
                 ArticleViewModel(article, activity.httpClient, androidUserMessageSink(activity)) { onPause ->
