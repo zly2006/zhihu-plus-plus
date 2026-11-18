@@ -1179,6 +1179,7 @@ fun CommentScreen(
                                                         showSyncDefaultMenu = true
                                                     } else {
                                                         syncToPin = false
+                                                        readingSettings.putBoolean(syncPreferenceKey, false)
                                                     }
                                                 },
                                             ).testTag(COMMENT_SYNC_TO_PIN_TAG),
