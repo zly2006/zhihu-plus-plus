@@ -53,6 +53,7 @@ internal class ArticleAnswerNavigationState(
         internal set
     var navigatingToNextAnswer by mutableStateOf(false)
         private set
+    private var navigatingToPreviousAnswer = false
 
     val answerNavigator: AnswerNavigator?
         get() = switchState?.navigator
@@ -78,30 +79,43 @@ internal class ArticleAnswerNavigationState(
     }
 
     fun navigateToPrevious() {
+        if (navigatingToPreviousAnswer) return
         val state = switchState ?: return
         val answerNavigator = state.navigator ?: return
-        state.answerTransitionDirection = if (answerSwitchMode == "horizontal") {
+        val direction = if (answerSwitchMode == "horizontal") {
             ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS
         } else {
             ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS
         }
+        state.answerTransitionDirection = direction
         state.navigatingFromAnswerSwitch = true
         answerNavigator.pushAnswer(viewModel.toCachedContent(sourceLabel = answerNavigator.sourceName))
 
         val previous = answerNavigator.goToPrevious()
         if (previous != null) {
             state.pendingInitialContent = previous
-            state.promoteForNavigation(state.answerTransitionDirection)
+            state.promoteForNavigation(direction)
             navigate(previous.article)
             return
         }
 
         state.pendingInitialContent = answerNavigator.previousAnswerPreview
-        state.promoteForNavigation(state.answerTransitionDirection)
+        state.promoteForNavigation(direction)
+        navigatingToPreviousAnswer = true
         coroutineScope.launch {
-            val loaded = answerNavigator.loadPrevious() ?: return@launch
-            state.pendingInitialContent = loaded
-            navigate(loaded.article)
+            try {
+                val loaded = answerNavigator.loadPrevious()
+                if (loaded != null) {
+                    state.pendingInitialContent = loaded
+                    navigate(loaded.article)
+                } else {
+                    state.navigatingFromAnswerSwitch = false
+                    state.answerTransitionDirection = ArticleAnswerTransitionDirection.DEFAULT
+                    state.pendingInitialContent = null
+                }
+            } finally {
+                navigatingToPreviousAnswer = false
+            }
         }
     }
 
@@ -109,28 +123,36 @@ internal class ArticleAnswerNavigationState(
         if (navigatingToNextAnswer) return
         val state = switchState ?: return
         val answerNavigator = state.navigator ?: return
-        state.answerTransitionDirection = if (answerSwitchMode == "horizontal") {
+        val direction = if (answerSwitchMode == "horizontal") {
             ArticleAnswerTransitionDirection.HORIZONTAL_NEXT
         } else {
             ArticleAnswerTransitionDirection.VERTICAL_NEXT
         }
+        state.answerTransitionDirection = direction
         state.navigatingFromAnswerSwitch = true
         answerNavigator.pushAnswer(viewModel.toCachedContent(sourceLabel = answerNavigator.sourceName))
 
         val historyNext = answerNavigator.goToNext()
         if (historyNext != null) {
             state.pendingInitialContent = historyNext
-            state.promoteForNavigation(state.answerTransitionDirection)
+            state.promoteForNavigation(direction)
             navigate(historyNext.article)
             return
         }
 
         state.pendingInitialContent = answerNavigator.nextAnswer
-        state.promoteForNavigation(state.answerTransitionDirection)
+        state.promoteForNavigation(direction)
         navigatingToNextAnswer = true
         coroutineScope.launch {
             try {
-                answerNavigator.loadNext()?.let(::navigate)
+                val loaded = answerNavigator.loadNext()
+                if (loaded != null) {
+                    navigate(loaded)
+                } else {
+                    state.navigatingFromAnswerSwitch = false
+                    state.answerTransitionDirection = ArticleAnswerTransitionDirection.DEFAULT
+                    state.pendingInitialContent = null
+                }
             } finally {
                 navigatingToNextAnswer = false
             }

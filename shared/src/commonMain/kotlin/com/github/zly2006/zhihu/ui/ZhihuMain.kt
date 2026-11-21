@@ -146,6 +146,7 @@ import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.reading.rememberReadingPlayerController
 import com.github.zly2006.zhihu.reading.saveReadingPlaybackSpeed
 import com.github.zly2006.zhihu.ui.components.CompactReadingPlayerButton
+import com.github.zly2006.zhihu.ui.components.LocalPageTurnPriority
 import com.github.zly2006.zhihu.ui.components.NoOpPagerNestedScrollConnection
 import com.github.zly2006.zhihu.ui.components.ReadingPlayerBar
 import com.github.zly2006.zhihu.ui.components.ReadingQueueSheet
@@ -530,6 +531,7 @@ fun ZhihuMain(
             LocalSelectedContentDestination provides selectedContentDestination,
             LocalReadingPlayerOverlayPadding provides readingPlayerOverlayPadding,
             LocalReadingPlayerOverlayOffsetState provides readingPlayerOverlayOffsetState,
+            LocalPageTurnPriority provides if (showListDetail || showDetailPane) 1 else 0,
         ) {
             NavHost(
                 navController = detailNavController,

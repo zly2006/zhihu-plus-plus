@@ -33,6 +33,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -154,6 +155,16 @@ fun <T> PaginatedList(
             onLoadMore()
             // 留一帧给调用方发布新数据或标记列表结束。
             delay(50.milliseconds)
+        }
+    }
+
+    val pullToRefreshHandle = LocalFeedPullToRefreshHandle.current
+    DisposableEffect(pullToRefreshHandle, listState, reverseLayout) {
+        pullToRefreshHandle?.setCanScrollBackwardProvider {
+            reverseLayout || listState.canScrollBackward
+        }
+        onDispose {
+            pullToRefreshHandle?.setCanScrollBackwardProvider(null)
         }
     }
 
