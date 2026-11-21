@@ -96,6 +96,7 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.MyCollections
 import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
+import com.github.zly2006.zhihu.platform.SettingsStore
 import com.github.zly2006.zhihu.platform.isAnswerSwipeSupported
 import com.github.zly2006.zhihu.platform.isPageTurnSupported
 import com.github.zly2006.zhihu.platform.platformBottomBarItemLimit
@@ -128,6 +129,34 @@ import kotlin.time.Duration.Companion.milliseconds
 const val DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY = "duo3_card_large_title"
 const val DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY = "duo3_tiqian_markdown"
 const val DUO3_TIQIAN_MATH_FONT_PREFERENCE_KEY = "duo3_tiqian_math_font"
+const val DUO3_POINTER_INTERACTION_PREFERENCE_KEY = "duo3_pointer_interaction"
+
+fun SettingsStore.isDuo3PointerInteractionEnabled(): Boolean {
+    val fallback = getBoolean("duo3_all", false) ||
+        getBoolean("duo3_article_bar", false) ||
+        getBoolean("duo3_home_account", false)
+    return getBoolean(DUO3_POINTER_INTERACTION_PREFERENCE_KEY, fallback)
+}
+
+@Composable
+fun rememberDuo3PointerInteractionEnabled(settings: SettingsStore = rememberSettingsStore()): Boolean {
+    var enabled by remember(settings) { mutableStateOf(settings.isDuo3PointerInteractionEnabled()) }
+    DisposableEffect(settings) {
+        enabled = settings.isDuo3PointerInteractionEnabled()
+        val subscription = settings.observeKeyChanges { key ->
+            if (key == DUO3_POINTER_INTERACTION_PREFERENCE_KEY ||
+                key == "duo3_all" ||
+                key == "duo3_article_bar" ||
+                key == "duo3_home_account"
+            ) {
+                enabled = settings.isDuo3PointerInteractionEnabled()
+            }
+        }
+        onDispose(subscription::close)
+    }
+    return enabled
+}
+
 const val PREF_FONT_SIZE = "contentFontSize"
 const val PREF_LINE_HEIGHT = "contentLineHeight"
 const val PREF_BLOCK_SPACING = "contentBlockSpacing"
@@ -1611,6 +1640,9 @@ fun AppearanceSettingsScreen(
             val duo3TiqianMathFont = remember {
                 mutableStateOf(settings.getString(DUO3_TIQIAN_MATH_FONT_PREFERENCE_KEY, "lete"))
             }
+            val duo3PointerInteraction = remember {
+                mutableStateOf(settings.isDuo3PointerInteractionEnabled())
+            }
 
             fun enableAllSubs() {
                 if (isTiqianMarkdownRendererAvailable) {
@@ -1622,6 +1654,7 @@ fun AppearanceSettingsScreen(
                 settings.putBoolean("duo3_card_layout", true)
                 settings.putBoolean("duo3_article_bar", true)
                 settings.putBoolean("duo3_article_actions", true)
+                settings.putBoolean(DUO3_POINTER_INTERACTION_PREFERENCE_KEY, true)
                 settings.putBoolean("showRefreshFab", false)
                 settings.putBoolean("buttonSkipAnswer", false)
                 duo3HomeAccount.value = true
@@ -1629,6 +1662,7 @@ fun AppearanceSettingsScreen(
                 duo3CardLayout.value = true
                 duo3ArticleBar.value = true
                 duo3ArticleActions.value = true
+                duo3PointerInteraction.value = true
                 // 123duo3 改动中会移除 FAB。
                 showRefreshFab.value = false
                 buttonSkipAnswer.value = false
@@ -1650,11 +1684,13 @@ fun AppearanceSettingsScreen(
                 settings.putBoolean("duo3_card_layout", false)
                 settings.putBoolean("duo3_article_bar", false)
                 settings.putBoolean("duo3_article_actions", false)
+                settings.putBoolean(DUO3_POINTER_INTERACTION_PREFERENCE_KEY, false)
                 duo3HomeAccount.value = false
                 duo3CardAppearance.value = false
                 duo3CardLayout.value = false
                 duo3ArticleBar.value = false
                 duo3ArticleActions.value = false
+                duo3PointerInteraction.value = false
                 persistBottomBarSelection(selectedBottomBarItemKeys.value, duo3HomeAccountEnabled = false)
             }
 
@@ -1794,6 +1830,23 @@ fun AppearanceSettingsScreen(
                             duo3ArticleActions.value = it
                             settings.putBoolean("duo3_article_actions", it)
                         },
+                    )
+                }
+
+                if (isAnswerSwipeSupported || isPageTurnSupported) {
+                    SettingItemWithSwitch(
+                        title = { Text("大屏与键鼠：止点拖拽自动显隐与快捷键增强") },
+                        description = {
+                            Text("平时完全隐藏上下回答预览卡与顶部刷新提示，仅在边界继续拖拽时浮现 123Duo3 药丸卡片；同步启用方向键、空格翻页、R 刷新与鼠标前进侧键切换回答。")
+                        },
+                        checked = duo3PointerInteraction.value,
+                        onCheckedChange = {
+                            duo3PointerInteraction.value = it
+                            settings.putBoolean(DUO3_POINTER_INTERACTION_PREFERENCE_KEY, it)
+                        },
+                        settingKey = DUO3_POINTER_INTERACTION_PREFERENCE_KEY,
+                        highlightedKey = settingKey,
+                        bringIntoViewRequester = requesterFor(DUO3_POINTER_INTERACTION_PREFERENCE_KEY),
                     )
                 }
             }

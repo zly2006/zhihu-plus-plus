@@ -25,6 +25,8 @@ import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.KeyEvent
+import android.view.MotionEvent
+import android.widget.EditText
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
@@ -80,6 +82,7 @@ import com.github.zly2006.zhihu.ui.components.PageTurnDispatcher
 import com.github.zly2006.zhihu.ui.components.PageTurnFab
 import com.github.zly2006.zhihu.ui.components.getHighestQualityVideoUrl
 import com.github.zly2006.zhihu.ui.subscreens.PREF_VOLUME_KEY_PAGE_TURN
+import com.github.zly2006.zhihu.ui.subscreens.isDuo3PointerInteractionEnabled
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.util.ContinuousUsageReminderManager
 import com.github.zly2006.zhihu.util.EmojiManager
@@ -279,9 +282,27 @@ class MainActivity : ComponentActivity() {
 
     private var pageTurnLongPressConsumed = false
 
-    private fun pageTurnCommand(keyCode: Int): PageTurnCommand? = when (keyCode) {
+    private fun isTextInputFocused(): Boolean {
+        val focused = currentFocus ?: return false
+        return focused is EditText || focused.onCheckIsTextEditor()
+    }
+
+    private fun pageTurnCommand(
+        event: KeyEvent,
+        duo3PointerEnabled: Boolean,
+    ): PageTurnCommand? = when (event.keyCode) {
         KeyEvent.KEYCODE_PAGE_DOWN -> PageTurnCommand.PageDown
         KeyEvent.KEYCODE_PAGE_UP -> PageTurnCommand.PageUp
+        KeyEvent.KEYCODE_DPAD_DOWN -> if (duo3PointerEnabled) PageTurnCommand.PageDown else null
+        KeyEvent.KEYCODE_DPAD_UP -> if (duo3PointerEnabled) PageTurnCommand.PageUp else null
+        KeyEvent.KEYCODE_SPACE ->
+            if (!duo3PointerEnabled) {
+                null
+            } else if (event.isShiftPressed) {
+                PageTurnCommand.PageUp
+            } else {
+                PageTurnCommand.PageDown
+            }
         KeyEvent.KEYCODE_VOLUME_DOWN ->
             if (androidSettingsStore(this).getBoolean(PREF_VOLUME_KEY_PAGE_TURN, false)) {
                 PageTurnCommand.PageDown
@@ -298,7 +319,50 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        val command = pageTurnCommand(event.keyCode) ?: return super.dispatchKeyEvent(event)
+        if (isTextInputFocused()) return super.dispatchKeyEvent(event)
+        val duo3PointerEnabled = androidSettingsStore(this).isDuo3PointerInteractionEnabled()
+
+        if (duo3PointerEnabled) {
+            // R / Ctrl+R / F5 刷新列表快捷键（排除 Alt/Meta 组合键）
+            if ((event.keyCode == KeyEvent.KEYCODE_R && !event.isAltPressed && !event.isMetaPressed) ||
+                event.keyCode == KeyEvent.KEYCODE_F5
+            ) {
+                if (!pageTurnDispatcher.hasRefreshTarget) return super.dispatchKeyEvent(event)
+                return when (event.action) {
+                    KeyEvent.ACTION_DOWN -> true
+                    KeyEvent.ACTION_UP -> pageTurnDispatcher.dispatchRefresh()
+                    else -> super.dispatchKeyEvent(event)
+                }
+            }
+
+            // 其余带 Ctrl / Alt / Meta 修饰键的组合（如 Ctrl+C 复制选中文本）一律放行给系统
+            if (event.isCtrlPressed || event.isAltPressed || event.isMetaPressed) {
+                return super.dispatchKeyEvent(event)
+            }
+
+            // 左右方向键 / [ ] / 浏览器前进键切换上/下回答
+            val answerSwitchNext: Boolean? = when (event.keyCode) {
+                KeyEvent.KEYCODE_DPAD_LEFT,
+                KeyEvent.KEYCODE_LEFT_BRACKET,
+                -> false
+                KeyEvent.KEYCODE_DPAD_RIGHT,
+                KeyEvent.KEYCODE_RIGHT_BRACKET,
+                KeyEvent.KEYCODE_FORWARD,
+                -> true
+                else -> null
+            }
+            if (answerSwitchNext != null && pageTurnDispatcher.hasAnswerSwitchTarget) {
+                return when (event.action) {
+                    KeyEvent.ACTION_DOWN -> true
+                    KeyEvent.ACTION_UP -> pageTurnDispatcher.dispatchAnswerSwitch(next = answerSwitchNext)
+                    else -> super.dispatchKeyEvent(event)
+                }
+            }
+        } else if (event.isCtrlPressed || event.isAltPressed || event.isMetaPressed) {
+            return super.dispatchKeyEvent(event)
+        }
+
+        val command = pageTurnCommand(event, duo3PointerEnabled) ?: return super.dispatchKeyEvent(event)
         if (!pageTurnDispatcher.hasActiveTarget) return super.dispatchKeyEvent(event)
 
         return when (event.action) {
@@ -328,6 +392,18 @@ class MainActivity : ComponentActivity() {
             }
             else -> super.dispatchKeyEvent(event)
         }
+    }
+
+    override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean {
+        if (event.actionMasked == MotionEvent.ACTION_BUTTON_PRESS &&
+            event.actionButton == MotionEvent.BUTTON_FORWARD &&
+            androidSettingsStore(this).isDuo3PointerInteractionEnabled() &&
+            !isTextInputFocused() &&
+            pageTurnDispatcher.dispatchAnswerSwitch(next = true)
+        ) {
+            return true
+        }
+        return super.dispatchGenericMotionEvent(event)
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {

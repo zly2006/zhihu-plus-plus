@@ -40,6 +40,62 @@ class PageTurnDispatcherTest {
     }
 
     @Test
+    fun higherPriorityDetailPaneWinsOverListPaneAndFallsBackWhenClosed() {
+        val dispatcher = PageTurnDispatcher()
+        val detailArticle = dispatcher.registerTarget(priority = 1)
+        // 即使左栏列表由于生命周期/Tab 切换在右栏之后重新注册，priority=1 的右栏详情依然优先响应翻页
+        val listFeed = dispatcher.registerTarget(priority = 0)
+
+        assertTrue(dispatcher.dispatch(PageTurnCommand.PageDown))
+        assertEquals(PageTurnCommand.PageDown, detailArticle.commands.tryReceive().getOrNull())
+        assertNull(listFeed.commands.tryReceive().getOrNull())
+
+        // 当右栏没有详情（例如回退到 EmptyDetail）关闭目标后，自动回退给左栏列表
+        detailArticle.close()
+        assertTrue(dispatcher.dispatch(PageTurnCommand.PageDown))
+        assertEquals(PageTurnCommand.PageDown, listFeed.commands.tryReceive().getOrNull())
+    }
+
+    @Test
+    fun dispatchesAnswerSwitchAndFeedRefreshTargets() {
+        val dispatcher = PageTurnDispatcher()
+        assertFalse(dispatcher.hasAnswerSwitchTarget)
+        assertFalse(dispatcher.hasRefreshTarget)
+        assertFalse(dispatcher.dispatchAnswerSwitch(next = true))
+        assertFalse(dispatcher.dispatchRefresh())
+
+        var switchedDirection: String? = null
+        val answerTarget = dispatcher.registerAnswerSwitchTarget(
+            priority = 1,
+            onPrevious = {
+                switchedDirection = "prev"
+                true
+            },
+            onNext = {
+                switchedDirection = "next"
+                true
+            },
+        )
+        assertTrue(dispatcher.hasAnswerSwitchTarget)
+        assertTrue(dispatcher.dispatchAnswerSwitch(next = true))
+        assertEquals("next", switchedDirection)
+        assertTrue(dispatcher.dispatchAnswerSwitch(next = false))
+        assertEquals("prev", switchedDirection)
+
+        answerTarget.close()
+        assertFalse(dispatcher.hasAnswerSwitchTarget)
+
+        var refreshCount = 0
+        val refreshTarget = dispatcher.registerRefreshTarget { refreshCount++ }
+        assertTrue(dispatcher.hasRefreshTarget)
+        assertTrue(dispatcher.dispatchRefresh())
+        assertEquals(1, refreshCount)
+
+        refreshTarget.close()
+        assertFalse(dispatcher.hasRefreshTarget)
+    }
+
+    @Test
     fun fallsBackWhenNoWhitelistedTargetIsActive() {
         val dispatcher = PageTurnDispatcher()
 
