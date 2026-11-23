@@ -38,6 +38,8 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -651,7 +653,19 @@ fun ZhihuMain(
                                     }
                                 }
                             },
-                        ) { innerPadding ->
+                        ) { scaffoldPadding ->
+                            // 非 Liquid Glass 模式下底部栏不透明，外层统一裁剪底部可见区域，子页面只消费剩余内边距。
+                            val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
+                            val isLiquidGlass = overlayUiStyle == UiStyle.LiquidGlass
+                            val innerPadding = if (isLiquidGlass) {
+                                scaffoldPadding
+                            } else {
+                                PaddingValues(
+                                    start = scaffoldPadding.calculateStartPadding(layoutDirection),
+                                    top = scaffoldPadding.calculateTopPadding(),
+                                    end = scaffoldPadding.calculateEndPadding(layoutDirection),
+                                )
+                            }
                             CompositionLocalProvider(
                                 LocalLifecycleOwner provides listLifecycleOwner,
                                 LocalArticleNavController provides navController,
@@ -678,27 +692,34 @@ fun ZhihuMain(
                             ) {
                                 NavHost(
                                     navController,
-                                    modifier = Modifier.pointerInput(Unit) {
-                                        while (true) {
-                                            awaitPointerEventScope {
-                                                awaitFirstDown(
-                                                    requireUnconsumed = false,
-                                                    pass = PointerEventPass.Initial,
-                                                )
-                                                while (
-                                                    awaitPointerEvent(PointerEventPass.Final)
-                                                        .changes
-                                                        .any { it.pressed }
-                                                ) {
-                                                    // 等手势完成后再重组，避免取消同一次背景点击或滚动。
+                                    modifier = Modifier
+                                        .then(
+                                            if (isLiquidGlass) {
+                                                Modifier
+                                            } else {
+                                                Modifier.padding(bottom = scaffoldPadding.calculateBottomPadding())
+                                            },
+                                        ).pointerInput(Unit) {
+                                            while (true) {
+                                                awaitPointerEventScope {
+                                                    awaitFirstDown(
+                                                        requireUnconsumed = false,
+                                                        pass = PointerEventPass.Initial,
+                                                    )
+                                                    while (
+                                                        awaitPointerEvent(PointerEventPass.Final)
+                                                            .changes
+                                                            .any { it.pressed }
+                                                    ) {
+                                                        // 等手势完成后再重组，避免取消同一次背景点击或滚动。
+                                                    }
+                                                }
+                                                if (shouldCompactPlayerOnBackgroundInteraction) {
+                                                    delay(100)
+                                                    isReadingPlayerExpandedByUser = false
                                                 }
                                             }
-                                            if (shouldCompactPlayerOnBackgroundInteraction) {
-                                                delay(100)
-                                                isReadingPlayerExpandedByUser = false
-                                            }
-                                        }
-                                    },
+                                        },
                                     startDestination = MainTabs,
                                     enterTransition = {
                                         slideInHorizontally(tween(300)) { it }

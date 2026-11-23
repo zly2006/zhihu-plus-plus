@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -199,32 +200,21 @@ fun AccountSettingScreen(
 
     AppScaffold(
         modifier = Modifier.fillMaxSize(),
+        contentWindowInsets = WindowInsets(0),
         containerColor = when {
             isEmbeddedOverlay -> androidx.compose.ui.graphics.Color.Transparent
             uiStyle == UiStyle.Material3 -> MaterialTheme.colorScheme.surfaceContainer
             else -> MaterialTheme.colorScheme.surface
         },
         settingsAmbientBackground = !isEmbeddedOverlay,
-    ) { padding ->
-        // Liquid Glass 浮动底栏需要内容滚到底栏下方以呈现玻璃折射；其余风格保持在底栏上方裁剪滚动视口。
-        val isLiquidGlass = uiStyle == UiStyle.LiquidGlass
-        val viewportPadding = if (isLiquidGlass) PaddingValues(0.dp) else innerPadding
-        val contentPadding = if (isLiquidGlass) {
-            PaddingValues(
-                top = maxOf(padding.calculateTopPadding(), innerPadding.calculateTopPadding()),
-                bottom = maxOf(padding.calculateBottomPadding(), innerPadding.calculateBottomPadding()),
-            )
-        } else {
-            padding
-        }
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(viewportPadding)
                 .testTag(ACCOUNT_SETTINGS_SCROLL_TAG)
                 .pageTurnViewportWithGuide(pageTurnTarget)
                 .verticalScroll(scrollState)
-                .padding(contentPadding),
+                .padding(innerPadding),
         ) {
             LaunchedEffect(data.login, refreshAccountProfileOnEnter) {
                 if (refreshAccountProfileOnEnter && data.login) {
