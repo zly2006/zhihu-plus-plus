@@ -206,15 +206,17 @@ fun AccountSettingScreen(
         },
         settingsAmbientBackground = !isEmbeddedOverlay,
     ) { padding ->
+        val isLiquidGlass = uiStyle == UiStyle.LiquidGlass
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .then(if (isLiquidGlass) Modifier else Modifier.padding(innerPadding))
                 .testTag(ACCOUNT_SETTINGS_SCROLL_TAG)
                 .pageTurnViewportWithGuide(pageTurnTarget)
                 .verticalScroll(scrollState)
                 .padding(
-                    top = maxOf(padding.calculateTopPadding(), innerPadding.calculateTopPadding()),
-                    bottom = maxOf(padding.calculateBottomPadding(), innerPadding.calculateBottomPadding()),
+                    top = if (isLiquidGlass) maxOf(padding.calculateTopPadding(), innerPadding.calculateTopPadding()) else padding.calculateTopPadding(),
+                    bottom = if (isLiquidGlass) maxOf(padding.calculateBottomPadding(), innerPadding.calculateBottomPadding()) else padding.calculateBottomPadding(),
                 ),
         ) {
             LaunchedEffect(data.login, refreshAccountProfileOnEnter) {
