@@ -31,16 +31,11 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -55,6 +50,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.ui.components.AppAlertDialog
+import com.github.zly2006.zhihu.ui.components.AppIconButton
+import com.github.zly2006.zhihu.ui.components.AppScaffold
+import com.github.zly2006.zhihu.ui.components.AppTextButton
+import com.github.zly2006.zhihu.ui.components.AppTopAppBar
 import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.util.twoDigitString
@@ -87,18 +87,19 @@ fun BlockedFeedHistoryScreen() {
         enabled = !showClearDialog,
     )
 
-    Scaffold(
+    AppScaffold(
+        settingsAmbientBackground = true,
         topBar = {
-            TopAppBar(
+            AppTopAppBar(
                 title = { Text("屏蔽记录") },
                 navigationIcon = {
-                    IconButton(onClick = navigator.onNavigateBack) {
+                    AppIconButton(onClick = navigator.onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
                 actions = {
                     if (records.isNotEmpty()) {
-                        IconButton(onClick = { showClearDialog = true }) {
+                        AppIconButton(onClick = { showClearDialog = true }) {
                             Icon(Icons.Default.Delete, contentDescription = "清空记录")
                         }
                     }
@@ -120,8 +121,8 @@ fun BlockedFeedHistoryScreen() {
                 modifier = Modifier
                     .fillMaxSize()
                     .pageTurnViewportWithGuide(pageTurnTarget)
-                    .padding(innerPadding)
                     .testTag("blocked_feed_history_list"),
+                contentPadding = innerPadding,
                 state = listState,
             ) {
                 items(records, key = { it.id }) { record ->
@@ -138,12 +139,12 @@ fun BlockedFeedHistoryScreen() {
     }
 
     if (showClearDialog) {
-        AlertDialog(
+        AppAlertDialog(
             onDismissRequest = { showClearDialog = false },
             title = { Text("清空屏蔽记录") },
             text = { Text("确定要清空所有屏蔽记录吗？此操作不可撤销。") },
             confirmButton = {
-                TextButton(
+                AppTextButton(
                     onClick = {
                         coroutineScope.launch { dao.clearAll() }
                         showClearDialog = false
@@ -153,7 +154,7 @@ fun BlockedFeedHistoryScreen() {
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showClearDialog = false }) {
+                AppTextButton(onClick = { showClearDialog = false }) {
                     Text("取消")
                 }
             },
@@ -205,7 +206,7 @@ private fun BlockedFeedRecordItem(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        IconButton(
+        AppIconButton(
             onClick = onDelete,
             modifier = Modifier.testTag("blocked_feed_history_delete_${record.id}"),
         ) {

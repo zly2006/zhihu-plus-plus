@@ -19,12 +19,10 @@ package com.github.zly2006.zhihu.ui
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
@@ -42,6 +40,7 @@ import com.github.zly2006.zhihu.platform.UserMessageDuration
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.reading.RegisterReadingQueueSource
+import com.github.zly2006.zhihu.ui.components.AppCircularProgressIndicator
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
@@ -110,15 +109,15 @@ fun HotListScreen(
     }
 
     Column {
-        FeedPullToRefresh(viewModel, environment) {
+        FeedPullToRefresh(viewModel, environment, padding = innerPadding) {
             PaginatedList(
                 items = viewModel.displayItems,
                 listState = listState,
                 onLoadMore = { viewModel.loadMore(environment) },
                 modifier = Modifier
-                    .padding(innerPadding)
                     .pageTurnViewportWithGuide(pageTurnTarget)
                     .testTag(HOT_LIST_LIST_TAG),
+                contentPadding = innerPadding,
                 isEnd = { viewModel.isEnd },
                 footer = ProgressIndicatorFooter,
             ) { item ->
@@ -138,7 +137,7 @@ fun HotListScreen(
                     },
                 ) {
                     if (viewModel.isLoading) {
-                        CircularProgressIndicator(modifier = Modifier.size(36.dp))
+                        AppCircularProgressIndicator(modifier = Modifier.size(36.dp))
                     } else {
                         Icon(Icons.Default.Refresh, contentDescription = "刷新")
                     }

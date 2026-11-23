@@ -20,6 +20,7 @@ package com.github.zly2006.zhihu.ui
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -28,18 +29,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -56,6 +50,13 @@ import com.github.zly2006.zhihu.data.Collection
 import com.github.zly2006.zhihu.navigation.CollectionContent
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.ui.components.AppAlertDialog
+import com.github.zly2006.zhihu.ui.components.AppCard
+import com.github.zly2006.zhihu.ui.components.AppFloatingActionButton
+import com.github.zly2006.zhihu.ui.components.AppIconButton
+import com.github.zly2006.zhihu.ui.components.AppScaffold
+import com.github.zly2006.zhihu.ui.components.AppTextButton
+import com.github.zly2006.zhihu.ui.components.AppTopAppBar
 import com.github.zly2006.zhihu.ui.components.CreateCollectionDialog
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
@@ -97,12 +98,10 @@ fun CollectionScreen(
         }
     }
 
-    Scaffold(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(contentPadding),
+    AppScaffold(
+        modifier = Modifier.fillMaxSize(),
         topBar = {
-            TopAppBar(
+            AppTopAppBar(
                 title = {
                     Text(
                         text = "我的收藏夹",
@@ -111,7 +110,7 @@ fun CollectionScreen(
                 },
                 navigationIcon = {
                     if (showBackButton) {
-                        IconButton(
+                        AppIconButton(
                             onClick = navigator.onNavigateBack,
                             modifier = Modifier.testTag(COLLECTION_SCREEN_BACK_BUTTON_TAG),
                         ) {
@@ -122,14 +121,19 @@ fun CollectionScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
+            val innerSystemBottom = androidx.compose.material3.ScaffoldDefaults.contentWindowInsets
+                .asPaddingValues()
+                .calculateBottomPadding()
+            AppFloatingActionButton(
                 onClick = {
                     if (!viewModel.isCreatingCollection && viewModel.deletingCollectionId == null) {
                         viewModel.clearMutationErrors()
                         showCreateCollectionDialog = true
                     }
                 },
-                modifier = Modifier.testTag(COLLECTION_SCREEN_CREATE_BUTTON_TAG),
+                modifier = Modifier
+                    .padding(bottom = (contentPadding.calculateBottomPadding() - innerSystemBottom).coerceAtLeast(0.dp))
+                    .testTag(COLLECTION_SCREEN_CREATE_BUTTON_TAG),
             ) {
                 Icon(Icons.Filled.Add, contentDescription = "新建收藏夹")
             }
@@ -146,12 +150,18 @@ fun CollectionScreen(
             listState = listState,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
                 .pageTurnViewportWithGuide(pageTurnTarget)
                 .testTag(COLLECTION_SCREEN_LIST_TAG),
+            contentPadding = PaddingValues(
+                top = innerPadding.calculateTopPadding(),
+                bottom = maxOf(
+                    innerPadding.calculateBottomPadding(),
+                    contentPadding.calculateBottomPadding(),
+                ),
+            ),
             footer = ProgressIndicatorFooter,
         ) { collection ->
-            Card(
+            AppCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 8.dp)
@@ -173,7 +183,7 @@ fun CollectionScreen(
                         modifier = Modifier.weight(1f),
                     )
                     if (!collection.isDefault) {
-                        IconButton(
+                        AppIconButton(
                             onClick = {
                                 viewModel.clearMutationErrors()
                                 collectionPendingDeletion = collection
@@ -220,7 +230,7 @@ fun CollectionScreen(
 
     collectionPendingDeletion?.let { collection ->
         val isDeleting = viewModel.deletingCollectionId != null
-        AlertDialog(
+        AppAlertDialog(
             modifier = Modifier.testTag("collection_screen_delete_dialog_${collection.id}"),
             onDismissRequest = {
                 if (!isDeleting) {
@@ -241,7 +251,7 @@ fun CollectionScreen(
                 }
             },
             confirmButton = {
-                TextButton(
+                AppTextButton(
                     onClick = {
                         coroutineScope.launch {
                             if (viewModel.deleteCollection(environment, collection)) {
@@ -258,7 +268,7 @@ fun CollectionScreen(
                 }
             },
             dismissButton = {
-                TextButton(
+                AppTextButton(
                     onClick = {
                         collectionPendingDeletion = null
                     },

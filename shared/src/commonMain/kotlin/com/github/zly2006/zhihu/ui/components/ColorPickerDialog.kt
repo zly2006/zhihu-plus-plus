@@ -31,11 +31,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -70,7 +67,7 @@ fun ColorPickerDialog(
 
     val currentColor = Color(red, green, blue)
 
-    AlertDialog(
+    AppAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
@@ -135,12 +132,12 @@ fun ColorPickerDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { onColorSelected(currentColor) }) {
+            AppTextButton(onClick = { onColorSelected(currentColor) }) {
                 Text("确定")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            AppTextButton(onClick = onDismiss) {
                 Text("取消")
             }
         },
@@ -163,7 +160,7 @@ private fun ColorSlider(
             modifier = Modifier.width(50.dp),
             style = MaterialTheme.typography.bodyMedium,
         )
-        Slider(
+        AppSlider(
             value = value,
             onValueChange = onValueChange,
             modifier = Modifier.weight(1f),

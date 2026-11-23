@@ -38,18 +38,11 @@ import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SwitchAccount
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -79,6 +72,13 @@ import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.requestLoginNavigation
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.ui.components.AppAlertDialog
+import com.github.zly2006.zhihu.ui.components.AppCheckbox
+import com.github.zly2006.zhihu.ui.components.AppCircularProgressIndicator
+import com.github.zly2006.zhihu.ui.components.AppIconButton
+import com.github.zly2006.zhihu.ui.components.AppLargeTopAppBar
+import com.github.zly2006.zhihu.ui.components.AppScaffold
+import com.github.zly2006.zhihu.ui.components.AppTextButton
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
@@ -186,17 +186,18 @@ fun IdentityManagementScreen() {
             refresh()
         }
 
-        Scaffold(
+        AppScaffold(
+            settingsAmbientBackground = true,
             modifier = Modifier
                 .fillMaxSize()
                 .testTag(IDENTITY_MANAGEMENT_SCREEN_TAG)
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
             topBar = {
-                LargeTopAppBar(
+                AppLargeTopAppBar(
                     title = { Text("身份管理") },
                     navigationIcon = {
-                        IconButton(
+                        AppIconButton(
                             onClick = navigator.onNavigateBack,
                             colors = IconButtonDefaults.iconButtonColors(
                                 containerColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -229,7 +230,7 @@ fun IdentityManagementScreen() {
                             .height(160.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        CircularProgressIndicator()
+                        AppCircularProgressIndicator()
                     }
                 }
 
@@ -269,6 +270,7 @@ fun IdentityManagementScreen() {
                                         },
                                     )
                                 },
+                                iconPresentation = com.github.zly2006.zhihu.ui.components.SettingIconPresentation.Avatar,
                                 icon = {
                                     AsyncImage(
                                         model = account.avatarUrl,
@@ -280,7 +282,7 @@ fun IdentityManagementScreen() {
                                 },
                                 endAction = {
                                     when {
-                                        isSwitching -> CircularProgressIndicator(Modifier.size(20.dp))
+                                        isSwitching -> AppCircularProgressIndicator(Modifier.size(20.dp))
                                         isCurrent -> Text(
                                             "当前登录",
                                             color = MaterialTheme.colorScheme.primary,
@@ -320,7 +322,7 @@ fun IdentityManagementScreen() {
                                 description = { Text("切换到这个登录账号") },
                                 icon = { Icon(Icons.Default.SwitchAccount, null) },
                                 endAction = {
-                                    IconButton(onClick = { removeLoginAccount = account }) {
+                                    AppIconButton(onClick = { removeLoginAccount = account }) {
                                         Icon(Icons.Default.DeleteOutline, contentDescription = "移除登录账号")
                                     }
                                 },
@@ -355,7 +357,7 @@ fun IdentityManagementScreen() {
                             enabled = state.canCreateSubAccount && !state.busy,
                             endAction = {
                                 if (state.creating) {
-                                    CircularProgressIndicator(Modifier.size(20.dp))
+                                    AppCircularProgressIndicator(Modifier.size(20.dp))
                                 }
                             },
                             onClick = {
@@ -369,7 +371,7 @@ fun IdentityManagementScreen() {
         }
 
         switchTarget?.let { account ->
-            AlertDialog(
+            AppAlertDialog(
                 onDismissRequest = {
                     if (!state.busy) switchTarget = null
                 },
@@ -378,7 +380,7 @@ fun IdentityManagementScreen() {
                     Text("将切换到“${account.name}”。之后的推荐、内容和互动行为都属于该账号。")
                 },
                 confirmButton = {
-                    TextButton(
+                    AppTextButton(
                         enabled = !state.busy,
                         onClick = {
                             switchTarget = null
@@ -428,7 +430,7 @@ fun IdentityManagementScreen() {
                     }
                 },
                 dismissButton = {
-                    TextButton(
+                    AppTextButton(
                         enabled = !state.busy,
                         onClick = { switchTarget = null },
                     ) {
@@ -439,7 +441,7 @@ fun IdentityManagementScreen() {
         }
 
         if (showCreateDialog) {
-            AlertDialog(
+            AppAlertDialog(
                 onDismissRequest = {
                     if (!state.busy) showCreateDialog = false
                 },
@@ -459,7 +461,7 @@ fun IdentityManagementScreen() {
                                 },
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Checkbox(
+                            AppCheckbox(
                                 checked = acceptedCreateRules,
                                 enabled = !state.busy,
                                 onCheckedChange = { acceptedCreateRules = it },
@@ -469,7 +471,7 @@ fun IdentityManagementScreen() {
                     }
                 },
                 confirmButton = {
-                    TextButton(
+                    AppTextButton(
                         modifier = Modifier.testTag(IDENTITY_MANAGEMENT_CREATE_CONFIRM_TAG),
                         enabled = acceptedCreateRules && !state.busy,
                         onClick = {
@@ -518,7 +520,7 @@ fun IdentityManagementScreen() {
                     }
                 },
                 dismissButton = {
-                    TextButton(
+                    AppTextButton(
                         enabled = !state.busy,
                         onClick = { showCreateDialog = false },
                     ) {
@@ -529,12 +531,12 @@ fun IdentityManagementScreen() {
         }
 
         switchLoginAccount?.let { account ->
-            AlertDialog(
+            AppAlertDialog(
                 onDismissRequest = { switchLoginAccount = null },
                 title = { Text("切换登录账号") },
                 text = { Text("将切换到“${account.session.profile?.name ?: account.session.username}”。") },
                 confirmButton = {
-                    TextButton(
+                    AppTextButton(
                         onClick = {
                             switchLoginAccount = null
                             coroutineScope.launch {
@@ -554,7 +556,7 @@ fun IdentityManagementScreen() {
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { switchLoginAccount = null }) {
+                    AppTextButton(onClick = { switchLoginAccount = null }) {
                         Text("取消")
                     }
                 },
@@ -562,12 +564,12 @@ fun IdentityManagementScreen() {
         }
 
         removeLoginAccount?.let { account ->
-            AlertDialog(
+            AppAlertDialog(
                 onDismissRequest = { removeLoginAccount = null },
                 title = { Text("移除登录账号") },
                 text = { Text("将从本机删除“${account.session.profile?.name ?: account.session.username}”的登录凭据，不会注销知乎账号。") },
                 confirmButton = {
-                    TextButton(
+                    AppTextButton(
                         onClick = {
                             accountStore.removeAccount(account.id)
                             removeLoginAccount = null
@@ -577,7 +579,7 @@ fun IdentityManagementScreen() {
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { removeLoginAccount = null }) {
+                    AppTextButton(onClick = { removeLoginAccount = null }) {
                         Text("取消")
                     }
                 },

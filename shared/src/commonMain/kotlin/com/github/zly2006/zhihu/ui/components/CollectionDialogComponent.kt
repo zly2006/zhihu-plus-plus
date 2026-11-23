@@ -51,6 +51,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.data.Collection
+import com.github.zly2006.zhihu.theme.LocalUiStyle
+import com.github.zly2006.zhihu.theme.UiStyle
+import com.github.zly2006.zhihu.theme.liquidGlassSemanticTokens
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -163,7 +166,11 @@ private fun CollectionItem(
             .fillMaxWidth()
             .clickable { onToggle() },
         shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant,
+        color = if (LocalUiStyle.current == UiStyle.LiquidGlass) {
+            liquidGlassSemanticTokens().contentSurface
+        } else {
+            MaterialTheme.colorScheme.surfaceVariant
+        },
     ) {
         Row(
             modifier = Modifier

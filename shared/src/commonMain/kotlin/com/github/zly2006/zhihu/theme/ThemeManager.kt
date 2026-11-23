@@ -30,6 +30,7 @@ data class ThemeSnapshot(
     val backgroundColorLight: Int = 0xFFFFFFFF.toInt(),
     val backgroundColorDark: Int = 0xFF121212.toInt(),
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    val uiStyle: UiStyle = UiStyle.Material3,
 )
 
 object ThemeManager {
@@ -38,6 +39,8 @@ object ThemeManager {
     private val backgroundColorLight = mutableIntStateOf(0xFFFFFFFF.toInt())
     private val backgroundColorDark = mutableIntStateOf(0xFF121212.toInt())
     private val themeMode = mutableStateOf(ThemeMode.SYSTEM)
+    private val uiStyle = mutableStateOf(UiStyle.Material3)
+    private var uiStyleInitialized = false
 
     @Composable
     fun getUseDynamicColor(): Boolean = useDynamicColor.value
@@ -55,6 +58,11 @@ object ThemeManager {
     @Composable
     fun getThemeMode(): ThemeMode = themeMode.value
 
+    @Composable
+    fun getUiStyle(): UiStyle = uiStyle.value
+
+    fun currentUiStyle(): UiStyle = uiStyle.value
+
     var isDarkTheme: Boolean = false
         private set
 
@@ -71,6 +79,15 @@ object ThemeManager {
         backgroundColorLight.intValue = snapshot.backgroundColorLight
         backgroundColorDark.intValue = snapshot.backgroundColorDark
         themeMode.value = snapshot.themeMode
+        uiStyle.value = snapshot.uiStyle
+        uiStyleInitialized = true
+    }
+
+    fun syncUiStyleIfUninitialized(storedValue: String?) {
+        if (!uiStyleInitialized) {
+            uiStyle.value = UiStyle.fromValueOrDefault(storedValue)
+            uiStyleInitialized = true
+        }
     }
 
     fun snapshot(): ThemeSnapshot = ThemeSnapshot(
@@ -79,6 +96,7 @@ object ThemeManager {
         backgroundColorLight = backgroundColorLight.intValue,
         backgroundColorDark = backgroundColorDark.intValue,
         themeMode = themeMode.value,
+        uiStyle = uiStyle.value,
     )
 
     fun setUseDynamicColor(useDynamic: Boolean) {
@@ -100,6 +118,11 @@ object ThemeManager {
 
     fun setThemeMode(mode: ThemeMode) {
         themeMode.value = mode
+    }
+
+    fun setUiStyle(style: UiStyle) {
+        uiStyle.value = style
+        uiStyleInitialized = true
     }
 }
 

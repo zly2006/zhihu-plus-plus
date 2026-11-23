@@ -35,13 +35,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material3.Button
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
@@ -65,6 +61,10 @@ import com.github.zly2006.zhihu.navigation.WriteAnswer
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.notification.rememberNotificationSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.ui.components.AppButton
+import com.github.zly2006.zhihu.ui.components.AppCenterAlignedTopAppBar
+import com.github.zly2006.zhihu.ui.components.AppIconButton
+import com.github.zly2006.zhihu.ui.components.AppScaffold
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
@@ -104,13 +104,13 @@ fun NotificationTimelineScreen(
         }
     }
 
-    Scaffold(
+    AppScaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
-            CenterAlignedTopAppBar(
+            AppCenterAlignedTopAppBar(
                 title = { Text(title) },
                 navigationIcon = {
-                    IconButton(onClick = navigator.onNavigateBack) {
+                    AppIconButton(onClick = navigator.onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
@@ -120,10 +120,22 @@ fun NotificationTimelineScreen(
             )
         },
     ) { paddingValues ->
+        val pullToRefreshState = androidx.compose.material3.pulltorefresh
+            .rememberPullToRefreshState()
         PullToRefreshBox(
             isRefreshing = viewModel.isLoading,
             onRefresh = { viewModel.refresh(environment) },
-            modifier = Modifier.padding(paddingValues),
+            state = pullToRefreshState,
+            indicator = {
+                androidx.compose.material3.pulltorefresh.PullToRefreshDefaults.Indicator(
+                    state = pullToRefreshState,
+                    isRefreshing = viewModel.isLoading,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = paddingValues.calculateTopPadding()),
+                )
+            },
+            modifier = Modifier.fillMaxSize(),
         ) {
             PaginatedList(
                 items = viewModel.allData,
@@ -133,6 +145,7 @@ fun NotificationTimelineScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .pageTurnViewportWithGuide(pageTurnTarget),
+                contentPadding = paddingValues,
                 footer = ProgressIndicatorFooter,
                 key = { it.stableId },
             ) { notification ->
@@ -281,7 +294,11 @@ private fun InvitationAnswerItem(
                 .fillMaxWidth()
                 .clickable(onClick = onQuestionClick),
             shape = RoundedCornerShape(14.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            color = if (com.github.zly2006.zhihu.theme.LocalUiStyle.current == com.github.zly2006.zhihu.theme.UiStyle.Miuix) {
+                top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.surfaceContainer
+            } else {
+                MaterialTheme.colorScheme.surfaceContainerLow
+            },
         ) {
             Column(Modifier.padding(14.dp)) {
                 if (rewardText.isNotBlank()) {
@@ -316,7 +333,7 @@ private fun InvitationAnswerItem(
                         modifier = Modifier.weight(1f),
                     )
                     Spacer(Modifier.width(10.dp))
-                    Button(
+                    AppButton(
                         onClick = onAnswerClick,
                         modifier = Modifier.testTag("invitation_answer_${notification.stableId}"),
                     ) {

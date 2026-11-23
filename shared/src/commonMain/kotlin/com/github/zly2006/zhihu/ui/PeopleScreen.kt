@@ -49,12 +49,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.PrimaryScrollableTabRow
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -104,6 +99,10 @@ import com.github.zly2006.zhihu.platform.rememberImagePreviewOpener
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.platform.rememberZhihuWebUrlOpener
 import com.github.zly2006.zhihu.reading.RegisterReadingQueueSource
+import com.github.zly2006.zhihu.ui.components.AppIconButton
+import com.github.zly2006.zhihu.ui.components.AppOutlinedButton
+import com.github.zly2006.zhihu.ui.components.AppScaffold
+import com.github.zly2006.zhihu.ui.components.AppTab
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.PageTurnTarget
@@ -739,11 +738,12 @@ fun PeopleScreen(
     }
     val collapsedFraction = scrollBehavior.state.collapsedFraction
 
-    Scaffold(
+    AppScaffold(
         modifier = Modifier
             .testTag(PEOPLE_SCREEN_ROOT_TAG)
             .nestedScroll(scrollBehavior.nestedScrollConnection)
             .fillMaxSize(),
+        enableBackdrop = false,
         topBar = {
             Box(
                 modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars),
@@ -799,12 +799,12 @@ fun PeopleScreen(
                             },
                         )
                     }
-                    PrimaryScrollableTabRow(
+                    com.github.zly2006.zhihu.ui.components.AppPrimaryScrollableTabRow(
                         selectedTabIndex = pagerState.currentPage,
                         modifier = Modifier.testTag(PEOPLE_SCREEN_TAB_ROW_TAG),
                     ) {
                         PEOPLE_SCREEN_TITLES.forEachIndexed { index, title ->
-                            Tab(
+                            AppTab(
                                 selected = pagerState.currentPage == index,
                                 onClick = {
                                     coroutineScope.launch {
@@ -846,7 +846,7 @@ fun PeopleScreen(
                         },
                 )
                 if (viewModel.memberHashId.isNotBlank() && viewModel.memberHashId != Person.EMPTY_ID) {
-                    IconButton(
+                    AppIconButton(
                         onClick = {
                             val memberName = viewModel.name.takeIf { it.isNotBlank() } ?: person.name
                             navigator.onNavigate(
@@ -1158,7 +1158,7 @@ private fun FollowingSubscriptionsPage(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             PEOPLE_SCREEN_SUBSCRIPTION_TITLES.forEachIndexed { index, title ->
-                OutlinedButton(
+                AppOutlinedButton(
                     onClick = { selectedPage = index },
                     modifier = Modifier.testTag("people_screen_subscription_tab_$index"),
                     shape = RoundedCornerShape(8.dp),
@@ -1514,7 +1514,7 @@ private fun PeopleListItem(
                 )
             }
         }
-        OutlinedButton(
+        AppOutlinedButton(
             onClick = {
                 navigator.onNavigate(
                     Person(
@@ -1608,7 +1608,7 @@ private fun SortBar(
             .padding(vertical = 8.dp, horizontal = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        OutlinedButton(
+        AppOutlinedButton(
             onClick = { onSortChange("voteups") },
             modifier = Modifier
                 .weight(1f)
@@ -1625,7 +1625,7 @@ private fun SortBar(
         ) {
             Text("按热度")
         }
-        OutlinedButton(
+        AppOutlinedButton(
             onClick = { onSortChange("created") },
             modifier = Modifier
                 .weight(1f)
@@ -1773,25 +1773,25 @@ private fun UserInfoHeader(
             horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            OutlinedButton(
+            AppOutlinedButton(
                 onClick = onFollowToggle,
                 modifier = Modifier.testTag(PEOPLE_SCREEN_FOLLOW_BUTTON_TAG),
             ) {
                 Text(if (viewModel.isFollowing) "取消关注" else "关注")
             }
-            OutlinedButton(
+            AppOutlinedButton(
                 onClick = onBlockToggle,
                 modifier = Modifier.testTag(PEOPLE_SCREEN_BLOCK_BUTTON_TAG),
             ) {
                 Text(if (viewModel.isBlocking) "取消拉黑" else "拉黑")
             }
-            OutlinedButton(
+            AppOutlinedButton(
                 onClick = onRecommendationBlockToggle,
                 modifier = Modifier.testTag(PEOPLE_SCREEN_RECOMMENDATION_BLOCK_BUTTON_TAG),
             ) {
                 Text(if (viewModel.isBlockedInRecommendations) "取消屏蔽推荐" else "屏蔽推荐")
             }
-            OutlinedButton(
+            AppOutlinedButton(
                 onClick = onQuestionAuthorBlockToggle,
                 modifier = Modifier.testTag(PEOPLE_SCREEN_QUESTION_AUTHOR_BLOCK_BUTTON_TAG),
             ) {

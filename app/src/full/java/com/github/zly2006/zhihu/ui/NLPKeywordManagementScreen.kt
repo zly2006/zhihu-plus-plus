@@ -43,23 +43,13 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -72,12 +62,26 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.nlp.ModelState
 import com.github.zly2006.zhihu.nlp.NLPService
 import com.github.zly2006.zhihu.nlp.SentenceEmbeddingManager
+import com.github.zly2006.zhihu.theme.LocalUiStyle
+import com.github.zly2006.zhihu.theme.UiStyle
+import com.github.zly2006.zhihu.ui.components.AppAlertDialog
+import com.github.zly2006.zhihu.ui.components.AppButton
+import com.github.zly2006.zhihu.ui.components.AppCard
+import com.github.zly2006.zhihu.ui.components.AppFilterChip
+import com.github.zly2006.zhihu.ui.components.AppIconButton
+import com.github.zly2006.zhihu.ui.components.AppOutlinedTextField
+import com.github.zly2006.zhihu.ui.components.AppPrimaryTabRow
+import com.github.zly2006.zhihu.ui.components.AppScaffold
+import com.github.zly2006.zhihu.ui.components.AppSlider
+import com.github.zly2006.zhihu.ui.components.AppTab
+import com.github.zly2006.zhihu.ui.components.AppTextButton
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedContentRecord
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeyword
 import com.github.zly2006.zhihu.viewmodel.filter.KeywordType
@@ -152,7 +156,16 @@ fun NLPKeywordManagementScreen(
         loadData()
     }
 
-    Scaffold { scaffoldPadding ->
+    AppScaffold(
+        enableBackdrop = false,
+        contentWindowInsets = androidx.compose.foundation.layout
+            .WindowInsets(0, 0, 0, 0),
+        containerColor = if (LocalUiStyle.current == UiStyle.Material3) {
+            MaterialTheme.colorScheme.background
+        } else {
+            Color.Transparent
+        },
+    ) { scaffoldPadding ->
         Column(
             modifier = Modifier
                 .padding(scaffoldPadding)
@@ -160,9 +173,9 @@ fun NLPKeywordManagementScreen(
                 .fillMaxWidth(),
         ) {
             // 标签页
-            TabRow(selectedTabIndex = selectedTab) {
+            AppPrimaryTabRow(selectedTabIndex = selectedTab) {
                 tabs.forEachIndexed { index, title ->
-                    Tab(
+                    AppTab(
                         selected = selectedTab == index,
                         onClick = { selectedTab = index },
                         text = { Text(title) },
@@ -391,7 +404,7 @@ fun NLPPhraseManagementTab(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         item {
-            Card {
+            AppCard {
                 Column(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -426,13 +439,13 @@ fun NLPPhraseManagementTab(
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        Button(
+                        AppButton(
                             onClick = onLoadModel,
                             enabled = modelState !is ModelState.Loading && modelState !is ModelState.Ready,
                         ) {
                             Text(if (modelState is ModelState.Loading) "加载中..." else "加载模型")
                         }
-                        TextButton(
+                        AppTextButton(
                             onClick = onUnloadModel,
                             enabled = modelState is ModelState.Ready && !isModelBusy,
                         ) {
@@ -445,7 +458,7 @@ fun NLPPhraseManagementTab(
 
         // 说明卡片
         item {
-            Card(
+            AppCard(
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                 ),
@@ -470,7 +483,7 @@ fun NLPPhraseManagementTab(
 
         // 相似度阈值设置
         item {
-            Card {
+            AppCard {
                 Column(
                     modifier = Modifier.padding(16.dp),
                 ) {
@@ -479,7 +492,7 @@ fun NLPPhraseManagementTab(
                         style = MaterialTheme.typography.titleSmall,
                     )
                     Spacer(modifier = Modifier.height(8.dp))
-                    Slider(
+                    AppSlider(
                         value = similarityThreshold,
                         onValueChange = onSimilarityThresholdChange,
                         valueRange = 0.1f..0.9f,
@@ -496,7 +509,7 @@ fun NLPPhraseManagementTab(
 
         // 文本输入和关键词提取
         item {
-            Card {
+            AppCard {
                 Column(
                     modifier = Modifier.padding(16.dp),
                 ) {
@@ -505,7 +518,7 @@ fun NLPPhraseManagementTab(
                         style = MaterialTheme.typography.titleSmall,
                     )
                     Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(
+                    AppOutlinedTextField(
                         value = inputText,
                         onValueChange = onInputTextChange,
                         label = { Text("输入文本") },
@@ -515,7 +528,7 @@ fun NLPPhraseManagementTab(
                         maxLines = 5,
                     )
                     Spacer(modifier = Modifier.height(8.dp))
-                    Button(
+                    AppButton(
                         onClick = onExtractKeywords,
                         enabled = inputText.isNotBlank(),
                         modifier = Modifier.align(Alignment.End),
@@ -529,7 +542,7 @@ fun NLPPhraseManagementTab(
         // 提取的关键词
         if (extractedKeywords.isNotEmpty()) {
             item {
-                Card {
+                AppCard {
                     Column(
                         modifier = Modifier.padding(16.dp),
                     ) {
@@ -542,7 +555,7 @@ fun NLPPhraseManagementTab(
                                 "提取的关键词",
                                 style = MaterialTheme.typography.titleSmall,
                             )
-                            TextButton(onClick = onAddAllKeywords) {
+                            AppTextButton(onClick = onAddAllKeywords) {
                                 Text("组合为短语并添加")
                             }
                         }
@@ -558,7 +571,7 @@ fun NLPPhraseManagementTab(
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             extractedKeywords.forEach { keyword ->
-                                FilterChip(
+                                AppFilterChip(
                                     selected = true,
                                     onClick = { },
                                     label = { Text(keyword) },
@@ -578,7 +591,7 @@ fun NLPPhraseManagementTab(
 
         // 已屏蔽的短语列表
         item {
-            Card {
+            AppCard {
                 Column(
                     modifier = Modifier.padding(16.dp),
                 ) {
@@ -592,13 +605,13 @@ fun NLPPhraseManagementTab(
                             style = MaterialTheme.typography.titleSmall,
                         )
                         Row {
-                            TextButton(onClick = onShowAddDialog) {
+                            AppTextButton(onClick = onShowAddDialog) {
                                 Icon(Icons.Default.Add, contentDescription = null)
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text("手动添加")
                             }
                             if (blockedKeywords.isNotEmpty()) {
-                                TextButton(onClick = onClearAll) {
+                                AppTextButton(onClick = onClearAll) {
                                     Text("清空全部", color = MaterialTheme.colorScheme.error)
                                 }
                             }
@@ -632,6 +645,13 @@ fun NLPPhraseManagementTab(
         } else {
             items(blockedKeywords) { keyword ->
                 ListItem(
+                    colors = ListItemDefaults.colors(
+                        containerColor = if (LocalUiStyle.current == UiStyle.Material3) {
+                            ListItemDefaults.containerColor
+                        } else {
+                            Color.Transparent
+                        },
+                    ),
                     headlineContent = {
                         Text(
                             keyword.keyword,
@@ -653,14 +673,14 @@ fun NLPPhraseManagementTab(
                     },
                     trailingContent = {
                         Row {
-                            IconButton(onClick = { onEditKeyword(keyword) }) {
+                            AppIconButton(onClick = { onEditKeyword(keyword) }) {
                                 Icon(
                                     Icons.Default.Edit,
                                     contentDescription = "编辑",
                                     tint = MaterialTheme.colorScheme.primary,
                                 )
                             }
-                            IconButton(onClick = { onDeleteKeyword(keyword) }) {
+                            AppIconButton(onClick = { onDeleteKeyword(keyword) }) {
                                 Icon(
                                     Icons.Default.Delete,
                                     contentDescription = "删除",
@@ -687,7 +707,7 @@ fun BlockedRecordsTab(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         item {
-            Card {
+            AppCard {
                 Column(
                     modifier = Modifier.padding(16.dp),
                 ) {
@@ -701,7 +721,7 @@ fun BlockedRecordsTab(
                             style = MaterialTheme.typography.titleSmall,
                         )
                         if (records.isNotEmpty()) {
-                            TextButton(onClick = onClearAll) {
+                            AppTextButton(onClick = onClearAll) {
                                 Text("清空全部", color = MaterialTheme.colorScheme.error)
                             }
                         }
@@ -754,7 +774,7 @@ fun BlockedRecordItem(
         }
     }
 
-    Card(
+    AppCard(
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(
@@ -788,7 +808,7 @@ fun BlockedRecordItem(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                IconButton(onClick = { expanded = !expanded }) {
+                AppIconButton(onClick = { expanded = !expanded }) {
                     Icon(
                         if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                         contentDescription = if (expanded) "收起" else "展开",
@@ -847,7 +867,7 @@ fun BlockedRecordItem(
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
-                Button(
+                AppButton(
                     onClick = onDelete,
                     modifier = Modifier.align(Alignment.End),
                 ) {
@@ -867,14 +887,14 @@ fun AddPhraseDialog(
 ) {
     var phrase by remember { mutableStateOf("") }
 
-    AlertDialog(
+    AppAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("手动添加NLP短语") },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
             ) {
-                OutlinedTextField(
+                AppOutlinedTextField(
                     value = phrase,
                     onValueChange = { phrase = it },
                     label = { Text("短语") },
@@ -891,7 +911,7 @@ fun AddPhraseDialog(
             }
         },
         confirmButton = {
-            Button(
+            AppButton(
                 onClick = {
                     if (phrase.isNotBlank()) {
                         onConfirm(phrase)
@@ -905,7 +925,7 @@ fun AddPhraseDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            AppTextButton(onClick = onDismiss) {
                 Text("取消")
             }
         },
@@ -920,14 +940,14 @@ fun EditPhraseDialog(
 ) {
     var phrase by remember { mutableStateOf(initialPhrase) }
 
-    AlertDialog(
+    AppAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("编辑NLP短语") },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
             ) {
-                OutlinedTextField(
+                AppOutlinedTextField(
                     value = phrase,
                     onValueChange = { phrase = it },
                     label = { Text("短语") },
@@ -944,7 +964,7 @@ fun EditPhraseDialog(
             }
         },
         confirmButton = {
-            Button(
+            AppButton(
                 onClick = {
                     if (phrase.isNotBlank()) {
                         onConfirm(phrase)
@@ -958,7 +978,7 @@ fun EditPhraseDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            AppTextButton(onClick = onDismiss) {
                 Text("取消")
             }
         },

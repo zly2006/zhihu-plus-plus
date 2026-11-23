@@ -32,17 +32,14 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.GetApp
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.PictureAsPdf
-import androidx.compose.material3.Card
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -55,7 +52,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import com.github.zly2006.zhihu.theme.LocalLiquidGlassOverlay
+import com.github.zly2006.zhihu.theme.LocalUiStyle
+import com.github.zly2006.zhihu.theme.UiStyle
+import com.github.zly2006.zhihu.theme.liquidGlassSemanticTokens
 import kotlinx.coroutines.launch
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -81,310 +83,328 @@ fun ExportDialogComponent(
         var includeAppAttribution by remember { mutableStateOf(true) }
 
         Dialog(onDismissRequest = onDismiss) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                shape = RoundedCornerShape(16.dp),
-            ) {
-                Column(
+            val uiStyle = LocalUiStyle.current
+            CompositionLocalProvider(LocalLiquidGlassOverlay provides (uiStyle == UiStyle.LiquidGlass)) {
+                val glassTokens = liquidGlassSemanticTokens()
+                Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
+                        .padding(16.dp),
+                    shape = when (uiStyle) {
+                        UiStyle.LiquidGlass -> RoundedCornerShape(28.dp)
+                        UiStyle.Miuix -> RoundedCornerShape(24.dp)
+                        UiStyle.Material3 -> RoundedCornerShape(16.dp)
+                    },
+                    color = when (uiStyle) {
+                        UiStyle.LiquidGlass -> glassTokens.modalCanvas
+                        UiStyle.Miuix -> MiuixTheme.colorScheme.surfaceContainer
+                        UiStyle.Material3 -> CardDefaults.cardColors().containerColor
+                    },
+                    contentColor = MaterialTheme.colorScheme.onSurface,
                 ) {
-                    Text(
-                        text = "导出文章",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 24.dp),
-                    )
-
-                    // 导出 PDF 按钮
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        onClick = {},
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant,
-                        enabled = false,
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Icon(
-                                Icons.Filled.PictureAsPdf,
-                                contentDescription = null,
-                                modifier = Modifier.size(24.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Column {
-                                Text(
-                                    text = "导出为 PDF",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                Text(
-                                    text = "暂时禁用，后续切第三方库实现",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        }
-                    }
-
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        onClick = {
-                            if (!isExporting) {
-                                isExporting = true
-                                coroutineScope.launch {
-                                    onExportHtml(includeAppAttribution) { success ->
-                                        isExporting = false
-                                        if (success) {
-                                            onDismiss()
-                                        }
-                                    }
-                                }
-                            }
-                        },
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        enabled = isHtmlExportSupported && !isExporting,
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Icon(
-                                Icons.Filled.GetApp,
-                                contentDescription = null,
-                                modifier = Modifier.size(24.dp),
-                                tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                            )
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Column {
-                                Text(
-                                    text = "导出为 HTML",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                )
-                                Text(
-                                    text = "图片会内联为 data URL，便于离线保存",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                )
-                            }
-                        }
-                    }
-
-                    // 导出图片按钮
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        onClick = {
-                            if (!isExporting) {
-                                isExporting = true
-                                coroutineScope.launch {
-                                    onExportImage(includeAppAttribution) { success ->
-                                        isExporting = false
-                                        if (success) {
-                                            onDismiss()
-                                        }
-                                    }
-                                }
-                            }
-                        },
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        enabled = isImageExportSupported && !isExporting,
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Icon(
-                                Icons.Filled.Image,
-                                contentDescription = null,
-                                modifier = Modifier.size(24.dp),
-                                tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                            )
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Text(
-                                text = "导出为图片",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer,
-                            )
-                        }
-                    }
-
-                    // 复制 Markdown 按钮
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        onClick = {
-                            onExportMarkdown()
-                            onDismiss()
-                        },
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        enabled = !isExporting,
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Icon(
-                                Icons.Filled.ContentCopy,
-                                contentDescription = null,
-                                modifier = Modifier.size(24.dp),
-                                tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                            )
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Text(
-                                text = "复制 Markdown",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer,
-                            )
-                        }
-                    }
-
-                    // 带评论导出图片部分
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Text(
-                        text = "带评论导出",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(bottom = 8.dp),
-                    )
-
-                    // 评论数量滑块
                     Column(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         Text(
-                            text = "包含评论数量: $commentCount 条",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            text = "导出文章",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(bottom = 24.dp),
                         )
 
-                        Slider(
-                            value = commentCount.toFloat(),
-                            onValueChange = { commentCount = it.roundToInt() },
-                            valueRange = 0f..10f,
-                            steps = 9,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
+                        // 导出 PDF 按钮
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            onClick = {},
+                            shape = RoundedCornerShape(12.dp),
+                            color = when (uiStyle) {
+                                UiStyle.LiquidGlass -> glassTokens.contentSurface
+                                UiStyle.Miuix -> top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.secondaryContainer
+                                UiStyle.Material3 -> MaterialTheme.colorScheme.surfaceVariant
+                            },
+                            enabled = false,
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(
+                                    Icons.Filled.PictureAsPdf,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(24.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Column {
+                                    Text(
+                                        text = "导出为 PDF",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    Text(
+                                        text = "暂时禁用，后续切第三方库实现",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                        }
 
-                    // 带评论导出图片按钮
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        onClick = {
-                            if (!isExporting) {
-                                isExporting = true
-                                coroutineScope.launch {
-                                    onExportImageWithComments(commentCount, includeAppAttribution) { success ->
-                                        isExporting = false
-                                        if (success) {
-                                            onDismiss()
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            onClick = {
+                                if (!isExporting) {
+                                    isExporting = true
+                                    coroutineScope.launch {
+                                        onExportHtml(includeAppAttribution) { success ->
+                                            isExporting = false
+                                            if (success) {
+                                                onDismiss()
+                                            }
                                         }
                                     }
                                 }
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            enabled = isHtmlExportSupported && !isExporting,
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(
+                                    Icons.Filled.GetApp,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(24.dp),
+                                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                )
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Column {
+                                    Text(
+                                        text = "导出为 HTML",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    )
+                                    Text(
+                                        text = "图片会内联为 data URL，便于离线保存",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    )
+                                }
                             }
-                        },
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.tertiaryContainer,
-                        enabled = isImageExportSupported && !isExporting,
-                    ) {
-                        Row(
+                        }
+
+                        // 导出图片按钮
+                        Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
+                                .padding(vertical = 4.dp),
+                            onClick = {
+                                if (!isExporting) {
+                                    isExporting = true
+                                    coroutineScope.launch {
+                                        onExportImage(includeAppAttribution) { success ->
+                                            isExporting = false
+                                            if (success) {
+                                                onDismiss()
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            enabled = isImageExportSupported && !isExporting,
                         ) {
-                            Icon(
-                                Icons.Filled.GetApp,
-                                contentDescription = null,
-                                modifier = Modifier.size(24.dp),
-                                tint = MaterialTheme.colorScheme.onTertiaryContainer,
-                            )
-                            Spacer(modifier = Modifier.width(16.dp))
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(
+                                    Icons.Filled.Image,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(24.dp),
+                                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                )
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Text(
+                                    text = "导出为图片",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                )
+                            }
+                        }
+
+                        // 复制 Markdown 按钮
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            onClick = {
+                                onExportMarkdown()
+                                onDismiss()
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            enabled = !isExporting,
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(
+                                    Icons.Filled.ContentCopy,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(24.dp),
+                                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                )
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Text(
+                                    text = "复制 Markdown",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                )
+                            }
+                        }
+
+                        // 带评论导出图片部分
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Text(
+                            text = "带评论导出",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(bottom = 8.dp),
+                        )
+
+                        // 评论数量滑块
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
                             Text(
-                                text = "导出图片（含评论）",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                text = "包含评论数量: $commentCount 条",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+
+                            AppSlider(
+                                value = commentCount.toFloat(),
+                                onValueChange = { commentCount = it.roundToInt() },
+                                valueRange = 0f..10f,
+                                steps = 9,
+                                modifier = Modifier.fillMaxWidth(),
                             )
                         }
-                    }
 
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Checkbox(
-                            checked = includeAppAttribution,
-                            onCheckedChange = { includeAppAttribution = it },
-                            enabled = (isHtmlExportSupported || isImageExportSupported) && !isExporting,
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "在导出底部加入知乎++开源项目说明",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-
-                    // 加载状态指示器
-                    if (isExporting) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(top = 8.dp),
+                        // 带评论导出图片按钮
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            onClick = {
+                                if (!isExporting) {
+                                    isExporting = true
+                                    coroutineScope.launch {
+                                        onExportImageWithComments(commentCount, includeAppAttribution) { success ->
+                                            isExporting = false
+                                            if (success) {
+                                                onDismiss()
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.tertiaryContainer,
+                            enabled = isImageExportSupported && !isExporting,
                         ) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
-                                strokeWidth = 2.dp,
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(
+                                    Icons.Filled.GetApp,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(24.dp),
+                                    tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                )
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Text(
+                                    text = "导出图片（含评论）",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            AppCheckbox(
+                                checked = includeAppAttribution,
+                                onCheckedChange = { includeAppAttribution = it },
+                                enabled = (isHtmlExportSupported || isImageExportSupported) && !isExporting,
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "导出中...",
-                                style = MaterialTheme.typography.bodySmall,
+                                text = "在导出底部加入知乎++开源项目说明",
+                                style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
-                    }
 
-                    // 取消按钮
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End,
-                    ) {
-                        TextButton(
-                            onClick = onDismiss,
-                            enabled = !isExporting,
+                        // 加载状态指示器
+                        if (isExporting) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(top = 8.dp),
+                            ) {
+                                AppCircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp,
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "导出中...",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+
+                        // 取消按钮
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End,
                         ) {
-                            Text("取消")
+                            AppTextButton(
+                                onClick = onDismiss,
+                                enabled = !isExporting,
+                            ) {
+                                Text("取消")
+                            }
                         }
                     }
                 }

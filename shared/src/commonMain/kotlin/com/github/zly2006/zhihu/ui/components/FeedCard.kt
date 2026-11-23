@@ -41,11 +41,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -87,11 +84,17 @@ import com.github.zly2006.zhihu.navigation.Navigator
 import com.github.zly2006.zhihu.platform.UserMessageDuration
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.theme.LocalUiStyle
+import com.github.zly2006.zhihu.theme.UiStyle
+import com.github.zly2006.zhihu.theme.liquidGlassSemanticTokens
 import com.github.zly2006.zhihu.ui.LocalSelectedContentDestination
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
 import com.github.zly2006.zhihu.util.parseEmphasizedHtmlTextWithTheme
 import com.github.zly2006.zhihu.viewmodel.QUALITY_FILTER_MODE_PREFERENCE_KEY
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.basic.Card as MiuixCard
+import top.yukonga.miuix.kmp.basic.CardDefaults as MiuixCardDefaults
 
 /**
  * 信息流卡片的 Material 3 实现。
@@ -165,13 +168,50 @@ fun FeedCard(
             }
         }
     }
-    if (feedCardStyle == "divider") {
+    val uiStyle = LocalUiStyle.current
+    val isLiquidGlass = uiStyle == UiStyle.LiquidGlass
+    val isMiuix = uiStyle == UiStyle.Miuix
+    val glassTokens = liquidGlassSemanticTokens()
+    if (isMiuix) {
+        Box(
+            modifier = modifier
+                .fillMaxWidth()
+                .semantics { selected = isSelected }
+                .then(if (showPinImages || duo3CardLayout) Modifier else Modifier.heightIn(max = maxHeight))
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+        ) {
+            MiuixCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { performClick(item) },
+                cornerRadius = 16.dp,
+                colors = MiuixCardDefaults.defaultColors(
+                    color = if (isSelected) selectedContainerColor else MiuixTheme.colorScheme.surfaceContainer,
+                ),
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    FeedCardContent(
+                        item = item,
+                        showFeedThumbnail = showFeedThumbnail,
+                        thumbnailModel = thumbnailModel,
+                        pinImages = pinImages,
+                        showMenu = showMenu,
+                        onShowMenuChange = { showMenu = it },
+                        menuItems = menuItems,
+                        duo3CardLayout = true,
+                        duo3CardLargeTitle = duo3CardLargeTitle,
+                        showSourceLabel = showSourceLabel,
+                    )
+                }
+            }
+        }
+    } else if (feedCardStyle == "divider") {
         Column(
             modifier = modifier
                 .fillMaxWidth()
                 .semantics { selected = isSelected }
                 .then(if (isSelected) Modifier.background(selectedContainerColor) else Modifier)
-                .then(if (showPinImages || duo3CardLayout) Modifier else Modifier.heightIn(max = maxHeight)),
+                .then(if (showPinImages || duo3CardLayout || isLiquidGlass) Modifier else Modifier.heightIn(max = maxHeight)),
         ) {
             Column(
                 modifier = Modifier
@@ -187,24 +227,34 @@ fun FeedCard(
                     showMenu = showMenu,
                     onShowMenuChange = { showMenu = it },
                     menuItems = menuItems,
-                    duo3CardLayout = duo3CardLayout,
+                    duo3CardLayout = isLiquidGlass || duo3CardLayout,
                     duo3CardLargeTitle = duo3CardLargeTitle,
                     showSourceLabel = showSourceLabel,
                 )
             }
-            HorizontalDivider(thickness = 0.3.dp)
+            if (isLiquidGlass) {
+                HorizontalDivider(
+                    modifier = Modifier.padding(start = horizontalPadding + 32.dp),
+                    thickness = 0.5.dp,
+                    color = glassTokens.separator,
+                )
+            } else {
+                HorizontalDivider(thickness = 0.3.dp)
+            }
         }
     } else {
         Box(
             modifier = modifier
                 .fillMaxWidth()
                 .semantics { selected = isSelected }
-                .then(if (showPinImages || duo3CardLayout) Modifier else Modifier.heightIn(max = maxHeight))
+                .then(if (showPinImages || duo3CardLayout || isLiquidGlass) Modifier else Modifier.heightIn(max = maxHeight))
                 .padding(horizontal = horizontalPadding, vertical = 8.dp),
         ) {
             Card(
                 colors = if (isSelected) {
                     CardDefaults.cardColors(containerColor = selectedContainerColor)
+                } else if (isLiquidGlass) {
+                    CardDefaults.cardColors(containerColor = glassTokens.groupedSurface)
                 } else if (duo3CardAppearance) {
                     CardDefaults.cardColors().copy(
                         containerColor = MaterialTheme.colorScheme.surfaceBright,
@@ -212,19 +262,28 @@ fun FeedCard(
                 } else {
                     CardDefaults.cardColors()
                 },
-                shape = if (duo3CardAppearance) RoundedCornerShape(24.dp) else CardDefaults.shape,
+                shape = when {
+                    isLiquidGlass -> RoundedCornerShape(glassTokens.groupedCornerRadius)
+                    duo3CardAppearance -> RoundedCornerShape(24.dp)
+                    else -> CardDefaults.shape
+                },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .let { if (duo3CardAppearance) it.clip(RoundedCornerShape(24.dp)) else it }
-                    .clickable { performClick(item) },
-                elevation = if (duo3CardAppearance) {
-                    CardDefaults.cardElevation()
-                } else {
-                    CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    .let {
+                        when {
+                            isLiquidGlass -> it.clip(RoundedCornerShape(glassTokens.groupedCornerRadius))
+                            duo3CardAppearance -> it.clip(RoundedCornerShape(24.dp))
+                            else -> it
+                        }
+                    }.clickable { performClick(item) },
+                elevation = when {
+                    isLiquidGlass -> CardDefaults.cardElevation(defaultElevation = 0.dp)
+                    duo3CardAppearance -> CardDefaults.cardElevation()
+                    else -> CardDefaults.cardElevation(defaultElevation = 2.dp)
                 },
             ) {
                 Column(
-                    modifier = if (duo3CardAppearance) {
+                    modifier = if (isLiquidGlass || duo3CardAppearance) {
                         Modifier.padding(16.dp, 12.dp, 16.dp, 16.dp)
                     } else {
                         Modifier.padding(8.dp)
@@ -238,7 +297,7 @@ fun FeedCard(
                         showMenu = showMenu,
                         onShowMenuChange = { showMenu = it },
                         menuItems = menuItems,
-                        duo3CardLayout = duo3CardLayout,
+                        duo3CardLayout = isLiquidGlass || duo3CardLayout,
                         duo3CardLargeTitle = duo3CardLargeTitle,
                         showSourceLabel = showSourceLabel,
                     )
@@ -262,7 +321,7 @@ private fun FeedCardMenuBox(
     navigator: Navigator,
 ) {
     Box {
-        IconButton(
+        AppIconButton(
             onClick = { onShowMenuChange(true) },
             modifier = Modifier.size(24.dp),
         ) {
@@ -273,12 +332,12 @@ private fun FeedCardMenuBox(
                 modifier = Modifier.size(16.dp),
             )
         }
-        DropdownMenu(
+        AppDropdownMenu(
             expanded = showMenu,
             onDismissRequest = { onShowMenuChange(false) },
         ) {
             menuItems { onShowMenuChange(false) }
-            DropdownMenuItem(
+            AppDropdownMenuItem(
                 text = { Text("外观设置") },
                 onClick = {
                     onShowMenuChange(false)
@@ -286,7 +345,7 @@ private fun FeedCardMenuBox(
                 },
             )
             if (item.isQualityFiltered) {
-                DropdownMenuItem(
+                AppDropdownMenuItem(
                     text = { Text("调整质量屏蔽") },
                     onClick = {
                         onShowMenuChange(false)

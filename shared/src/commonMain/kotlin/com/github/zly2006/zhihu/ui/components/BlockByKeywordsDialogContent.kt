@@ -33,17 +33,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -89,7 +82,7 @@ fun BlockByKeywordsDialogContent(
     }
 
     if (showDialog) {
-        AlertDialog(
+        AppAlertDialog(
             onDismissRequest = onDismiss,
             title = { Text("按关键词屏蔽") },
             text = {
@@ -105,7 +98,7 @@ fun BlockByKeywordsDialogContent(
                                 .padding(32.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
-                            CircularProgressIndicator()
+                            AppCircularProgressIndicator()
                             Spacer(modifier = Modifier.height(16.dp))
                             Text("正在提取关键词...")
                         }
@@ -140,7 +133,7 @@ fun BlockByKeywordsDialogContent(
                         ) {
                             extractedKeywords.forEach { keyword ->
                                 val isSelected = keyword in selectedKeywords
-                                FilterChip(
+                                AppFilterChip(
                                     selected = isSelected,
                                     onClick = {
                                         selectedKeywords = if (isSelected) {
@@ -162,7 +155,7 @@ fun BlockByKeywordsDialogContent(
 
                         if (selectedKeywords.isNotEmpty()) {
                             Spacer(modifier = Modifier.height(12.dp))
-                            Card(
+                            AppCard(
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = CardDefaults.cardColors(
                                     containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -200,7 +193,7 @@ fun BlockByKeywordsDialogContent(
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    TextButton(
+                    AppTextButton(
                         onClick = { showDetailDialog = true },
                         enabled = keywordInfoList.isNotEmpty() && !isLoading,
                     ) {
@@ -212,7 +205,7 @@ fun BlockByKeywordsDialogContent(
                         Text("详细信息")
                     }
 
-                    Button(
+                    AppButton(
                         onClick = {
                             if (selectedKeywords.isNotEmpty()) {
                                 onConfirmPhrase(selectedKeywords.sorted().joinToString(" "))
@@ -221,7 +214,7 @@ fun BlockByKeywordsDialogContent(
                         enabled = selectedKeywords.isNotEmpty() && !isLoading && !isAdding,
                     ) {
                         if (isAdding) {
-                            CircularProgressIndicator(
+                            AppCircularProgressIndicator(
                                 modifier = Modifier.width(16.dp),
                                 color = MaterialTheme.colorScheme.onPrimary,
                             )
@@ -232,7 +225,7 @@ fun BlockByKeywordsDialogContent(
                 }
             },
             dismissButton = {
-                TextButton(
+                AppTextButton(
                     onClick = onDismiss,
                     enabled = !isAdding,
                 ) {
@@ -261,7 +254,7 @@ fun KeywordDetailDialog(
 ) {
     val maxWeight = keywordInfoList.maxOfOrNull { it.weight } ?: 1.0
 
-    AlertDialog(
+    AppAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("关键词详细信息") },
         text = {
@@ -270,10 +263,19 @@ fun KeywordDetailDialog(
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState()),
             ) {
-                Card(
+                AppCard(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        containerColor = when (com.github.zly2006.zhihu.theme.LocalUiStyle.current) {
+                            com.github.zly2006.zhihu.theme.UiStyle.LiquidGlass ->
+                                com.github.zly2006.zhihu.theme
+                                    .liquidGlassSemanticTokens()
+                                    .segmentedContainer
+                            com.github.zly2006.zhihu.theme.UiStyle.Miuix ->
+                                top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.secondaryContainer
+                            com.github.zly2006.zhihu.theme.UiStyle.Material3 ->
+                                MaterialTheme.colorScheme.surfaceVariant
+                        },
                     ),
                 ) {
                     Column(
@@ -330,7 +332,7 @@ fun KeywordDetailDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) {
+            AppTextButton(onClick = onDismiss) {
                 Text("关闭")
             }
         },
@@ -345,7 +347,7 @@ fun KeywordInfoItem(
 ) {
     val normalizedWeight = if (maxWeight > 0) (keywordInfo.weight / maxWeight).toFloat() else 0f
 
-    Card(
+    AppCard(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
@@ -385,7 +387,7 @@ fun KeywordInfoItem(
                 )
             }
             Spacer(modifier = Modifier.height(4.dp))
-            LinearProgressIndicator(
+            AppLinearProgressIndicator(
                 progress = { normalizedWeight },
                 modifier = Modifier.fillMaxWidth(),
                 color = MaterialTheme.colorScheme.primary,

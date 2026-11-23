@@ -56,19 +56,11 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Visibility
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -111,6 +103,14 @@ import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.platform.rememberZhihuWebUrlOpener
 import com.github.zly2006.zhihu.reading.RegisterReadingQueueSource
+import com.github.zly2006.zhihu.ui.components.AppButton
+import com.github.zly2006.zhihu.ui.components.AppFilledTonalButton
+import com.github.zly2006.zhihu.ui.components.AppFilterChip
+import com.github.zly2006.zhihu.ui.components.AppIconButton
+import com.github.zly2006.zhihu.ui.components.AppOutlinedButton
+import com.github.zly2006.zhihu.ui.components.AppScaffold
+import com.github.zly2006.zhihu.ui.components.AppTextButton
+import com.github.zly2006.zhihu.ui.components.AppTopAppBar
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
@@ -233,7 +233,7 @@ fun QuestionScreen(
         }
     }
 
-    Scaffold(
+    AppScaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
             QuestionTopBar(
@@ -267,10 +267,12 @@ fun QuestionScreen(
                 key = { it.stableKey },
                 listState = listState,
                 modifier = Modifier
-                    .padding(innerPadding)
                     .pageTurnViewportWithGuide(pageTurnTarget)
                     .testTag(QUESTION_SCREEN_LIST_TAG),
-                contentPadding = PaddingValues(bottom = readingPlayerOverlayPadding),
+                contentPadding = PaddingValues(
+                    top = innerPadding.calculateTopPadding(),
+                    bottom = innerPadding.calculateBottomPadding() + readingPlayerOverlayPadding,
+                ),
                 footer = ProgressIndicatorFooter,
                 topContent = {
                     item {
@@ -369,7 +371,7 @@ private fun QuestionTopBar(
     onShare: () -> Unit,
     canShare: Boolean,
 ) {
-    TopAppBar(
+    AppTopAppBar(
         title = {
             AnimatedContent(
                 targetState = showTitle,
@@ -387,15 +389,15 @@ private fun QuestionTopBar(
             }
         },
         navigationIcon = {
-            IconButton(onClick = onNavigateBack) {
+            AppIconButton(onClick = onNavigateBack) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
             }
         },
         actions = {
-            IconButton(onClick = onOpenLog, modifier = Modifier.testTag(QUESTION_VIEW_LOG_BUTTON_TAG)) {
+            AppIconButton(onClick = onOpenLog, modifier = Modifier.testTag(QUESTION_VIEW_LOG_BUTTON_TAG)) {
                 Icon(Icons.Filled.History, contentDescription = "日志")
             }
-            IconButton(
+            AppIconButton(
                 onClick = onShare,
                 enabled = canShare,
                 modifier = Modifier.testTag(QUESTION_SHARE_BUTTON_TAG),
@@ -437,7 +439,7 @@ private fun QuestionHeaderSection(
                 StatItem(icon = Icons.Outlined.ChatBubbleOutline, text = "$commentCount 评论")
                 StatItem(icon = Icons.Outlined.FavoriteBorder, text = "$followerCount 关注")
             }
-            OutlinedButton(
+            AppOutlinedButton(
                 onClick = onShowComments,
                 modifier = Modifier.testTag(QUESTION_COMMENTS_BUTTON_TAG),
             ) {
@@ -563,7 +565,7 @@ private fun QuestionAnimatedBodyHeader(
                             fontWeight = FontWeight.Medium,
                         )
                         Spacer(Modifier.weight(1f))
-                        FilterChip(
+                        AppFilterChip(
                             selected = currentSort == "default",
                             onClick = { onSortChange("default") },
                             modifier =
@@ -572,7 +574,7 @@ private fun QuestionAnimatedBodyHeader(
                                 },
                             label = { Text("默认") },
                         )
-                        FilterChip(
+                        AppFilterChip(
                             selected = currentSort == "updated",
                             onClick = { onSortChange("updated") },
                             modifier =
@@ -726,7 +728,7 @@ private fun QuestionDetailWithTopics(
         if (topics.isNotEmpty()) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 topics.forEach { topic ->
-                    FilterChip(
+                    AppFilterChip(
                         selected = false,
                         onClick = { onTopicClick(topic) },
                         label = { Text("# ${topic.name}") },
@@ -764,7 +766,7 @@ private fun QuestionDetailToggleButton(
     isExpanded: Boolean,
     onClick: () -> Unit,
 ) {
-    TextButton(
+    AppTextButton(
         onClick = onClick,
         modifier =
             Modifier
@@ -788,7 +790,7 @@ private fun QuestionPrimaryActions(
     onWriteAnswerClick: () -> Unit,
 ) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Button(
+        AppButton(
             onClick = onWriteAnswerClick,
             modifier = Modifier.weight(1f).testTag(QUESTION_WRITE_ANSWER_BUTTON_TAG),
             colors =
@@ -801,7 +803,7 @@ private fun QuestionPrimaryActions(
             Spacer(Modifier.width(8.dp))
             Text("写回答")
         }
-        FilledTonalButton(
+        AppFilledTonalButton(
             onClick = onFollowClick,
             modifier =
                 Modifier.weight(1f).testTag(QUESTION_FOLLOW_BUTTON_TAG).semantics {

@@ -30,7 +30,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.produceState
@@ -41,6 +40,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.platform.androidUserMessageSink
 import com.github.zly2006.zhihu.reading.AndroidReadingPlayerBridge
+import com.github.zly2006.zhihu.ui.components.AppOutlinedButton
 import com.github.zly2006.zhihu.ui.rememberArticleTtsState
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState
@@ -128,7 +128,7 @@ actual fun WebViewCustomFontSettings(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.padding(top = 8.dp),
         ) {
-            OutlinedButton(
+            AppOutlinedButton(
                 onClick = {
                     fontFilePicker.launch(arrayOf("font/ttf", "font/otf", "application/octet-stream"))
                 },
@@ -138,7 +138,7 @@ actual fun WebViewCustomFontSettings(
                 Text("选择", modifier = Modifier.padding(start = 4.dp))
             }
             if (customFontName != null) {
-                OutlinedButton(
+                AppOutlinedButton(
                     onClick = {
                         File(context.filesDir, "custom_font").delete()
                         onCustomFontNameChange(null)

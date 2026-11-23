@@ -43,14 +43,8 @@ import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
@@ -58,12 +52,14 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -79,6 +75,12 @@ import com.github.zly2006.zhihu.platform.exportTestTagsForUiAutomation
 import com.github.zly2006.zhihu.reading.ReadingPlaybackStatus
 import com.github.zly2006.zhihu.reading.ReadingPlayerState
 import com.github.zly2006.zhihu.reading.ReadingQueueItem
+import com.github.zly2006.zhihu.theme.LocalUiBackdrop
+import com.github.zly2006.zhihu.theme.LocalUiStyle
+import com.github.zly2006.zhihu.theme.NoOpUiBackdrop
+import com.github.zly2006.zhihu.theme.UiStyle
+import com.github.zly2006.zhihu.theme.liquidGlassSemanticTokens
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -119,6 +121,23 @@ fun ReadingPlayerBar(
     modifier: Modifier = Modifier,
 ) {
     val item = state.currentItem ?: return
+    val uiStyle = LocalUiStyle.current
+    val backdrop = LocalUiBackdrop.current
+    val glassTokens = liquidGlassSemanticTokens()
+    val containerShape = when (uiStyle) {
+        UiStyle.Miuix -> RoundedCornerShape(18.dp)
+        UiStyle.LiquidGlass -> RoundedCornerShape(glassTokens.floatingCornerRadius)
+        UiStyle.Material3 -> RoundedCornerShape(28.dp)
+    }
+    val glassSurfaceModifier = if (uiStyle == UiStyle.LiquidGlass && backdrop.isActive) {
+        backdrop.chromeSurface(
+            shape = containerShape,
+            tint = glassTokens.chromeTint,
+            floating = true,
+        )
+    } else {
+        Modifier
+    }
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -127,104 +146,112 @@ fun ReadingPlayerBar(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
+                .then(glassSurfaceModifier)
                 .testTag(READING_PLAYER_BAR_TAG),
-            shape = RoundedCornerShape(28.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerHighest,
-            tonalElevation = 3.dp,
-            shadowElevation = 4.dp,
+            shape = containerShape,
+            color = when {
+                uiStyle == UiStyle.LiquidGlass && backdrop.isActive -> Color.Transparent
+                uiStyle == UiStyle.LiquidGlass -> glassTokens.contentSurface
+                uiStyle == UiStyle.Miuix -> MiuixTheme.colorScheme.surfaceContainerHigh
+                else -> MaterialTheme.colorScheme.surfaceContainerHighest
+            },
+            tonalElevation = if (uiStyle == UiStyle.Material3) 3.dp else 0.dp,
+            shadowElevation = if (uiStyle == UiStyle.LiquidGlass && backdrop.isActive) 0.dp else 4.dp,
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(start = 4.dp, end = 8.dp),
-                    ) {
-                        Text(
-                            text = item.displayTitle,
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Text(
-                            text = state.errorMessage?.let { "朗读失败：$it" } ?: buildString {
-                                append(state.currentIndex + 1)
-                                append(" / ")
-                                append(state.queue.size)
-                                append(" · ")
-                                append(item.contentType.displayName)
-                            },
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                    ReadingPlaybackSpeedMenu(
-                        speed = state.playbackSpeed,
-                        onSpeedChange = onPlaybackSpeedChange,
-                        onDismissRequest = onBackgroundInteraction,
-                    )
-                }
-                Row(
+            CompositionLocalProvider(LocalUiBackdrop provides NoOpUiBackdrop) {
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceEvenly,
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
                 ) {
-                    IconButton(
-                        onClick = onPrevious,
-                        enabled = state.canPlayPrevious,
-                        modifier = Modifier.testTag(READING_PLAYER_PREVIOUS_TAG),
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Icon(Icons.Default.SkipPrevious, contentDescription = "上一条")
-                    }
-                    FilledTonalIconButton(
-                        onClick = onTogglePlayPause,
-                        modifier = Modifier
-                            .testTag(READING_PLAYER_TOGGLE_TAG)
-                            .semantics {
-                                contentDescription = if (state.isActivelyPlaying) "暂停朗读" else "继续朗读"
-                            },
-                    ) {
-                        when (state.status) {
-                            ReadingPlaybackStatus.Initializing,
-                            ReadingPlaybackStatus.Loading,
-                            -> CircularProgressIndicator(
-                                modifier = Modifier.size(22.dp),
-                                strokeWidth = 2.dp,
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(start = 4.dp, end = 8.dp),
+                        ) {
+                            Text(
+                                text = item.displayTitle,
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                             )
-                            ReadingPlaybackStatus.Playing -> Icon(Icons.Default.Pause, contentDescription = null)
-                            else -> Icon(Icons.Default.PlayArrow, contentDescription = null)
+                            Text(
+                                text = state.errorMessage?.let { "朗读失败：$it" } ?: buildString {
+                                    append(state.currentIndex + 1)
+                                    append(" / ")
+                                    append(state.queue.size)
+                                    append(" · ")
+                                    append(item.contentType.displayName)
+                                },
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
                         }
+                        ReadingPlaybackSpeedMenu(
+                            speed = state.playbackSpeed,
+                            onSpeedChange = onPlaybackSpeedChange,
+                            onDismissRequest = onBackgroundInteraction,
+                        )
                     }
-                    IconButton(
-                        onClick = onNext,
-                        enabled = state.canPlayNext,
-                        modifier = Modifier.testTag(READING_PLAYER_NEXT_TAG),
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceEvenly,
                     ) {
-                        Icon(Icons.Default.SkipNext, contentDescription = "下一条")
-                    }
-                    IconButton(
-                        onClick = onStop,
-                        modifier = Modifier.testTag(READING_PLAYER_STOP_TAG),
-                    ) {
-                        Icon(Icons.Default.Stop, contentDescription = "停止朗读")
-                    }
-                    IconButton(
-                        onClick = onOpenQueue,
-                        modifier = Modifier.testTag(READING_PLAYER_QUEUE_TAG),
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = "播放列表")
+                        AppIconButton(
+                            onClick = onPrevious,
+                            enabled = state.canPlayPrevious,
+                            modifier = Modifier.testTag(READING_PLAYER_PREVIOUS_TAG),
+                        ) {
+                            Icon(Icons.Default.SkipPrevious, contentDescription = "上一条")
+                        }
+                        AppFilledTonalIconButton(
+                            onClick = onTogglePlayPause,
+                            modifier = Modifier
+                                .testTag(READING_PLAYER_TOGGLE_TAG)
+                                .semantics {
+                                    contentDescription = if (state.isActivelyPlaying) "暂停朗读" else "继续朗读"
+                                },
+                        ) {
+                            when (state.status) {
+                                ReadingPlaybackStatus.Initializing,
+                                ReadingPlaybackStatus.Loading,
+                                -> AppCircularProgressIndicator(
+                                    modifier = Modifier.size(22.dp),
+                                    strokeWidth = 2.dp,
+                                )
+                                ReadingPlaybackStatus.Playing -> Icon(Icons.Default.Pause, contentDescription = null)
+                                else -> Icon(Icons.Default.PlayArrow, contentDescription = null)
+                            }
+                        }
+                        AppIconButton(
+                            onClick = onNext,
+                            enabled = state.canPlayNext,
+                            modifier = Modifier.testTag(READING_PLAYER_NEXT_TAG),
+                        ) {
+                            Icon(Icons.Default.SkipNext, contentDescription = "下一条")
+                        }
+                        AppIconButton(
+                            onClick = onStop,
+                            modifier = Modifier.testTag(READING_PLAYER_STOP_TAG),
+                        ) {
+                            Icon(Icons.Default.Stop, contentDescription = "停止朗读")
+                        }
+                        AppIconButton(
+                            onClick = onOpenQueue,
+                            modifier = Modifier.testTag(READING_PLAYER_QUEUE_TAG),
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = "播放列表")
+                        }
                     }
                 }
             }
@@ -307,7 +334,7 @@ private fun ReadingPlaybackSpeedMenu(
                 )
             }
         }
-        DropdownMenu(
+        AppDropdownMenu(
             expanded = expanded,
             onDismissRequest = {
                 expanded = false
@@ -320,7 +347,7 @@ private fun ReadingPlaybackSpeedMenu(
         ) {
             readingPlaybackSpeedOptions.forEach { (option, label) ->
                 val isSelected = abs(option - speed) < 0.001f
-                DropdownMenuItem(
+                AppDropdownMenuItem(
                     text = { Text(label) },
                     onClick = {
                         expanded = false
@@ -381,7 +408,7 @@ fun ReadingQueueSheet(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            Button(
+            AppButton(
                 onClick = onOpenSettings,
                 modifier = Modifier.testTag(READING_QUEUE_SETTINGS_TAG),
             ) {
@@ -434,8 +461,10 @@ fun ReadingQueueSheet(
                     colors = ListItemDefaults.colors(
                         containerColor = if (isCurrent) {
                             MaterialTheme.colorScheme.secondaryContainer
-                        } else {
+                        } else if (LocalUiStyle.current == UiStyle.Material3) {
                             MaterialTheme.colorScheme.surfaceContainerLow
+                        } else {
+                            Color.Transparent
                         },
                     ),
                     modifier = Modifier

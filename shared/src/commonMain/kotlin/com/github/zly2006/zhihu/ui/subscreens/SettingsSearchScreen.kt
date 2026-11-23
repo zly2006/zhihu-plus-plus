@@ -30,12 +30,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -59,8 +55,13 @@ import com.github.zly2006.zhihu.platform.isAnswerSwipeSupported
 import com.github.zly2006.zhihu.platform.isPageTurnSupported
 import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.theme.UI_STYLE_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.components.AppIconButton
+import com.github.zly2006.zhihu.ui.components.AppLargeTopAppBar
+import com.github.zly2006.zhihu.ui.components.AppOutlinedTextField
+import com.github.zly2006.zhihu.ui.components.AppScaffold
 import com.github.zly2006.zhihu.ui.components.DISABLE_BOTTOM_SHEET_ROUNDED_CORNERS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
@@ -162,6 +163,7 @@ private fun notificationEntry(
 )
 
 private val settingsSearchEntries = buildList {
+    add(appearanceEntry("appearance.uiStyle", "界面风格", "在 Material 3、Miuix 与 Liquid Glass 之间实时切换。", UI_STYLE_PREFERENCE_KEY, listOf("皮肤", "主题风格", "液态玻璃", "Liquid Glass", "Miuix", "HyperOS", "Material")))
     add(appearanceEntry("appearance.nightMode", "主题模式", "切换浅色、深色或跟随系统。", "nightMode", listOf("夜间模式", "深色模式", "暗色模式", "浅色模式", "跟随系统")))
     add(appearanceEntry("appearance.dynamicColor", "使用 Material You 动态取色", "Android 12+ 根据系统壁纸取色。", "dynamicColor", listOf("动态颜色", "壁纸取色", "主题色")))
     add(appearanceEntry("appearance.landscapeListDetail", "横屏双栏布局", "控制平板和电脑横屏时是否同时显示列表与详情。", LANDSCAPE_LIST_DETAIL_PREFERENCE_KEY, listOf("双栏", "分栏", "平板", "横屏")))
@@ -331,14 +333,15 @@ fun SettingsSearchScreen() {
     val listState = rememberLazyListState()
     val pageTurnTarget = rememberPageTurnTarget(listState, enabled = true)
 
-    Scaffold(
+    AppScaffold(
+        settingsAmbientBackground = true,
         modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
-            LargeTopAppBar(
+            AppLargeTopAppBar(
                 title = { Text("搜索设置项") },
                 navigationIcon = {
-                    IconButton(
+                    AppIconButton(
                         onClick = navigator.onNavigateBack,
                         colors = IconButtonDefaults.iconButtonColors(
                             containerColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -360,12 +363,12 @@ fun SettingsSearchScreen() {
             modifier = Modifier
                 .fillMaxSize()
                 .pageTurnViewportWithGuide(pageTurnTarget)
-                .testTag(SETTINGS_SEARCH_RESULTS_TAG)
-                .padding(innerPadding),
+                .testTag(SETTINGS_SEARCH_RESULTS_TAG),
+            contentPadding = innerPadding,
             state = listState,
         ) {
             item {
-                OutlinedTextField(
+                AppOutlinedTextField(
                     value = query,
                     onValueChange = { query = it },
                     modifier = Modifier

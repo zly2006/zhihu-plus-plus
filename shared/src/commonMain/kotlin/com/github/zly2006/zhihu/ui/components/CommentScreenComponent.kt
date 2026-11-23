@@ -21,12 +21,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
@@ -212,7 +210,7 @@ fun CommentScreenComponent(
     }
 
     if (commentsVisible && isZhPlusAuthorContent && !authorCommentPolicyAcknowledged) {
-        AlertDialog(
+        AppAlertDialog(
             modifier = Modifier.testTag(ZH_PLUS_AUTHOR_COMMENT_POLICY_DIALOG_TAG),
             onDismissRequest = {},
             title = { Text("评论区使用须知") },
@@ -231,7 +229,7 @@ fun CommentScreenComponent(
                 }
             },
             confirmButton = {
-                TextButton(
+                AppTextButton(
                     modifier = Modifier.testTag(ZH_PLUS_AUTHOR_COMMENT_POLICY_CONFIRM_TAG),
                     onClick = {
                         settings.putBoolean(ZH_PLUS_AUTHOR_COMMENT_POLICY_ACKNOWLEDGED_KEY, true)

@@ -54,18 +54,14 @@ import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SwitchAccount
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -94,8 +90,18 @@ import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberSystemUrlOpener
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.reading.isReadingPlayerSupported
+import com.github.zly2006.zhihu.theme.LocalUiStyle
+import com.github.zly2006.zhihu.theme.UiStyle
+import com.github.zly2006.zhihu.theme.liquidGlassSemanticTokens
+import com.github.zly2006.zhihu.ui.components.AppAlertDialog
+import com.github.zly2006.zhihu.ui.components.AppFilledTonalIconButton
+import com.github.zly2006.zhihu.ui.components.AppScaffold
+import com.github.zly2006.zhihu.ui.components.AppTextButton
+import com.github.zly2006.zhihu.ui.components.SettingGroupDividerStyle
+import com.github.zly2006.zhihu.ui.components.SettingIconPresentation
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
+import com.github.zly2006.zhihu.ui.components.SettingRowKind
 import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
@@ -187,19 +193,29 @@ fun AccountSettingScreen(
     }
     val liveData by accountState
     val data = liveData
+    val uiStyle = LocalUiStyle.current
+    val glassTokens = liquidGlassSemanticTokens()
+    val isEmbeddedOverlay = com.github.zly2006.zhihu.theme.LocalLiquidGlassOverlay.current
 
-    Scaffold(
+    AppScaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        containerColor = when {
+            isEmbeddedOverlay -> androidx.compose.ui.graphics.Color.Transparent
+            uiStyle == UiStyle.Material3 -> MaterialTheme.colorScheme.surfaceContainer
+            else -> MaterialTheme.colorScheme.surface
+        },
+        settingsAmbientBackground = !isEmbeddedOverlay,
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(innerPadding)
                 .testTag(ACCOUNT_SETTINGS_SCROLL_TAG)
                 .pageTurnViewportWithGuide(pageTurnTarget)
                 .verticalScroll(scrollState)
-                .padding(padding),
+                .padding(
+                    top = maxOf(padding.calculateTopPadding(), innerPadding.calculateTopPadding()),
+                    bottom = maxOf(padding.calculateBottomPadding(), innerPadding.calculateBottomPadding()),
+                ),
         ) {
             LaunchedEffect(data.login, refreshAccountProfileOnEnter) {
                 if (refreshAccountProfileOnEnter && data.login) {
@@ -215,10 +231,24 @@ fun AccountSettingScreen(
             }
 
             if (data.login) {
+                val profileCardModifier = when (uiStyle) {
+                    UiStyle.LiquidGlass ->
+                        Modifier
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                            .clip(RoundedCornerShape(glassTokens.formGroupCornerRadius))
+                            .background(glassTokens.contentSurface)
+                            .padding(16.dp)
+                    UiStyle.Miuix ->
+                        Modifier
+                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(MaterialTheme.colorScheme.surfaceContainer)
+                            .padding(16.dp)
+                    UiStyle.Material3 -> Modifier.padding(16.dp, 0.dp, 16.dp, 16.dp)
+                }
                 Row(
-                    Modifier
+                    profileCardModifier
                         .testTag(ACCOUNT_SETTINGS_PROFILE_HEADER_TAG)
-                        .padding(16.dp, 0.dp, 16.dp, 16.dp)
                         .clickable {
                             navigator.onNavigate(
                                 Person(
@@ -246,7 +276,7 @@ fun AccountSettingScreen(
                     )
                     Spacer(Modifier.weight(1f))
                     if (launchQrScanner != null) {
-                        FilledTonalIconButton(
+                        AppFilledTonalIconButton(
                             onClick = launchQrScanner,
                             modifier = Modifier.size(40.dp).testTag(ACCOUNT_SETTINGS_SCAN_TAG),
                         ) {
@@ -254,7 +284,7 @@ fun AccountSettingScreen(
                         }
                         Spacer(Modifier.width(8.dp))
                     }
-                    FilledTonalIconButton(
+                    AppFilledTonalIconButton(
                         onClick = {
                             showLogoutDialog = true
                         },
@@ -272,10 +302,12 @@ fun AccountSettingScreen(
                     }
                 }
             } else {
-                SettingItemGroup {
+                SettingItemGroup(dividerStyle = SettingGroupDividerStyle.IconAligned) {
                     SettingItem(
                         title = { Text("登录知乎") },
                         icon = { Icon(Icons.AutoMirrored.Filled.Login, null) },
+                        iconTileColor = glassTokens.settingIconBlue,
+                        rowKind = SettingRowKind.Navigation,
                         modifier = Modifier.testTag(ACCOUNT_SETTINGS_LOGIN_ITEM_TAG),
                         onClick = {
                             requestLogin()
@@ -285,20 +317,39 @@ fun AccountSettingScreen(
             }
 
             if (useDuo3HomeAccount) {
+                val shortcutOuterCorner = when (uiStyle) {
+                    UiStyle.Miuix -> 16.dp
+                    UiStyle.LiquidGlass -> glassTokens.formGroupCornerRadius
+                    UiStyle.Material3 -> 24.dp
+                }
+                val shortcutTileCorner = when (uiStyle) {
+                    UiStyle.Miuix -> 12.dp
+                    UiStyle.LiquidGlass -> 16.dp
+                    UiStyle.Material3 -> 4.dp
+                }
+                val shortcutTileBg = when (uiStyle) {
+                    UiStyle.Miuix -> MaterialTheme.colorScheme.surfaceContainer
+                    UiStyle.LiquidGlass -> glassTokens.contentSurface
+                    UiStyle.Material3 -> MaterialTheme.colorScheme.primaryContainer
+                }
+                val shortcutTileFg = when (uiStyle) {
+                    UiStyle.Material3 -> MaterialTheme.colorScheme.onPrimaryContainer
+                    else -> MaterialTheme.colorScheme.onSurface
+                }
                 Row(
                     Modifier
-                        .padding(horizontal = 16.dp)
-                        .padding(top = 16.dp, bottom = 32.dp)
-                        .clip(RoundedCornerShape(24.dp)),
-                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                        .padding(horizontal = if (uiStyle == UiStyle.Miuix) 12.dp else 16.dp)
+                        .padding(top = 16.dp, bottom = 24.dp)
+                        .clip(RoundedCornerShape(shortcutOuterCorner)),
+                    horizontalArrangement = Arrangement.spacedBy(if (uiStyle == UiStyle.Material3) 2.dp else 8.dp),
                 ) {
                     if (data.login) {
                         Column(
                             Modifier
                                 .testTag(ACCOUNT_SETTINGS_SHORTCUT_COLLECTIONS_TAG)
                                 .weight(1f)
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(MaterialTheme.colorScheme.primaryContainer)
+                                .clip(RoundedCornerShape(shortcutTileCorner))
+                                .background(shortcutTileBg)
                                 .clickable {
                                     data.urlToken?.let { navigator.onNavigate(Collections(it)) }
                                 }.padding(8.dp, 16.dp),
@@ -308,21 +359,21 @@ fun AccountSettingScreen(
                             Icon(
                                 Icons.Default.Bookmark,
                                 null,
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                tint = if (uiStyle == UiStyle.LiquidGlass) glassTokens.settingIconOrange else shortcutTileFg,
                             )
                             Spacer(Modifier.height(4.dp))
                             Text(
                                 "收藏夹",
                                 style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                color = shortcutTileFg,
                             )
                         }
                         Column(
                             Modifier
                                 .testTag(ACCOUNT_SETTINGS_SHORTCUT_SUBSCRIPTIONS_TAG)
                                 .weight(1f)
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(MaterialTheme.colorScheme.primaryContainer)
+                                .clip(RoundedCornerShape(shortcutTileCorner))
+                                .background(shortcutTileBg)
                                 .clickable {
                                     navigator.onNavigate(
                                         Person(
@@ -339,21 +390,21 @@ fun AccountSettingScreen(
                             Icon(
                                 Icons.Default.Groups,
                                 null,
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                tint = if (uiStyle == UiStyle.LiquidGlass) glassTokens.settingIconTeal else shortcutTileFg,
                             )
                             Spacer(Modifier.height(4.dp))
                             Text(
                                 "关注订阅",
                                 style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                color = shortcutTileFg,
                             )
                         }
                         Column(
                             Modifier
                                 .testTag(ACCOUNT_SETTINGS_SHORTCUT_NOTIFICATION_TAG)
                                 .weight(1f)
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(MaterialTheme.colorScheme.primaryContainer)
+                                .clip(RoundedCornerShape(shortcutTileCorner))
+                                .background(shortcutTileBg)
                                 .clickable {
                                     onDismissRequest()
                                     navigator.onNavigate(Notification)
@@ -371,14 +422,14 @@ fun AccountSettingScreen(
                                 Icon(
                                     Icons.Default.Notifications,
                                     null,
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    tint = if (uiStyle == UiStyle.LiquidGlass) glassTokens.settingIconRed else shortcutTileFg,
                                 )
                             }
                             Spacer(Modifier.height(4.dp))
                             Text(
                                 "通知",
                                 style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                color = shortcutTileFg,
                             )
                         }
                         if (shouldShowAccountHistoryShortcut(useDuo3HomeAccount, selectedBottomBarItemKeys)) {
@@ -386,8 +437,8 @@ fun AccountSettingScreen(
                                 Modifier
                                     .testTag(ACCOUNT_SETTINGS_SHORTCUT_HISTORY_TAG)
                                     .weight(1f)
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .background(MaterialTheme.colorScheme.primaryContainer)
+                                    .clip(RoundedCornerShape(shortcutTileCorner))
+                                    .background(shortcutTileBg)
                                     .clickable {
                                         onDismissRequest()
                                         navigator.onNavigateTopLevel(OnlineHistory)
@@ -398,25 +449,27 @@ fun AccountSettingScreen(
                                 Icon(
                                     Icons.Default.History,
                                     null,
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    tint = if (uiStyle == UiStyle.LiquidGlass) glassTokens.settingIconBlue else shortcutTileFg,
                                 )
                                 Spacer(Modifier.height(4.dp))
                                 Text(
                                     "浏览历史",
                                     style = MaterialTheme.typography.labelLarge,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    color = shortcutTileFg,
                                 )
                             }
                         }
                     }
                 }
             } else {
-                Spacer(Modifier.height(32.dp))
-                SettingItemGroup {
+                Spacer(Modifier.height(16.dp))
+                SettingItemGroup(dividerStyle = SettingGroupDividerStyle.IconAligned) {
                     if (data.login) {
                         SettingItem(
                             title = { Text("查看收藏夹") },
                             icon = { Icon(Icons.Default.BookmarkBorder, null) },
+                            iconTileColor = glassTokens.settingIconOrange,
+                            rowKind = SettingRowKind.Navigation,
                             onClick = {
                                 data.urlToken?.let { navigator.onNavigate(Collections(it)) }
                             },
@@ -425,6 +478,8 @@ fun AccountSettingScreen(
                             title = { Text("查看关注订阅") },
                             description = { Text("话题、问题、专栏和收藏夹") },
                             icon = { Icon(Icons.Default.Groups, null) },
+                            iconTileColor = glassTokens.settingIconTeal,
+                            rowKind = SettingRowKind.Navigation,
                             modifier = Modifier.testTag(ACCOUNT_SETTINGS_SHORTCUT_SUBSCRIPTIONS_TAG),
                             onClick = {
                                 navigator.onNavigate(
@@ -441,13 +496,23 @@ fun AccountSettingScreen(
                 }
             }
 
-            Column(Modifier.padding(horizontal = 16.dp)) {
+            Column(Modifier.padding(horizontal = if (uiStyle == UiStyle.Miuix) 12.dp else 16.dp)) {
                 Surface(
                     modifier = Modifier
-                        .height(36.dp)
+                        .height(42.dp)
                         .testTag(ACCOUNT_SETTINGS_SEARCH_TAG),
-                    shape = RoundedCornerShape(24.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    shape = RoundedCornerShape(
+                        when (uiStyle) {
+                            UiStyle.Miuix -> 16.dp
+                            UiStyle.LiquidGlass -> glassTokens.formGroupCornerRadius
+                            UiStyle.Material3 -> 24.dp
+                        },
+                    ),
+                    color = when (uiStyle) {
+                        UiStyle.Miuix -> MaterialTheme.colorScheme.surfaceContainer
+                        UiStyle.LiquidGlass -> glassTokens.contentSurface
+                        UiStyle.Material3 -> MaterialTheme.colorScheme.surfaceVariant
+                    },
                     onClick = {
                         navigator.onNavigate(Account.SettingsSearch)
                     },
@@ -475,12 +540,14 @@ fun AccountSettingScreen(
                 Spacer(Modifier.height(16.dp))
             }
 
-            SettingItemGroup {
+            SettingItemGroup(dividerStyle = SettingGroupDividerStyle.IconAligned) {
                 if (data.login) {
                     SettingItem(
                         title = { Text("身份管理") },
                         description = { Text("创建马甲号或切换当前账号") },
                         icon = { Icon(Icons.Default.SwitchAccount, null) },
+                        iconTileColor = glassTokens.settingIconBlue,
+                        rowKind = SettingRowKind.Navigation,
                         modifier = Modifier.testTag(ACCOUNT_SETTINGS_IDENTITY_MANAGEMENT_TAG),
                         onClick = { navigator.onNavigate(Account.IdentityManagement) },
                     )
@@ -490,6 +557,8 @@ fun AccountSettingScreen(
                     title = { Text("外观与阅读体验") },
                     description = { Text("主题颜色、字体大小等") },
                     icon = { Icon(Icons.Default.Palette, null) },
+                    iconTileColor = glassTokens.settingIconBlue,
+                    rowKind = SettingRowKind.Navigation,
                     modifier = Modifier.testTag(ACCOUNT_SETTINGS_APPEARANCE_TAG),
                     onClick = { navigator.onNavigate(Account.AppearanceSettings()) },
                 )
@@ -499,6 +568,8 @@ fun AccountSettingScreen(
                         title = { Text("朗读与播放") },
                         description = { Text("朗读内容、播放队列与条目过渡") },
                         icon = { Icon(Icons.AutoMirrored.Filled.VolumeUp, null) },
+                        iconTileColor = glassTokens.settingIconPurple,
+                        rowKind = SettingRowKind.Navigation,
                         modifier = Modifier.testTag(ACCOUNT_SETTINGS_READING_TAG),
                         onClick = { navigator.onNavigate(Account.ReadingSettings) },
                     )
@@ -508,6 +579,8 @@ fun AccountSettingScreen(
                     title = { Text("推荐系统与内容过滤") },
                     description = { Text("推荐、智能过滤、关键词屏蔽等") },
                     icon = { Icon(Icons.Default.FilterAlt, null) },
+                    iconTileColor = glassTokens.settingIconOrange,
+                    rowKind = SettingRowKind.Navigation,
                     modifier = Modifier.testTag(ACCOUNT_SETTINGS_RECOMMEND_TAG),
                     onClick = { navigator.onNavigate(Account.RecommendSettings()) },
                 )
@@ -516,6 +589,8 @@ fun AccountSettingScreen(
                     title = { Text("系统与更新") },
                     description = { Text("GitHub、更新设置等") },
                     icon = { Icon(Icons.Default.Settings, null) },
+                    iconTileColor = glassTokens.settingIconNeutral,
+                    rowKind = SettingRowKind.Navigation,
                     modifier = Modifier.testTag(ACCOUNT_SETTINGS_SYSTEM_TAG),
                     onClick = { navigator.onNavigate(Account.SystemAndUpdateSettings()) },
                 )
@@ -524,6 +599,8 @@ fun AccountSettingScreen(
                     SettingItem(
                         title = { Text("开发者选项") },
                         icon = { Icon(Icons.Default.Code, null) },
+                        iconTileColor = glassTokens.settingIconNeutral,
+                        rowKind = SettingRowKind.Navigation,
                         modifier = Modifier.testTag(ACCOUNT_SETTINGS_DEVELOPER_TAG),
                         onClick = { navigator.onNavigate(Account.DeveloperSettings) },
                     )
@@ -544,11 +621,13 @@ fun AccountSettingScreen(
 
             SettingItemGroup(
                 title = "关于",
+                dividerStyle = SettingGroupDividerStyle.IconAligned,
                 footer = { Text("本软件仅供学习交流使用，应用内内容由知乎网站提供，著作权归其对应作者所有。") },
             ) {
                 SettingItem(
                     title = { Text("知乎++") },
                     description = { Text("版本号：$versionInfo") },
+                    iconPresentation = SettingIconPresentation.Avatar,
                     icon = {
                         Image(
                             painterResource(Res.drawable.ic_launcher_foreground),
@@ -578,6 +657,7 @@ fun AccountSettingScreen(
                     title = { Text("GitHub 项目地址") },
                     description = { Text("https://github.com/zly2006/zhihu-plus-plus") },
                     icon = { Icon(painterResource(Res.drawable.ic_github_24dp), null) },
+                    iconTileColor = glassTokens.settingIconNeutral,
                     onClick = {
                         openSystemUrl("https://github.com/zly2006/zhihu-plus-plus")
                     },
@@ -594,6 +674,7 @@ fun AccountSettingScreen(
                     title = { Text("项目协议") },
                     description = { Text("AGPL-3.0-only") },
                     icon = { Icon(painterResource(Res.drawable.ic_license_24dp), null) },
+                    iconTileColor = glassTokens.settingIconTeal,
                     onClick = {
                         openSystemUrl("https://github.com/zly2006/zhihu-plus-plus/blob/master/LICENSE")
                     },
@@ -609,6 +690,8 @@ fun AccountSettingScreen(
                     title = { Text("开源许可") },
                     description = { Text("查看第三方组件许可证") },
                     icon = { Icon(painterResource(Res.drawable.ic_license_24dp), null) },
+                    iconTileColor = glassTokens.settingIconBlue,
+                    rowKind = SettingRowKind.Navigation,
                     modifier = Modifier.testTag(ACCOUNT_SETTINGS_LICENSES_TAG),
                     onClick = { navigator.onNavigate(Account.OpenSourceLicenses) },
                 )
@@ -617,7 +700,7 @@ fun AccountSettingScreen(
     }
 
     if (showLogoutDialog) {
-        AlertDialog(
+        AppAlertDialog(
             onDismissRequest = { showLogoutDialog = false },
             title = { Text("退出登录") },
             text = {
@@ -630,7 +713,7 @@ fun AccountSettingScreen(
                 )
             },
             confirmButton = {
-                TextButton(
+                AppTextButton(
                     onClick = {
                         accountStore.clear()
                         showLogoutDialog = false
@@ -640,7 +723,7 @@ fun AccountSettingScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showLogoutDialog = false }) {
+                AppTextButton(onClick = { showLogoutDialog = false }) {
                     Text("取消")
                 }
             },

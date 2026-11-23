@@ -41,20 +41,11 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryTabRow
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -90,6 +81,15 @@ import com.github.zly2006.zhihu.navigation.Topic
 import com.github.zly2006.zhihu.navigation.WritePin
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.ui.components.AppButton
+import com.github.zly2006.zhihu.ui.components.AppCircularProgressIndicator
+import com.github.zly2006.zhihu.ui.components.AppFilledTonalButton
+import com.github.zly2006.zhihu.ui.components.AppIconButton
+import com.github.zly2006.zhihu.ui.components.AppPrimaryTabRow
+import com.github.zly2006.zhihu.ui.components.AppScaffold
+import com.github.zly2006.zhihu.ui.components.AppTab
+import com.github.zly2006.zhihu.ui.components.AppTextButton
+import com.github.zly2006.zhihu.ui.components.AppTopAppBar
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
@@ -441,18 +441,18 @@ fun TopicScreen(topic: Topic) {
         viewModel.loadMore(environment)
     }
 
-    Scaffold(
+    AppScaffold(
         modifier = Modifier.testTag(TOPIC_SCREEN_TAG),
         topBar = {
-            TopAppBar(
+            AppTopAppBar(
                 title = { Text(viewModel.detail?.name?.ifBlank { topic.name } ?: topic.name.ifBlank { "话题" }) },
                 navigationIcon = {
-                    IconButton(onClick = navigator.onNavigateBack) {
+                    AppIconButton(onClick = navigator.onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
                 actions = {
-                    IconButton(
+                    AppIconButton(
                         modifier = Modifier.testTag(TOPIC_SHARE_BUTTON_TAG),
                         onClick = {
                             val loadedTopic = topic.copy(name = viewModel.detail?.name ?: topic.name)
@@ -471,14 +471,16 @@ fun TopicScreen(topic: Topic) {
             listState = listState,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
                 .pageTurnViewportWithGuide(pageTurnTarget),
-            contentPadding = PaddingValues(bottom = 24.dp),
+            contentPadding = PaddingValues(
+                top = padding.calculateTopPadding(),
+                bottom = padding.calculateBottomPadding() + 24.dp,
+            ),
             footer = { listState ->
                 if (viewModel.errorMessage == null) {
                     ProgressIndicatorFooter(listState)
                 } else {
-                    TextButton(
+                    AppTextButton(
                         onClick = { viewModel.retry(environment) },
                         modifier = Modifier.fillMaxWidth().padding(8.dp).testTag(TOPIC_RETRY_BUTTON_TAG),
                     ) { Text("加载失败：${viewModel.errorMessage}，点击重试") }
@@ -513,9 +515,9 @@ fun TopicScreen(topic: Topic) {
                             )
                         },
                     )
-                    PrimaryTabRow(selectedTabIndex = viewModel.selectedTab.ordinal) {
+                    AppPrimaryTabRow(selectedTabIndex = viewModel.selectedTab.ordinal) {
                         TopicFeedTab.entries.forEach { tab ->
-                            Tab(
+                            AppTab(
                                 selected = viewModel.selectedTab == tab,
                                 onClick = { viewModel.selectTab(environment, tab) },
                                 text = { Text(tab.title) },
@@ -529,7 +531,7 @@ fun TopicScreen(topic: Topic) {
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             TopicDiscussionSort.entries.forEach { sort ->
-                                androidx.compose.material3.FilterChip(
+                                com.github.zly2006.zhihu.ui.components.AppFilterChip(
                                     selected = viewModel.discussionSort == sort,
                                     onClick = { viewModel.selectDiscussionSort(environment, sort) },
                                     label = { Text(sort.title) },
@@ -544,7 +546,7 @@ fun TopicScreen(topic: Topic) {
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             TopicIdeasSort.entries.forEach { sort ->
-                                androidx.compose.material3.FilterChip(
+                                com.github.zly2006.zhihu.ui.components.AppFilterChip(
                                     selected = viewModel.ideasSort == sort,
                                     onClick = { viewModel.selectIdeasSort(environment, sort) },
                                     label = { Text(sort.title) },
@@ -601,7 +603,7 @@ private fun TopicHeader(
                             "${detail.questionsCount} 问题",
                         ).joinToString(" · "),
                     )
-                    detailErrorMessage != null -> TextButton(onClick = onRetryDetail) {
+                    detailErrorMessage != null -> AppTextButton(onClick = onRetryDetail) {
                         Text("话题信息加载失败：$detailErrorMessage，点击重试", color = MaterialTheme.colorScheme.error)
                     }
                     else -> Text("正在加载话题信息…")
@@ -620,7 +622,7 @@ private fun TopicHeader(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Button(
+            AppButton(
                 onClick = { detail?.let { onFollowingChange(!it.isFollowing) } },
                 enabled = detail != null && !isFollowingChanging,
                 modifier =
@@ -630,12 +632,12 @@ private fun TopicHeader(
                         .semantics { selected = detail?.isFollowing == true },
             ) {
                 if (isFollowingChanging) {
-                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                    AppCircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                 } else {
                     Text(if (detail?.isFollowing == true) "已关注" else "关注话题", maxLines = 1)
                 }
             }
-            FilledTonalButton(
+            AppFilledTonalButton(
                 onClick = onWritePin,
                 enabled = detail?.topicId != null,
                 modifier = Modifier.weight(2f).testTag(TOPIC_WRITE_PIN_BUTTON_TAG),
@@ -698,7 +700,7 @@ private fun TopicIntroduction(
             )
         }
         if (canCollapse) {
-            TextButton(
+            AppTextButton(
                 onClick = { onExpandedChange(!isExpanded) },
                 modifier =
                     Modifier

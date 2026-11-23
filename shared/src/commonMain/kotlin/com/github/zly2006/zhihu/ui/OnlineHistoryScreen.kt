@@ -17,21 +17,14 @@
 
 package com.github.zly2006.zhihu.ui
 
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -42,6 +35,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.navigation.History
 import com.github.zly2006.zhihu.navigation.LocalNavigator
@@ -49,6 +43,13 @@ import com.github.zly2006.zhihu.platform.PlatformBackHandler
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.reading.RegisterReadingQueueSource
 import com.github.zly2006.zhihu.ui.TopLevelReselectAction
+import com.github.zly2006.zhihu.ui.components.AppAlertDialog
+import com.github.zly2006.zhihu.ui.components.AppDropdownMenu
+import com.github.zly2006.zhihu.ui.components.AppDropdownMenuItem
+import com.github.zly2006.zhihu.ui.components.AppIconButton
+import com.github.zly2006.zhihu.ui.components.AppScaffold
+import com.github.zly2006.zhihu.ui.components.AppTextButton
+import com.github.zly2006.zhihu.ui.components.AppTopAppBar
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
@@ -73,6 +74,7 @@ const val ONLINE_HISTORY_OVERFLOW_TAG = "online_history_overflow"
 fun OnlineHistoryScreen(
     scrollToTopTrigger: Int = 0,
     isActive: Boolean = true,
+    navigationPadding: PaddingValues = PaddingValues(0.dp),
 ) {
     val navigator = LocalNavigator.current
     val viewModel: OnlineHistoryViewModel = viewModel { OnlineHistoryViewModel() }
@@ -120,16 +122,16 @@ fun OnlineHistoryScreen(
         showClearHistoryDialog = false
     }
 
-    Scaffold(
+    AppScaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
-            TopAppBar(
+            AppTopAppBar(
                 title = { Text("历史记录") },
                 actions = {
                     PlatformBackHandler(enabled = showActionsMenu) {
                         showActionsMenu = false
                     }
-                    IconButton(
+                    AppIconButton(
                         modifier = Modifier.testTag(ONLINE_HISTORY_OVERFLOW_TAG),
                         onClick = { showActionsMenu = true },
                     ) {
@@ -138,18 +140,18 @@ fun OnlineHistoryScreen(
                             contentDescription = "更多选项",
                         )
 
-                        DropdownMenu(
+                        AppDropdownMenu(
                             expanded = showActionsMenu,
                             onDismissRequest = { showActionsMenu = false },
                         ) {
-                            DropdownMenuItem(
+                            AppDropdownMenuItem(
                                 text = { Text("查看本地历史记录") },
                                 onClick = {
                                     showActionsMenu = false
                                     navigator.onNavigate(History)
                                 },
                             )
-                            DropdownMenuItem(
+                            AppDropdownMenuItem(
                                 text = { Text("清除历史记录") },
                                 onClick = {
                                     showActionsMenu = false
@@ -163,12 +165,12 @@ fun OnlineHistoryScreen(
         },
     ) { innerPadding ->
         if (showClearHistoryDialog) {
-            AlertDialog(
+            AppAlertDialog(
                 onDismissRequest = { showClearHistoryDialog = false },
                 title = { Text("确认清除历史记录") },
                 text = { Text("此操作会清除当前账号的在线和本地的全部历史记录。") },
                 confirmButton = {
-                    TextButton(onClick = {
+                    AppTextButton(onClick = {
                         showClearHistoryDialog = false
                         coroutineScope.launch {
                             paginationEnvironment.clearAllHistory()
@@ -180,19 +182,26 @@ fun OnlineHistoryScreen(
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showClearHistoryDialog = false }) {
+                    AppTextButton(onClick = { showClearHistoryDialog = false }) {
                         Text("我再想想")
                     }
                 },
             )
         }
-        FeedPullToRefresh(viewModel, paginationEnvironment, padding = innerPadding) {
+        val listPadding = PaddingValues(
+            top = innerPadding.calculateTopPadding(),
+            bottom = maxOf(
+                innerPadding.calculateBottomPadding(),
+                navigationPadding.calculateBottomPadding(),
+            ),
+        )
+        FeedPullToRefresh(viewModel, paginationEnvironment, padding = listPadding) {
             PaginatedList(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding)
                     .pageTurnViewportWithGuide(pageTurnTarget)
                     .testTag("online_history_list"),
+                contentPadding = listPadding,
                 items = viewModel.displayItems,
                 listState = listState,
                 onLoadMore = { viewModel.loadMore(paginationEnvironment) },
@@ -203,7 +212,7 @@ fun OnlineHistoryScreen(
                     item,
                     readingQueueSourceId = readingQueueSourceId.takeIf { isActive },
                     menuItems = { dismissMenu ->
-                        DropdownMenuItem(
+                        AppDropdownMenuItem(
                             text = { Text("删除该条历史记录") },
                             onClick = {
                                 dismissMenu()

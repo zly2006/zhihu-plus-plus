@@ -41,7 +41,6 @@ import androidx.compose.material.icons.filled.GetApp
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.DesktopWindows
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -72,10 +71,14 @@ import com.github.zly2006.zhihu.reading.isReadingPlayerSupported
 import com.github.zly2006.zhihu.reading.loadReadingPlaybackSpeed
 import com.github.zly2006.zhihu.reading.loadReadingPreferences
 import com.github.zly2006.zhihu.reading.rememberReadingPlayerController
+import com.github.zly2006.zhihu.theme.LocalUiStyle
 import com.github.zly2006.zhihu.theme.ThemeManager
+import com.github.zly2006.zhihu.theme.UiStyle
+import com.github.zly2006.zhihu.theme.liquidGlassSemanticTokens
 import com.github.zly2006.zhihu.ui.TtsState
 import com.github.zly2006.zhihu.ui.articleActionText
 import com.github.zly2006.zhihu.ui.articleSpeechText
+import com.github.zly2006.zhihu.ui.components.AppCircularProgressIndicator
 import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.github.zly2006.zhihu.ui.components.ShareAction
 import com.github.zly2006.zhihu.ui.components.rememberShareActionExecutor
@@ -163,7 +166,11 @@ fun ArticleActionsMenu(
         icon: @Composable () -> Unit,
         text: String,
         enabled: Boolean = true,
-        backgroundColor: Color = MaterialTheme.colorScheme.surfaceVariant,
+        backgroundColor: Color = if (LocalUiStyle.current == UiStyle.LiquidGlass) {
+            liquidGlassSemanticTokens().contentSurface
+        } else {
+            MaterialTheme.colorScheme.surfaceVariant
+        },
         contentColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
         onClick: () -> Unit,
     ) {
@@ -198,7 +205,11 @@ fun ArticleActionsMenu(
         icon: ImageVector,
         text: String,
         enabled: Boolean = true,
-        backgroundColor: Color = MaterialTheme.colorScheme.surfaceVariant,
+        backgroundColor: Color = if (LocalUiStyle.current == UiStyle.LiquidGlass) {
+            liquidGlassSemanticTokens().contentSurface
+        } else {
+            MaterialTheme.colorScheme.surfaceVariant
+        },
         contentColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
         onClick: () -> Unit,
     ) {
@@ -253,7 +264,7 @@ fun ArticleActionsMenu(
                     )
                 } else {
                     when (ttsState) {
-                        TtsState.Initializing, TtsState.Uninitialized -> CircularProgressIndicator(
+                        TtsState.Initializing, TtsState.Uninitialized -> AppCircularProgressIndicator(
                             modifier = Modifier.height(24.dp),
                             strokeWidth = 2.dp,
                         )

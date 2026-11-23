@@ -34,8 +34,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -161,7 +159,7 @@ fun WriteContentFabColumn(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         horizontalAlignment = Alignment.End,
     ) {
-        ExtendedFloatingActionButton(
+        AppExtendedFloatingActionButton(
             onClick = { if (previewEnabled) onPreview() },
             containerColor =
                 if (previewEnabled) {
@@ -184,7 +182,7 @@ fun WriteContentFabColumn(
             },
         )
         if (showImageButton) {
-            ExtendedFloatingActionButton(
+            AppExtendedFloatingActionButton(
                 onClick = { if (imageEnabled) onImage() },
                 containerColor =
                     if (imageEnabled) {
@@ -201,7 +199,7 @@ fun WriteContentFabColumn(
                 modifier = Modifier.testTag(imageTag),
                 icon = {
                     if (isUploadingImage) {
-                        CircularProgressIndicator(
+                        AppCircularProgressIndicator(
                             modifier = Modifier.size(18.dp),
                             strokeWidth = 2.dp,
                         )
@@ -214,7 +212,7 @@ fun WriteContentFabColumn(
                 },
             )
         }
-        ExtendedFloatingActionButton(
+        AppExtendedFloatingActionButton(
             onClick = { if (saveEnabled) onSave() },
             containerColor =
                 if (saveEnabled) {

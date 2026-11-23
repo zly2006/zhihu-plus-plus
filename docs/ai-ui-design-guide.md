@@ -47,7 +47,7 @@ URL 解析集中在 `resolveContent()`。支持知乎问题、回答、文章、
 
 ## 视觉体系
 
-当前主线 UI 以 Material 3 为默认实现。改共同行为时优先放在 common runtime、状态或 shared component；改视觉时先确认影响的是共享组件、单个页面还是平台 adapter，避免只改入口而漏掉复用路径。
+当前主线 UI 以 Material 3 为默认实现，并通过统一的 `UiStyle`（`Material3` / `Miuix` / `LiquidGlass`）抽象层支持三套风格实时热切换。页面和组件优先使用 `ui/components/` 下的统一语义组件（`AppScaffold`、`AppTopAppBar` / `AppLargeTopAppBar`、`AppMainNavigationBar`、`AppButton` / `AppIconButton` / `AppFloatingActionButton`、`AppSwitch` / `AppCheckbox` / `AppRadioButton` / `AppSlider` / `AppCard` / `AppTextField`、`AppPrimaryTabRow` / `AppPrimaryScrollableTabRow`、`AppAlertDialog` / `AppDropdownMenu` / `AppExposedDropdownMenu`、`MyModalBottomSheet`、`LiquidToolbar`、`SettingItemGroup`），避免在业务页面直接依赖原生 Material 3 控件；同时注意采样 `LocalUiBackdrop` 的玻璃容器内部必须重置为 `NoOpUiBackdrop` 以防双层折射或 RenderThread 崩溃。改共同行为时优先放在 common runtime、状态或 shared component；改视觉时先确认影响的是共享组件、单个页面还是平台 adapter，避免只改入口而漏掉复用路径。
 
 主题状态集中在 `ThemeManager` 和平台 `ThemeSettingsRuntime`。`themeMode` 控制明暗，`useDynamicColor` 控制 Material You 动态取色，`customThemeColor` 在动态取色关闭后生效，`backgroundColorLight` / `backgroundColorDark` 控制背景色，`luotianyi_color` 控制应用内浏览器工具栏色。
 
@@ -62,6 +62,7 @@ URL 解析集中在 `resolveContent()`。支持知乎问题、回答、文章、
 | preference key | 入口 | 主要影响 | 注意 |
 | --- | --- | --- | --- |
 | `themeMode` | 主题模式 | 应用明暗主题 | 通过 `ThemeManager` 立即影响顶层主题 |
+| `ui_style` | 界面风格 | `material` / `miuix` / `liquid_glass` 三风格切换 | 通过 `ThemeManager` + `ZhihuTheme`（`movableContentOf`）实时热切换，无需重启；不支持 Liquid Glass 的平台自动回落 `material` 且不覆盖配置；tag 为 `appearanceSettings.uiStyle` |
 | `useDynamicColor` | Material You 动态取色 | Android 12+ 取系统壁纸色 | 关闭后自定义主题色才明显生效 |
 | `customThemeColor` | 自定义主题色 | Material 3 主色 | 不要和动态取色同时假设生效 |
 | `backgroundColorLight`, `backgroundColorDark` | 自定义背景颜色 | 明暗模式背景 | 按当前明暗模式写入不同 key |

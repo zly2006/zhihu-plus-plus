@@ -25,6 +25,7 @@ import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.draggable
@@ -35,9 +36,14 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ConsumeSwipeWithinBottomSheetBoundsNestedScrollConnection
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -58,6 +64,7 @@ import androidx.compose.material3.value
 import androidx.compose.material3.verticalScaleDown
 import androidx.compose.material3.verticalScaleUp
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
@@ -90,12 +97,20 @@ import com.github.zly2006.zhihu.platform.PlatformPredictiveBackHandler
 import com.github.zly2006.zhihu.platform.exportTestTagsForUiAutomation
 import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.theme.LocalLiquidGlassOverlay
+import com.github.zly2006.zhihu.theme.LocalUiStyle
+import com.github.zly2006.zhihu.theme.UiStyle
+import com.github.zly2006.zhihu.theme.liquidGlassSemanticTokens
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 import kotlin.math.max
 import kotlin.math.min
 
 const val DISABLE_BOTTOM_SHEET_ROUNDED_CORNERS_PREFERENCE_KEY = "disableBottomSheetRoundedCorners"
+
+@OptIn(ExperimentalMaterial3Api::class)
+private val DefaultBottomSheetDragHandle: @Composable () -> Unit = { BottomSheetDefaults.DragHandle() }
 
 @Composable
 @ExperimentalMaterial3Api
@@ -110,17 +125,70 @@ fun MyModalBottomSheet(
     contentColor: Color = contentColorFor(containerColor),
     tonalElevation: Dp = 0.dp,
     scrimColor: Color = BottomSheetDefaults.ScrimColor,
-    dragHandle: @Composable (() -> Unit)? = { BottomSheetDefaults.DragHandle() },
+    dragHandle: @Composable (() -> Unit)? = DefaultBottomSheetDragHandle,
     contentWindowInsets: @Composable () -> WindowInsets = { BottomSheetDefaults.windowInsets },
     properties: ModalBottomSheetProperties = ModalBottomSheetProperties(),
     usePlatformWindow: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val settings = rememberSettingsStore()
+    val uiStyle = LocalUiStyle.current
+    val resolvedContainerColor = when (uiStyle) {
+        UiStyle.Material3 -> containerColor
+        UiStyle.Miuix -> if (containerColor == BottomSheetDefaults.ContainerColor) {
+            MiuixTheme.colorScheme.surface
+        } else {
+            containerColor
+        }
+        UiStyle.LiquidGlass -> if (containerColor == BottomSheetDefaults.ContainerColor) {
+            liquidGlassSemanticTokens().modalCanvas
+        } else {
+            containerColor
+        }
+    }
     val bottomSheetShape = if (settings.getBoolean(DISABLE_BOTTOM_SHEET_ROUNDED_CORNERS_PREFERENCE_KEY, false)) {
         RectangleShape
+    } else if (shape == BottomSheetDefaults.ExpandedShape) {
+        when (uiStyle) {
+            UiStyle.Material3 -> shape
+            UiStyle.Miuix -> RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+            UiStyle.LiquidGlass -> RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)
+        }
     } else {
         shape
+    }
+    val resolvedDragHandle: (@Composable () -> Unit)? = when {
+        dragHandle == null -> null
+        dragHandle !== DefaultBottomSheetDragHandle -> dragHandle
+        uiStyle == UiStyle.LiquidGlass -> {
+            {
+                Box(
+                    modifier = Modifier
+                        .padding(top = 10.dp, bottom = 8.dp)
+                        .width(36.dp)
+                        .height(5.dp)
+                        .background(
+                            color = Color(0x558E8E93),
+                            shape = CircleShape,
+                        ),
+                )
+            }
+        }
+        uiStyle == UiStyle.Miuix -> {
+            {
+                Box(
+                    modifier = Modifier
+                        .padding(top = 12.dp, bottom = 8.dp)
+                        .width(40.dp)
+                        .height(4.dp)
+                        .background(
+                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.35f),
+                            shape = CircleShape,
+                        ),
+                )
+            }
+        }
+        else -> dragHandle
     }
     val scope = rememberCoroutineScope()
     val animateToDismiss: () -> Unit = {
@@ -168,12 +236,16 @@ fun MyModalBottomSheet(
                 maxWidth = sheetMaxWidth,
                 gesturesEnabled = sheetGesturesEnabled,
                 shape = bottomSheetShape,
-                containerColor = containerColor,
+                containerColor = resolvedContainerColor,
                 contentColor = contentColor,
                 tonalElevation = tonalElevation,
-                dragHandle = dragHandle,
+                dragHandle = resolvedDragHandle,
                 contentWindowInsets = contentWindowInsets,
-                content = content,
+                content = {
+                    CompositionLocalProvider(LocalLiquidGlassOverlay provides (uiStyle == UiStyle.LiquidGlass)) {
+                        content()
+                    }
+                },
             )
         }
     }

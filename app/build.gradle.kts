@@ -193,7 +193,14 @@ val androidxLifecycleVersion = "2.11.0"
 // 导致运行时类冲突或编译时 internal API 不可见。
 configurations.configureEach {
     resolutionStrategy {
-        force("org.jetbrains.compose.material3:material3:1.10.0-alpha05")
+        force(
+            "org.jetbrains.compose.material3:material3:1.10.0-alpha05",
+            "org.jetbrains.compose.material3:material3-window-size-class:1.10.0-alpha05",
+            "androidx.compose.material3:material3:1.5.0-alpha08",
+            "androidx.compose.material3:material3-android:1.5.0-alpha08",
+            "androidx.compose.material3:material3-window-size-class:1.5.0-alpha08",
+            "androidx.compose.material3:material3-window-size-class-android:1.5.0-alpha08",
+        )
     }
 }
 

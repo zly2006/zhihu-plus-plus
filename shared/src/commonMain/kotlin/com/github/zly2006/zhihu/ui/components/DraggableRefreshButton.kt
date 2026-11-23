@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -114,7 +113,7 @@ fun DraggableRefreshButton(
     val opacityFraction = remember(settings) {
         settings.getInt(PREF_FAB_OPACITY, DEFAULT_FAB_OPACITY).coerceIn(10, 100) / 100f
     }
-    FloatingActionButton(
+    AppFloatingActionButton(
         onClick = onClick,
         shape = CircleShape,
         containerColor = FloatingActionButtonDefaults.containerColor.copy(alpha = opacityFraction),

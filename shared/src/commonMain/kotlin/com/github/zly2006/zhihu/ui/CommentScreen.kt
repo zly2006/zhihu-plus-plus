@@ -75,24 +75,15 @@ import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.outlined.EmojiEmotions
 import androidx.compose.material.icons.outlined.Keyboard
 import androidx.compose.material.icons.outlined.ThumbUp
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -164,6 +155,15 @@ import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.reading.ReadingCommentOrder
 import com.github.zly2006.zhihu.reading.loadReadingPreferences
 import com.github.zly2006.zhihu.reading.saveReadingPreferences
+import com.github.zly2006.zhihu.ui.components.AppAlertDialog
+import com.github.zly2006.zhihu.ui.components.AppButton
+import com.github.zly2006.zhihu.ui.components.AppCheckbox
+import com.github.zly2006.zhihu.ui.components.AppCircularProgressIndicator
+import com.github.zly2006.zhihu.ui.components.AppDropdownMenu
+import com.github.zly2006.zhihu.ui.components.AppDropdownMenuItem
+import com.github.zly2006.zhihu.ui.components.AppExposedDropdownMenu
+import com.github.zly2006.zhihu.ui.components.AppIconButton
+import com.github.zly2006.zhihu.ui.components.AppTextButton
 import com.github.zly2006.zhihu.ui.components.CommentAccountSelection
 import com.github.zly2006.zhihu.ui.components.CommentAccountSelector
 import com.github.zly2006.zhihu.ui.components.PageTurnFab
@@ -407,11 +407,11 @@ private fun ClickableImageWithMenu(
             modifier = Modifier.fillMaxSize(),
         )
 
-        DropdownMenu(
+        AppDropdownMenu(
             expanded = showContextMenu,
             onDismissRequest = { showContextMenu = false },
         ) {
-            DropdownMenuItem(
+            AppDropdownMenuItem(
                 modifier = Modifier.testTag(COMMENT_IMAGE_MENU_OPEN_TAG),
                 text = { Text("查看图片") },
                 onClick = {
@@ -419,7 +419,7 @@ private fun ClickableImageWithMenu(
                     showContextMenu = false
                 },
             )
-            DropdownMenuItem(
+            AppDropdownMenuItem(
                 modifier = Modifier.testTag(COMMENT_IMAGE_MENU_BROWSER_TAG),
                 text = { Text("在浏览器中打开") },
                 onClick = {
@@ -427,7 +427,7 @@ private fun ClickableImageWithMenu(
                     showContextMenu = false
                 },
             )
-            DropdownMenuItem(
+            AppDropdownMenuItem(
                 modifier = Modifier.testTag(COMMENT_IMAGE_MENU_SAVE_TAG),
                 text = { Text("保存图片") },
                 onClick = {
@@ -435,7 +435,7 @@ private fun ClickableImageWithMenu(
                     showContextMenu = false
                 },
             )
-            DropdownMenuItem(
+            AppDropdownMenuItem(
                 modifier = Modifier.testTag(COMMENT_IMAGE_MENU_SHARE_TAG),
                 text = { Text("分享图片") },
                 onClick = {
@@ -585,13 +585,28 @@ fun CommentScreen(
             }
         }
     }
-    val commentBackgroundColor = MaterialTheme.colorScheme.surfaceContainerLow
-    val commentInputBarColor = MaterialTheme.colorScheme.surfaceContainer
-    val actionChipColor = MaterialTheme.colorScheme.surfaceContainerHigh
+    val commentUiStyle = com.github.zly2006.zhihu.theme.LocalUiStyle.current
+    val commentGlassTokens = com.github.zly2006.zhihu.theme
+        .liquidGlassSemanticTokens()
+    val commentBackgroundColor = if (commentUiStyle == com.github.zly2006.zhihu.theme.UiStyle.LiquidGlass) {
+        commentGlassTokens.modalCanvas
+    } else {
+        MaterialTheme.colorScheme.surfaceContainerLow
+    }
+    val commentInputBarColor = if (commentUiStyle == com.github.zly2006.zhihu.theme.UiStyle.LiquidGlass) {
+        commentGlassTokens.contentSurface
+    } else {
+        MaterialTheme.colorScheme.surfaceContainer
+    }
+    val actionChipColor = if (commentUiStyle == com.github.zly2006.zhihu.theme.UiStyle.LiquidGlass) {
+        commentGlassTokens.segmentedContainer
+    } else {
+        MaterialTheme.colorScheme.surfaceContainerHigh
+    }
     val actionChipIconColor = MaterialTheme.colorScheme.onSurfaceVariant
 
     commentPendingDeletion?.let { target ->
-        AlertDialog(
+        AppAlertDialog(
             modifier = Modifier.testTag(COMMENT_DELETE_DIALOG_TAG),
             onDismissRequest = {
                 if (!isDeletingComment) {
@@ -613,7 +628,7 @@ fun CommentScreen(
                 }
             },
             confirmButton = {
-                TextButton(
+                AppTextButton(
                     modifier = Modifier.testTag(COMMENT_DELETE_CONFIRM_TAG),
                     enabled = !isDeletingComment,
                     onClick = {
@@ -637,7 +652,7 @@ fun CommentScreen(
                 }
             },
             dismissButton = {
-                TextButton(
+                AppTextButton(
                     modifier = Modifier.testTag(COMMENT_DELETE_CANCEL_TAG),
                     enabled = !isDeletingComment,
                     onClick = {
@@ -775,7 +790,7 @@ fun CommentScreen(
                     when {
                         viewModel.isLoading && viewModel.allData.isEmpty() -> {
                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                CircularProgressIndicator()
+                                AppCircularProgressIndicator()
                             }
                         }
 
@@ -877,7 +892,7 @@ fun CommentScreen(
                                                     )
                                                 }
                                             }
-                                            Button(
+                                            AppButton(
                                                 onClick = { onChildCommentClick(commentItem) },
                                                 modifier = Modifier
                                                     .height(28.dp)
@@ -942,25 +957,33 @@ fun CommentScreen(
                                     }
                                 } else {
                                     item("sorting") {
+                                        val isM3 = com.github.zly2006.zhihu.theme.LocalUiStyle.current == com.github.zly2006.zhihu.theme.UiStyle.Material3
                                         Row(
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .layout { measurable, constraints ->
-                                                    val contentHeight = 32.dp.roundToPx()
-                                                    val placeable = measurable.measure(
-                                                        constraints.copy(
-                                                            minHeight = contentHeight,
-                                                            maxHeight = contentHeight,
-                                                        ),
-                                                    )
-                                                    layout(placeable.width, 24.dp.roundToPx()) {
-                                                        placeable.placeRelative(0, 0)
-                                                    }
-                                                },
+                                                .then(
+                                                    if (isM3) {
+                                                        Modifier.layout { measurable, constraints ->
+                                                            val contentHeight = 32.dp.roundToPx()
+                                                            val placeable = measurable.measure(
+                                                                constraints.copy(
+                                                                    minHeight = contentHeight,
+                                                                    maxHeight = contentHeight,
+                                                                ),
+                                                            )
+                                                            layout(placeable.width, 24.dp.roundToPx()) {
+                                                                placeable.placeRelative(0, 0)
+                                                            }
+                                                        }
+                                                    } else {
+                                                        Modifier.padding(vertical = 2.dp)
+                                                    },
+                                                ),
                                             verticalAlignment = Alignment.CenterVertically,
                                             horizontalArrangement = Arrangement.End,
                                         ) {
-                                            SuggestionChip(
+                                            com.github.zly2006.zhihu.ui.components.AppFilterChip(
+                                                selected = viewModel.sortOrder == CommentSortOrder.SCORE,
                                                 modifier = Modifier.testTag(COMMENT_SORT_SCORE_TAG),
                                                 label = {
                                                     Text(
@@ -988,7 +1011,8 @@ fun CommentScreen(
                                                 },
                                             )
                                             Spacer(Modifier.width(12.dp))
-                                            SuggestionChip(
+                                            com.github.zly2006.zhihu.ui.components.AppFilterChip(
+                                                selected = viewModel.sortOrder == CommentSortOrder.TIME,
                                                 modifier = Modifier.testTag(COMMENT_SORT_TIME_TAG),
                                                 label = {
                                                     Text(
@@ -1072,7 +1096,7 @@ fun CommentScreen(
                                                 .padding(8.dp),
                                             contentAlignment = Alignment.Center,
                                         ) {
-                                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                            AppCircularProgressIndicator(modifier = Modifier.size(24.dp))
                                         }
                                     }
                                 }
@@ -1120,7 +1144,7 @@ fun CommentScreen(
                                         color = MaterialTheme.colorScheme.onSecondaryContainer,
                                         modifier = Modifier.weight(1f),
                                     )
-                                    IconButton(
+                                    AppIconButton(
                                         onClick = { replyToComment = null },
                                         modifier = Modifier
                                             .size(24.dp)
@@ -1144,7 +1168,7 @@ fun CommentScreen(
                                 .padding(8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            IconButton(
+                            AppIconButton(
                                 onClick = {
                                     if (showEmojiPicker) {
                                         showEmojiPicker = false
@@ -1245,7 +1269,7 @@ fun CommentScreen(
                                             ).testTag(COMMENT_SYNC_TO_PIN_TAG),
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
-                                        Checkbox(
+                                        AppCheckbox(
                                             checked = syncToPin || showSyncDefaultMenu,
                                             onCheckedChange = null,
                                             enabled = !isSending,
@@ -1253,13 +1277,13 @@ fun CommentScreen(
                                         )
                                         Text("同时发布到想法", style = MaterialTheme.typography.bodySmall)
                                     }
-                                    ExposedDropdownMenu(
+                                    AppExposedDropdownMenu(
                                         expanded = showSyncDefaultMenu,
                                         onDismissRequest = { showSyncDefaultMenu = false },
                                         matchAnchorWidth = false,
                                     ) {
                                         listOf(false to "只同步一次", true to "默认同步到想法").forEach { (value, label) ->
-                                            DropdownMenuItem(
+                                            AppDropdownMenuItem(
                                                 text = { Text(label) },
                                                 leadingIcon = {
                                                     if (defaultSyncToPin == value) {
@@ -1287,7 +1311,7 @@ fun CommentScreen(
                                     onSelected = { selectedCommentAccount = it },
                                 )
                             }
-                            IconButton(
+                            AppIconButton(
                                 onClick = { submitComment() },
                                 modifier = Modifier
                                     .size(48.dp)
@@ -1295,7 +1319,7 @@ fun CommentScreen(
                                 enabled = !isSending && commentFieldValue.text.isNotBlank(),
                             ) {
                                 if (isSending) {
-                                    CircularProgressIndicator(
+                                    AppCircularProgressIndicator(
                                         modifier = Modifier.size(16.dp),
                                         strokeWidth = 2.dp,
                                         color = MaterialTheme.colorScheme.primary,
@@ -1345,7 +1369,7 @@ fun CommentScreen(
                                         items = commentEmojis,
                                         key = CommentEmoji::placeholder,
                                     ) { emoji ->
-                                        IconButton(
+                                        AppIconButton(
                                             onClick = {
                                                 val updatedValue = commentFieldValue.replaceSelection(
                                                     insert = emoji.placeholder,
@@ -1581,7 +1605,7 @@ private fun CommentItem(
 
             if (onDelete != null) {
                 Box {
-                    IconButton(
+                    AppIconButton(
                         onClick = { showMoreMenu = true },
                         modifier = Modifier
                             .size(24.dp)
@@ -1594,11 +1618,11 @@ private fun CommentItem(
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    DropdownMenu(
+                    AppDropdownMenu(
                         expanded = showMoreMenu,
                         onDismissRequest = { showMoreMenu = false },
                     ) {
-                        DropdownMenuItem(
+                        AppDropdownMenuItem(
                             modifier = Modifier.testTag("comment_delete_menu_item_${commentData.id}"),
                             text = { Text("删除", color = MaterialTheme.colorScheme.error) },
                             leadingIcon = {

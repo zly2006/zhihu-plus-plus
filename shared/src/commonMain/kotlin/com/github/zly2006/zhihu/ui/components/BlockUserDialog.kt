@@ -20,11 +20,8 @@ package com.github.zly2006.zhihu.ui.components
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -67,7 +64,7 @@ fun FeedAuthorBlockConfirmDialogContent(
     if (request == null) return
 
     val isQuestionAuthor = request.type == FeedAuthorBlockType.QUESTION_AUTHOR
-    AlertDialog(
+    AppAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (isQuestionAuthor) "屏蔽提问者" else "屏蔽用户") },
         text = {
@@ -102,7 +99,7 @@ fun FeedAuthorBlockConfirmDialogContent(
             }
         },
         confirmButton = {
-            Button(
+            AppButton(
                 onClick = {
                     val author = if (isQuestionAuthor) {
                         displayItems
@@ -129,7 +126,7 @@ fun FeedAuthorBlockConfirmDialogContent(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            AppTextButton(onClick = onDismiss) {
                 Text("取消")
             }
         },

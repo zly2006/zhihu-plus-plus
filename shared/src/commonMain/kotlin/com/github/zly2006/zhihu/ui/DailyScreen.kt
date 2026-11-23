@@ -38,20 +38,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberDatePickerState
@@ -82,6 +76,12 @@ import com.github.zly2006.zhihu.data.DailyStory
 import com.github.zly2006.zhihu.data.fetchDailyStoryDestination
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.platform.isLiteVariant
+import com.github.zly2006.zhihu.ui.components.AppAlertDialog
+import com.github.zly2006.zhihu.ui.components.AppCircularProgressIndicator
+import com.github.zly2006.zhihu.ui.components.AppIconButton
+import com.github.zly2006.zhihu.ui.components.AppScaffold
+import com.github.zly2006.zhihu.ui.components.AppTextButton
+import com.github.zly2006.zhihu.ui.components.AppTopAppBar
 import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.util.formatDailyDate
@@ -108,6 +108,7 @@ import kotlin.time.Instant
 fun DailyScreen(
     scrollToTopTrigger: Int = 0,
     isActive: Boolean = true,
+    navigationPadding: PaddingValues = PaddingValues(0.dp),
 ) {
     val navigator = LocalNavigator.current
     val httpClient = rememberPaginationEnvironment(allowGuestAccess = false).httpClient()
@@ -200,10 +201,24 @@ fun DailyScreen(
         val datePickerState = rememberDatePickerState(
             initialSelectedDateMillis = Clock.System.now().toEpochMilliseconds(),
         )
+        val uiStyle = com.github.zly2006.zhihu.theme.LocalUiStyle.current
+        val datePickerColors = DatePickerDefaults.colors(
+            containerColor = when (uiStyle) {
+                com.github.zly2006.zhihu.theme.UiStyle.LiquidGlass -> MaterialTheme.colorScheme.surfaceBright
+                com.github.zly2006.zhihu.theme.UiStyle.Miuix -> top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.surfaceContainer
+                com.github.zly2006.zhihu.theme.UiStyle.Material3 -> DatePickerDefaults.colors().containerColor
+            },
+        )
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
+            shape = when (uiStyle) {
+                com.github.zly2006.zhihu.theme.UiStyle.LiquidGlass -> RoundedCornerShape(28.dp)
+                com.github.zly2006.zhihu.theme.UiStyle.Miuix -> RoundedCornerShape(24.dp)
+                com.github.zly2006.zhihu.theme.UiStyle.Material3 -> DatePickerDefaults.shape
+            },
+            colors = datePickerColors,
             confirmButton = {
-                TextButton(onClick = {
+                AppTextButton(onClick = {
                     showDatePicker = false
                     datePickerState.selectedDateMillis?.let { millis ->
                         pendingDateSelection = formatDailyDatePickerSelection(millis)
@@ -211,19 +226,19 @@ fun DailyScreen(
                 }) { Text("确认") }
             },
             dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) { Text("取消") }
+                AppTextButton(onClick = { showDatePicker = false }) { Text("取消") }
             },
         ) {
-            DatePicker(state = datePickerState)
+            DatePicker(state = datePickerState, colors = datePickerColors)
         }
     }
 
     missingOriginStoryUrl?.let { storyUrl ->
-        AlertDialog(
+        AppAlertDialog(
             onDismissRequest = { missingOriginStoryUrl = null },
             text = { Text("由于知乎的 Bug，无法找到原文") },
             confirmButton = {
-                TextButton(onClick = {
+                AppTextButton(onClick = {
                     missingOriginStoryUrl = null
                     uriHandler.openUri(storyUrl)
                 }) {
@@ -231,16 +246,16 @@ fun DailyScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { missingOriginStoryUrl = null }) {
+                AppTextButton(onClick = { missingOriginStoryUrl = null }) {
                     Text("知道了")
                 }
             },
         )
     }
 
-    Scaffold(
+    AppScaffold(
         topBar = {
-            TopAppBar(
+            AppTopAppBar(
                 title = {
                     Column {
                         Text(
@@ -263,7 +278,7 @@ fun DailyScreen(
                 },
                 actions = {
                     if (!isLiteVariant) {
-                        IconButton(
+                        AppIconButton(
                             onClick = { showDatePicker = true },
                             modifier = Modifier.testTag(DAILY_SCREEN_DATE_PICKER_BUTTON_TAG),
                         ) {
@@ -278,18 +293,29 @@ fun DailyScreen(
             )
         },
     ) { scaffoldPadding ->
+        val pullToRefreshState = androidx.compose.material3.pulltorefresh
+            .rememberPullToRefreshState()
         PullToRefreshBox(
             isRefreshing = isRefreshing,
             onRefresh = doRefresh,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = scaffoldPadding.calculateTopPadding()),
+            state = pullToRefreshState,
+            indicator = {
+                androidx.compose.material3.pulltorefresh.PullToRefreshDefaults.Indicator(
+                    state = pullToRefreshState,
+                    isRefreshing = isRefreshing,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = scaffoldPadding.calculateTopPadding()),
+                )
+            },
+            modifier = Modifier.fillMaxSize(),
         ) {
             when {
                 viewModel.isLoading -> {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
+                            .padding(scaffoldPadding)
                             .testTag(DAILY_SCREEN_LOADING_TAG),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -297,7 +323,7 @@ fun DailyScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center,
                         ) {
-                            CircularProgressIndicator()
+                            AppCircularProgressIndicator()
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
                                 "正在加载...",
@@ -312,6 +338,7 @@ fun DailyScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
+                            .padding(scaffoldPadding)
                             .testTag(DAILY_SCREEN_ERROR_TAG),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -326,6 +353,7 @@ fun DailyScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
+                            .padding(scaffoldPadding)
                             .testTag(DAILY_SCREEN_EMPTY_TAG),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -344,7 +372,13 @@ fun DailyScreen(
                             .fillMaxSize()
                             .pageTurnViewportWithGuide(pageTurnTarget)
                             .testTag(DAILY_SCREEN_LIST_TAG),
-                        contentPadding = PaddingValues(vertical = 8.dp),
+                        contentPadding = PaddingValues(
+                            top = scaffoldPadding.calculateTopPadding() + 8.dp,
+                            bottom = maxOf(
+                                scaffoldPadding.calculateBottomPadding(),
+                                navigationPadding.calculateBottomPadding(),
+                            ) + 8.dp,
+                        ),
                     ) {
                         viewModel.sections.forEach { section ->
                             // 日期分组标题。
@@ -384,7 +418,7 @@ fun DailyScreen(
                                         .padding(16.dp),
                                     contentAlignment = Alignment.Center,
                                 ) {
-                                    CircularProgressIndicator(
+                                    AppCircularProgressIndicator(
                                         modifier = Modifier.size(24.dp),
                                     )
                                 }
@@ -441,7 +475,7 @@ fun DailyStoryCard(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    Card(
+    com.github.zly2006.zhihu.ui.components.AppCard(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)

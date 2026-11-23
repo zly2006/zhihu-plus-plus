@@ -43,13 +43,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryTabRow
-import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -82,6 +78,10 @@ import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.reading.RegisterReadingQueueSource
 import com.github.zly2006.zhihu.ui.TopLevelReselectAction
+import com.github.zly2006.zhihu.ui.components.AppCircularProgressIndicator
+import com.github.zly2006.zhihu.ui.components.AppDropdownMenuItem
+import com.github.zly2006.zhihu.ui.components.AppPrimaryTabRow
+import com.github.zly2006.zhihu.ui.components.AppTab
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.FeedAuthorBlockConfirmDialog
 import com.github.zly2006.zhihu.ui.components.FeedAuthorBlockRequest
@@ -165,7 +165,8 @@ private fun FollowScreenContent(
         viewModel.selectedTabIndex = pagerState.currentPage
     }
 
-    Column(modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())) {
+    val bottomContentPadding = innerPadding.calculateBottomPadding()
+    Column {
         FollowTabRow(
             pagerState = pagerState,
             selectedTabIndex = pagerState.currentPage,
@@ -197,11 +198,13 @@ private fun FollowScreenContent(
                 0 -> FollowRecommendScreen(
                     scrollToTopTrigger = scrollToTopTrigger,
                     isActive = isFollowPageTurnTargetActive(isActive, pagerState.currentPage, 0),
+                    bottomPadding = bottomContentPadding,
                 )
 
                 1 -> FollowDynamicScreen(
                     scrollToTopTrigger = scrollToTopTrigger,
                     isActive = isFollowPageTurnTargetActive(isActive, pagerState.currentPage, 1),
+                    bottomPadding = bottomContentPadding,
                 )
             }
         }
@@ -218,7 +221,7 @@ private fun FollowTabRow(
     val titles = listOf("推荐", "动态")
     val tabs: @Composable () -> Unit = {
         titles.forEachIndexed { index, title ->
-            Tab(
+            AppTab(
                 modifier = Modifier.testTag("follow_screen_tab_$index"),
                 selected = selectedTabIndex == index,
                 onClick = { onTabSelected(index) },
@@ -236,14 +239,15 @@ private fun FollowTabRow(
     }
 
     if (pagerState != null) {
+        val page = (pagerState.currentPage + pagerState.currentPageOffsetFraction)
+            .coerceIn(0f, (titles.size - 1).toFloat())
         BoxWithConstraints(modifier) {
             val tabWidth = maxWidth / titles.size
-            PrimaryTabRow(
+            AppPrimaryTabRow(
                 selectedTabIndex = selectedTabIndex,
                 modifier = Modifier.testTag(FOLLOW_SCREEN_TAB_ROW_TAG),
+                selectionPosition = page,
                 indicator = {
-                    val page = (pagerState.currentPage + pagerState.currentPageOffsetFraction)
-                        .coerceIn(0f, (titles.size - 1).toFloat())
                     TabRowDefaults.PrimaryIndicator(
                         modifier = Modifier
                             .offset(x = tabWidth * page)
@@ -255,7 +259,7 @@ private fun FollowTabRow(
             }
         }
     } else {
-        PrimaryTabRow(
+        AppPrimaryTabRow(
             selectedTabIndex = selectedTabIndex,
             modifier = modifier.testTag(FOLLOW_SCREEN_TAB_ROW_TAG),
         ) {
@@ -346,6 +350,7 @@ fun FollowingUsersRow() {
 fun FollowRecommendScreen(
     scrollToTopTrigger: Int = 0,
     isActive: Boolean = true,
+    bottomPadding: androidx.compose.ui.unit.Dp = 0.dp,
 ) {
     val viewModel: FollowRecommendViewModel = viewModel { FollowRecommendViewModel() }
     val readingQueueSourceId = "follow:recommend"
@@ -403,6 +408,7 @@ fun FollowRecommendScreen(
                 modifier = Modifier
                     .pageTurnViewportWithGuide(pageTurnTarget)
                     .testTag(FOLLOW_RECOMMEND_LIST_TAG),
+                contentPadding = PaddingValues(bottom = bottomPadding),
                 topContent = {
                     item {
                         FollowingUsersRow()
@@ -416,7 +422,7 @@ fun FollowRecommendScreen(
                     readingQueueSourceId = readingQueueSourceId.takeIf { isActive },
                     modifier = Modifier.testTag("follow_recommend_item_${item.stableKey}"),
                     menuItems = { dismissMenu ->
-                        DropdownMenuItem(
+                        AppDropdownMenuItem(
                             text = { Text("屏蔽用户") },
                             onClick = {
                                 dismissMenu()
@@ -434,7 +440,7 @@ fun FollowRecommendScreen(
                             else -> item.raw is DataHolder.Answer || item.raw is DataHolder.Question
                         }
                         if (canBlockQuestionAuthor) {
-                            DropdownMenuItem(
+                            AppDropdownMenuItem(
                                 text = { Text("屏蔽提问者") },
                                 onClick = {
                                     dismissMenu()
@@ -456,7 +462,7 @@ fun FollowRecommendScreen(
                             else -> emptyList()
                         }
                         topics.forEach { topic ->
-                            DropdownMenuItem(
+                            AppDropdownMenuItem(
                                 text = { Text("屏蔽「${topic.name}」") },
                                 onClick = {
                                     dismissMenu()
@@ -476,7 +482,7 @@ fun FollowRecommendScreen(
                     },
                 ) {
                     if (viewModel.isLoading) {
-                        CircularProgressIndicator(modifier = Modifier.size(36.dp))
+                        AppCircularProgressIndicator(modifier = Modifier.size(36.dp))
                     } else {
                         Icon(Icons.Default.Refresh, contentDescription = "刷新")
                     }
@@ -500,6 +506,7 @@ fun FollowRecommendScreen(
 fun FollowDynamicScreen(
     scrollToTopTrigger: Int = 0,
     isActive: Boolean = true,
+    bottomPadding: androidx.compose.ui.unit.Dp = 0.dp,
 ) {
     val viewModel: FollowViewModel = viewModel { FollowViewModel() }
     val readingQueueSourceId = "follow:dynamic"
@@ -557,6 +564,7 @@ fun FollowDynamicScreen(
                 modifier = Modifier
                     .pageTurnViewportWithGuide(pageTurnTarget)
                     .testTag(FOLLOW_DYNAMIC_LIST_TAG),
+                contentPadding = PaddingValues(bottom = bottomPadding),
                 onLoadMore = { viewModel.loadMore(environment) },
                 topContent = {
                     item {
@@ -571,7 +579,7 @@ fun FollowDynamicScreen(
                     modifier = Modifier.testTag("follow_dynamic_item_${item.stableKey}"),
                     showSourceLabel = true,
                     menuItems = { dismissMenu ->
-                        DropdownMenuItem(
+                        AppDropdownMenuItem(
                             text = { Text("屏蔽用户") },
                             onClick = {
                                 dismissMenu()
@@ -589,7 +597,7 @@ fun FollowDynamicScreen(
                             else -> item.raw is DataHolder.Answer || item.raw is DataHolder.Question
                         }
                         if (canBlockQuestionAuthor) {
-                            DropdownMenuItem(
+                            AppDropdownMenuItem(
                                 text = { Text("屏蔽提问者") },
                                 onClick = {
                                     dismissMenu()
@@ -611,7 +619,7 @@ fun FollowDynamicScreen(
                             else -> emptyList()
                         }
                         topics.forEach { topic ->
-                            DropdownMenuItem(
+                            AppDropdownMenuItem(
                                 text = { Text("屏蔽「${topic.name}」") },
                                 onClick = {
                                     dismissMenu()
@@ -631,7 +639,7 @@ fun FollowDynamicScreen(
                     },
                 ) {
                     if (viewModel.isLoading) {
-                        CircularProgressIndicator(modifier = Modifier.size(36.dp))
+                        AppCircularProgressIndicator(modifier = Modifier.size(36.dp))
                     } else {
                         Icon(Icons.Default.Refresh, contentDescription = "刷新")
                     }

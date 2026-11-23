@@ -59,22 +59,16 @@ import androidx.compose.material.icons.filled.MarkUnreadChatAlt
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -128,8 +122,20 @@ import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.platform.rememberWebViewUrlOpener
 import com.github.zly2006.zhihu.reading.RegisterReadingQueueSource
+import com.github.zly2006.zhihu.theme.LocalUiBackdrop
+import com.github.zly2006.zhihu.theme.LocalUiStyle
+import com.github.zly2006.zhihu.theme.NoOpUiBackdrop
+import com.github.zly2006.zhihu.theme.UiStyle
+import com.github.zly2006.zhihu.theme.liquidGlassSemanticTokens
 import com.github.zly2006.zhihu.ui.components.AnnouncementCard
 import com.github.zly2006.zhihu.ui.components.AnnouncementCardDefaults
+import com.github.zly2006.zhihu.ui.components.AppAlertDialog
+import com.github.zly2006.zhihu.ui.components.AppCircularProgressIndicator
+import com.github.zly2006.zhihu.ui.components.AppDropdownMenuItem
+import com.github.zly2006.zhihu.ui.components.AppFloatingActionButton
+import com.github.zly2006.zhihu.ui.components.AppIconButton
+import com.github.zly2006.zhihu.ui.components.AppScaffold
+import com.github.zly2006.zhihu.ui.components.AppTextButton
 import com.github.zly2006.zhihu.ui.components.BlockByKeywordsDialog
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.FeedAuthorBlockConfirmDialog
@@ -262,12 +268,12 @@ fun HomeScreen(
 
     val account = rememberAccountSettingsAccountState().value
     if (account.login && !account.hasRequiredCookie) {
-        AlertDialog(
+        AppAlertDialog(
             onDismissRequest = {},
             title = { Text("Cookie 不完整") },
             text = { Text("当前登录信息缺少必要的 Cookie d_c0，请重新登录。") },
             confirmButton = {
-                TextButton(onClick = ::requestLoginNavigation) {
+                AppTextButton(onClick = ::requestLoginNavigation) {
                     Text("重新登录")
                 }
             },
@@ -484,105 +490,131 @@ fun HomeScreen(
     )
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Scaffold(
-            modifier = if (duo3HomeAccount) {
-                Modifier
-                    .fillMaxSize()
-                    .blur(createMenuBlurRadius)
-            } else {
-                // master旧版需要pad掉状态栏
-                Modifier
-                    .fillMaxSize()
-                    .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
-                    .blur(createMenuBlurRadius)
-            },
+        AppScaffold(
+            modifier = Modifier
+                .fillMaxSize()
+                .blur(createMenuBlurRadius),
             topBar = {
                 if (!showTopActions) {
-                    return@Scaffold
+                    return@AppScaffold
                 }
+                val uiStyle = LocalUiStyle.current
+                val backdrop = LocalUiBackdrop.current
+                val glassTokens = liquidGlassSemanticTokens()
+                val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
                 if (duo3HomeAccount) {
                     Box {
-                        Surface(
-                            modifier = Modifier
-                                .height(
-                                    WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp + 32.dp,
-                                ).fillMaxWidth(),
-                        ) { }
+                        if (uiStyle != UiStyle.LiquidGlass) {
+                            val backingModifier = if (uiStyle == UiStyle.Miuix) {
+                                backdrop.chromeSurface(floating = false)
+                            } else {
+                                Modifier
+                            }
+                            Surface(
+                                modifier = Modifier
+                                    .height(statusBarTop + 8.dp + 32.dp)
+                                    .fillMaxWidth()
+                                    .then(backingModifier),
+                                color = if (uiStyle == UiStyle.Miuix && backdrop.isActive) {
+                                    androidx.compose.ui.graphics.Color.Transparent
+                                } else {
+                                    MaterialTheme.colorScheme.surface
+                                },
+                            ) { }
+                        }
                         Row(
                             modifier = Modifier
                                 .testTag(HOME_TOP_ACTIONS_TAG)
                                 .fillMaxWidth()
-                                .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
+                                .padding(top = statusBarTop)
                                 .padding(16.dp, 8.dp, 16.dp, 0.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
+                            val pillShape = RoundedCornerShape(if (uiStyle == UiStyle.Miuix) 20.dp else 32.dp)
+                            val pillGlassMod = if (uiStyle == UiStyle.LiquidGlass && backdrop.isActive) {
+                                backdrop.chromeSurface(
+                                    shape = pillShape,
+                                    tint = glassTokens.chromeTint,
+                                    floating = true,
+                                )
+                            } else {
+                                Modifier
+                            }
                             Surface(
                                 modifier = Modifier
                                     .weight(1f)
                                     .height(64.dp)
+                                    .then(pillGlassMod)
                                     .testTag(HOME_SEARCH_BUTTON_TAG),
-                                shape = RoundedCornerShape(32.dp),
-                                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                shape = pillShape,
+                                color = when {
+                                    uiStyle == UiStyle.LiquidGlass && backdrop.isActive -> androidx.compose.ui.graphics.Color.Transparent
+                                    uiStyle == UiStyle.LiquidGlass -> glassTokens.contentSurface
+                                    uiStyle == UiStyle.Miuix -> MaterialTheme.colorScheme.surfaceContainer
+                                    else -> MaterialTheme.colorScheme.surfaceContainerHighest
+                                },
                                 onClick = {
                                     navigator.onNavigate(
                                         Search(query = ""),
                                     )
                                 },
                             ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(start = 16.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Icon(
-                                        Icons.Default.Search,
-                                        contentDescription = "搜索",
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Text(
-                                        text = "搜索",
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        modifier = Modifier.weight(1f),
-                                    )
-
-                                    IconButton(
-                                        onClick = { showAccountBottomSheet = true },
+                                CompositionLocalProvider(LocalUiBackdrop provides NoOpUiBackdrop) {
+                                    Row(
                                         modifier = Modifier
-                                            .size(64.dp)
-                                            .testTag(HOME_ACCOUNT_BUTTON_TAG),
+                                            .fillMaxSize()
+                                            .padding(start = 16.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
                                     ) {
-                                        Box(Modifier.padding(12.dp)) {
-                                            BadgedBox(
-                                                badge = {
-                                                    if (showUnreadBadge && unreadCount > 0) {
-                                                        Badge { }
+                                        Icon(
+                                            Icons.Default.Search,
+                                            contentDescription = "搜索",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Text(
+                                            text = "搜索",
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            modifier = Modifier.weight(1f),
+                                        )
+
+                                        AppIconButton(
+                                            onClick = { showAccountBottomSheet = true },
+                                            modifier = Modifier
+                                                .size(64.dp)
+                                                .testTag(HOME_ACCOUNT_BUTTON_TAG),
+                                        ) {
+                                            Box(Modifier.padding(12.dp)) {
+                                                BadgedBox(
+                                                    badge = {
+                                                        if (showUnreadBadge && unreadCount > 0) {
+                                                            Badge { }
+                                                        }
+                                                    },
+                                                ) {
+                                                    val avatarUrl = account.avatarUrl
+                                                    if (avatarUrl != null) {
+                                                        AsyncImage(
+                                                            model = avatarUrl,
+                                                            contentDescription = "账号",
+                                                            contentScale = ContentScale.Crop,
+                                                            modifier = Modifier
+                                                                .size(40.dp)
+                                                                .border(
+                                                                    0.5.dp,
+                                                                    MaterialTheme.colorScheme.outline.copy(alpha = 0.1f),
+                                                                    CircleShape,
+                                                                ).clip(CircleShape),
+                                                        )
+                                                    } else {
+                                                        Icon(
+                                                            Icons.Default.AccountCircle,
+                                                            contentDescription = "账号",
+                                                            tint = MaterialTheme.colorScheme.onSurface,
+                                                            modifier = Modifier.size(40.dp),
+                                                        )
                                                     }
-                                                },
-                                            ) {
-                                                val avatarUrl = account.avatarUrl
-                                                if (avatarUrl != null) {
-                                                    AsyncImage(
-                                                        model = avatarUrl,
-                                                        contentDescription = "账号",
-                                                        contentScale = ContentScale.Crop,
-                                                        modifier = Modifier
-                                                            .size(40.dp)
-                                                            .border(
-                                                                0.5.dp,
-                                                                MaterialTheme.colorScheme.outline.copy(alpha = 0.1f),
-                                                                CircleShape,
-                                                            ).clip(CircleShape),
-                                                    )
-                                                } else {
-                                                    Icon(
-                                                        Icons.Default.AccountCircle,
-                                                        contentDescription = "账号",
-                                                        tint = MaterialTheme.colorScheme.onSurface,
-                                                        modifier = Modifier.size(40.dp),
-                                                    )
                                                 }
                                             }
                                         }
@@ -592,21 +624,54 @@ fun HomeScreen(
                         }
                     }
                 } else {
-                    Surface(shadowElevation = 4.dp) {
+                    val topBarSurfaceModifier = when (uiStyle) {
+                        UiStyle.Miuix -> backdrop.chromeSurface(floating = false)
+                        else -> Modifier
+                    }
+                    Surface(
+                        modifier = topBarSurfaceModifier,
+                        color = when {
+                            uiStyle == UiStyle.Miuix && backdrop.isActive -> androidx.compose.ui.graphics.Color.Transparent
+                            uiStyle == UiStyle.LiquidGlass -> androidx.compose.ui.graphics.Color.Transparent
+                            else -> MaterialTheme.colorScheme.surface
+                        },
+                        shadowElevation = if (uiStyle == UiStyle.Material3) 4.dp else 0.dp,
+                    ) {
                         Row(
                             modifier = Modifier
                                 .testTag(HOME_TOP_ACTIONS_TAG)
                                 .fillMaxWidth()
+                                .padding(top = statusBarTop)
                                 .padding(horizontal = 16.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
+                            val searchBarShape = when (uiStyle) {
+                                UiStyle.Miuix -> RoundedCornerShape(16.dp)
+                                UiStyle.LiquidGlass -> RoundedCornerShape(glassTokens.floatingCornerRadius)
+                                UiStyle.Material3 -> RoundedCornerShape(24.dp)
+                            }
+                            val searchGlassMod = if (uiStyle == UiStyle.LiquidGlass && backdrop.isActive) {
+                                backdrop.chromeSurface(
+                                    shape = searchBarShape,
+                                    tint = glassTokens.chromeTint,
+                                    floating = true,
+                                )
+                            } else {
+                                Modifier
+                            }
                             Surface(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(36.dp)
+                                    .height(if (uiStyle == UiStyle.LiquidGlass) 44.dp else 38.dp)
+                                    .then(searchGlassMod)
                                     .testTag(HOME_SEARCH_BUTTON_TAG),
-                                shape = RoundedCornerShape(24.dp),
-                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                shape = searchBarShape,
+                                color = when {
+                                    uiStyle == UiStyle.LiquidGlass && backdrop.isActive -> androidx.compose.ui.graphics.Color.Transparent
+                                    uiStyle == UiStyle.LiquidGlass -> glassTokens.contentSurface
+                                    uiStyle == UiStyle.Miuix -> MaterialTheme.colorScheme.surfaceContainer
+                                    else -> MaterialTheme.colorScheme.surfaceVariant
+                                },
                                 onClick = {
                                     navigator.onNavigate(
                                         Search(query = ""),
@@ -633,9 +698,19 @@ fun HomeScreen(
                                 }
                             }
                             Spacer(modifier = Modifier.width(8.dp))
+                            val notifGlassMod = if (uiStyle == UiStyle.LiquidGlass && backdrop.isActive) {
+                                backdrop.chromeSurface(
+                                    shape = CircleShape,
+                                    tint = glassTokens.chromeTint,
+                                    floating = true,
+                                )
+                            } else {
+                                Modifier
+                            }
                             Box(
                                 modifier = Modifier
                                     .size(48.dp)
+                                    .then(notifGlassMod)
                                     .testTag(HOME_NOTIFICATION_BUTTON_TAG)
                                     .clickable(role = Role.Button) {
                                         navigator.onNavigate(Notification)
@@ -674,7 +749,11 @@ fun HomeScreen(
             if (duo3HomeAccount && showAccountBottomSheet) {
                 MyModalBottomSheet(
                     onDismissRequest = { showAccountBottomSheet = false },
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    containerColor = if (LocalUiStyle.current == UiStyle.Material3) {
+                        MaterialTheme.colorScheme.surfaceContainer
+                    } else {
+                        androidx.compose.material3.BottomSheetDefaults.ContainerColor
+                    },
                 ) {
                     AccountSettingScreen(
                         innerPadding = PaddingValues(0.dp),
@@ -811,7 +890,7 @@ fun HomeScreen(
                         },
                         menuItems = { dismissMenu ->
                             if (feedKeywordExtractionAvailable) {
-                                DropdownMenuItem(
+                                AppDropdownMenuItem(
                                     text = { Text("按关键词屏蔽") },
                                     onClick = {
                                         dismissMenu()
@@ -822,7 +901,7 @@ fun HomeScreen(
                                     },
                                 )
                             }
-                            DropdownMenuItem(
+                            AppDropdownMenuItem(
                                 text = { Text("屏蔽用户") },
                                 onClick = {
                                     dismissMenu()
@@ -840,7 +919,7 @@ fun HomeScreen(
                                 else -> item.raw is DataHolder.Answer || item.raw is DataHolder.Question
                             }
                             if (canBlockQuestionAuthor) {
-                                DropdownMenuItem(
+                                AppDropdownMenuItem(
                                     text = { Text("屏蔽提问者") },
                                     onClick = {
                                         dismissMenu()
@@ -862,7 +941,7 @@ fun HomeScreen(
                                 else -> emptyList()
                             }
                             topics.forEach { topic ->
-                                DropdownMenuItem(
+                                AppDropdownMenuItem(
                                     text = { Text("屏蔽「${topic.name}」") },
                                     onClick = {
                                         dismissMenu()
@@ -906,7 +985,7 @@ fun HomeScreen(
                         onClick = { viewModel.refresh(paginationEnvironment) },
                     ) {
                         if (viewModel.isLoading) {
-                            CircularProgressIndicator(modifier = Modifier.size(30.dp))
+                            AppCircularProgressIndicator(modifier = Modifier.size(30.dp))
                         } else {
                             Icon(Icons.Default.Refresh, contentDescription = "刷新")
                         }
@@ -959,18 +1038,32 @@ fun HomeScreen(
                     ) +
                     slideOutVertically(animationSpec = tween(durationMillis = 120)) { it / 8 },
             ) {
+                val createMenuStyle = LocalUiStyle.current
                 Column(horizontalAlignment = Alignment.End) {
                     Surface(
                         modifier = Modifier
                             .width(180.dp)
                             .testTag(HOME_CREATE_MENU_TAG),
-                        shape = RoundedCornerShape(16.dp),
-                        color = MaterialTheme.colorScheme.surfaceContainer,
-                        tonalElevation = 6.dp,
+                        shape = when (createMenuStyle) {
+                            UiStyle.LiquidGlass -> RoundedCornerShape(18.dp)
+                            UiStyle.Miuix -> RoundedCornerShape(16.dp)
+                            UiStyle.Material3 -> RoundedCornerShape(16.dp)
+                        },
+                        color = when (createMenuStyle) {
+                            UiStyle.LiquidGlass -> MaterialTheme.colorScheme.surfaceBright
+                            UiStyle.Miuix -> top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.surfaceContainer
+                            UiStyle.Material3 -> MaterialTheme.colorScheme.surfaceContainer
+                        },
+                        border = if (createMenuStyle == UiStyle.LiquidGlass) {
+                            androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
+                        } else {
+                            null
+                        },
+                        tonalElevation = if (createMenuStyle == UiStyle.Material3) 6.dp else 0.dp,
                         shadowElevation = 6.dp,
                     ) {
                         Column {
-                            DropdownMenuItem(
+                            AppDropdownMenuItem(
                                 modifier = Modifier.testTag(HOME_WRITE_QUESTION_BUTTON_TAG),
                                 text = { Text("提问题") },
                                 leadingIcon = {
@@ -981,7 +1074,7 @@ fun HomeScreen(
                                     userMessages.showShortMessage("正在施工")
                                 },
                             )
-                            DropdownMenuItem(
+                            AppDropdownMenuItem(
                                 modifier = Modifier.testTag(HOME_WRITE_ANSWER_BUTTON_TAG),
                                 text = { Text("写回答") },
                                 leadingIcon = {
@@ -992,7 +1085,7 @@ fun HomeScreen(
                                     userMessages.showShortMessage("正在施工")
                                 },
                             )
-                            DropdownMenuItem(
+                            AppDropdownMenuItem(
                                 modifier = Modifier.testTag(HOME_WRITE_PIN_BUTTON_TAG),
                                 text = { Text("发想法") },
                                 leadingIcon = {
@@ -1011,7 +1104,7 @@ fun HomeScreen(
             val createFabOpacity = remember(settings) {
                 settings.getInt(PREF_FAB_OPACITY, DEFAULT_FAB_OPACITY).coerceIn(10, 100) / 100f
             }
-            FloatingActionButton(
+            AppFloatingActionButton(
                 modifier = Modifier.testTag(HOME_CREATE_FAB_TAG),
                 onClick = { showCreateMenu = !showCreateMenu },
                 shape = CircleShape,

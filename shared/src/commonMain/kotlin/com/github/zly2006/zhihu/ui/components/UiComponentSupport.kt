@@ -24,8 +24,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -312,7 +310,7 @@ fun OpenImagePreviewContent(
             }
         }
 
-        DropdownMenu(
+        AppDropdownMenu(
             expanded = showMenu,
             onDismissRequest = { showMenu = false },
             offset = with(density) {
@@ -322,21 +320,21 @@ fun OpenImagePreviewContent(
                 )
             },
         ) {
-            DropdownMenuItem(
+            AppDropdownMenuItem(
                 text = { Text("保存图片") },
                 onClick = {
                     showMenu = false
                     onSaveImage(imageUrls[pagerState.currentPage])
                 },
             )
-            DropdownMenuItem(
+            AppDropdownMenuItem(
                 text = { Text("分享图片") },
                 onClick = {
                     showMenu = false
                     onShareImage(imageUrls[pagerState.currentPage])
                 },
             )
-            DropdownMenuItem(
+            AppDropdownMenuItem(
                 text = { Text("在浏览器中打开") },
                 onClick = {
                     showMenu = false

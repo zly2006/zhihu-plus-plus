@@ -31,18 +31,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -60,6 +52,14 @@ import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.nlp.ModelState
 import com.github.zly2006.zhihu.nlp.SentenceEmbeddingManager
+import com.github.zly2006.zhihu.ui.components.AppButton
+import com.github.zly2006.zhihu.ui.components.AppCircularProgressIndicator
+import com.github.zly2006.zhihu.ui.components.AppIconButton
+import com.github.zly2006.zhihu.ui.components.AppLinearProgressIndicator
+import com.github.zly2006.zhihu.ui.components.AppOutlinedTextField
+import com.github.zly2006.zhihu.ui.components.AppScaffold
+import com.github.zly2006.zhihu.ui.components.AppTextButton
+import com.github.zly2006.zhihu.ui.components.AppTopAppBar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
@@ -106,10 +106,10 @@ fun SentenceSimilarityTestScreen() {
         }
     }
 
-    Scaffold(
+    AppScaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
-            TopAppBar(
+            AppTopAppBar(
                 title = {
                     Text(
                         text = "句子相似度测试",
@@ -118,14 +118,14 @@ fun SentenceSimilarityTestScreen() {
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = navigator.onNavigateBack) {
+                    AppIconButton(onClick = navigator.onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
                 actions = {
                     when (val modelState = modelState) {
                         ModelState.Loading -> {
-                            CircularProgressIndicator(
+                            AppCircularProgressIndicator(
                                 modifier = Modifier
                                     .padding(end = 16.dp)
                                     .height(24.dp),
@@ -139,7 +139,7 @@ fun SentenceSimilarityTestScreen() {
                                     style = MaterialTheme.typography.labelMedium,
                                     modifier = Modifier.padding(end = 16.dp),
                                 )
-                                LinearProgressIndicator(
+                                AppLinearProgressIndicator(
                                     progress = { (modelState as ModelState.Downloading).progress },
                                     modifier = Modifier.padding(end = 16.dp).width(100.dp),
                                 )
@@ -178,8 +178,8 @@ fun SentenceSimilarityTestScreen() {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
+                .padding(paddingValues)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
@@ -212,13 +212,13 @@ fun SentenceSimilarityTestScreen() {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Button(
+                    AppButton(
                         onClick = { loadModel() },
                         enabled = !isModelReady && !isModelLoading,
                     ) {
                         Text(if (isModelLoading) "加载中..." else "加载模型")
                     }
-                    TextButton(
+                    AppTextButton(
                         onClick = {
                             coroutineScope.launch {
                                 SentenceEmbeddingManager.unload()
@@ -231,14 +231,14 @@ fun SentenceSimilarityTestScreen() {
                 }
             }
 
-            OutlinedTextField(
+            AppOutlinedTextField(
                 modifier = Modifier.fillMaxWidth(),
                 value = sentence1,
                 onValueChange = { sentence1 = it },
                 label = { Text("第一句话") },
                 maxLines = 4,
             )
-            OutlinedTextField(
+            AppOutlinedTextField(
                 modifier = Modifier.fillMaxWidth(),
                 value = sentence2,
                 onValueChange = { sentence2 = it },
@@ -246,7 +246,7 @@ fun SentenceSimilarityTestScreen() {
                 maxLines = 4,
             )
 
-            Button(
+            AppButton(
                 onClick = {
                     similarity = null
                     inferenceTimeMs = null
@@ -289,7 +289,7 @@ fun SentenceSimilarityTestScreen() {
                 val normalized = ((score + 1f) / 2f).coerceIn(0f, 1f)
                 Text("余弦相似度：${"%.4f".format(score)}", style = MaterialTheme.typography.titleMedium)
                 inferenceTimeMs?.let { Text("推理耗时：$it ms", style = MaterialTheme.typography.bodyMedium) }
-                LinearProgressIndicator(
+                AppLinearProgressIndicator(
                     progress = { normalized },
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -297,7 +297,7 @@ fun SentenceSimilarityTestScreen() {
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            TextButton(
+            AppTextButton(
                 onClick = {
                     val temp = sentence1
                     sentence1 = sentence2
