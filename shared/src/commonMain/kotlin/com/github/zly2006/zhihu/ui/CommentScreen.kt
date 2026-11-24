@@ -207,6 +207,9 @@ const val COMMENT_SEND_BUTTON_TAG = "comment_send_button"
 const val COMMENT_SYNC_TO_PIN_TAG = "comment_sync_to_pin"
 const val COMMENT_SYNC_DEFAULT_OFF_TAG = "comment_sync_default_off"
 const val COMMENT_SYNC_DEFAULT_ON_TAG = "comment_sync_default_on"
+const val COMMENT_STYLE_PREFERENCE_KEY = "commentStyle"
+const val COMMENT_STYLE_DEFAULT = "default"
+const val COMMENT_STYLE_COMPACT = "compact"
 const val COMMENT_SORT_SCORE_TAG = "comment_sort_score"
 const val COMMENT_SORT_TIME_TAG = "comment_sort_time"
 const val COMMENT_IMAGE_MENU_OPEN_TAG = "comment_image_menu_open"
@@ -470,6 +473,10 @@ fun CommentScreen(
 ) {
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
     val readingSettings = rememberSettingsStore()
+    val commentStyle by rememberObservedSetting(readingSettings, COMMENT_STYLE_PREFERENCE_KEY) {
+        getString(COMMENT_STYLE_PREFERENCE_KEY, COMMENT_STYLE_DEFAULT)
+    }
+    val isCompactCommentStyle = commentStyle == COMMENT_STYLE_COMPACT
     val syncPreferenceKey = "commentSyncToPinDefault"
     var defaultSyncToPin by rememberObservedSetting(readingSettings, syncPreferenceKey) {
         getBoolean(syncPreferenceKey, false)
@@ -702,7 +709,7 @@ fun CommentScreen(
         val target = content()
         val text = commentFieldValue.text
         val replyId = replyToComment?.item?.id
-        val selected = selectedCommentAccount
+        val selected = if (isCompactCommentStyle) null else selectedCommentAccount
         coroutineScope.launch(Dispatchers.Main.immediate) {
             var sent = false
             try {
@@ -729,7 +736,7 @@ fun CommentScreen(
                             commentText = text,
                             environment = environment,
                             replyToCommentId = replyId,
-                            syncToPin = syncToPin && rootContent !is SegmentCommentHolder,
+                            syncToPin = !isCompactCommentStyle && syncToPin && rootContent !is SegmentCommentHolder,
                         )
                     } finally {
                         client?.close()
@@ -1238,103 +1245,97 @@ fun CommentScreen(
                                     color = MaterialTheme.colorScheme.onSurface,
                                 ),
                             )
+
+                            if (isCompactCommentStyle) {
+                                CommentSendIconButton(
+                                    isSending = isSending,
+                                    enabled = !isSending && commentFieldValue.text.isNotBlank(),
+                                    hasText = commentFieldValue.text.isNotBlank(),
+                                    modifier = Modifier.size(24.dp),
+                                    onClick = { submitComment() },
+                                )
+                            }
                         }
 
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            if (rootContent !is SegmentCommentHolder) {
-                                ExposedDropdownMenuBox(
-                                    expanded = showSyncDefaultMenu,
-                                    onExpandedChange = { showSyncDefaultMenu = it },
-                                ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .sizeIn(minHeight = 48.dp)
-                                            // 只复用锚点定位，是否打开菜单由下方的勾选动作决定。
-                                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = false)
-                                            .toggleable(
-                                                value = syncToPin || showSyncDefaultMenu,
-                                                enabled = !isSending,
-                                                role = Role.Checkbox,
-                                                onValueChange = { checked ->
-                                                    if (checked) {
-                                                        showSyncDefaultMenu = true
-                                                    } else {
-                                                        syncToPin = false
-                                                        readingSettings.putBoolean(syncPreferenceKey, false)
-                                                    }
-                                                },
-                                            ).testTag(COMMENT_SYNC_TO_PIN_TAG),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                    ) {
-                                        AppCheckbox(
-                                            checked = syncToPin || showSyncDefaultMenu,
-                                            onCheckedChange = null,
-                                            enabled = !isSending,
-                                            modifier = Modifier.padding(end = 8.dp),
-                                        )
-                                        Text("同时发布到想法", style = MaterialTheme.typography.bodySmall)
-                                    }
-                                    AppExposedDropdownMenu(
+                        if (!isCompactCommentStyle) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                if (rootContent !is SegmentCommentHolder) {
+                                    ExposedDropdownMenuBox(
                                         expanded = showSyncDefaultMenu,
-                                        onDismissRequest = { showSyncDefaultMenu = false },
-                                        matchAnchorWidth = false,
+                                        onExpandedChange = { showSyncDefaultMenu = it },
                                     ) {
-                                        listOf(false to "只同步一次", true to "默认同步到想法").forEach { (value, label) ->
-                                            AppDropdownMenuItem(
-                                                text = { Text(label) },
-                                                leadingIcon = {
-                                                    if (defaultSyncToPin == value) {
-                                                        Icon(Icons.Default.Check, contentDescription = "已选择")
-                                                    } else {
-                                                        Spacer(Modifier.size(24.dp))
-                                                    }
-                                                },
-                                                modifier = Modifier.testTag(if (value) COMMENT_SYNC_DEFAULT_ON_TAG else COMMENT_SYNC_DEFAULT_OFF_TAG),
-                                                onClick = {
-                                                    syncToPin = true
-                                                    readingSettings.putBoolean(syncPreferenceKey, value)
-                                                    defaultSyncToPin = value
-                                                    showSyncDefaultMenu = false
-                                                },
+                                        Row(
+                                            modifier = Modifier
+                                                .sizeIn(minHeight = 48.dp)
+                                                // 只复用锚点定位，是否打开菜单由下方的勾选动作决定。
+                                                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = false)
+                                                .toggleable(
+                                                    value = syncToPin || showSyncDefaultMenu,
+                                                    enabled = !isSending,
+                                                    role = Role.Checkbox,
+                                                    onValueChange = { checked ->
+                                                        if (checked) {
+                                                            showSyncDefaultMenu = true
+                                                        } else {
+                                                            syncToPin = false
+                                                            readingSettings.putBoolean(syncPreferenceKey, false)
+                                                        }
+                                                    },
+                                                ).testTag(COMMENT_SYNC_TO_PIN_TAG),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                        ) {
+                                            AppCheckbox(
+                                                checked = syncToPin || showSyncDefaultMenu,
+                                                onCheckedChange = null,
+                                                enabled = !isSending,
+                                                modifier = Modifier.padding(end = 8.dp),
                                             )
+                                            Text("同时发布到想法", style = MaterialTheme.typography.bodySmall)
+                                        }
+                                        AppExposedDropdownMenu(
+                                            expanded = showSyncDefaultMenu,
+                                            onDismissRequest = { showSyncDefaultMenu = false },
+                                            matchAnchorWidth = false,
+                                        ) {
+                                            listOf(false to "只同步一次", true to "默认同步到想法").forEach { (value, label) ->
+                                                AppDropdownMenuItem(
+                                                    text = { Text(label) },
+                                                    leadingIcon = {
+                                                        if (defaultSyncToPin == value) {
+                                                            Icon(Icons.Default.Check, contentDescription = "已选择")
+                                                        } else {
+                                                            Spacer(Modifier.size(24.dp))
+                                                        }
+                                                    },
+                                                    modifier = Modifier.testTag(if (value) COMMENT_SYNC_DEFAULT_ON_TAG else COMMENT_SYNC_DEFAULT_OFF_TAG),
+                                                    onClick = {
+                                                        syncToPin = true
+                                                        readingSettings.putBoolean(syncPreferenceKey, value)
+                                                        defaultSyncToPin = value
+                                                        showSyncDefaultMenu = false
+                                                    },
+                                                )
+                                            }
                                         }
                                     }
                                 }
-                            }
-                            Box(Modifier.weight(1f).padding(start = 12.dp)) {
-                                CommentAccountSelector(
-                                    selectedAccount = selectedCommentAccount,
-                                    enabled = !isSending,
-                                    onSelected = { selectedCommentAccount = it },
-                                )
-                            }
-                            AppIconButton(
-                                onClick = { submitComment() },
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .testTag(COMMENT_SEND_BUTTON_TAG),
-                                enabled = !isSending && commentFieldValue.text.isNotBlank(),
-                            ) {
-                                if (isSending) {
-                                    AppCircularProgressIndicator(
-                                        modifier = Modifier.size(16.dp),
-                                        strokeWidth = 2.dp,
-                                        color = MaterialTheme.colorScheme.primary,
-                                    )
-                                } else {
-                                    Icon(
-                                        Icons.AutoMirrored.Outlined.Send,
-                                        contentDescription = "发送评论",
-                                        tint = if (commentFieldValue.text.isNotBlank()) {
-                                            MaterialTheme.colorScheme.primary
-                                        } else {
-                                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                                        },
+                                Box(Modifier.weight(1f).padding(start = 12.dp)) {
+                                    CommentAccountSelector(
+                                        selectedAccount = selectedCommentAccount,
+                                        enabled = !isSending,
+                                        onSelected = { selectedCommentAccount = it },
                                     )
                                 }
+                                CommentSendIconButton(
+                                    isSending = isSending,
+                                    enabled = !isSending && commentFieldValue.text.isNotBlank(),
+                                    hasText = commentFieldValue.text.isNotBlank(),
+                                    modifier = Modifier.size(48.dp),
+                                    onClick = { submitComment() },
+                                )
                             }
                         }
 
@@ -1403,6 +1404,42 @@ fun CommentScreen(
         if (showPageTurnFab) {
             PageTurnFab(
                 preferenceName = "fabPageTurnComment",
+            )
+        }
+    }
+}
+
+/**
+ * 评论输入栏发送按钮，供默认和简洁两种输入栏样式复用。
+ */
+@Composable
+private fun CommentSendIconButton(
+    isSending: Boolean,
+    enabled: Boolean,
+    hasText: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    AppIconButton(
+        onClick = onClick,
+        modifier = modifier.testTag(COMMENT_SEND_BUTTON_TAG),
+        enabled = enabled,
+    ) {
+        if (isSending) {
+            AppCircularProgressIndicator(
+                modifier = Modifier.size(16.dp),
+                strokeWidth = 2.dp,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        } else {
+            Icon(
+                Icons.AutoMirrored.Outlined.Send,
+                contentDescription = "发送评论",
+                tint = if (hasText) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                },
             )
         }
     }

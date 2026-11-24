@@ -42,9 +42,13 @@ import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
+import com.github.zly2006.zhihu.ui.COMMENT_STYLE_COMPACT
+import com.github.zly2006.zhihu.ui.COMMENT_STYLE_DEFAULT
+import com.github.zly2006.zhihu.ui.COMMENT_STYLE_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_BOTTOM_BAR_SECTION_KEY
 import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_COLLECTION_DIRECT_BROWSE_TAG
+import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_COMMENT_STYLE_TAG
 import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_SCROLL_TAG
 import com.github.zly2006.zhihu.ui.subscreens.AppearanceSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEM_ORDER_PREFERENCE_KEY
@@ -111,6 +115,20 @@ class AppearanceSettingsScreenInstrumentedTest {
         composeRule.onNodeWithTag(APPEARANCE_SETTINGS_COLLECTION_DIRECT_BROWSE_TAG).performClick()
 
         waitUntilBooleanPreference(COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY, expected = true)
+    }
+
+    @Test
+    fun commentStyleSettingSwitchesBetweenDefaultAndCompact() {
+        setUpScreen(setting = COMMENT_STYLE_PREFERENCE_KEY)
+
+        scrollUntilTagDisplayed(APPEARANCE_SETTINGS_COMMENT_STYLE_TAG)
+        composeRule.onNodeWithTag(APPEARANCE_SETTINGS_COMMENT_STYLE_TAG).performClick()
+        composeRule.onNodeWithTag("${APPEARANCE_SETTINGS_COMMENT_STYLE_TAG}_$COMMENT_STYLE_COMPACT").performClick()
+        waitUntilStringPreference(COMMENT_STYLE_PREFERENCE_KEY, expected = COMMENT_STYLE_COMPACT)
+
+        composeRule.onNodeWithTag(APPEARANCE_SETTINGS_COMMENT_STYLE_TAG).performClick()
+        composeRule.onNodeWithTag("${APPEARANCE_SETTINGS_COMMENT_STYLE_TAG}_$COMMENT_STYLE_DEFAULT").performClick()
+        waitUntilStringPreference(COMMENT_STYLE_PREFERENCE_KEY, expected = COMMENT_STYLE_DEFAULT)
     }
 
     /**

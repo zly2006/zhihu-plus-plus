@@ -65,7 +65,12 @@ import com.github.zly2006.zhihu.ui.COMMENT_EMOJI_ITEM_TAG_PREFIX
 import com.github.zly2006.zhihu.ui.COMMENT_EMOJI_PICKER_TAG
 import com.github.zly2006.zhihu.ui.COMMENT_INPUT_TAG
 import com.github.zly2006.zhihu.ui.COMMENT_SCREEN_LIST_TAG
+import com.github.zly2006.zhihu.ui.COMMENT_SEND_BUTTON_TAG
+import com.github.zly2006.zhihu.ui.COMMENT_STYLE_COMPACT
+import com.github.zly2006.zhihu.ui.COMMENT_STYLE_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.COMMENT_SYNC_TO_PIN_TAG
 import com.github.zly2006.zhihu.ui.CommentScreen
+import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.viewmodel.CommentItem
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
@@ -185,6 +190,26 @@ class CommentScreenInstrumentedTest {
         composeRule.onNodeWithTag(COMMENT_INPUT_TAG).assertTextEquals("[惊喜]已有草稿")
         composeRule.onNodeWithTag(COMMENT_EMOJI_BUTTON_TAG).performClick()
         composeRule.onNodeWithContentDescription("选择表情").assertIsDisplayed()
+    }
+
+    @Test
+    fun compactCommentStyleHidesSyncAndAccountRowAndKeepsSendInInputRow() {
+        composeRule.activity
+            .getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putString(COMMENT_STYLE_PREFERENCE_KEY, COMMENT_STYLE_COMPACT)
+            .commit()
+        seedRootCommentViewModel(seedRootComments(count = 1))
+        setCommentScreen()
+
+        composeRule.onNodeWithTag(COMMENT_INPUT_TAG).assertIsDisplayed()
+        composeRule.onNodeWithTag(COMMENT_SEND_BUTTON_TAG).assertIsDisplayed()
+        composeRule.onAllNodesWithTag(COMMENT_SYNC_TO_PIN_TAG).assertCountEquals(0)
+        composeRule.onAllNodesWithTag("comment_account_selector").assertCountEquals(0)
+
+        val inputBounds = composeRule.onNodeWithTag(COMMENT_INPUT_TAG).fetchSemanticsNode().boundsInRoot
+        val sendBounds = composeRule.onNodeWithTag(COMMENT_SEND_BUTTON_TAG).fetchSemanticsNode().boundsInRoot
+        assertTrue(sendBounds.top < inputBounds.bottom && inputBounds.top < sendBounds.bottom)
     }
 
     /**
