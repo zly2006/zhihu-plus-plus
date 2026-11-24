@@ -36,22 +36,15 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowOutward
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.Button
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -78,6 +71,14 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.ui.components.AppButton
+import com.github.zly2006.zhihu.ui.components.AppDropdownMenuItem
+import com.github.zly2006.zhihu.ui.components.AppExposedDropdownMenu
+import com.github.zly2006.zhihu.ui.components.AppIconButton
+import com.github.zly2006.zhihu.ui.components.AppLargeTopAppBar
+import com.github.zly2006.zhihu.ui.components.AppOutlinedTextField
+import com.github.zly2006.zhihu.ui.components.AppScaffold
+import com.github.zly2006.zhihu.ui.components.AppTextButton
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
@@ -119,14 +120,15 @@ fun SystemAndUpdateSettingsScreen(
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
-    Scaffold(
+    AppScaffold(
+        settingsAmbientBackground = true,
         modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
-            LargeTopAppBar(
+            AppLargeTopAppBar(
                 title = { Text("系统与更新") },
                 navigationIcon = {
-                    IconButton(
+                    AppIconButton(
                         onClick = navigator.onNavigateBack,
                         colors = IconButtonDefaults.iconButtonColors(
                             containerColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -192,7 +194,11 @@ fun SystemAndUpdateSettingsScreen(
                         if (releaseNotes != null) {
                             Spacer(modifier = Modifier.height(16.dp))
                             Surface(
-                                color = MaterialTheme.colorScheme.surfaceContainer,
+                                color = if (com.github.zly2006.zhihu.theme.LocalUiStyle.current == com.github.zly2006.zhihu.theme.UiStyle.Miuix) {
+                                    top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.secondaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.surfaceContainer
+                                },
                                 shape = MaterialTheme.shapes.small,
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
@@ -229,7 +235,7 @@ fun SystemAndUpdateSettingsScreen(
                                         )
                                     }
                                     Spacer(modifier = Modifier.height(12.dp))
-                                    TextButton(
+                                    AppTextButton(
                                         onClick = { openExternalUrl("https://github.com/zly2006/zhihu-plus-plus/releases") },
                                         modifier = Modifier.align(Alignment.End),
                                     ) {
@@ -247,7 +253,7 @@ fun SystemAndUpdateSettingsScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                         val cnDownloadUrl = (updateState as? SystemUpdateState.UpdateAvailable)?.cnDownloadUrl
                         if (!cnDownloadUrl.isNullOrBlank()) {
-                            Button(
+                            AppButton(
                                 onClick = {
                                     runCatching {
                                         openExternalUrl(cnDownloadUrl)
@@ -270,7 +276,7 @@ fun SystemAndUpdateSettingsScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(16.dp),
                         ) {
-                            androidx.compose.material3.OutlinedButton(
+                            com.github.zly2006.zhihu.ui.components.AppOutlinedButton(
                                 onClick = {
                                     val state = updateState
                                     if (state is SystemUpdateState.UpdateAvailable) {
@@ -283,7 +289,7 @@ fun SystemAndUpdateSettingsScreen(
                                 Text("跳过此版本", Modifier.padding(0.dp, 4.dp))
                             }
 
-                            Button(
+                            AppButton(
                                 onClick = {
                                     coroutineScope.launch {
                                         when (val state = updateState) {
@@ -329,7 +335,7 @@ fun SystemAndUpdateSettingsScreen(
                     settingKey = "githubToken",
                     highlightedKey = highlightedSetting,
                     bottomAction = {
-                        OutlinedTextField(
+                        AppOutlinedTextField(
                             value = githubToken,
                             onValueChange = {
                                 githubToken = it
@@ -337,7 +343,7 @@ fun SystemAndUpdateSettingsScreen(
                             },
                             visualTransformation = if (showGithubToken) VisualTransformation.None else PasswordVisualTransformation(),
                             trailingIcon = {
-                                IconButton(onClick = { showGithubToken = !showGithubToken }) {
+                                AppIconButton(onClick = { showGithubToken = !showGithubToken }) {
                                     Icon(
                                         imageVector = if (showGithubToken) Icons.Default.Visibility else Icons.Default.VisibilityOff,
                                         contentDescription = null,
@@ -415,7 +421,7 @@ fun SystemAndUpdateSettingsScreen(
             }
 
             AnimatedVisibility(visible = !showUpdateBanner) {
-                Button(
+                AppButton(
                     onClick = {
                         coroutineScope.launch {
                             when (updateState) {
@@ -478,7 +484,7 @@ fun SystemAndUpdateSettingsScreen(
                             expanded = reminderExpanded,
                             onExpandedChange = { reminderExpanded = it },
                         ) {
-                            OutlinedTextField(
+                            AppOutlinedTextField(
                                 value = reminderOptions
                                     .find { it.first == reminderIntervalMinutes }
                                     ?.second ?: "关闭",
@@ -492,12 +498,12 @@ fun SystemAndUpdateSettingsScreen(
                                     .width(160.dp),
                                 colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                             )
-                            ExposedDropdownMenu(
+                            AppExposedDropdownMenu(
                                 expanded = reminderExpanded,
                                 onDismissRequest = { reminderExpanded = false },
                             ) {
                                 reminderOptions.forEach { (minutes, label) ->
-                                    DropdownMenuItem(
+                                    AppDropdownMenuItem(
                                         text = { Text(label) },
                                         onClick = {
                                             reminderIntervalMinutes = minutes

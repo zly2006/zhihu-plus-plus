@@ -24,12 +24,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -43,6 +39,10 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.platform.rememberExternalUrlOpener
+import com.github.zly2006.zhihu.ui.components.AppAlertDialog
+import com.github.zly2006.zhihu.ui.components.AppButton
+import com.github.zly2006.zhihu.ui.components.AppOutlinedButton
+import com.github.zly2006.zhihu.ui.components.AppTextButton
 
 enum class LoginMethod(
     val label: String,
@@ -127,12 +127,12 @@ fun LoginScreen(
     }
 
     loggedInUsername?.let { username ->
-        AlertDialog(
+        AppAlertDialog(
             onDismissRequest = onLoginComplete,
             title = { Text("登录成功") },
             text = { Text("欢迎回来，$username") },
             confirmButton = {
-                TextButton(onClick = onLoginComplete) {
+                AppTextButton(onClick = onLoginComplete) {
                     Text("确定")
                 }
             },
@@ -148,14 +148,14 @@ private fun LoginMethodButton(
     onClick: () -> Unit,
 ) {
     if (selected) {
-        Button(
+        AppButton(
             onClick = onClick,
             modifier = modifier.testTag(method.tag),
         ) {
             Text(method.label)
         }
     } else {
-        OutlinedButton(
+        AppOutlinedButton(
             onClick = onClick,
             modifier = modifier.testTag(method.tag),
         ) {
@@ -202,7 +202,7 @@ private fun LoginNoticeScreen(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                OutlinedButton(
+                AppOutlinedButton(
                     onClick = onSecondaryAction,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -210,7 +210,7 @@ private fun LoginNoticeScreen(
                 ) {
                     Text(secondaryButtonText)
                 }
-                Button(
+                AppButton(
                     onClick = onConfirm,
                     modifier = Modifier
                         .fillMaxWidth()

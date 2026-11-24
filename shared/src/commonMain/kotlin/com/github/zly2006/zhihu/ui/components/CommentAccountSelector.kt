@@ -30,8 +30,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -178,7 +176,7 @@ internal fun CommentAccountSelector(
             CommentAccountAvatar(selectedAvatar)
             Icon(Icons.Default.ArrowDropDown, contentDescription = null, modifier = Modifier.size(18.dp))
         }
-        ExposedDropdownMenu(
+        AppExposedDropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
             matchAnchorWidth = false,
@@ -193,7 +191,7 @@ internal fun CommentAccountSelector(
             HorizontalDivider()
             options.forEach { option ->
                 val identity = option.identity
-                DropdownMenuItem(
+                AppDropdownMenuItem(
                     text = { Text(identity.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     leadingIcon = { CommentAccountAvatar(identity.avatarUrl) },
                     trailingIcon = {
@@ -216,12 +214,12 @@ internal fun CommentAccountSelector(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                    AppCircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
                     Text("正在加载马甲号…", style = MaterialTheme.typography.bodySmall)
                 }
             }
             if (failedSources.isNotEmpty() && !loading) {
-                DropdownMenuItem(
+                AppDropdownMenuItem(
                     text = { Text("部分账号的马甲号加载失败，点击重试", style = MaterialTheme.typography.bodySmall) },
                     modifier = Modifier.testTag("comment_account_retry"),
                     onClick = {

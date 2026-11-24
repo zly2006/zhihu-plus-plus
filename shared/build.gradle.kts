@@ -17,6 +17,7 @@
 
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jlleitschuh.gradle.ktlint.tasks.GenerateReportsTask
+import org.jlleitschuh.gradle.ktlint.tasks.KtLintCheckTask
 import org.jlleitschuh.gradle.ktlint.tasks.KtLintFormatTask
 
 plugins {
@@ -35,7 +36,14 @@ plugins {
 // 编译时用 1.10.0-alpha05 的 API，而平台编译时看到的是 1.9.0，产生 HIDDEN/invisible 编译错误。
 configurations.configureEach {
     resolutionStrategy {
-        force("org.jetbrains.compose.material3:material3:1.10.0-alpha05")
+        force(
+            "org.jetbrains.compose.material3:material3:1.10.0-alpha05",
+            "org.jetbrains.compose.material3:material3-window-size-class:1.10.0-alpha05",
+            "androidx.compose.material3:material3:1.5.0-alpha08",
+            "androidx.compose.material3:material3-android:1.5.0-alpha08",
+            "androidx.compose.material3:material3-window-size-class:1.5.0-alpha08",
+            "androidx.compose.material3:material3-window-size-class-android:1.5.0-alpha08",
+        )
         // org.tiqian 走 Central snapshot 仓（维护者手动发布的 dev 通道，正式 alpha
         // 发布后钉回固定版本）。短缓存让新发布的 snapshot 十分钟内可见。
         cacheChangingModulesFor(10, "minutes")
@@ -89,6 +97,15 @@ mapOf(
             },
         )
     }
+}
+
+// 第三方 catalog 与应用代码使用不同的格式规范，检查仅覆盖本项目源码。
+tasks.withType<KtLintCheckTask>().matching { it.name == "runKtlintCheckOverAndroidMainSourceSet" }.configureEach {
+    setSource(
+        listOf("src/androidMain/kotlin").map { sourcePath ->
+            fileTree(sourcePath) { include("**/*.kt") }
+        },
+    )
 }
 
 kotlin {
@@ -187,6 +204,10 @@ kotlin {
             implementation("org.jetbrains.kotlinx:kotlinx-io-core:0.8.1")
             implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
             implementation("com.mikepenz:aboutlibraries-compose-m3:15.0.0")
+            val miuixVersion = "0.9.4"
+            implementation("top.yukonga.miuix.kmp:miuix-core:$miuixVersion")
+            implementation("top.yukonga.miuix.kmp:miuix-ui:$miuixVersion")
+            implementation("top.yukonga.miuix.kmp:miuix-blur:$miuixVersion")
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
@@ -200,6 +221,8 @@ kotlin {
                 implementation("androidx.core:core-ktx:1.19.0")
                 implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.11.0")
                 implementation("androidx.media:media:1.7.1")
+                implementation("io.github.kyant0:backdrop:1.0.6")
+                implementation("io.github.kyant0:shapes:1.2.1")
                 implementation("androidx.webkit:webkit:1.16.0")
                 implementation("com.journeyapps:zxing-android-embedded:4.3.0")
                 implementation("com.google.zxing:core:3.5.4")

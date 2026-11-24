@@ -91,6 +91,11 @@ import androidx.compose.ui.unit.isSpecified
 import androidx.compose.ui.util.fastFirst
 import androidx.compose.ui.util.fastMaxOfOrNull
 import androidx.compose.ui.util.fastSumBy
+import com.github.zly2006.zhihu.theme.LocalUiBackdrop
+import com.github.zly2006.zhihu.theme.LocalUiStyle
+import com.github.zly2006.zhihu.theme.UiStyle
+import com.github.zly2006.zhihu.theme.liquidGlassSemanticTokens
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.roundToInt
@@ -113,20 +118,72 @@ fun ZhihuTwoRowsTopAppBar(
     val snapToCollapsedThresholdPx = with(LocalDensity.current) {
         PreferCollapsedSnapDistance.roundToPx().toFloat()
     }
+    val style = LocalUiStyle.current
+    val backdrop = LocalUiBackdrop.current
+    val liquidTokens = liquidGlassSemanticTokens()
+    val styledModifier = when (style) {
+        UiStyle.Material3 -> modifier
+        UiStyle.Miuix -> modifier.then(backdrop.chromeSurface(floating = false))
+        // Liquid Glass 顶栏静止态保持透明，仅在内容滚到顶栏下方时做顶栏自身高度内的柔和同色渐隐。
+        UiStyle.LiquidGlass -> modifier.then(
+            liquidTopBarScrollScrim(
+                overlappedFraction = scrollBehavior?.state?.overlappedFraction ?: 0f,
+                canvasColor = liquidTokens.canvas,
+            ),
+        )
+    }
+    val resolvedColors = when (style) {
+        UiStyle.Material3 -> colors
+        UiStyle.Miuix -> colors.copy(
+            containerColor = if (backdrop.isActive) Color.Transparent else MiuixTheme.colorScheme.surface,
+            scrolledContainerColor = if (backdrop.isActive) Color.Transparent else MiuixTheme.colorScheme.surface,
+            titleContentColor = MiuixTheme.colorScheme.onSurface,
+            navigationIconContentColor = MiuixTheme.colorScheme.onSurface,
+            actionIconContentColor = MiuixTheme.colorScheme.onSurface,
+        )
+        UiStyle.LiquidGlass -> colors.copy(
+            containerColor = Color.Transparent,
+            scrolledContainerColor = Color.Transparent,
+        )
+    }
+    val resolvedTitleTextStyle = when (style) {
+        UiStyle.Miuix -> MiuixTheme.textStyles.title1
+        else -> MaterialTheme.typography.headlineMedium
+    }
+    val resolvedSmallTitleTextStyle = when (style) {
+        UiStyle.Miuix -> MiuixTheme.textStyles.title2
+        else -> MaterialTheme.typography.titleLarge
+    }
     TwoRowsTopAppBar(
         title = { title(true) },
-        titleTextStyle = MaterialTheme.typography.headlineMedium,
+        titleTextStyle = resolvedTitleTextStyle,
         titleBottomPadding = 0.dp,
         smallTitle = { title(false) },
-        smallTitleTextStyle = MaterialTheme.typography.titleLarge,
-        modifier = modifier,
+        smallTitleTextStyle = resolvedSmallTitleTextStyle,
+        modifier = styledModifier,
         subtitle = { subtitle?.invoke(true) },
         subtitleTextStyle = MaterialTheme.typography.labelLarge,
         smallSubtitle = { subtitle?.invoke(false) },
         smallSubtitleTextStyle = MaterialTheme.typography.labelMedium,
         titleHorizontalAlignment = titleHorizontalAlignment,
-        navigationIcon = navigationIcon,
-        actions = actions,
+        navigationIcon = {
+            if (style == UiStyle.LiquidGlass) {
+                CompositionLocalProvider(LocalAppIconButtonStyle provides AppIconButtonStyle.Floating) {
+                    navigationIcon()
+                }
+            } else {
+                navigationIcon()
+            }
+        },
+        actions = {
+            if (style == UiStyle.LiquidGlass) {
+                CompositionLocalProvider(LocalAppIconButtonStyle provides AppIconButtonStyle.Floating) {
+                    actions()
+                }
+            } else {
+                actions()
+            }
+        },
         collapsedHeight =
             if (collapsedHeight == Dp.Unspecified || collapsedHeight == Dp.Infinity) {
                 TopAppBarDefaults.MediumAppBarCollapsedHeight
@@ -144,7 +201,7 @@ fun ZhihuTwoRowsTopAppBar(
                 expandedHeight
             },
         windowInsets = windowInsets,
-        colors = colors,
+        colors = resolvedColors,
         scrollBehavior = scrollBehavior,
         snapToCollapsedThresholdPx = snapToCollapsedThresholdPx,
     )

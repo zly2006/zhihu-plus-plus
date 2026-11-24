@@ -26,6 +26,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -38,27 +39,21 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -81,6 +76,7 @@ import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
@@ -103,10 +99,21 @@ import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.ThemeMode
+import com.github.zly2006.zhihu.theme.UI_STYLE_PREFERENCE_KEY
+import com.github.zly2006.zhihu.theme.UiStyle
 import com.github.zly2006.zhihu.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.ui.components.ANSWER_SWITCH_SENSITIVITY_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.components.AppCheckbox
+import com.github.zly2006.zhihu.ui.components.AppDropdownMenuItem
+import com.github.zly2006.zhihu.ui.components.AppExposedDropdownMenu
+import com.github.zly2006.zhihu.ui.components.AppIconButton
+import com.github.zly2006.zhihu.ui.components.AppLargeTopAppBar
+import com.github.zly2006.zhihu.ui.components.AppOutlinedButton
+import com.github.zly2006.zhihu.ui.components.AppOutlinedTextField
+import com.github.zly2006.zhihu.ui.components.AppScaffold
+import com.github.zly2006.zhihu.ui.components.AppSlider
 import com.github.zly2006.zhihu.ui.components.ColorPickerDialog
 import com.github.zly2006.zhihu.ui.components.DEFAULT_ANSWER_SWITCH_SENSITIVITY
 import com.github.zly2006.zhihu.ui.components.DISABLE_BOTTOM_SHEET_ROUNDED_CORNERS_PREFERENCE_KEY
@@ -155,6 +162,7 @@ const val APPEARANCE_SETTINGS_BOTTOM_BAR_SECTION_KEY = "appearanceSettings.botto
 const val APPEARANCE_SETTINGS_COLLECTION_DIRECT_BROWSE_TAG = "appearanceSettings.collectionDirectBrowse"
 const val APPEARANCE_SETTINGS_DISABLE_BOTTOM_SHEET_ROUNDED_CORNERS_TAG = "appearanceSettings.disableBottomSheetRoundedCorners"
 const val APPEARANCE_SETTINGS_LANDSCAPE_LIST_DETAIL_TAG = "appearanceSettings.landscapeListDetail"
+const val APPEARANCE_SETTINGS_UI_STYLE_TAG = "appearanceSettings.uiStyle"
 
 const val START_DESTINATION_PREFERENCE_KEY = "startDestination"
 const val BOTTOM_BAR_ITEMS_PREFERENCE_KEY = "bottom_bar_items"
@@ -362,14 +370,15 @@ fun AppearanceSettingsScreen(
         }
     }
 
-    Scaffold(
+    AppScaffold(
+        settingsAmbientBackground = true,
         modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
-            LargeTopAppBar(
+            AppLargeTopAppBar(
                 title = { Text("外观与阅读体验") },
                 navigationIcon = {
-                    IconButton(
+                    AppIconButton(
                         onClick = navigator.onNavigateBack,
                         colors = IconButtonDefaults.iconButtonColors(
                             containerColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -398,12 +407,84 @@ fun AppearanceSettingsScreen(
         ) {
             val useDynamicColor = ThemeManager.getUseDynamicColor()
             val currentThemeMode = ThemeManager.getThemeMode()
+            val currentUiStyle = ThemeManager.getUiStyle().resolveEffective()
 
             // ── 主题 ────────────────────────────────────────────────────────────
 
             SettingItemGroup(
                 title = "主题",
             ) {
+                SettingItem(
+                    title = {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Text("界面风格")
+                            Surface(
+                                shape = RoundedCornerShape(999.dp),
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            ) {
+                                Text(
+                                    text = "公测中",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                )
+                            }
+                        }
+                    },
+                    description = { Text("在 Material 3、Miuix 与 Liquid Glass 之间实时切换。") },
+                    settingKey = UI_STYLE_PREFERENCE_KEY,
+                    highlightedKey = settingKey,
+                    bringIntoViewRequester = requesterFor(UI_STYLE_PREFERENCE_KEY),
+                    modifier = Modifier.testTag(APPEARANCE_SETTINGS_UI_STYLE_TAG),
+                    bottomAction = {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        ) {
+                            UiStyle.entries
+                                .filter { it.isSupported }
+                                .forEach { style ->
+                                    val isSelected = currentUiStyle == style
+                                    AppOutlinedButton(
+                                        onClick = {
+                                            ThemeManager.setUiStyle(style)
+                                            settings.putString(UI_STYLE_PREFERENCE_KEY, style.prefValue)
+                                            userMessages.showShortMessage("已切换到 ${style.displayName}")
+                                        },
+                                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 10.dp),
+                                        colors = ButtonDefaults.outlinedButtonColors(
+                                            containerColor = if (isSelected) {
+                                                MaterialTheme.colorScheme.primaryContainer
+                                            } else {
+                                                Color.Transparent
+                                            },
+                                            contentColor = if (isSelected) {
+                                                MaterialTheme.colorScheme.onPrimaryContainer
+                                            } else {
+                                                MaterialTheme.colorScheme.onSurface
+                                            },
+                                        ),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .testTag("$APPEARANCE_SETTINGS_UI_STYLE_TAG.${style.prefValue}"),
+                                    ) {
+                                        Text(
+                                            text = style.displayName,
+                                            maxLines = 1,
+                                            softWrap = false,
+                                            overflow = TextOverflow.Ellipsis,
+                                            style = MaterialTheme.typography.labelMedium,
+                                        )
+                                    }
+                                }
+                        }
+                    },
+                )
+
                 SettingItem(
                     title = { Text("主题模式") },
                     description = { Text("设置应用的显示主题。") },
@@ -422,7 +503,7 @@ fun AppearanceSettingsScreen(
                             )
                             themeModes.forEach { (mode, label) ->
                                 val isSelected = currentThemeMode == mode
-                                OutlinedButton(
+                                AppOutlinedButton(
                                     onClick = {
                                         ThemeManager.setThemeMode(mode)
                                         settings.putString("themeMode", mode.name)
@@ -602,7 +683,7 @@ fun AppearanceSettingsScreen(
                     title = { Text("悬浮按钮透明度") },
                     description = { Text("控制所有悬浮按钮的透明度 ($fabOpacity%)。") },
                     bottomAction = {
-                        Slider(
+                        AppSlider(
                             value = fabOpacity.toFloat(),
                             onValueChange = {
                                 val v = (it / 5).roundToInt() * 5
@@ -656,7 +737,7 @@ fun AppearanceSettingsScreen(
                     highlightedKey = settingKey,
                     bringIntoViewRequester = requesterFor("fontScale"),
                     bottomAction = {
-                        Slider(
+                        AppSlider(
                             value = contentFontSizeLevels.indexOf(fontSize).toFloat(),
                             onValueChange = {
                                 val levelIndex = it.roundToInt().coerceIn(0, contentFontSizeLevels.lastIndex)
@@ -675,7 +756,7 @@ fun AppearanceSettingsScreen(
                     title = { Text("行高") },
                     description = { Text("调整内容行间距 (${lineHeight / 100f})") },
                     bottomAction = {
-                        Slider(
+                        AppSlider(
                             value = lineHeight.toFloat(),
                             onValueChange = {
                                 lineHeight = it.toInt()
@@ -696,7 +777,7 @@ fun AppearanceSettingsScreen(
                     highlightedKey = settingKey,
                     bringIntoViewRequester = requesterFor(PREF_BLOCK_SPACING),
                     bottomAction = {
-                        Slider(
+                        AppSlider(
                             value = blockSpacing.toFloat(),
                             onValueChange = {
                                 val spacing = (it / 10).roundToInt() * 10
@@ -769,7 +850,7 @@ fun AppearanceSettingsScreen(
                             expanded = feedCardStyleExpanded,
                             onExpandedChange = { feedCardStyleExpanded = it },
                         ) {
-                            OutlinedTextField(
+                            AppOutlinedTextField(
                                 value = feedCardStyleOptions.find { it.first == feedCardStyle.value }?.second ?: "卡片样式",
                                 onValueChange = {},
                                 readOnly = true,
@@ -779,12 +860,12 @@ fun AppearanceSettingsScreen(
                                     .width(160.dp),
                                 colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                             )
-                            ExposedDropdownMenu(
+                            AppExposedDropdownMenu(
                                 expanded = feedCardStyleExpanded,
                                 onDismissRequest = { feedCardStyleExpanded = false },
                             ) {
                                 feedCardStyleOptions.forEach { (mode, label) ->
-                                    DropdownMenuItem(
+                                    AppDropdownMenuItem(
                                         text = { Text(label) },
                                         onClick = {
                                             feedCardStyle.value = mode
@@ -961,7 +1042,7 @@ fun AppearanceSettingsScreen(
                                 expanded = answerSwitchExpanded,
                                 onExpandedChange = { answerSwitchExpanded = it },
                             ) {
-                                OutlinedTextField(
+                                AppOutlinedTextField(
                                     value = answerSwitchOptions.find { it.first == answerSwitchMode.value }?.second ?: "上下滑动切换",
                                     onValueChange = {},
                                     readOnly = true,
@@ -971,12 +1052,12 @@ fun AppearanceSettingsScreen(
                                         .width(160.dp),
                                     colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                                 )
-                                ExposedDropdownMenu(
+                                AppExposedDropdownMenu(
                                     expanded = answerSwitchExpanded,
                                     onDismissRequest = { answerSwitchExpanded = false },
                                 ) {
                                     answerSwitchOptions.forEach { (mode, label) ->
-                                        DropdownMenuItem(
+                                        AppDropdownMenuItem(
                                             text = { Text(label) },
                                             onClick = {
                                                 answerSwitchMode.value = mode
@@ -1012,7 +1093,7 @@ fun AppearanceSettingsScreen(
                         highlightedKey = settingKey,
                         bringIntoViewRequester = requesterFor(ANSWER_SWITCH_SENSITIVITY_PREFERENCE_KEY),
                         bottomAction = {
-                            Slider(
+                            AppSlider(
                                 value = answerSwitchSensitivity,
                                 onValueChange = {
                                     val sensitivity = (it * 10).roundToInt() / 10f
@@ -1052,7 +1133,7 @@ fun AppearanceSettingsScreen(
                             expanded = answerDoubleTapExpanded,
                             onExpandedChange = { answerDoubleTapExpanded = it },
                         ) {
-                            OutlinedTextField(
+                            AppOutlinedTextField(
                                 value = answerDoubleTapAction.value.label,
                                 onValueChange = {},
                                 readOnly = true,
@@ -1063,12 +1144,12 @@ fun AppearanceSettingsScreen(
                                     .testTag(APPEARANCE_SETTINGS_ANSWER_DOUBLE_TAP_TAG),
                                 colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                             )
-                            ExposedDropdownMenu(
+                            AppExposedDropdownMenu(
                                 expanded = answerDoubleTapExpanded,
                                 onDismissRequest = { answerDoubleTapExpanded = false },
                             ) {
                                 AnswerDoubleTapAction.entries.forEach { action ->
-                                    DropdownMenuItem(
+                                    AppDropdownMenuItem(
                                         text = { Text(action.label) },
                                         onClick = {
                                             answerDoubleTapAction.value = action
@@ -1170,7 +1251,7 @@ fun AppearanceSettingsScreen(
                                 }
                             },
                         ) {
-                            OutlinedTextField(
+                            AppOutlinedTextField(
                                 value = startDestinationItems.find { it.first == startDestinationKey }?.second ?: "主页",
                                 onValueChange = {},
                                 readOnly = true,
@@ -1182,12 +1263,12 @@ fun AppearanceSettingsScreen(
                                     .testTag(APPEARANCE_SETTINGS_START_DESTINATION_TAG),
                                 colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                             )
-                            ExposedDropdownMenu(
+                            AppExposedDropdownMenu(
                                 expanded = startDestinationExpanded,
                                 onDismissRequest = { startDestinationExpanded = false },
                             ) {
                                 startDestinationItems.forEach { (key, label) ->
-                                    DropdownMenuItem(
+                                    AppDropdownMenuItem(
                                         modifier = Modifier.testTag("appearanceSettings:startDestination:option:$key"),
                                         text = { Text(label) },
                                         onClick = {
@@ -1267,7 +1348,7 @@ fun AppearanceSettingsScreen(
                                         modifier = Modifier.weight(1f),
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
-                                        Checkbox(
+                                        AppCheckbox(
                                             checked = isChecked,
                                             onCheckedChange = null,
                                             enabled = isEnabled,
@@ -1288,14 +1369,14 @@ fun AppearanceSettingsScreen(
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
                                         if (isChecked) {
-                                            IconButton(
+                                            AppIconButton(
                                                 onClick = { moveBottomBarItem(key, -1) },
                                                 enabled = selectedIndex > 0,
                                                 modifier = Modifier.testTag("appearanceSettings:bottomBar:moveUp:$key"),
                                             ) {
                                                 Icon(Icons.Filled.KeyboardArrowUp, contentDescription = "上移$label")
                                             }
-                                            IconButton(
+                                            AppIconButton(
                                                 onClick = { moveBottomBarItem(key, 1) },
                                                 enabled = selectedIndex in 0 until selectedBottomBarItemKeys.value.lastIndex,
                                                 modifier = Modifier.testTag("appearanceSettings:bottomBar:moveDown:$key"),
@@ -1419,7 +1500,7 @@ fun AppearanceSettingsScreen(
                         title = { Text("翻页距离") },
                         description = { Text("每次滚动可见区域的 $pageTurnPercent%。") },
                         bottomAction = {
-                            Slider(
+                            AppSlider(
                                 value = pageTurnPercent.toFloat(),
                                 onValueChange = {
                                     pageTurnPercent = (it / 5).roundToInt() * 5
@@ -1498,7 +1579,7 @@ fun AppearanceSettingsScreen(
                             expanded = shareActionExpanded,
                             onExpandedChange = { shareActionExpanded = it },
                         ) {
-                            OutlinedTextField(
+                            AppOutlinedTextField(
                                 value = shareActionOptions.find { it.first == shareActionMode.value }?.second ?: "询问",
                                 onValueChange = {},
                                 readOnly = true,
@@ -1508,12 +1589,12 @@ fun AppearanceSettingsScreen(
                                     .width(160.dp),
                                 colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                             )
-                            ExposedDropdownMenu(
+                            AppExposedDropdownMenu(
                                 expanded = shareActionExpanded,
                                 onDismissRequest = { shareActionExpanded = false },
                             ) {
                                 shareActionOptions.forEach { (mode, label) ->
-                                    DropdownMenuItem(
+                                    AppDropdownMenuItem(
                                         text = { Text(label) },
                                         onClick = {
                                             shareActionMode.value = mode

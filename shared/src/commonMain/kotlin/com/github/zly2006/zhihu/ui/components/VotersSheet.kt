@@ -32,22 +32,24 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.navigation.Person
+import com.github.zly2006.zhihu.theme.LocalUiStyle
+import com.github.zly2006.zhihu.theme.UiStyle
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
@@ -114,7 +116,7 @@ fun VotersSheet(
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.error,
                             )
-                            TextButton(onClick = onRetry) {
+                            AppTextButton(onClick = onRetry) {
                                 Text("重试")
                             }
                         }
@@ -127,7 +129,7 @@ fun VotersSheet(
                                 .padding(vertical = 32.dp),
                             contentAlignment = Alignment.Center,
                         ) {
-                            CircularProgressIndicator()
+                            AppCircularProgressIndicator()
                         }
                     }
                 } else if (voters.isEmpty()) {
@@ -141,13 +143,13 @@ fun VotersSheet(
                     }
                 } else if (canLoadMore || isLoading) {
                     item("load_more") {
-                        TextButton(
+                        AppTextButton(
                             onClick = onLoadMore,
                             enabled = !isLoading,
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             if (isLoading) {
-                                CircularProgressIndicator(modifier = Modifier.size(18.dp))
+                                AppCircularProgressIndicator(modifier = Modifier.size(18.dp))
                                 Spacer(modifier = Modifier.width(8.dp))
                             }
                             Text(if (isLoading) "加载中" else "加载更多")
@@ -180,6 +182,13 @@ private fun VoterRow(
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .clickable(onClick = onClick),
+        colors = ListItemDefaults.colors(
+            containerColor = if (LocalUiStyle.current == UiStyle.Material3) {
+                ListItemDefaults.containerColor
+            } else {
+                Color.Transparent
+            },
+        ),
         leadingContent = {
             AsyncImage(
                 model = voter.avatarUrl,

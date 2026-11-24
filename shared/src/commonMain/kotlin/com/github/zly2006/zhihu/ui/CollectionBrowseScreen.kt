@@ -33,20 +33,11 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Shuffle
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -67,6 +58,14 @@ import com.github.zly2006.zhihu.data.Collection
 import com.github.zly2006.zhihu.data.FeedDisplayItem
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.ui.components.AppAlertDialog
+import com.github.zly2006.zhihu.ui.components.AppCircularProgressIndicator
+import com.github.zly2006.zhihu.ui.components.AppDropdownMenu
+import com.github.zly2006.zhihu.ui.components.AppDropdownMenuItem
+import com.github.zly2006.zhihu.ui.components.AppIconButton
+import com.github.zly2006.zhihu.ui.components.AppScaffold
+import com.github.zly2006.zhihu.ui.components.AppTextButton
+import com.github.zly2006.zhihu.ui.components.AppTopAppBar
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.viewmodel.CollectionContentEnvironment
 import com.github.zly2006.zhihu.viewmodel.CollectionContentViewModel
@@ -193,12 +192,10 @@ fun CollectionBrowseScreen(
         cachedScrollToTopTrigger = scrollToTopTrigger
     }
 
-    Scaffold(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(contentPadding),
+    AppScaffold(
+        modifier = Modifier.fillMaxSize(),
         topBar = {
-            TopAppBar(
+            AppTopAppBar(
                 title = {
                     Text(
                         text = contentViewModel?.title ?: "收藏夹",
@@ -209,7 +206,7 @@ fun CollectionBrowseScreen(
                 },
                 navigationIcon = {
                     if (showBackButton) {
-                        IconButton(
+                        AppIconButton(
                             onClick = navigator.onNavigateBack,
                             modifier = Modifier.testTag(COLLECTION_BROWSE_BACK_BUTTON_TAG),
                         ) {
@@ -219,20 +216,20 @@ fun CollectionBrowseScreen(
                 },
                 actions = {
                     Box {
-                        IconButton(
+                        AppIconButton(
                             onClick = { folderMenuExpanded = true },
                             enabled = collections.isNotEmpty(),
                             modifier = Modifier.testTag(COLLECTION_BROWSE_FOLDER_SWITCH_BUTTON_TAG),
                         ) {
                             Icon(Icons.Filled.Folder, contentDescription = "切换收藏夹")
                         }
-                        DropdownMenu(
+                        AppDropdownMenu(
                             expanded = folderMenuExpanded,
                             onDismissRequest = { folderMenuExpanded = false },
                             modifier = Modifier.testTag(COLLECTION_BROWSE_FOLDER_MENU_TAG),
                         ) {
                             collections.forEach { collection ->
-                                DropdownMenuItem(
+                                AppDropdownMenuItem(
                                     text = { Text(collection.title) },
                                     trailingIcon = {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -240,7 +237,7 @@ fun CollectionBrowseScreen(
                                                 Icon(Icons.Filled.Check, contentDescription = null)
                                             }
                                             if (!collection.isDefault) {
-                                                IconButton(
+                                                AppIconButton(
                                                     onClick = {
                                                         collectionsViewModel.clearMutationErrors()
                                                         collectionPendingDeletion = collection
@@ -268,7 +265,7 @@ fun CollectionBrowseScreen(
                             }
                         }
                     }
-                    IconToggleButton(
+                    com.github.zly2006.zhihu.ui.components.AppIconToggleButton(
                         checked = randomMode,
                         onCheckedChange = { enabled ->
                             randomMode = enabled
@@ -316,10 +313,19 @@ fun CollectionBrowseScreen(
                         .padding(innerPadding),
                     contentAlignment = Alignment.Center,
                 ) {
-                    CircularProgressIndicator(modifier = Modifier.testTag(COLLECTION_BROWSE_LOADING_COLLECTIONS_TAG))
+                    AppCircularProgressIndicator(modifier = Modifier.testTag(COLLECTION_BROWSE_LOADING_COLLECTIONS_TAG))
                 }
             }
             else -> {
+                val pullToRefreshState = androidx.compose.material3.pulltorefresh
+                    .rememberPullToRefreshState()
+                val combinedPadding = PaddingValues(
+                    top = innerPadding.calculateTopPadding(),
+                    bottom = maxOf(
+                        innerPadding.calculateBottomPadding(),
+                        contentPadding.calculateBottomPadding(),
+                    ),
+                )
                 PullToRefreshBox(
                     isRefreshing = collectionsViewModel.isLoading || contentViewModel.isLoading,
                     onRefresh = {
@@ -332,14 +338,25 @@ fun CollectionBrowseScreen(
                             }
                         }
                     },
+                    state = pullToRefreshState,
+                    indicator = {
+                        androidx.compose.material3.pulltorefresh.PullToRefreshDefaults.Indicator(
+                            state = pullToRefreshState,
+                            isRefreshing = collectionsViewModel.isLoading || contentViewModel.isLoading,
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .padding(top = innerPadding.calculateTopPadding()),
+                        )
+                    },
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(innerPadding)
                         .testTag(COLLECTION_BROWSE_PULL_TO_REFRESH_TAG),
                 ) {
                     if (contentViewModel.allData.isEmpty() && contentViewModel.isEnd) {
                         Box(
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(combinedPadding),
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(
@@ -353,6 +370,7 @@ fun CollectionBrowseScreen(
                             environment = contentEnvironment,
                             collectionId = selectedCollectionId.orEmpty(),
                             modifier = Modifier.fillMaxSize(),
+                            contentPadding = combinedPadding,
                             listState = listState,
                             tagPrefix = "collection_browse",
                             displayItems = orderedDisplayItems,
@@ -367,7 +385,7 @@ fun CollectionBrowseScreen(
                             },
                         ) {
                             if (contentViewModel.isLoading) {
-                                CircularProgressIndicator(modifier = Modifier.size(30.dp))
+                                AppCircularProgressIndicator(modifier = Modifier.size(30.dp))
                             } else {
                                 Icon(Icons.Filled.Refresh, contentDescription = "重新随机加载")
                             }
@@ -380,7 +398,7 @@ fun CollectionBrowseScreen(
 
     collectionPendingDeletion?.let { collection ->
         val isDeleting = collectionsViewModel.deletingCollectionId != null
-        AlertDialog(
+        AppAlertDialog(
             modifier = Modifier.testTag("collection_browse_delete_dialog_${collection.id}"),
             onDismissRequest = {
                 if (!isDeleting) {
@@ -401,7 +419,7 @@ fun CollectionBrowseScreen(
                 }
             },
             confirmButton = {
-                TextButton(
+                AppTextButton(
                     onClick = {
                         coroutineScope.launch {
                             if (collectionsViewModel.deleteCollection(environment, collection)) {
@@ -423,7 +441,7 @@ fun CollectionBrowseScreen(
                 }
             },
             dismissButton = {
-                TextButton(
+                AppTextButton(
                     onClick = { collectionPendingDeletion = null },
                     enabled = !isDeleting,
                 ) {

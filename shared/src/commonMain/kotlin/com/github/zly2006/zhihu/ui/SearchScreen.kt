@@ -17,8 +17,10 @@
 
 package com.github.zly2006.zhihu.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -46,22 +48,12 @@ import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryTabRow
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -77,6 +69,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
@@ -98,6 +91,21 @@ import com.github.zly2006.zhihu.platform.UserMessageDuration
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.reading.RegisterReadingQueueSource
+import com.github.zly2006.zhihu.theme.LocalUiBackdrop
+import com.github.zly2006.zhihu.theme.LocalUiStyle
+import com.github.zly2006.zhihu.theme.NoOpUiBackdrop
+import com.github.zly2006.zhihu.theme.UiStyle
+import com.github.zly2006.zhihu.theme.liquidGlassSemanticTokens
+import com.github.zly2006.zhihu.ui.components.AppCircularProgressIndicator
+import com.github.zly2006.zhihu.ui.components.AppDropdownMenu
+import com.github.zly2006.zhihu.ui.components.AppDropdownMenuItem
+import com.github.zly2006.zhihu.ui.components.AppIconButton
+import com.github.zly2006.zhihu.ui.components.AppPrimaryTabRow
+import com.github.zly2006.zhihu.ui.components.AppRadioButton
+import com.github.zly2006.zhihu.ui.components.AppScaffold
+import com.github.zly2006.zhihu.ui.components.AppTab
+import com.github.zly2006.zhihu.ui.components.AppTextButton
+import com.github.zly2006.zhihu.ui.components.AppTopAppBar
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.FeedAuthorBlockConfirmDialog
@@ -271,19 +279,19 @@ fun SearchScreen(
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            IconButton(
+            AppIconButton(
                 onClick = { historyMoreMenuExpanded = true },
                 modifier = Modifier
                     .size(40.dp)
                     .testTag("search_history_more_button"),
             ) {
                 Icon(Icons.Default.MoreVert, contentDescription = "更多", modifier = Modifier.size(18.dp))
-                DropdownMenu(
+                AppDropdownMenu(
                     expanded = historyMoreMenuExpanded,
                     onDismissRequest = { historyMoreMenuExpanded = false },
                 ) {
                     if (showClearAction) {
-                        DropdownMenuItem(
+                        AppDropdownMenuItem(
                             text = { Text("清空搜索历史") },
                             onClick = {
                                 historyMoreMenuExpanded = false
@@ -292,7 +300,7 @@ fun SearchScreen(
                             },
                         )
                     }
-                    DropdownMenuItem(
+                    AppDropdownMenuItem(
                         text = { Text("前往设置关闭搜索历史") },
                         onClick = {
                             historyMoreMenuExpanded = false
@@ -332,136 +340,177 @@ fun SearchScreen(
         }
     }
 
-    Scaffold(
+    AppScaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Surface(
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(40.dp),
-                            shape = RoundedCornerShape(24.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant,
+            Column {
+                AppTopAppBar(
+                    title = {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Row(
+                            val uiStyle = LocalUiStyle.current
+                            val backdrop = LocalUiBackdrop.current
+                            val glassTokens = liquidGlassSemanticTokens()
+                            val searchShape = when (uiStyle) {
+                                UiStyle.Miuix -> RoundedCornerShape(16.dp)
+                                UiStyle.LiquidGlass -> RoundedCornerShape(glassTokens.floatingCornerRadius)
+                                UiStyle.Material3 -> RoundedCornerShape(24.dp)
+                            }
+                            val searchSurfaceModifier = if (uiStyle == UiStyle.LiquidGlass && backdrop.isActive) {
+                                backdrop.chromeSurface(
+                                    shape = searchShape,
+                                    tint = glassTokens.chromeTint,
+                                    floating = true,
+                                )
+                            } else {
+                                Modifier
+                            }
+                            Surface(
                                 modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(horizontal = 16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
+                                    .weight(1f)
+                                    .height(if (uiStyle == UiStyle.LiquidGlass) 44.dp else 40.dp)
+                                    .then(searchSurfaceModifier),
+                                shape = searchShape,
+                                color = when {
+                                    uiStyle == UiStyle.LiquidGlass && backdrop.isActive -> Color.Transparent
+                                    uiStyle == UiStyle.LiquidGlass -> glassTokens.contentSurface
+                                    uiStyle == UiStyle.Miuix -> MaterialTheme.colorScheme.surfaceContainer
+                                    else -> MaterialTheme.colorScheme.surfaceVariant
+                                },
                             ) {
-                                Icon(
-                                    Icons.Default.Search,
-                                    contentDescription = "搜索",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(20.dp),
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                BasicTextField(
-                                    value = searchText,
-                                    onValueChange = { searchText = it },
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .focusRequester(searchInputFocusRequester)
-                                        .testTag("search_input"),
-                                    textStyle = MaterialTheme.typography.bodyLarge.copy(
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                    ),
-                                    singleLine = true,
-                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                                    keyboardActions = KeyboardActions(
-                                        onSearch = {
-                                            keyboardController?.hide()
-                                            submitSearch(searchText)
-                                        },
-                                    ),
-                                    decorationBox = { innerTextField ->
-                                        if (searchText.isEmpty()) {
-                                            Text(
-                                                text = searchPlaceholder,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                style = MaterialTheme.typography.bodyLarge,
-                                            )
-                                        }
-                                        innerTextField()
-                                    },
-                                )
-                                if (searchText.isNotEmpty()) {
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    IconButton(
-                                        onClick = { searchText = "" },
+                                androidx.compose.runtime.CompositionLocalProvider(LocalUiBackdrop provides NoOpUiBackdrop) {
+                                    Row(
                                         modifier = Modifier
-                                            .size(32.dp)
-                                            .testTag("search_clear_button"),
+                                            .fillMaxSize()
+                                            .padding(horizontal = 16.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
                                     ) {
                                         Icon(
-                                            Icons.Default.Clear,
-                                            contentDescription = "清除",
+                                            Icons.Default.Search,
+                                            contentDescription = "搜索",
                                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                             modifier = Modifier.size(20.dp),
                                         )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        BasicTextField(
+                                            value = searchText,
+                                            onValueChange = { searchText = it },
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .focusRequester(searchInputFocusRequester)
+                                                .testTag("search_input"),
+                                            textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                                color = MaterialTheme.colorScheme.onSurface,
+                                            ),
+                                            singleLine = true,
+                                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                                            keyboardActions = KeyboardActions(
+                                                onSearch = {
+                                                    keyboardController?.hide()
+                                                    submitSearch(searchText)
+                                                },
+                                            ),
+                                            decorationBox = { innerTextField ->
+                                                if (searchText.isEmpty()) {
+                                                    Text(
+                                                        text = searchPlaceholder,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        style = MaterialTheme.typography.bodyLarge,
+                                                    )
+                                                }
+                                                innerTextField()
+                                            },
+                                        )
+                                        if (searchText.isNotEmpty()) {
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            AppIconButton(
+                                                onClick = { searchText = "" },
+                                                modifier = Modifier
+                                                    .size(32.dp)
+                                                    .testTag("search_clear_button"),
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.Clear,
+                                                    contentDescription = "清除",
+                                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    modifier = Modifier.size(20.dp),
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
-                },
-                navigationIcon = {
-                    IconButton(
-                        onClick = navigator.onNavigateBack,
-                        modifier = Modifier.testTag("search_back_button"),
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
-                    }
-                },
-                actions = {
-                    if (viewModel.searchTab == SearchTab.General) {
-                        IconButton(
-                            onClick = { filterMenuExpanded = true },
-                            enabled = search.query.isNotEmpty(),
-                            modifier = Modifier.testTag("search_filter_button"),
+                    },
+                    navigationIcon = {
+                        AppIconButton(
+                            onClick = navigator.onNavigateBack,
+                            modifier = Modifier.testTag("search_back_button"),
                         ) {
-                            Icon(Icons.Default.FilterList, contentDescription = "筛选搜索结果")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                         }
-                        SearchFilterMenu(
-                            expanded = filterMenuExpanded,
-                            onDismissRequest = { filterMenuExpanded = false },
-                            viewModel = viewModel,
-                            paginationEnvironment = paginationEnvironment,
-                        )
+                    },
+                    actions = {
+                        if (viewModel.searchTab == SearchTab.General) {
+                            AppIconButton(
+                                onClick = { filterMenuExpanded = true },
+                                enabled = search.query.isNotEmpty(),
+                                modifier = Modifier.testTag("search_filter_button"),
+                            ) {
+                                Icon(Icons.Default.FilterList, contentDescription = "筛选搜索结果")
+                            }
+                            SearchFilterMenu(
+                                expanded = filterMenuExpanded,
+                                onDismissRequest = { filterMenuExpanded = false },
+                                viewModel = viewModel,
+                                paginationEnvironment = paginationEnvironment,
+                            )
+                        }
+                    },
+                )
+                if (search.query.isNotEmpty() && !isMemberSearch) {
+                    val tabStyle = LocalUiStyle.current
+                    val tabBackdrop = LocalUiBackdrop.current
+                    val tabBackdropModifier = if (tabStyle == UiStyle.Miuix) {
+                        if (tabBackdrop.isActive) {
+                            tabBackdrop.chromeSurface(floating = false)
+                        } else {
+                            Modifier.background(top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.surface)
+                        }
+                    } else {
+                        Modifier
                     }
-                },
-            )
-        },
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-        ) {
-            if (search.query.isNotEmpty() && !isMemberSearch) {
-                PrimaryTabRow(selectedTabIndex = viewModel.searchTab.ordinal) {
-                    SearchTab.entries.forEach { tab ->
-                        Tab(
-                            selected = viewModel.searchTab == tab,
-                            onClick = { viewModel.selectTab(paginationEnvironment, tab) },
-                            text = { Text(tab.label) },
-                            modifier = Modifier.testTag("search_tab_${tab.name}"),
-                        )
+                    Box(modifier = Modifier.fillMaxWidth().then(tabBackdropModifier)) {
+                        androidx.compose.runtime.CompositionLocalProvider(LocalUiBackdrop provides NoOpUiBackdrop) {
+                            AppPrimaryTabRow(selectedTabIndex = viewModel.searchTab.ordinal) {
+                                SearchTab.entries.forEach { tab ->
+                                    AppTab(
+                                        selected = viewModel.searchTab == tab,
+                                        onClick = { viewModel.selectTab(paginationEnvironment, tab) },
+                                        text = { Text(tab.label) },
+                                        modifier = Modifier.testTag("search_tab_${tab.name}"),
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
+        },
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier.fillMaxSize(),
+        ) {
             if (viewModel.displayItems.isEmpty() && !viewModel.isLoading && viewModel.searchQuery.isEmpty()) {
                 if (suggestItems.isNotEmpty()) {
                     // 输入中的搜索建议词，点击直接提交搜索；优先于热搜/历史展示。
                     LazyColumn(
                         modifier = Modifier
-                            .fillMaxWidth()
+                            .fillMaxSize()
                             .testTag("search_suggest_list"),
+                        contentPadding = innerPadding,
                     ) {
                         // 同一建议词可能在响应中重复出现，key 必须包含索引避免冲突。
                         itemsIndexed(suggestItems, key = { index, item -> "$index:${item.query}" }) { _, item ->
@@ -513,9 +562,10 @@ fun SearchScreen(
                     )
                     Column(
                         modifier = Modifier
-                            .fillMaxWidth()
+                            .fillMaxSize()
                             .pageTurnViewportWithGuide(pageTurnTarget)
                             .verticalScroll(suggestionScrollState)
+                            .padding(innerPadding)
                             .padding(16.dp)
                             .testTag("search_hot_list"),
                     ) {
@@ -566,7 +616,7 @@ fun SearchScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    IconButton(
+                                    AppIconButton(
                                         onClick = {
                                             coroutineScope.launch { runCatching { fetchHotSearch() } }
                                         },
@@ -577,18 +627,18 @@ fun SearchScreen(
                                         Icon(Icons.Default.Refresh, contentDescription = "刷新热搜", modifier = Modifier.size(18.dp))
                                     }
                                     Spacer(modifier = Modifier.width(4.dp))
-                                    IconButton(
+                                    AppIconButton(
                                         onClick = { hotSearchMoreMenuExpanded = true },
                                         modifier = Modifier
                                             .size(40.dp)
                                             .testTag("search_hot_more_button"),
                                     ) {
                                         Icon(Icons.Default.MoreVert, contentDescription = "更多", modifier = Modifier.size(18.dp))
-                                        DropdownMenu(
+                                        AppDropdownMenu(
                                             expanded = hotSearchMoreMenuExpanded,
                                             onDismissRequest = { hotSearchMoreMenuExpanded = false },
                                         ) {
-                                            DropdownMenuItem(
+                                            AppDropdownMenuItem(
                                                 text = { Text("关闭热搜显示") },
                                                 onClick = {
                                                     hotSearchMoreMenuExpanded = false
@@ -641,6 +691,7 @@ fun SearchScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .padding(innerPadding)
                                 .padding(16.dp),
                         ) {
                             if (showSearchHistory.value) {
@@ -662,6 +713,7 @@ fun SearchScreen(
                             text = "请输入搜索内容",
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .padding(innerPadding)
                                 .padding(16.dp),
                         )
                     }
@@ -686,6 +738,7 @@ fun SearchScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .pageTurnViewportWithGuide(pageTurnTarget),
+                    contentPadding = innerPadding,
                     state = resultListState,
                 ) {
                     items(viewModel.entities, key = SearchEntity::id) { result ->
@@ -722,7 +775,7 @@ fun SearchScreen(
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
                                     }
-                                    TextButton(
+                                    AppTextButton(
                                         modifier = Modifier.testTag("search_topic_follow_${topic.id}"),
                                         enabled = topic.id !in viewModel.changingTopicIds,
                                         onClick = {
@@ -748,7 +801,7 @@ fun SearchScreen(
                     item {
                         when {
                             viewModel.errorMessage != null -> {
-                                TextButton(
+                                AppTextButton(
                                     modifier = Modifier.fillMaxWidth().testTag("search_retry_button"),
                                     onClick = { viewModel.retry(paginationEnvironment) },
                                 ) {
@@ -764,7 +817,7 @@ fun SearchScreen(
                     listState = generalListState,
                     enabled = filterMenuExpanded.not() && feedAuthorBlockRequest == null,
                 )
-                FeedPullToRefresh(viewModel, paginationEnvironment) {
+                FeedPullToRefresh(viewModel, paginationEnvironment, padding = innerPadding) {
                     PaginatedList(
                         items = viewModel.entities,
                         listState = generalListState,
@@ -772,6 +825,7 @@ fun SearchScreen(
                         modifier = Modifier
                             .pageTurnViewportWithGuide(pageTurnTarget)
                             .testTag("search_general_results"),
+                        contentPadding = innerPadding,
                         topContent = {
                             item {
                                 if (isMemberSearch) {
@@ -796,7 +850,7 @@ fun SearchScreen(
                                 modifier = Modifier.testTag("search_general_content_${result.id}"),
                                 readingQueueSourceId = readingQueueSourceId,
                                 menuItems = { dismissMenu ->
-                                    DropdownMenuItem(
+                                    AppDropdownMenuItem(
                                         text = { Text("屏蔽用户") },
                                         onClick = {
                                             dismissMenu()
@@ -837,7 +891,7 @@ fun SearchScreen(
                             },
                         ) {
                             if (viewModel.isLoading) {
-                                CircularProgressIndicator(modifier = Modifier.size(36.dp))
+                                AppCircularProgressIndicator(modifier = Modifier.size(36.dp))
                             } else {
                                 Icon(Icons.Default.Refresh, contentDescription = "刷新")
                             }
@@ -918,7 +972,7 @@ private fun SearchFilterMenu(
     viewModel: SearchViewModel,
     paginationEnvironment: PaginationEnvironment,
 ) {
-    DropdownMenu(
+    AppDropdownMenu(
         expanded = expanded,
         onDismissRequest = onDismissRequest,
     ) {
@@ -989,10 +1043,10 @@ private fun SearchFilterMenuItem(
     testTag: String,
     onClick: () -> Unit,
 ) {
-    DropdownMenuItem(
+    AppDropdownMenuItem(
         text = { Text(text) },
         leadingIcon = {
-            RadioButton(
+            AppRadioButton(
                 selected = selected,
                 onClick = onClick,
             )

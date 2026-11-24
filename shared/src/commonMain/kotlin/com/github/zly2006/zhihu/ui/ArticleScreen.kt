@@ -58,16 +58,12 @@ import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -123,6 +119,8 @@ import com.github.zly2006.zhihu.platform.isArticleHtmlExportSupported
 import com.github.zly2006.zhihu.platform.isArticleImageExportSupported
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.theme.LocalUiStyle
+import com.github.zly2006.zhihu.theme.UiStyle
 import com.github.zly2006.zhihu.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.ui.article.AigcFlagSheet
 import com.github.zly2006.zhihu.ui.article.ArticleActionsMenu
@@ -141,6 +139,11 @@ import com.github.zly2006.zhihu.ui.article.voteUpNeutralContentDuo3
 import com.github.zly2006.zhihu.ui.components.ANSWER_SWITCH_SENSITIVITY_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.components.AnswerHorizontalOverscroll
 import com.github.zly2006.zhihu.ui.components.AnswerVerticalOverscroll
+import com.github.zly2006.zhihu.ui.components.AppButton
+import com.github.zly2006.zhihu.ui.components.AppCircularProgressIndicator
+import com.github.zly2006.zhihu.ui.components.AppIconButton
+import com.github.zly2006.zhihu.ui.components.AppScaffold
+import com.github.zly2006.zhihu.ui.components.AppTextButton
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.CollectionDialogComponent
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
@@ -148,6 +151,7 @@ import com.github.zly2006.zhihu.ui.components.ContentEndMarker
 import com.github.zly2006.zhihu.ui.components.DEFAULT_ANSWER_SWITCH_SENSITIVITY
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.ExportDialogComponent
+import com.github.zly2006.zhihu.ui.components.LiquidToolbar
 import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.github.zly2006.zhihu.ui.components.VerticalReadingProgressBar
 import com.github.zly2006.zhihu.ui.components.VotersSheet
@@ -451,7 +455,7 @@ fun ArticleScreen(
                 }
             }
         }
-        Scaffold(
+        AppScaffold(
             modifier = Modifier
                 .fillMaxSize()
                 .then(if (!isImmersiveMode) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier),
@@ -470,7 +474,7 @@ fun ArticleScreen(
                     ) {
                         ZhihuTwoRowsTopAppBar(
                             navigationIcon = {
-                                IconButton(
+                                AppIconButton(
                                     onClick = {
                                         if (articleNavController != null) {
                                             articleNavController.popBackStack()
@@ -488,7 +492,7 @@ fun ArticleScreen(
                             },
                             actions = {
                                 if (useDuo3ArticleActions) {
-                                    IconButton(
+                                    AppIconButton(
                                         onClick = { showActionsMenu = true },
                                     ) {
                                         Icon(
@@ -644,7 +648,109 @@ fun ArticleScreen(
                     // 操作栏内容的共享组合，按 useDuo3ArticleActions 切换两套视觉。
                     @Composable
                     fun ActionBarContent() {
-                        if (!useDuo3ArticleActions) {
+                        if (LocalUiStyle.current == UiStyle.LiquidGlass) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp)
+                                    .padding(bottom = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding() + 8.dp),
+                            ) {
+                                LiquidToolbar(modifier = Modifier.fillMaxWidth()) {
+                                    AppTextButton(
+                                        onClick = {
+                                            viewModel.toggleVoteUp(
+                                                environment,
+                                                if (viewModel.voteUpState == VoteUpState.Up) VoteUpState.Neutral else VoteUpState.Up,
+                                            )
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                        contentPadding = PaddingValues(horizontal = 4.dp),
+                                        colors = ButtonDefaults.textButtonColors(
+                                            contentColor = if (viewModel.voteUpState == VoteUpState.Up) {
+                                                MaterialTheme.colorScheme.primary
+                                            } else {
+                                                MaterialTheme.colorScheme.onSurface
+                                            },
+                                        ),
+                                    ) {
+                                        Icon(painterResource(Res.drawable.ic_vote_up_24dp), "赞同")
+                                        Spacer(Modifier.width(4.dp))
+                                        Text(
+                                            text = viewModel.voteUpCount.toString(),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                    }
+                                    AppIconButton(
+                                        onClick = {
+                                            viewModel.toggleVoteUp(
+                                                environment,
+                                                if (viewModel.voteUpState == VoteUpState.Down) VoteUpState.Neutral else VoteUpState.Down,
+                                            )
+                                        },
+                                    ) {
+                                        Icon(
+                                            painterResource(Res.drawable.ic_vote_down_24dp),
+                                            "反对",
+                                            tint = if (viewModel.voteUpState == VoteUpState.Down) {
+                                                MaterialTheme.colorScheme.primary
+                                            } else {
+                                                MaterialTheme.colorScheme.onSurface
+                                            },
+                                        )
+                                    }
+                                    AppIconButton(onClick = { showCollectionDialog = true }) {
+                                        Icon(
+                                            if (viewModel.isFavorited) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
+                                            "收藏",
+                                            tint = if (viewModel.isFavorited) {
+                                                MaterialTheme.colorScheme.primary
+                                            } else {
+                                                MaterialTheme.colorScheme.onSurface
+                                            },
+                                        )
+                                    }
+                                    val ttsState = rememberArticleTtsState()
+                                    val toggleSpeech = rememberArticleSpeechToggler()
+                                    if (ttsState.isSpeaking) {
+                                        AppIconButton(
+                                            onClick = {
+                                                toggleSpeech("", "")
+                                                userMessages.showMessage("已停止朗读")
+                                            },
+                                            enabled = ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing),
+                                        ) {
+                                            Icon(Icons.AutoMirrored.Filled.VolumeOff, "停止朗读")
+                                        }
+                                    }
+                                    AppTextButton(
+                                        onClick = { showComments = true },
+                                        modifier = Modifier.weight(1f),
+                                        contentPadding = PaddingValues(horizontal = 4.dp),
+                                        colors = ButtonDefaults.textButtonColors(
+                                            contentColor = MaterialTheme.colorScheme.onSurface,
+                                        ),
+                                    ) {
+                                        Icon(Icons.AutoMirrored.Filled.Comment, "评论")
+                                        Spacer(Modifier.width(4.dp))
+                                        Text(
+                                            text = viewModel.commentCount.toString(),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                    }
+                                    if (!useDuo3ArticleActions) {
+                                        AppIconButton(onClick = { showActionsMenu = true }) {
+                                            Icon(
+                                                Icons.Filled.MoreVert,
+                                                contentDescription = "更多选项",
+                                                tint = MaterialTheme.colorScheme.onSurface,
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        } else if (!useDuo3ArticleActions) {
                             // ── 主视觉：按钮式投票与操作区 ────────────────────────
                             Row(
                                 modifier = Modifier
@@ -668,7 +774,7 @@ fun ArticleScreen(
                                 ) {
                                     when (viewModel.voteUpState) {
                                         VoteUpState.Neutral -> {
-                                            Button(
+                                            AppButton(
                                                 onClick = { viewModel.toggleVoteUp(environment, VoteUpState.Up) },
                                                 colors = voteUpNeutralButtonColors(),
                                                 shape = RectangleShape,
@@ -679,7 +785,7 @@ fun ArticleScreen(
                                                 Spacer(modifier = Modifier.width(4.dp))
                                                 Text(text = viewModel.voteUpCount.toString())
                                             }
-                                            Button(
+                                            AppButton(
                                                 onClick = { viewModel.toggleVoteUp(environment, VoteUpState.Down) },
                                                 colors = voteUpNeutralButtonColors(),
                                                 shape = RectangleShape,
@@ -691,7 +797,7 @@ fun ArticleScreen(
                                         }
 
                                         VoteUpState.Up -> {
-                                            Button(
+                                            AppButton(
                                                 onClick = { viewModel.toggleVoteUp(environment, VoteUpState.Neutral) },
                                                 colors = voteUpActiveButtonColors(),
                                                 shape = RectangleShape,
@@ -706,7 +812,7 @@ fun ArticleScreen(
                                         }
 
                                         VoteUpState.Down -> {
-                                            Button(
+                                            AppButton(
                                                 onClick = { viewModel.toggleVoteUp(environment, VoteUpState.Neutral) },
                                                 colors = voteUpActiveButtonColors(),
                                                 shape = RectangleShape,
@@ -722,7 +828,7 @@ fun ArticleScreen(
                                     }
                                 }
                                 Row(horizontalArrangement = Arrangement.End) {
-                                    IconButton(
+                                    AppIconButton(
                                         onClick = { showCollectionDialog = true },
                                         colors = IconButtonDefaults.iconButtonColors(
                                             containerColor = if (viewModel.isFavorited) Color(0xFFF57C00) else MaterialTheme.colorScheme.secondaryContainer,
@@ -731,7 +837,7 @@ fun ArticleScreen(
                                     ) {
                                         Icon(if (viewModel.isFavorited) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder, contentDescription = "收藏")
                                     }
-                                    Button(
+                                    AppButton(
                                         onClick = { showComments = true },
                                         contentPadding = PaddingValues(start = 8.dp, end = 12.dp),
                                         colors = voteUpNeutralButtonColors(),
@@ -741,7 +847,7 @@ fun ArticleScreen(
                                         Text(text = "${viewModel.commentCount}")
                                     }
 
-                                    IconButton(
+                                    AppIconButton(
                                         onClick = { showActionsMenu = true },
                                         colors = IconButtonDefaults.iconButtonColors(
                                             containerColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -862,7 +968,7 @@ fun ArticleScreen(
                                         .padding(end = 4.dp),
                                     horizontalArrangement = Arrangement.End,
                                 ) {
-                                    IconButton(
+                                    AppIconButton(
                                         onClick = { showCollectionDialog = true },
                                         colors = IconButtonDefaults.iconButtonColors(
                                             containerColor = if (viewModel.isFavorited) {
@@ -886,7 +992,7 @@ fun ArticleScreen(
                                     val ttsState = rememberArticleTtsState()
                                     val toggleArticleSpeech = rememberArticleSpeechToggler()
                                     AnimatedVisibility(visible = ttsState.isSpeaking) {
-                                        IconButton(
+                                        AppIconButton(
                                             onClick = {
                                                 toggleArticleSpeech("", "")
                                                 userMessages.showMessage("已停止朗读")
@@ -901,7 +1007,7 @@ fun ArticleScreen(
                                         }
                                     }
 
-                                    Button(
+                                    AppButton(
                                         onClick = { showComments = true },
                                         contentPadding = PaddingValues(start = 8.dp, end = 12.dp),
                                         colors = ButtonDefaults.buttonColors(
@@ -1106,7 +1212,7 @@ fun ArticleScreen(
                                     verticalArrangement = Arrangement.spacedBy(8.dp),
                                 ) {
                                     viewModel.topics.forEach { topic ->
-                                        androidx.compose.material3.FilterChip(
+                                        com.github.zly2006.zhihu.ui.components.AppFilterChip(
                                             selected = false,
                                             onClick = { navigator.onNavigate(Topic(topic.id, topic.name)) },
                                             label = { Text("# ${topic.name}") },
@@ -1310,7 +1416,7 @@ fun ArticleScreen(
                 preferenceName = "buttonSkipAnswer",
             ) {
                 if (answerNavigationState.navigatingToNextAnswer) {
-                    CircularProgressIndicator(modifier = Modifier.size(30.dp))
+                    AppCircularProgressIndicator(modifier = Modifier.size(30.dp))
                 } else {
                     Icon(Icons.Filled.SkipNext, contentDescription = "下一个回答")
                 }
@@ -1432,7 +1538,7 @@ fun ArticleScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Button(
+                AppButton(
                     onClick = {
                         showDoubleTapActionDialog = false
                         saveAnswerDoubleTapAction(AnswerDoubleTapAction.None)
@@ -1442,7 +1548,7 @@ fun ArticleScreen(
                 ) {
                     Text("设为无操作")
                 }
-                Button(
+                AppButton(
                     onClick = {
                         showDoubleTapActionDialog = false
                         saveAnswerDoubleTapAction(AnswerDoubleTapAction.VoteUp)
@@ -1453,7 +1559,7 @@ fun ArticleScreen(
                 ) {
                     Text("设为点赞")
                 }
-                Button(
+                AppButton(
                     onClick = {
                         showDoubleTapActionDialog = false
                         saveAnswerDoubleTapAction(AnswerDoubleTapAction.OpenComments)
@@ -1464,7 +1570,7 @@ fun ArticleScreen(
                 ) {
                     Text("设为打开评论区")
                 }
-                Button(
+                AppButton(
                     onClick = {
                         showDoubleTapActionDialog = false
                         saveAnswerDoubleTapAction(AnswerDoubleTapAction.ToggleImmersive)
@@ -1480,7 +1586,7 @@ fun ArticleScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     listOf(AnswerDoubleTapAction.JumpToTop, AnswerDoubleTapAction.JumpToBottom).forEach { action ->
-                        Button(
+                        AppButton(
                             onClick = {
                                 showDoubleTapActionDialog = false
                                 saveAnswerDoubleTapAction(action)

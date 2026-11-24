@@ -27,9 +27,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -47,6 +45,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.data.ZHIHU_ME_URL
 import com.github.zly2006.zhihu.data.ZhihuJson
+import com.github.zly2006.zhihu.ui.components.AppCircularProgressIndicator
+import com.github.zly2006.zhihu.ui.components.AppOutlinedButton
 import com.github.zly2006.zhihu.util.ZHIHU_WEB_ZSE93
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
@@ -473,7 +473,7 @@ fun SharedQrLoginPane(
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(),
             )
-            OutlinedButton(
+            AppOutlinedButton(
                 onClick = {
                     riskControlUrl = null
                     riskControlMessage = null
@@ -530,7 +530,7 @@ fun SharedQrLoginPane(
             )
             Spacer(modifier = Modifier.size(16.dp))
         } else if (isWorking) {
-            CircularProgressIndicator(
+            AppCircularProgressIndicator(
                 modifier = Modifier.testTag("qr_login_loading"),
             )
             Spacer(modifier = Modifier.size(16.dp))
@@ -561,7 +561,7 @@ fun SharedQrLoginPane(
         Row(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            OutlinedButton(
+            AppOutlinedButton(
                 onClick = {
                     qrBitmap = null
                     statusText = "正在刷新二维码"

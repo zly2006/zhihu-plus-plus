@@ -31,12 +31,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -55,6 +50,11 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.ui.components.AppButton
+import com.github.zly2006.zhihu.ui.components.AppCheckbox
+import com.github.zly2006.zhihu.ui.components.AppCircularProgressIndicator
+import com.github.zly2006.zhihu.ui.components.AppOutlinedButton
+import com.github.zly2006.zhihu.ui.components.AppOutlinedTextField
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
@@ -158,7 +158,7 @@ fun PhoneLoginPane(onLoginSuccess: (String) -> Unit) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
-        OutlinedTextField(
+        AppOutlinedTextField(
             value = phoneNumber,
             onValueChange = { value ->
                 val nextPhoneNumber = value.filter(Char::isDigit).take(11)
@@ -198,7 +198,7 @@ fun PhoneLoginPane(onLoginSuccess: (String) -> Unit) {
                         .testTag("phone_login_captcha_image"),
                 )
             }
-            OutlinedTextField(
+            AppOutlinedTextField(
                 value = captchaInput,
                 onValueChange = { captchaInput = it },
                 label = { Text("图形验证码") },
@@ -219,7 +219,7 @@ fun PhoneLoginPane(onLoginSuccess: (String) -> Unit) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                OutlinedButton(
+                AppOutlinedButton(
                     onClick = {
                         scope.launch {
                             isSendingDigits = true
@@ -243,7 +243,7 @@ fun PhoneLoginPane(onLoginSuccess: (String) -> Unit) {
                 ) {
                     Text("换一张")
                 }
-                Button(
+                AppButton(
                     onClick = {
                         scope.launch { verifyCaptchaAndSend() }
                     },
@@ -262,7 +262,7 @@ fun PhoneLoginPane(onLoginSuccess: (String) -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            OutlinedTextField(
+            AppOutlinedTextField(
                 value = digits,
                 onValueChange = { value ->
                     digits = value.filter(Char::isDigit).take(6)
@@ -277,7 +277,7 @@ fun PhoneLoginPane(onLoginSuccess: (String) -> Unit) {
                     .weight(1f)
                     .testTag("phone_login_digits"),
             )
-            Button(
+            AppButton(
                 onClick = { scope.launch { sendDigits() } },
                 enabled = agreementAccepted &&
                     phoneNumber.length == 11 &&
@@ -287,7 +287,7 @@ fun PhoneLoginPane(onLoginSuccess: (String) -> Unit) {
                 modifier = Modifier.testTag("phone_login_send_digits"),
             ) {
                 if (isSendingDigits) {
-                    CircularProgressIndicator(
+                    AppCircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
                         strokeWidth = 2.dp,
                     )
@@ -310,7 +310,7 @@ fun PhoneLoginPane(onLoginSuccess: (String) -> Unit) {
                 .testTag("phone_login_agreement"),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Checkbox(
+            AppCheckbox(
                 checked = agreementAccepted,
                 onCheckedChange = { agreementAccepted = it },
             )
@@ -321,7 +321,7 @@ fun PhoneLoginPane(onLoginSuccess: (String) -> Unit) {
             )
         }
 
-        Button(
+        AppButton(
             onClick = {
                 scope.launch {
                     isLoggingIn = true
@@ -353,7 +353,7 @@ fun PhoneLoginPane(onLoginSuccess: (String) -> Unit) {
                 .testTag("phone_login_submit"),
         ) {
             if (isLoggingIn) {
-                CircularProgressIndicator(
+                AppCircularProgressIndicator(
                     modifier = Modifier.size(20.dp),
                     strokeWidth = 2.dp,
                 )

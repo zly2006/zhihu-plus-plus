@@ -34,20 +34,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -74,6 +66,13 @@ import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.HOME_PIN_ANNOUNCEMENT_READ_KEY_PREFIX
 import com.github.zly2006.zhihu.ui.TtsState
+import com.github.zly2006.zhihu.ui.components.AppAlertDialog
+import com.github.zly2006.zhihu.ui.components.AppButton
+import com.github.zly2006.zhihu.ui.components.AppIconButton
+import com.github.zly2006.zhihu.ui.components.AppLargeTopAppBar
+import com.github.zly2006.zhihu.ui.components.AppOutlinedTextField
+import com.github.zly2006.zhihu.ui.components.AppScaffold
+import com.github.zly2006.zhihu.ui.components.AppTextButton
 import com.github.zly2006.zhihu.ui.components.SettingItemOverall
 import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
@@ -116,14 +115,15 @@ fun DeveloperSettingsScreen() {
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
-    Scaffold(
+    AppScaffold(
+        settingsAmbientBackground = true,
         modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
-            LargeTopAppBar(
+            AppLargeTopAppBar(
                 title = { Text("开发者选项") },
                 navigationIcon = {
-                    IconButton(
+                    AppIconButton(
                         modifier = Modifier.testTag(DEVELOPER_SETTINGS_BACK_BUTTON_TAG),
                         onClick = navigator.onNavigateBack,
                         colors = IconButtonDefaults.iconButtonColors(
@@ -172,7 +172,7 @@ fun DeveloperSettingsScreen() {
                 }
             }
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = {
+                AppButton(onClick = {
                     coroutineScope.launch {
                         if (accountStore.client.refreshAndSaveProfile() != null) {
                             userMessages.showShortMessage("登录成功")
@@ -182,7 +182,7 @@ fun DeveloperSettingsScreen() {
                     }
                 }) { Text("验证登录") }
 
-                Button(onClick = {
+                AppButton(onClick = {
                     coroutineScope.launch {
                         check(accountStore.refreshCredentials(force = true)) {
                             "缺少移动端刷新凭据时请重新登录；刚刚尝试过刷新时请稍后重试"
@@ -191,12 +191,12 @@ fun DeveloperSettingsScreen() {
                     }
                 }) { Text("刷新Token") }
 
-                Button(onClick = { showCookieDialog = true }) { Text("手动设置Cookie") }
+                AppButton(onClick = { showCookieDialog = true }) { Text("手动设置Cookie") }
 
-                Button(onClick = { showSignedRequestDialog = true }) { Text("签名请求") }
+                AppButton(onClick = { showSignedRequestDialog = true }) { Text("签名请求") }
 
                 if (isSentenceSimilaritySupported) {
-                    Button(
+                    AppButton(
                         modifier = Modifier.testTag(DEVELOPER_SETTINGS_SENTENCE_SIMILARITY_TAG),
                         onClick = {
                             navigator.onNavigate(SentenceSimilarityTest)
@@ -204,14 +204,14 @@ fun DeveloperSettingsScreen() {
                     ) { Text("句子相似度") }
                 }
 
-                Button(
+                AppButton(
                     modifier = Modifier.testTag(DEVELOPER_SETTINGS_COLOR_SCHEME_TAG),
                     onClick = {
                         navigator.onNavigate(Account.DeveloperSettings.ColorScheme)
                     },
                 ) { Text("Color Scheme") }
 
-                Button(onClick = {
+                AppButton(onClick = {
                     settings.remove(HOME_NOTIFICATION_READ_UUIDS_PREFERENCE_KEY)
                     settings.removeByPrefix(HOME_PIN_ANNOUNCEMENT_READ_KEY_PREFIX)
                     userMessages.showShortMessage("已清除 online notification 和作者想法推送的已读记录")
@@ -219,7 +219,7 @@ fun DeveloperSettingsScreen() {
             }
 
             // TTS引擎信息显示
-            Card(
+            com.github.zly2006.zhihu.ui.components.AppCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 8.dp),
@@ -306,7 +306,7 @@ fun DeveloperSettingsScreen() {
     if (showCookieDialog) {
         var cookieInputText by remember { mutableStateOf("") }
         var showCookieText by remember { mutableStateOf(false) }
-        AlertDialog(
+        AppAlertDialog(
             onDismissRequest = {
                 showCookieDialog = false
                 cookieInputText = ""
@@ -321,14 +321,14 @@ fun DeveloperSettingsScreen() {
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = 16.dp),
                     )
-                    OutlinedTextField(
+                    AppOutlinedTextField(
                         value = cookieInputText,
                         onValueChange = { cookieInputText = it },
                         label = { Text("Cookie字符串") },
                         placeholder = { Text("name1=value1;name2=value2") },
                         visualTransformation = if (showCookieText) VisualTransformation.None else PasswordVisualTransformation(),
                         trailingIcon = {
-                            IconButton(onClick = { showCookieText = !showCookieText }) {
+                            AppIconButton(onClick = { showCookieText = !showCookieText }) {
                                 Icon(
                                     imageVector = if (showCookieText) Icons.Default.Visibility else Icons.Default.VisibilityOff,
                                     contentDescription = if (showCookieText) "隐藏" else "显示",
@@ -341,7 +341,7 @@ fun DeveloperSettingsScreen() {
                 }
             },
             confirmButton = {
-                Button(
+                AppButton(
                     onClick = {
                         if (cookieInputText.isNotBlank()) {
                             try {
@@ -378,7 +378,7 @@ fun DeveloperSettingsScreen() {
                 }
             },
             dismissButton = {
-                TextButton(
+                AppTextButton(
                     onClick = {
                         showCookieDialog = false
                         cookieInputText = ""
@@ -396,7 +396,7 @@ fun DeveloperSettingsScreen() {
         var responseText by remember { mutableStateOf("") }
         var isLoading by remember { mutableStateOf(false) }
 
-        AlertDialog(
+        AppAlertDialog(
             onDismissRequest = {
                 showSignedRequestDialog = false
                 urlInput = ZHIHU_ME_URL
@@ -412,7 +412,7 @@ fun DeveloperSettingsScreen() {
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = 16.dp),
                     )
-                    OutlinedTextField(
+                    AppOutlinedTextField(
                         value = urlInput,
                         onValueChange = { urlInput = it },
                         label = { Text("请求URL") },
@@ -440,7 +440,7 @@ fun DeveloperSettingsScreen() {
                 }
             },
             confirmButton = {
-                Button(
+                AppButton(
                     onClick = {
                         if (urlInput.isNotBlank() && !isLoading) {
                             isLoading = true
@@ -467,7 +467,7 @@ fun DeveloperSettingsScreen() {
                 }
             },
             dismissButton = {
-                TextButton(
+                AppTextButton(
                     onClick = {
                         showSignedRequestDialog = false
                         urlInput = ZHIHU_ME_URL

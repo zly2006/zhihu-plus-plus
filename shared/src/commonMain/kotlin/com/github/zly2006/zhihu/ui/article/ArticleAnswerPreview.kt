@@ -38,11 +38,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Comment
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -58,6 +56,8 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.ui.AnswerEndorsementChip
+import com.github.zly2006.zhihu.ui.components.AppButton
+import com.github.zly2006.zhihu.ui.components.AppScaffold
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
 import org.jetbrains.compose.resources.painterResource
@@ -68,7 +68,7 @@ import zhihu.shared.generated.resources.ic_vote_up_24dp
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun CachedAnswerPreview(cached: CachedAnswerContent, useTiqianMarkdown: Boolean) {
-    Scaffold(
+    AppScaffold(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp)
@@ -76,6 +76,7 @@ internal fun CachedAnswerPreview(cached: CachedAnswerContent, useTiqianMarkdown:
                 color = MaterialTheme.colorScheme.background,
                 shape = RectangleShape,
             ),
+        enableBackdrop = false,
         topBar = {
             Box(
                 modifier = Modifier
@@ -105,7 +106,7 @@ internal fun CachedAnswerPreview(cached: CachedAnswerContent, useTiqianMarkdown:
                             .background(color = Color(0xFF40B6F6)),
                         horizontalArrangement = Arrangement.Start,
                     ) {
-                        Button(
+                        AppButton(
                             onClick = {},
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Color(0xFF40B6F6),
@@ -120,7 +121,7 @@ internal fun CachedAnswerPreview(cached: CachedAnswerContent, useTiqianMarkdown:
                             Text(text = cached.voteUpCount.toString())
                         }
                     }
-                    Button(
+                    AppButton(
                         onClick = {},
                         contentPadding = PaddingValues(horizontal = 8.dp),
                         colors = ButtonDefaults.buttonColors(

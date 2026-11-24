@@ -60,6 +60,11 @@ object AndroidThemeSettings {
         context.settings.putString("themeMode", mode.name)
     }
 
+    fun setUiStyle(context: Context, style: UiStyle) {
+        ThemeManager.setUiStyle(style)
+        context.settings.putString(UI_STYLE_PREFERENCE_KEY, style.prefValue)
+    }
+
     private fun readSnapshot(context: Context): ThemeSnapshot {
         val settings = context.settings
         val themeModeValue = settings.getString("themeMode", ThemeMode.SYSTEM.name)
@@ -68,12 +73,16 @@ object AndroidThemeSettings {
         } catch (_: IllegalArgumentException) {
             ThemeMode.SYSTEM
         }
+        val uiStyle = UiStyle.fromValueOrDefault(
+            settings.getString(UI_STYLE_PREFERENCE_KEY, UiStyle.Material3.prefValue),
+        )
         return ThemeSnapshot(
             useDynamicColor = settings.getBoolean("useDynamicColor", true),
             customColor = settings.getInt("customThemeColor", 0xFF2196F3.toInt()),
             backgroundColorLight = settings.getInt("backgroundColorLight", 0xFFFFFFFF.toInt()),
             backgroundColorDark = settings.getInt("backgroundColorDark", 0xFF121212.toInt()),
             themeMode = themeMode,
+            uiStyle = uiStyle,
         )
     }
 

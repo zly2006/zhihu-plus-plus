@@ -32,8 +32,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -149,33 +147,33 @@ fun RenderImage(
         // 当文本选择上下文菜单触发 isEntireContainerSelected → sort 时，
         // 跨窗口比较坐标会抛出 IllegalArgumentException: layouts are not part of the same hierarchy。
         DisableSelection {
-            DropdownMenu(
+            com.github.zly2006.zhihu.ui.components.AppDropdownMenu(
                 expanded = expanded,
                 onDismissRequest = { expanded = false },
                 offset = pressOffset,
             ) {
-                DropdownMenuItem(
+                com.github.zly2006.zhihu.ui.components.AppDropdownMenuItem(
                     text = { Text("查看图片") },
                     onClick = {
                         expanded = false
                         openGallery()
                     },
                 )
-                DropdownMenuItem(
+                com.github.zly2006.zhihu.ui.components.AppDropdownMenuItem(
                     text = { Text("在浏览器中打开") },
                     onClick = {
                         expanded = false
                         openExternalUrl(data.url)
                     },
                 )
-                DropdownMenuItem(
+                com.github.zly2006.zhihu.ui.components.AppDropdownMenuItem(
                     text = { Text("保存图片") },
                     onClick = {
                         expanded = false
                         saveImage(data.url)
                     },
                 )
-                DropdownMenuItem(
+                com.github.zly2006.zhihu.ui.components.AppDropdownMenuItem(
                     text = { Text("分享图片") },
                     onClick = {
                         expanded = false

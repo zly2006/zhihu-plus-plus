@@ -30,19 +30,10 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -63,6 +54,15 @@ import com.github.zly2006.zhihu.navigation.CollectionAnswerNavigator
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.platform.PlatformBackHandler
 import com.github.zly2006.zhihu.reading.RegisterReadingQueueSource
+import com.github.zly2006.zhihu.ui.components.AppAlertDialog
+import com.github.zly2006.zhihu.ui.components.AppCheckbox
+import com.github.zly2006.zhihu.ui.components.AppDropdownMenu
+import com.github.zly2006.zhihu.ui.components.AppDropdownMenuItem
+import com.github.zly2006.zhihu.ui.components.AppIconButton
+import com.github.zly2006.zhihu.ui.components.AppLinearProgressIndicator
+import com.github.zly2006.zhihu.ui.components.AppScaffold
+import com.github.zly2006.zhihu.ui.components.AppTextButton
+import com.github.zly2006.zhihu.ui.components.AppTopAppBar
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
@@ -107,10 +107,10 @@ fun CollectionContentScreen(
         showExportOptionsDialog = false
     }
 
-    Scaffold(
+    AppScaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
-            TopAppBar(
+            AppTopAppBar(
                 title = {
                     Text(
                         text = screenViewModel.title,
@@ -118,7 +118,7 @@ fun CollectionContentScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(
+                    AppIconButton(
                         onClick = navigator.onNavigateBack,
                         modifier = Modifier.testTag("collection_content_back_button"),
                     ) {
@@ -127,19 +127,19 @@ fun CollectionContentScreen(
                 },
                 actions = {
                     Box {
-                        IconButton(
+                        AppIconButton(
                             onClick = { showActionsMenu = true },
                             enabled = screenViewModel.exportDialogState?.isCompleted != false,
                             modifier = Modifier.testTag("collection_content_more_button"),
                         ) {
                             Icon(Icons.Filled.MoreVert, contentDescription = "更多")
                         }
-                        DropdownMenu(
+                        AppDropdownMenu(
                             expanded = showActionsMenu,
                             onDismissRequest = { showActionsMenu = false },
                             modifier = Modifier.testTag("collection_content_more_menu"),
                         ) {
-                            DropdownMenuItem(
+                            AppDropdownMenuItem(
                                 modifier = Modifier.testTag("collection_content_export_action"),
                                 text = { Text("全部导出HTML") },
                                 enabled = screenViewModel.exportDialogState?.isCompleted != false,
@@ -178,8 +178,8 @@ fun CollectionContentScreen(
             collectionId = collectionId,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
                 .pageTurnViewportWithGuide(pageTurnTarget),
+            contentPadding = innerPadding,
             listState = listState,
             tagPrefix = "collection_content",
         )
@@ -192,6 +192,8 @@ internal fun CollectionContentBody(
     environment: CollectionContentEnvironment,
     collectionId: String,
     modifier: Modifier = Modifier,
+    contentPadding: androidx.compose.foundation.layout.PaddingValues = androidx.compose.foundation.layout
+        .PaddingValues(0.dp),
     listState: LazyListState = rememberLazyListState(),
     tagPrefix: String,
     displayItems: List<FeedDisplayItem> = viewModel.displayItems,
@@ -215,6 +217,7 @@ internal fun CollectionContentBody(
         isEnd = { viewModel.isEnd },
         listState = listState,
         modifier = modifier.testTag("${tagPrefix}_list"),
+        contentPadding = contentPadding,
         footer = ProgressIndicatorFooter,
         topContent = {
             item(0) {
@@ -267,7 +270,7 @@ private fun CollectionHtmlExportOptionsDialog(
 ) {
     var includeImages by remember { mutableStateOf(true) }
 
-    AlertDialog(
+    AppAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("导出收藏夹 HTML") },
         text = {
@@ -278,7 +281,7 @@ private fun CollectionHtmlExportOptionsDialog(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Checkbox(
+                    AppCheckbox(
                         modifier = Modifier.testTag("collection_content_export_include_images"),
                         checked = includeImages,
                         onCheckedChange = { includeImages = it },
@@ -298,7 +301,7 @@ private fun CollectionHtmlExportOptionsDialog(
             }
         },
         confirmButton = {
-            TextButton(
+            AppTextButton(
                 onClick = { onConfirm(includeImages) },
                 modifier = Modifier.testTag("collection_content_export_confirm"),
             ) {
@@ -306,7 +309,7 @@ private fun CollectionHtmlExportOptionsDialog(
             }
         },
         dismissButton = {
-            TextButton(
+            AppTextButton(
                 onClick = onDismiss,
                 modifier = Modifier.testTag("collection_content_export_cancel"),
             ) {
@@ -321,7 +324,7 @@ private fun CollectionHtmlExportDialog(
     state: CollectionHtmlExportDialogState,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
+    AppAlertDialog(
         onDismissRequest = {
             if (state.isCompleted) {
                 onDismiss()
@@ -339,9 +342,9 @@ private fun CollectionHtmlExportDialog(
                 }
                 Spacer(modifier = Modifier.height(12.dp))
                 if (state.isIndeterminate) {
-                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    AppLinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                 } else {
-                    LinearProgressIndicator(
+                    AppLinearProgressIndicator(
                         progress = { state.progress },
                         modifier = Modifier.fillMaxWidth(),
                     )
@@ -360,7 +363,7 @@ private fun CollectionHtmlExportDialog(
         },
         confirmButton = {
             if (state.isCompleted) {
-                TextButton(onClick = onDismiss) {
+                AppTextButton(onClick = onDismiss) {
                     Text("确定")
                 }
             }

@@ -32,23 +32,15 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -71,6 +63,15 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.AUTO_REFRESH_HOME_ON_STARTUP_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.components.AppAlertDialog
+import com.github.zly2006.zhihu.ui.components.AppButton
+import com.github.zly2006.zhihu.ui.components.AppDropdownMenuItem
+import com.github.zly2006.zhihu.ui.components.AppExposedDropdownMenu
+import com.github.zly2006.zhihu.ui.components.AppIconButton
+import com.github.zly2006.zhihu.ui.components.AppLargeTopAppBar
+import com.github.zly2006.zhihu.ui.components.AppOutlinedTextField
+import com.github.zly2006.zhihu.ui.components.AppScaffold
+import com.github.zly2006.zhihu.ui.components.AppTextButton
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
@@ -123,14 +124,15 @@ fun ContentFilterSettingsScreen(
         }
     }
 
-    Scaffold(
+    AppScaffold(
+        settingsAmbientBackground = true,
         modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
-            LargeTopAppBar(
+            AppLargeTopAppBar(
                 title = { Text("推荐系统与内容过滤") },
                 navigationIcon = {
-                    IconButton(
+                    AppIconButton(
                         onClick = navigator.onNavigateBack,
                         colors = IconButtonDefaults.iconButtonColors(
                             containerColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -178,7 +180,7 @@ fun ContentFilterSettingsScreen(
                             onExpandedChange = { expanded = !expanded },
                             modifier = Modifier.width(256.dp),
                         ) {
-                            OutlinedTextField(
+                            AppOutlinedTextField(
                                 value = currentRecommendationMode.value.displayName,
                                 onValueChange = { },
                                 readOnly = true,
@@ -187,12 +189,12 @@ fun ContentFilterSettingsScreen(
                                     .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true)
                                     .testTag("contentFilterSettings:recommendationModeField"),
                             )
-                            ExposedDropdownMenu(
+                            AppExposedDropdownMenu(
                                 expanded = expanded,
                                 onDismissRequest = { expanded = false },
                             ) {
                                 RecommendationMode.entries.forEach { mode ->
-                                    DropdownMenuItem(
+                                    AppDropdownMenuItem(
                                         text = {
                                             Column {
                                                 Text(mode.displayName)
@@ -269,7 +271,7 @@ fun ContentFilterSettingsScreen(
                             expanded = qualityFilterModeExpanded,
                             onExpandedChange = { qualityFilterModeExpanded = it },
                         ) {
-                            OutlinedTextField(
+                            AppOutlinedTextField(
                                 value = qualityFilterModeOptions.first { it.first == qualityFilterMode.value }.second,
                                 onValueChange = {},
                                 readOnly = true,
@@ -281,12 +283,12 @@ fun ContentFilterSettingsScreen(
                                     .width(160.dp),
                                 colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                             )
-                            ExposedDropdownMenu(
+                            AppExposedDropdownMenu(
                                 expanded = qualityFilterModeExpanded,
                                 onDismissRequest = { qualityFilterModeExpanded = false },
                             ) {
                                 qualityFilterModeOptions.forEach { (mode, label) ->
-                                    DropdownMenuItem(
+                                    AppDropdownMenuItem(
                                         text = { Text(label) },
                                         onClick = {
                                             qualityFilterMode.value = mode
@@ -378,12 +380,12 @@ fun ContentFilterSettingsScreen(
                         QUESTION_FOLLOWERS_THRESHOLD_PREFERENCE_KEY -> "问题最低关注数"
                         else -> "质量过滤阈值"
                     }
-                    AlertDialog(
+                    AppAlertDialog(
                         onDismissRequest = { thresholdKey = null },
                         title = { Text("设置$thresholdTitle") },
-                        text = { OutlinedTextField(value = input, onValueChange = { input = it }, label = { Text("阈值") }, singleLine = true) },
+                        text = { AppOutlinedTextField(value = input, onValueChange = { input = it }, label = { Text("阈值") }, singleLine = true) },
                         confirmButton = {
-                            TextButton(onClick = {
+                            AppTextButton(onClick = {
                                 input.toIntOrNull()?.takeIf { it >= 0 }?.let { value ->
                                     thresholdValues[key] = value
                                     settings.putInt(key, value)
@@ -391,7 +393,7 @@ fun ContentFilterSettingsScreen(
                                 } ?: userMessages.showMessage("请输入不小于 0 的整数")
                             }) { Text("确定") }
                         },
-                        dismissButton = { TextButton(onClick = { thresholdKey = null }) { Text("取消") } },
+                        dismissButton = { AppTextButton(onClick = { thresholdKey = null }) { Text("取消") } },
                     )
                 }
 
@@ -490,14 +492,14 @@ fun ContentFilterSettingsScreen(
                     if (showThresholdDialog) {
                         var inputValue by remember { mutableStateOf(topicThreshold.value.toString()) }
 
-                        AlertDialog(
+                        AppAlertDialog(
                             onDismissRequest = { showThresholdDialog = false },
                             title = { Text("设置主题屏蔽阈值") },
                             text = {
                                 Column {
                                     Text("当内容包含的被屏蔽主题数量达到或超过此阈值时，该内容将被屏蔽。")
                                     Spacer(modifier = Modifier.height(16.dp))
-                                    OutlinedTextField(
+                                    AppOutlinedTextField(
                                         value = inputValue,
                                         onValueChange = { inputValue = it },
                                         label = { Text("阈值") },
@@ -506,7 +508,7 @@ fun ContentFilterSettingsScreen(
                                 }
                             },
                             confirmButton = {
-                                TextButton(
+                                AppTextButton(
                                     onClick = {
                                         val newThreshold = inputValue.toIntOrNull()
                                         if (newThreshold != null && newThreshold > 0) {
@@ -522,7 +524,7 @@ fun ContentFilterSettingsScreen(
                                 }
                             },
                             dismissButton = {
-                                TextButton(onClick = { showThresholdDialog = false }) {
+                                AppTextButton(onClick = { showThresholdDialog = false }) {
                                     Text("取消")
                                 }
                             },
@@ -655,7 +657,7 @@ fun ContentFilterSettingsScreen(
             }
 
             if (showStatsDialog && filterStats != null) {
-                AlertDialog(
+                AppAlertDialog(
                     onDismissRequest = { showStatsDialog = false },
                     title = { Text("过滤统计详情") },
                     text = {
@@ -668,7 +670,7 @@ fun ContentFilterSettingsScreen(
                                 Text("过滤率: ${(filterStats?.filterRate ?: 0f) * 100}%%")
                             }
                             Spacer(modifier = Modifier.height(16.dp))
-                            Button(
+                            AppButton(
                                 onClick = {
                                     coroutineScope.launch {
                                         try {
@@ -688,7 +690,7 @@ fun ContentFilterSettingsScreen(
                         }
                     },
                     confirmButton = {
-                        TextButton(onClick = { showStatsDialog = false }) {
+                        AppTextButton(onClick = { showStatsDialog = false }) {
                             Text("关闭")
                         }
                     },

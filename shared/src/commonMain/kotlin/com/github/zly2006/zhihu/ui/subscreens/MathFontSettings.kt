@@ -24,10 +24,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -43,6 +40,9 @@ import com.github.zly2006.zhihu.markdown.rememberCustomMathFonts
 import com.github.zly2006.zhihu.markdown.rememberSelectedMathFont
 import com.github.zly2006.zhihu.platform.rememberFileImporter
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.ui.components.AppDropdownMenu
+import com.github.zly2006.zhihu.ui.components.AppDropdownMenuItem
+import com.github.zly2006.zhihu.ui.components.AppOutlinedButton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -69,23 +69,23 @@ internal fun MathFontSettings() {
     Column {
         Text("用于 Compose 正文中的公式；请选择含 MATH 表的 OTF 或 TTF 数学字体（不超过 20 MB）。")
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-            OutlinedButton(onClick = { expanded = true }, enabled = !busy, modifier = Modifier.weight(1f).testTag("mathFont.select")) {
+            AppOutlinedButton(onClick = { expanded = true }, enabled = !busy, modifier = Modifier.weight(1f).testTag("mathFont.select")) {
                 Text(selected?.name ?: "默认字体", modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Icon(Icons.Default.ArrowDropDown, contentDescription = null)
-                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                    DropdownMenuItem(text = { Text("默认字体") }, onClick = {
+                AppDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    AppDropdownMenuItem(text = { Text("默认字体") }, onClick = {
                         fonts.select(null)
                         expanded = false
                     })
                     fonts.list().forEach { font ->
-                        DropdownMenuItem(text = { Text(font.name) }, onClick = {
+                        AppDropdownMenuItem(text = { Text(font.name) }, onClick = {
                             fonts.select(font)
                             expanded = false
                         })
                     }
                 }
             }
-            OutlinedButton(onClick = picker, enabled = !busy, modifier = Modifier.testTag("mathFont.import")) {
+            AppOutlinedButton(onClick = picker, enabled = !busy, modifier = Modifier.testTag("mathFont.import")) {
                 Text(if (busy) "正在导入…" else "导入字体")
             }
         }

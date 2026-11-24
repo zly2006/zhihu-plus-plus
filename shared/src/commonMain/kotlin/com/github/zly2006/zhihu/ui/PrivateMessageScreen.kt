@@ -46,13 +46,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.SentimentSatisfied
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
@@ -87,6 +83,10 @@ import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.notification.rememberNotificationSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.platform.rememberZhihuWebUrlOpener
+import com.github.zly2006.zhihu.ui.components.AppCenterAlignedTopAppBar
+import com.github.zly2006.zhihu.ui.components.AppIconButton
+import com.github.zly2006.zhihu.ui.components.AppOutlinedTextField
+import com.github.zly2006.zhihu.ui.components.AppScaffold
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.util.formatFullDateTime
@@ -146,10 +146,10 @@ fun PrivateMessageScreen(destination: Notification.Message) {
         }
     }
 
-    Scaffold(
+    AppScaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
-            CenterAlignedTopAppBar(
+            AppCenterAlignedTopAppBar(
                 title = {
                     Text(
                         text = peerName.ifBlank { "私信" },
@@ -157,7 +157,7 @@ fun PrivateMessageScreen(destination: Notification.Message) {
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = navigator.onNavigateBack) {
+                    AppIconButton(onClick = navigator.onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
@@ -179,7 +179,7 @@ fun PrivateMessageScreen(destination: Notification.Message) {
                         .padding(horizontal = 16.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    OutlinedTextField(
+                    AppOutlinedTextField(
                         value = draft,
                         onValueChange = { draft = it },
                         modifier = Modifier
@@ -190,14 +190,14 @@ fun PrivateMessageScreen(destination: Notification.Message) {
                         maxLines = 4,
                         shape = RoundedCornerShape(12.dp),
                     )
-                    IconButton(onClick = {}, enabled = false) {
+                    AppIconButton(onClick = {}, enabled = false) {
                         Icon(
                             Icons.Outlined.SentimentSatisfied,
                             contentDescription = "表情（暂不可用）",
                             tint = MaterialTheme.colorScheme.outline,
                         )
                     }
-                    IconButton(
+                    AppIconButton(
                         onClick = {
                             val content = draft
                             coroutineScope.launch {
@@ -221,10 +221,22 @@ fun PrivateMessageScreen(destination: Notification.Message) {
             }
         },
     ) { paddingValues ->
+        val pullToRefreshState = androidx.compose.material3.pulltorefresh
+            .rememberPullToRefreshState()
         PullToRefreshBox(
             isRefreshing = viewModel.isLoading,
             onRefresh = { viewModel.refresh(environment) },
-            modifier = Modifier.padding(paddingValues),
+            state = pullToRefreshState,
+            indicator = {
+                androidx.compose.material3.pulltorefresh.PullToRefreshDefaults.Indicator(
+                    state = pullToRefreshState,
+                    isRefreshing = viewModel.isLoading,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = paddingValues.calculateTopPadding()),
+                )
+            },
+            modifier = Modifier.fillMaxSize(),
         ) {
             PaginatedList(
                 items = viewModel.allData,
@@ -234,7 +246,10 @@ fun PrivateMessageScreen(destination: Notification.Message) {
                 // 保留列表淡入，由新消息高度连续变化带动旧消息让位，避免独立的位置动画造成重叠。
                 animateItemPlacement = false,
                 listState = listState,
-                contentPadding = PaddingValues(vertical = 12.dp),
+                contentPadding = PaddingValues(
+                    top = paddingValues.calculateTopPadding() + 12.dp,
+                    bottom = paddingValues.calculateBottomPadding() + 12.dp,
+                ),
                 modifier = Modifier.fillMaxSize(),
                 footer = ProgressIndicatorFooter,
                 key = { it.stableId },
@@ -317,7 +332,11 @@ private fun PrivateMessageBubble(
                         bottomEnd = if (incoming) 16.dp else 4.dp,
                     ),
                     color = if (incoming) {
-                        MaterialTheme.colorScheme.surfaceContainerLow
+                        if (com.github.zly2006.zhihu.theme.LocalUiStyle.current == com.github.zly2006.zhihu.theme.UiStyle.Miuix) {
+                            top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.surfaceContainer
+                        } else {
+                            MaterialTheme.colorScheme.surfaceContainerLow
+                        }
                     } else {
                         MaterialTheme.colorScheme.primaryContainer
                     },

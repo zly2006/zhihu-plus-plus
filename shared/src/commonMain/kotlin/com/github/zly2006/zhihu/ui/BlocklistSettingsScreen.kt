@@ -36,23 +36,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SecondaryTabRow
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -72,6 +62,19 @@ import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.platform.isBlocklistNlpSupported
 import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.theme.LocalUiStyle
+import com.github.zly2006.zhihu.theme.UiStyle
+import com.github.zly2006.zhihu.ui.components.AppAlertDialog
+import com.github.zly2006.zhihu.ui.components.AppButton
+import com.github.zly2006.zhihu.ui.components.AppCard
+import com.github.zly2006.zhihu.ui.components.AppCheckbox
+import com.github.zly2006.zhihu.ui.components.AppFloatingActionButton
+import com.github.zly2006.zhihu.ui.components.AppIconButton
+import com.github.zly2006.zhihu.ui.components.AppOutlinedTextField
+import com.github.zly2006.zhihu.ui.components.AppPrimaryTabRow
+import com.github.zly2006.zhihu.ui.components.AppScaffold
+import com.github.zly2006.zhihu.ui.components.AppTab
+import com.github.zly2006.zhihu.ui.components.AppTextButton
 import com.github.zly2006.zhihu.util.Log
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeyword
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedQuestionAuthor
@@ -197,7 +200,8 @@ fun BlocklistSettingsScreen(
         loadData()
     }
 
-    Scaffold(
+    AppScaffold(
+        settingsAmbientBackground = true,
         modifier = Modifier.fillMaxSize(),
         floatingActionButton = {
             // 只在传统关键词、用户屏蔽、提问者屏蔽和主题屏蔽标签页显示添加按钮
@@ -207,7 +211,7 @@ fun BlocklistSettingsScreen(
                 selectedTab == blockedQuestionAuthorsTab ||
                 selectedTab == blockedTopicsTab
             ) {
-                FloatingActionButton(
+                AppFloatingActionButton(
                     modifier = Modifier.testTag(BlocklistSettingsTestTags.FAB),
                     onClick = {
                         when (selectedTab) {
@@ -231,7 +235,7 @@ fun BlocklistSettingsScreen(
         ) {
             // 统计信息卡片
             stats?.let { statsData ->
-                Card(
+                AppCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp)
@@ -309,13 +313,13 @@ fun BlocklistSettingsScreen(
                     .padding(horizontal = 16.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
             ) {
-                TextButton(
+                AppTextButton(
                     modifier = Modifier.testTag(BlocklistSettingsTestTags.IMPORT_BUTTON),
                     onClick = { requestImport() },
                 ) {
                     Text("导入规则")
                 }
-                TextButton(
+                AppTextButton(
                     modifier = Modifier.testTag(BlocklistSettingsTestTags.EXPORT_BUTTON),
                     onClick = {
                         coroutineScope.launch {
@@ -333,12 +337,12 @@ fun BlocklistSettingsScreen(
             }
 
             // 标签页
-            SecondaryTabRow(
+            AppPrimaryTabRow(
                 selectedTabIndex = selectedTab,
                 modifier = Modifier.testTag(BlocklistSettingsTestTags.TAB_ROW),
             ) {
                 tabs.forEachIndexed { index, title ->
-                    Tab(
+                    AppTab(
                         modifier = Modifier.testTag("blocklistSettings:tab:$index"),
                         selected = selectedTab == index,
                         onClick = { selectedTab = index },
@@ -601,7 +605,7 @@ fun BlockedKeywordsList(
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.End,
             ) {
-                Button(
+                AppButton(
                     modifier = Modifier.testTag(BlocklistSettingsTestTags.KEYWORD_CLEAR_BUTTON),
                     onClick = onClearAll,
                     colors = ButtonDefaults.buttonColors(
@@ -639,6 +643,13 @@ fun BlockedKeywordsList(
                 items(keywords, key = { it.id }) { keyword ->
                     ListItem(
                         modifier = Modifier.testTag("blocklistSettings:keywords:item:${keyword.id}"),
+                        colors = ListItemDefaults.colors(
+                            containerColor = if (LocalUiStyle.current == UiStyle.Material3) {
+                                ListItemDefaults.containerColor
+                            } else {
+                                androidx.compose.ui.graphics.Color.Transparent
+                            },
+                        ),
                         headlineContent = { Text(keyword.keyword) },
                         supportingContent = {
                             val options = mutableListOf<String>()
@@ -651,7 +662,7 @@ fun BlockedKeywordsList(
                             }
                         },
                         trailingContent = {
-                            IconButton(
+                            AppIconButton(
                                 modifier = Modifier.testTag("blocklistSettings:keywords:delete:${keyword.id}"),
                                 onClick = { onDeleteKeyword(keyword) },
                             ) {
@@ -691,7 +702,7 @@ private fun <T> BlockedPeopleList(
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.End,
             ) {
-                Button(
+                AppButton(
                     modifier = Modifier.testTag("blocklistSettings:$category:clear"),
                     onClick = onClearAll,
                     colors = ButtonDefaults.buttonColors(
@@ -732,6 +743,13 @@ private fun <T> BlockedPeopleList(
                         modifier = Modifier
                             .testTag("blocklistSettings:$category:item:$id")
                             .clickable { onNavigate(user) },
+                        colors = ListItemDefaults.colors(
+                            containerColor = if (LocalUiStyle.current == UiStyle.Material3) {
+                                ListItemDefaults.containerColor
+                            } else {
+                                androidx.compose.ui.graphics.Color.Transparent
+                            },
+                        ),
                         headlineContent = { Text(userName(user)) },
                         supportingContent = { Text("ID: $id") },
                         leadingContent = {
@@ -744,7 +762,7 @@ private fun <T> BlockedPeopleList(
                             )
                         },
                         trailingContent = {
-                            IconButton(
+                            AppIconButton(
                                 modifier = Modifier.testTag("blocklistSettings:$category:delete:$id"),
                                 onClick = { onDelete(user) },
                             ) {
@@ -771,14 +789,14 @@ fun AddKeywordDialog(
     var caseSensitive by remember { mutableStateOf(false) }
     var isRegex by remember { mutableStateOf(false) }
 
-    AlertDialog(
+    AppAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("添加屏蔽关键词") },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
             ) {
-                OutlinedTextField(
+                AppOutlinedTextField(
                     value = keyword,
                     onValueChange = { keyword = it },
                     label = { Text("关键词") },
@@ -792,7 +810,7 @@ fun AddKeywordDialog(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Checkbox(
+                    AppCheckbox(
                         modifier = Modifier.testTag(BlocklistSettingsTestTags.KEYWORD_DIALOG_CASE_SENSITIVE),
                         checked = caseSensitive,
                         onCheckedChange = { caseSensitive = it },
@@ -804,7 +822,7 @@ fun AddKeywordDialog(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Checkbox(
+                    AppCheckbox(
                         modifier = Modifier.testTag(BlocklistSettingsTestTags.KEYWORD_DIALOG_REGEX),
                         checked = isRegex,
                         onCheckedChange = { isRegex = it },
@@ -823,7 +841,7 @@ fun AddKeywordDialog(
             }
         },
         confirmButton = {
-            Button(
+            AppButton(
                 modifier = Modifier.testTag(BlocklistSettingsTestTags.KEYWORD_DIALOG_CONFIRM),
                 onClick = {
                     if (keyword.isNotBlank()) {
@@ -836,7 +854,7 @@ fun AddKeywordDialog(
             }
         },
         dismissButton = {
-            TextButton(
+            AppTextButton(
                 modifier = Modifier.testTag(BlocklistSettingsTestTags.KEYWORD_DIALOG_DISMISS),
                 onClick = onDismiss,
             ) {
@@ -856,12 +874,12 @@ fun AddUserDialog(
     var userId by remember { mutableStateOf("") }
     var userName by remember { mutableStateOf("") }
 
-    AlertDialog(
+    AppAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
             Column {
-                OutlinedTextField(
+                AppOutlinedTextField(
                     value = userId,
                     onValueChange = { userId = it },
                     label = { Text("用户ID") },
@@ -871,7 +889,7 @@ fun AddUserDialog(
                         .testTag(BlocklistSettingsTestTags.USER_DIALOG_ID_INPUT),
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
+                AppOutlinedTextField(
                     value = userName,
                     onValueChange = { userName = it },
                     label = { Text("用户名") },
@@ -889,7 +907,7 @@ fun AddUserDialog(
             }
         },
         confirmButton = {
-            Button(
+            AppButton(
                 modifier = Modifier.testTag(BlocklistSettingsTestTags.USER_DIALOG_CONFIRM),
                 onClick = {
                     if (userId.isNotBlank()) {
@@ -902,7 +920,7 @@ fun AddUserDialog(
             }
         },
         dismissButton = {
-            TextButton(
+            AppTextButton(
                 modifier = Modifier.testTag(BlocklistSettingsTestTags.USER_DIALOG_DISMISS),
                 onClick = onDismiss,
             ) {
@@ -948,7 +966,7 @@ fun BlockedTopicsList(
                     .padding(16.dp),
                 horizontalArrangement = Arrangement.End,
             ) {
-                Button(
+                AppButton(
                     modifier = Modifier.testTag(BlocklistSettingsTestTags.TOPIC_CLEAR_BUTTON),
                     onClick = { showClearConfirmDialog = true },
                     colors = ButtonDefaults.buttonColors(
@@ -966,10 +984,17 @@ fun BlockedTopicsList(
                 items(topics, key = { it.topicId }) { topic ->
                     ListItem(
                         modifier = Modifier.testTag("blocklistSettings:topics:item:${topic.topicId}"),
+                        colors = ListItemDefaults.colors(
+                            containerColor = if (LocalUiStyle.current == UiStyle.Material3) {
+                                ListItemDefaults.containerColor
+                            } else {
+                                androidx.compose.ui.graphics.Color.Transparent
+                            },
+                        ),
                         headlineContent = { Text(topic.topicName) },
                         supportingContent = { Text("ID: ${topic.topicId}") },
                         trailingContent = {
-                            IconButton(
+                            AppIconButton(
                                 modifier = Modifier.testTag("blocklistSettings:topics:delete:${topic.topicId}"),
                                 onClick = { onDeleteTopic(topic) },
                             ) {
@@ -987,12 +1012,12 @@ fun BlockedTopicsList(
     }
 
     if (showClearConfirmDialog) {
-        AlertDialog(
+        AppAlertDialog(
             onDismissRequest = { showClearConfirmDialog = false },
             title = { Text("确认清空") },
             text = { Text("确定要清空所有屏蔽主题吗？此操作不可撤销。") },
             confirmButton = {
-                Button(
+                AppButton(
                     modifier = Modifier.testTag(BlocklistSettingsTestTags.TOPIC_CLEAR_CONFIRM),
                     onClick = {
                         onClearAll()
@@ -1006,7 +1031,7 @@ fun BlockedTopicsList(
                 }
             },
             dismissButton = {
-                TextButton(
+                AppTextButton(
                     modifier = Modifier.testTag(BlocklistSettingsTestTags.TOPIC_CLEAR_DISMISS),
                     onClick = { showClearConfirmDialog = false },
                 ) {
@@ -1025,7 +1050,7 @@ fun AddTopicDialog(
     var topicId by remember { mutableStateOf("") }
     var topicName by remember { mutableStateOf("") }
 
-    AlertDialog(
+    AppAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("添加屏蔽主题") },
         text = {
@@ -1035,7 +1060,7 @@ fun AddTopicDialog(
                     style = MaterialTheme.typography.bodySmall,
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                OutlinedTextField(
+                AppOutlinedTextField(
                     value = topicId,
                     onValueChange = { topicId = it },
                     label = { Text("主题ID") },
@@ -1046,7 +1071,7 @@ fun AddTopicDialog(
                         .testTag(BlocklistSettingsTestTags.TOPIC_DIALOG_ID_INPUT),
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
+                AppOutlinedTextField(
                     value = topicName,
                     onValueChange = { topicName = it },
                     label = { Text("主题名称") },
@@ -1059,7 +1084,7 @@ fun AddTopicDialog(
             }
         },
         confirmButton = {
-            Button(
+            AppButton(
                 modifier = Modifier.testTag(BlocklistSettingsTestTags.TOPIC_DIALOG_CONFIRM),
                 onClick = {
                     if (topicId.isNotBlank()) {
@@ -1072,7 +1097,7 @@ fun AddTopicDialog(
             }
         },
         dismissButton = {
-            TextButton(
+            AppTextButton(
                 modifier = Modifier.testTag(BlocklistSettingsTestTags.TOPIC_DIALOG_DISMISS),
                 onClick = onDismiss,
             ) {

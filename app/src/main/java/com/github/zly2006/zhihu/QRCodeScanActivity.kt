@@ -39,18 +39,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.QrCodeScanner
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -63,7 +56,17 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.github.zly2006.zhihu.QRCodeScanActivity.Companion.LOGIN_PREFIX
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.theme.LocalUiStyle
+import com.github.zly2006.zhihu.theme.UiStyle
 import com.github.zly2006.zhihu.theme.ZhihuTheme
+import com.github.zly2006.zhihu.theme.liquidGlassSemanticTokens
+import com.github.zly2006.zhihu.ui.components.AppAlertDialog
+import com.github.zly2006.zhihu.ui.components.AppButton
+import com.github.zly2006.zhihu.ui.components.AppCard
+import com.github.zly2006.zhihu.ui.components.AppIconButton
+import com.github.zly2006.zhihu.ui.components.AppScaffold
+import com.github.zly2006.zhihu.ui.components.AppTextButton
+import com.github.zly2006.zhihu.ui.components.AppTopAppBar
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
 import com.journeyapps.barcodescanner.ScanContract
@@ -145,12 +148,12 @@ private fun QRCodeScanScreen(
         }
     }
 
-    Scaffold(
+    AppScaffold(
         topBar = {
-            TopAppBar(
+            AppTopAppBar(
                 title = { Text("扫码登录") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    AppIconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
@@ -190,7 +193,7 @@ private fun QRCodeScanScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            Button(
+            AppButton(
                 onClick = {
                     if (hasCameraPermission) {
                         val options = ScanOptions().apply {
@@ -248,7 +251,7 @@ private fun QRResultDialog(
     onCopy: (String) -> Unit,
     onConfirm: (String) -> Unit,
 ) {
-    AlertDialog(
+    AppAlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Text("扫描结果")
@@ -257,10 +260,14 @@ private fun QRResultDialog(
             Column {
                 Text("扫描到的内容：")
                 Spacer(modifier = Modifier.height(8.dp))
-                Card(
+                AppCard(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        containerColor = when (LocalUiStyle.current) {
+                            UiStyle.LiquidGlass -> liquidGlassSemanticTokens().segmentedContainer
+                            UiStyle.Miuix -> MaterialTheme.colorScheme.secondaryContainer
+                            UiStyle.Material3 -> MaterialTheme.colorScheme.surfaceVariant
+                        },
                     ),
                 ) {
                     Text(
@@ -273,13 +280,13 @@ private fun QRResultDialog(
         },
         confirmButton = {
             Row {
-                TextButton(
+                AppTextButton(
                     onClick = { onCopy(result) },
                 ) {
                     Text("复制")
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                TextButton(
+                AppTextButton(
                     onClick = { onConfirm(result) },
                 ) {
                     Text("确定")
@@ -287,7 +294,7 @@ private fun QRResultDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            AppTextButton(onClick = onDismiss) {
                 Text("取消")
             }
         },

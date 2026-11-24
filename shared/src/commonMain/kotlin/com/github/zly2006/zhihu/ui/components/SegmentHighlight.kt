@@ -29,10 +29,8 @@ import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -324,7 +322,7 @@ private fun SegmentActionSheet(
                         .fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    FilledTonalButton(
+                    AppFilledTonalButton(
                         onClick = onLikeClick,
                         modifier = Modifier.weight(1f),
                     ) {
@@ -337,7 +335,7 @@ private fun SegmentActionSheet(
                             modifier = Modifier.padding(start = 8.dp),
                         )
                     }
-                    FilledTonalButton(
+                    AppFilledTonalButton(
                         onClick = onCommentClick,
                         modifier = Modifier.weight(1f),
                     ) {
@@ -350,7 +348,7 @@ private fun SegmentActionSheet(
                             modifier = Modifier.padding(start = 8.dp),
                         )
                     }
-                    IconButton(onClick = onCopyClick) {
+                    AppIconButton(onClick = onCopyClick) {
                         Icon(
                             imageVector = Icons.Outlined.ContentCopy,
                             contentDescription = "复制内容",

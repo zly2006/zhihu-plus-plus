@@ -18,11 +18,11 @@
 package com.github.zly2006.zhihu.ui
 
 import androidx.compose.foundation.ScrollState
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -42,18 +42,12 @@ import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.ThumbUp
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -99,6 +93,12 @@ import com.github.zly2006.zhihu.reading.loadReadingPlaybackSpeed
 import com.github.zly2006.zhihu.reading.loadReadingPreferences
 import com.github.zly2006.zhihu.reading.rememberReadingPlayerController
 import com.github.zly2006.zhihu.reading.toReadingQueueItem
+import com.github.zly2006.zhihu.ui.components.AppCard
+import com.github.zly2006.zhihu.ui.components.AppCircularProgressIndicator
+import com.github.zly2006.zhihu.ui.components.AppFilledTonalButton
+import com.github.zly2006.zhihu.ui.components.AppIconButton
+import com.github.zly2006.zhihu.ui.components.AppScaffold
+import com.github.zly2006.zhihu.ui.components.AppTopAppBar
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.ContentEndMarker
@@ -278,10 +278,10 @@ fun PinScreen(
         }
     }
 
-    Scaffold(
+    AppScaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
-            TopAppBar(
+            AppTopAppBar(
                 title = {
                     val titleAuthor = pinContent?.author?.name
                     Text(
@@ -298,10 +298,9 @@ fun PinScreen(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surface)
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                    .padding(horizontal = 4.dp, vertical = 2.dp),
                 navigationIcon = {
-                    IconButton(
+                    AppIconButton(
                         onClick = navigator.onNavigateBack,
                         modifier = Modifier.testTag(PIN_SCREEN_BACK_BUTTON_TAG),
                     ) {
@@ -311,9 +310,9 @@ fun PinScreen(
                 actions = {
                     val readingItem = pinContent?.toReadingQueueItem(pin)
                     val isCurrentReadingItem = readingItem?.key == readingPlayerState.currentItem?.key
-                    IconButton(
+                    AppIconButton(
                         onClick = {
-                            val item = readingItem ?: return@IconButton
+                            val item = readingItem ?: return@AppIconButton
                             if (isCurrentReadingItem) {
                                 readingPlayer.togglePlayPause()
                             } else {
@@ -341,7 +340,7 @@ fun PinScreen(
                                 readingPlayerState.status in setOf(
                                     ReadingPlaybackStatus.Initializing,
                                     ReadingPlaybackStatus.Loading,
-                                ) -> CircularProgressIndicator(
+                                ) -> AppCircularProgressIndicator(
                                 modifier = Modifier.size(22.dp),
                                 strokeWidth = 2.dp,
                             )
@@ -355,7 +354,7 @@ fun PinScreen(
                             )
                         }
                     }
-                    IconButton(
+                    AppIconButton(
                         onClick = {
                             val shareText = getShareText(pin)
                             if (shareText != null) {
@@ -373,25 +372,26 @@ fun PinScreen(
         },
     ) { innerPadding ->
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
+            modifier = Modifier.fillMaxSize(),
         ) {
             when {
                 isLoading -> {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
+                            .padding(innerPadding)
                             .testTag(PIN_SCREEN_LOADING_TAG),
                         contentAlignment = Alignment.Center,
                     ) {
-                        CircularProgressIndicator()
+                        AppCircularProgressIndicator()
                     }
                 }
 
                 errorMessage != null -> {
                     Box(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
@@ -406,6 +406,7 @@ fun PinScreen(
                     val loadedPin = pinContent ?: return@Box
                     PinContent(
                         pin = loadedPin,
+                        contentPadding = innerPadding,
                         scrollState = scrollState,
                         pageTurnTarget = pageTurnTarget,
                         environment = paginationEnvironment,
@@ -489,6 +490,7 @@ fun PinScreen(
 @Composable
 private fun PinContent(
     pin: DataHolder.Pin,
+    contentPadding: PaddingValues,
     scrollState: ScrollState,
     pageTurnTarget: PageTurnTarget,
     environment: ZhihuApiEnvironment,
@@ -511,6 +513,7 @@ private fun PinContent(
             .pageTurnViewportWithGuide(pageTurnTarget)
             .verticalScroll(scrollState)
             .testTag(PIN_SCREEN_SCROLL_TAG)
+            .padding(contentPadding)
             .padding(16.dp),
     ) {
         // 作者信息。
@@ -662,7 +665,7 @@ private fun PinContent(
                 isRelatedLoading = false
             }
 
-            Card(
+            AppCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag(PIN_SCREEN_LINK_CARD_TAG)
@@ -741,7 +744,7 @@ private fun PinContent(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly,
         ) {
-            FilledTonalButton(
+            AppFilledTonalButton(
                 onClick = onLikeClick,
                 modifier = Modifier.testTag(PIN_SCREEN_LIKE_BUTTON_TAG),
             ) {
@@ -757,7 +760,7 @@ private fun PinContent(
                 )
             }
 
-            FilledTonalButton(
+            AppFilledTonalButton(
                 onClick = onCommentClick,
                 modifier = Modifier.testTag(PIN_SCREEN_COMMENT_BUTTON_TAG),
             ) {
@@ -815,7 +818,7 @@ private fun PinPollCard(
     val acceptsVote = poll.acceptsVote()
     val showsResult = poll.isVoted || !acceptsVote
     val pollVoterCount = poll.memberCount.takeIf { it > 0 } ?: poll.votingCount
-    Card(
+    AppCard(
         modifier = Modifier
             .fillMaxWidth()
             .testTag(PIN_SCREEN_POLL_CARD_TAG),
@@ -845,7 +848,7 @@ private fun PinPollCard(
                         totalVoterCount = pollVoterCount,
                     )
                 } else {
-                    FilledTonalButton(
+                    AppFilledTonalButton(
                         onClick = { onPollVote(poll.id, option.id) },
                         enabled = votingOptionId == null,
                         modifier = Modifier

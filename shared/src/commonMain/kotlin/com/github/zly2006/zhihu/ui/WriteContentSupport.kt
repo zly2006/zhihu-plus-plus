@@ -17,12 +17,12 @@
 
 package com.github.zly2006.zhihu.ui
 
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import com.github.zly2006.zhihu.ui.components.AppAlertDialog
+import com.github.zly2006.zhihu.ui.components.AppButton
+import com.github.zly2006.zhihu.ui.components.AppFilledTonalButton
 import com.github.zly2006.zhihu.util.HttpStatusException
 
 @Composable
@@ -33,7 +33,7 @@ internal fun WriteOperationErrorDialog(
 ) {
     if (message == null) return
 
-    AlertDialog(
+    AppAlertDialog(
         onDismissRequest = onDismissRequest,
         title = { Text("操作失败") },
         text = {
@@ -43,12 +43,12 @@ internal fun WriteOperationErrorDialog(
             )
         },
         confirmButton = {
-            Button(onClick = onDismissRequest) {
+            AppButton(onClick = onDismissRequest) {
                 Text("确定")
             }
         },
         dismissButton = {
-            FilledTonalButton(onClick = { onCopy(message) }) {
+            AppFilledTonalButton(onClick = { onCopy(message) }) {
                 Text("复制")
             }
         },

@@ -21,12 +21,15 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -34,39 +37,66 @@ import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.CardColors
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchColors
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.theme.LocalUiStyle
+import com.github.zly2006.zhihu.theme.UiStyle
+import com.github.zly2006.zhihu.theme.liquidGlassSemanticTokens
 import com.github.zly2006.zhihu.util.ProvideContentColorTextStyle
 import kotlinx.coroutines.delay
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.basic.Card as MiuixCard
+import top.yukonga.miuix.kmp.basic.CardDefaults as MiuixCardDefaults
+import top.yukonga.miuix.kmp.basic.SmallTitle as MiuixSmallTitle
+
+/**
+ * 设置行的交互语义契约，决定三套风格各自的右侧附件、文字层级与危险色。
+ */
+enum class SettingRowKind {
+    Plain,
+    Navigation,
+    Value,
+    Action,
+    Destructive,
+    Selection,
+}
+
+/** 分组内分隔线的起止对齐风格：普通表单 vs 带图标行对齐。 */
+enum class SettingGroupDividerStyle { Form, IconAligned }
+
+/** 设置行图标形态：彩色圆角方块（Apple）或保留原图（头像）。 */
+enum class SettingIconPresentation { Tile, Avatar }
 
 /**
  * 为设置项提供跳转高亮和滚动定位能力。
- *
- * 账号页、分享弹窗等入口会带着具体 `settingKey` 打开设置页；目标设置项通过这个 modifier 注册位置并播放短暂高亮，
- * 让用户知道刚才跳到的是哪一项。新增可被外部入口直达的设置时，应复用这个机制，而不是手写一次性滚动逻辑。
  */
 fun Modifier.highlightSetting(
     settingKey: String?,
@@ -102,7 +132,6 @@ fun Modifier.highlightSetting(
                     delay(200)
                     it.bringIntoView()
                 }
-                // 闪烁两次：亮、暗、亮、暗、亮。
                 repeat(2) {
                     highlightAlpha.animateTo(0.4f, tween(200, easing = LinearEasing))
                     highlightAlpha.animateTo(0.1f, tween(200, easing = LinearEasing))
@@ -127,10 +156,10 @@ fun Modifier.highlightSetting(
 }
 
 /**
- * 设置页的分组容器。
- *
- * 每组可以包含标题、顶部总控件、底部说明和多个设置项。内部使用自定义 Layout 压缩动画隐藏项之间的间距，
- * 让 `AnimatedVisibility` 展开/收起时不会留下突兀空白。视觉上它是设置页的主要节奏单位，新增设置页时优先用它组织内容。
+ * 设置页的分组容器，按当前 [UiStyle] 自动呈现：
+ * - Material 3：原有 16dp 圆角分组与 2dp 行间距；
+ * - Miuix：HyperOS `SmallTitle` + 16dp `MiuixCard` + 细分隔线；
+ * - Liquid Glass：Apple Grouped Inset Form（26dp 圆角 + 0.5dp 内缩分隔线）。
  */
 @Composable
 fun SettingItemGroup(
@@ -142,8 +171,19 @@ fun SettingItemGroup(
     highlightedKey: String = "",
     onPositioned: ((rootY: Int) -> Unit)? = null,
     bringIntoViewRequester: BringIntoViewRequester? = null,
+    dividerStyle: SettingGroupDividerStyle = SettingGroupDividerStyle.Form,
     content: @Composable () -> Unit,
 ) {
+    val style = LocalUiStyle.current
+    val tokens = liquidGlassSemanticTokens()
+    var dividerPositions by remember { mutableStateOf(emptyList<Int>()) }
+
+    val horizontalPadding = when (style) {
+        UiStyle.Material3 -> 16.dp
+        UiStyle.Miuix -> 12.dp
+        UiStyle.LiquidGlass -> tokens.formHorizontalInset
+    }
+
     Column(
         Modifier
             .highlightSetting(
@@ -151,60 +191,154 @@ fun SettingItemGroup(
                 highlightedKey = highlightedKey,
                 onPositioned = onPositioned,
                 bringIntoViewRequester = bringIntoViewRequester,
-            ).padding(horizontal = 16.dp)
+            ).padding(horizontal = horizontalPadding)
             .padding(bottom = 16.dp)
             .then(modifier),
     ) {
-        title?.let {
-            Text(
-                text = title,
-                modifier = Modifier.padding(8.dp, 0.dp, 8.dp, 8.dp),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-            )
+        title?.let { groupTitle ->
+            when (style) {
+                UiStyle.Miuix -> {
+                    MiuixSmallTitle(
+                        text = groupTitle,
+                        insideMargin = androidx.compose.foundation.layout.PaddingValues(
+                            horizontal = 16.dp,
+                            vertical = 8.dp,
+                        ),
+                    )
+                }
+                UiStyle.LiquidGlass -> {
+                    Text(
+                        text = groupTitle,
+                        modifier = Modifier.padding(8.dp, 0.dp, 8.dp, 8.dp),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                UiStyle.Material3 -> {
+                    Text(
+                        text = groupTitle,
+                        modifier = Modifier.padding(8.dp, 0.dp, 8.dp, 8.dp),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
         }
 
         header?.let { it() }
 
-        Layout(
-            content = content,
-            modifier = modifier.clip(RoundedCornerShape(16.dp)),
-        ) { measurables, constraints ->
-            val placeables = measurables.map { it.measure(constraints) }
-            val spacing = 2.dp.roundToPx()
-            val baseItemHeight = 48.dp.toPx()
+        val drawInsetDividers = style == UiStyle.LiquidGlass || style == UiStyle.Miuix
+        val itemSpacingDp = if (drawInsetDividers) 0.dp else 2.dp
 
-            var yPosition = 0
-            val positions = mutableListOf<Int>()
-            var hasVisibleBefore = false
+        @Composable
+        fun GroupedBody() {
+            Box(Modifier.fillMaxWidth()) {
+                Layout(
+                    content = content,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { measurables, constraints ->
+                    val placeables = measurables.map { it.measure(constraints) }
+                    val spacing = itemSpacingDp.roundToPx()
+                    val baseItemHeight = 48.dp.toPx()
 
-            for (i in placeables.indices) {
-                val placeable = placeables[i]
-                val scale = (placeable.height / baseItemHeight).coerceIn(0f, 1f)
+                    var yPosition = 0
+                    val positions = mutableListOf<Int>()
+                    var hasVisibleBefore = false
 
-                // 非首个可见元素前按比例补间距；元素缩小时，它前面的间距也同步收缩。
-                if (hasVisibleBefore && scale > 0f) {
-                    yPosition += (spacing * scale).toInt()
+                    for (i in placeables.indices) {
+                        val placeable = placeables[i]
+                        val scale = (placeable.height / baseItemHeight).coerceIn(0f, 1f)
+
+                        if (hasVisibleBefore && scale > 0f) {
+                            yPosition += (spacing * scale).toInt()
+                        }
+
+                        positions.add(yPosition)
+                        yPosition += placeable.height
+
+                        if (scale > 0f) {
+                            hasVisibleBefore = true
+                        }
+                    }
+
+                    val visibleIndices = placeables.indices.filter { placeables[it].height > 0 }
+                    val nextDividerPositions = visibleIndices.dropLast(1).map { positions[it] + placeables[it].height }
+                    if (dividerPositions != nextDividerPositions) dividerPositions = nextDividerPositions
+                    layout(constraints.maxWidth, yPosition) {
+                        for (i in placeables.indices) {
+                            placeables[i].placeRelative(0, positions[i])
+                        }
+                    }
                 }
-
-                positions.add(yPosition)
-                yPosition += placeable.height
-
-                if (scale > 0f) {
-                    hasVisibleBefore = true
+                if (drawInsetDividers && dividerPositions.isNotEmpty()) {
+                    val dividerColor = if (style == UiStyle.Miuix) {
+                        MiuixTheme.colorScheme.dividerLine
+                    } else {
+                        tokens.separator
+                    }
+                    Canvas(Modifier.matchParentSize()) {
+                        val dividerStart = when {
+                            style == UiStyle.Miuix -> 16.dp
+                            dividerStyle == SettingGroupDividerStyle.IconAligned -> tokens.settingIconTitleStart
+                            else -> tokens.formHorizontalInset
+                        }
+                        val dividerEnd = when {
+                            style == UiStyle.Miuix -> 16.dp
+                            dividerStyle == SettingGroupDividerStyle.Form -> tokens.formHorizontalInset
+                            else -> 0.dp
+                        }
+                        dividerPositions.forEach { y ->
+                            drawLine(
+                                color = dividerColor,
+                                start = Offset(dividerStart.toPx(), y - 0.5.dp.toPx()),
+                                end = Offset(size.width - dividerEnd.toPx(), y - 0.5.dp.toPx()),
+                                strokeWidth = 0.5.dp.toPx(),
+                            )
+                        }
+                    }
                 }
             }
+        }
 
-            layout(constraints.maxWidth, yPosition) {
-                for (i in placeables.indices) {
-                    placeables[i].placeRelative(0, positions[i])
+        when (style) {
+            UiStyle.Miuix -> {
+                MiuixCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    cornerRadius = 16.dp,
+                    colors = MiuixCardDefaults.defaultColors(
+                        color = MiuixTheme.colorScheme.surfaceContainer,
+                    ),
+                ) {
+                    GroupedBody()
+                }
+            }
+            UiStyle.LiquidGlass -> {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(tokens.formGroupCornerRadius)),
+                    shape = RoundedCornerShape(tokens.formGroupCornerRadius),
+                    color = tokens.contentSurface,
+                ) {
+                    GroupedBody()
+                }
+            }
+            UiStyle.Material3 -> {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp)),
+                    shape = RoundedCornerShape(16.dp),
+                    color = Color.Transparent,
+                ) {
+                    GroupedBody()
                 }
             }
         }
 
         footer?.let {
             Column(
-                modifier = Modifier.padding(8.dp, 16.dp, 8.dp, 8.dp),
+                modifier = Modifier.padding(8.dp, 12.dp, 8.dp, 4.dp),
             ) {
                 ProvideContentColorTextStyle(
                     textStyle = MaterialTheme.typography.bodyMedium,
@@ -219,9 +353,6 @@ fun SettingItemGroup(
 
 /**
  * 分组顶部的强调型总开关。
- *
- * 适合“启用全部”“开发者模式”这类会影响一组子设置的主控制。它用更强的背景色和圆角药丸形态区别于普通行，
- * 点击整行即可切换，具体批量写入哪些 preference key 由调用方负责。
  */
 @Composable
 fun SettingItemOverall(
@@ -238,6 +369,8 @@ fun SettingItemOverall(
     onPositioned: ((rootY: Int) -> Unit)? = null,
     bringIntoViewRequester: BringIntoViewRequester? = null,
 ) {
+    val style = LocalUiStyle.current
+    val directSwitchInteraction = style != UiStyle.Material3
     SettingItem(
         modifier = modifier.padding(bottom = 16.dp),
         contentModifier = contentModifier.padding(horizontal = 8.dp),
@@ -248,17 +381,22 @@ fun SettingItemOverall(
         endAction = {
             SwitchWithIcon(
                 checked = checked,
-                onCheckedChange = null,
+                onCheckedChange = if (directSwitchInteraction) onCheckedChange else null,
                 enabled = enabled,
             )
         },
-        shape = RoundedCornerShape(50),
+        shape = when (style) {
+            UiStyle.Miuix -> RoundedCornerShape(16.dp)
+            UiStyle.LiquidGlass -> RoundedCornerShape(26.dp)
+            UiStyle.Material3 -> RoundedCornerShape(50)
+        },
         colors = CardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
             disabledContentColor = MaterialTheme.colorScheme.outlineVariant,
         ),
+        preserveContainerColorInStyledModes = true,
         enabled = enabled,
         settingKey = settingKey,
         highlightedKey = highlightedKey,
@@ -270,8 +408,8 @@ fun SettingItemOverall(
 /**
  * 标准开关设置行。
  *
- * 标题、说明、可选图标和右侧带图标 Switch 组成一行，整行点击与直接点开关等价。大多数布尔设置都应使用这个组件，
- * 以保持触控区域、禁用态、高亮跳转和测试定位行为一致。
+ * 在 Liquid Glass 与 Miuix 下把 [onCheckedChange] 直接交给开关组件，确保用户既能点击整行，
+ * 也能直接拖动滑块切换开关状态。
  */
 @Composable
 fun SettingItemWithSwitch(
@@ -287,6 +425,7 @@ fun SettingItemWithSwitch(
     onPositioned: ((rootY: Int) -> Unit)? = null,
     bringIntoViewRequester: BringIntoViewRequester? = null,
 ) {
+    val directSwitchInteraction = LocalUiStyle.current != UiStyle.Material3
     SettingItem(
         modifier = modifier,
         title = title,
@@ -296,7 +435,7 @@ fun SettingItemWithSwitch(
         endAction = {
             SwitchWithIcon(
                 checked = checked,
-                onCheckedChange = null,
+                onCheckedChange = if (directSwitchInteraction) onCheckedChange else null,
                 enabled = enabled,
             )
         },
@@ -309,10 +448,7 @@ fun SettingItemWithSwitch(
 }
 
 /**
- * 带选中/未选中图标的开关。
- *
- * 这是设置页统一使用的 Switch 视觉样式：开启时显示对勾，关闭时显示叉号。调用方通常不直接使用它，而是通过
- * [SettingItemWithSwitch] 或 [SettingItemOverall] 获得完整的设置行语义。
+ * 带选中/未选中图标的开关（M3），在 Miuix / Liquid Glass 下自动切到对应原生开关。
  */
 @Composable
 fun SwitchWithIcon(
@@ -323,7 +459,7 @@ fun SwitchWithIcon(
     colors: SwitchColors = SwitchDefaults.colors(),
     interactionSource: MutableInteractionSource? = null,
 ) {
-    Switch(
+    AppSwitch(
         checked = checked,
         onCheckedChange = onCheckedChange,
         modifier = modifier,
@@ -356,8 +492,9 @@ fun SwitchWithIcon(
 /**
  * 设置页的基础行组件。
  *
- * 一行由左侧可选图标、标题/说明、右侧动作和底部扩展内容组成，可表示普通导航入口、数值配置、下拉选择或开关行的底层布局。
- * 它同时接入高亮跳转、禁用态和统一圆角/背景色，是所有设置项视觉一致性的基础。
+ * - Material 3：保持原有卡片行视觉；
+ * - Miuix：透明底融入 Miuix `Card`，使用 HyperOS 字号/次要色，可点击项自动带右侧箭头；
+ * - Liquid Glass：Apple 分组行，带彩色圆角图标方块（[iconTileColor]）、右对齐数值与展开箭头。
  */
 @Composable
 fun SettingItem(
@@ -368,6 +505,11 @@ fun SettingItem(
     icon: (@Composable () -> Unit)? = null,
     onClick: (() -> Unit)? = null,
     endAction: (@Composable () -> Unit)? = null,
+    rowKind: SettingRowKind = SettingRowKind.Plain,
+    value: String? = null,
+    iconTileColor: Color? = null,
+    iconGlyphColor: Color? = null,
+    iconPresentation: SettingIconPresentation = SettingIconPresentation.Tile,
     bottomAction: (@Composable () -> Unit)? = null,
     shape: Shape = RoundedCornerShape(4.dp),
     colors: CardColors = CardColors(
@@ -376,86 +518,179 @@ fun SettingItem(
         disabledContainerColor = MaterialTheme.colorScheme.surfaceBright,
         disabledContentColor = MaterialTheme.colorScheme.outlineVariant,
     ),
+    preserveContainerColorInStyledModes: Boolean = false,
     enabled: Boolean = true,
     settingKey: String? = null,
     highlightedKey: String = "",
     onPositioned: ((rootY: Int) -> Unit)? = null,
     bringIntoViewRequester: BringIntoViewRequester? = null,
 ) {
+    val style = LocalUiStyle.current
+    val isLiquidGlass = style == UiStyle.LiquidGlass
+    val isMiuix = style == UiStyle.Miuix
+    val tokens = liquidGlassSemanticTokens()
+    val rowShape = if (!preserveContainerColorInStyledModes && (isLiquidGlass || isMiuix)) {
+        RectangleShape
+    } else {
+        shape
+    }
+    val rowContainerColor = if (!preserveContainerColorInStyledModes && (isLiquidGlass || isMiuix)) {
+        Color.Transparent
+    } else {
+        colors.containerColor
+    }
+    val rowContentColor = when {
+        rowKind == SettingRowKind.Destructive && enabled -> MaterialTheme.colorScheme.error
+        enabled -> colors.contentColor
+        else -> colors.disabledContentColor
+    }
+    val showTrailingChevron = when (style) {
+        UiStyle.LiquidGlass ->
+            rowKind == SettingRowKind.Navigation ||
+                rowKind == SettingRowKind.Value ||
+                (onClick != null && endAction == null && bottomAction == null && rowKind == SettingRowKind.Plain)
+        UiStyle.Miuix ->
+            rowKind == SettingRowKind.Navigation ||
+                rowKind == SettingRowKind.Value ||
+                (onClick != null && endAction == null && bottomAction == null && rowKind == SettingRowKind.Plain)
+        UiStyle.Material3 -> false
+    }
+
     Surface(
         modifier = if (onClick != null) {
             modifier
-                .clip(shape)
+                .clip(rowShape)
                 .highlightSetting(
                     settingKey = settingKey,
                     highlightedKey = highlightedKey,
                     onPositioned = onPositioned,
                     bringIntoViewRequester = bringIntoViewRequester,
-                    shape = shape,
+                    shape = rowShape,
                 ).clickable(
                     enabled = enabled,
                     onClick = onClick,
                 )
         } else {
             modifier
-                .clip(shape)
+                .clip(rowShape)
                 .highlightSetting(
                     settingKey = settingKey,
                     highlightedKey = highlightedKey,
                     onPositioned = onPositioned,
                     bringIntoViewRequester = bringIntoViewRequester,
-                    shape = shape,
+                    shape = rowShape,
                 )
         },
-        shape = shape,
-        color = colors.containerColor,
-        contentColor = if (enabled) {
-            colors.contentColor
-        } else {
-            colors.disabledContentColor
-        },
+        shape = rowShape,
+        color = rowContainerColor,
+        contentColor = rowContentColor,
     ) {
-        Column(contentModifier.padding(16.dp, 12.dp)) {
+        Column(
+            contentModifier.padding(
+                horizontal = 16.dp,
+                vertical = when (style) {
+                    UiStyle.LiquidGlass -> 8.dp
+                    UiStyle.Miuix -> 14.dp
+                    UiStyle.Material3 -> 12.dp
+                },
+            ),
+        ) {
             Row(
+                modifier = Modifier.heightIn(
+                    min = when (style) {
+                        UiStyle.LiquidGlass -> tokens.listRowMinHeight - 16.dp
+                        UiStyle.Miuix -> 32.dp
+                        UiStyle.Material3 -> 48.dp
+                    },
+                ),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 icon?.let {
                     Box(
-                        Modifier.size(40.dp),
+                        Modifier.size(
+                            when (style) {
+                                UiStyle.LiquidGlass -> tokens.settingIconTileSize
+                                UiStyle.Miuix -> 28.dp
+                                UiStyle.Material3 -> 40.dp
+                            },
+                        ),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Surface(
-                            color = Color.Transparent,
-                            contentColor = if (enabled) {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            } else {
-                                MaterialTheme.colorScheme.outlineVariant
-                            },
-                        ) { icon() }
+                        if (isLiquidGlass && iconPresentation == SettingIconPresentation.Avatar) {
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                icon()
+                            }
+                        } else if (isLiquidGlass) {
+                            Surface(
+                                modifier = Modifier.fillMaxSize(),
+                                shape = RoundedCornerShape(8.dp),
+                                color = iconTileColor ?: tokens.settingIconBlue,
+                                contentColor = if (enabled) {
+                                    iconGlyphColor ?: Color.White
+                                } else {
+                                    MaterialTheme.colorScheme.outlineVariant
+                                },
+                            ) {
+                                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Box(Modifier.size(tokens.settingIconGlyphSize), contentAlignment = Alignment.Center) {
+                                        icon()
+                                    }
+                                }
+                            }
+                        } else {
+                            Surface(
+                                color = Color.Transparent,
+                                contentColor = if (enabled) {
+                                    if (isMiuix) {
+                                        MiuixTheme.colorScheme.onSurfaceVariantActions
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    }
+                                } else {
+                                    MaterialTheme.colorScheme.outlineVariant
+                                },
+                            ) {
+                                icon()
+                            }
+                        }
                     }
                 }
                 Column(
                     modifier = Modifier
-                        .heightIn(min = 48.dp)
-                        .weight(1f),
+                        .heightIn(min = if (isLiquidGlass || isMiuix) 0.dp else 48.dp)
+                        .weight(
+                            if ((isLiquidGlass || isMiuix) && value != null && endAction == null) {
+                                0.6f
+                            } else {
+                                1f
+                            },
+                        ),
                     verticalArrangement = Arrangement.Center,
                 ) {
                     ProvideContentColorTextStyle(
-                        textStyle = MaterialTheme.typography.titleMedium,
-                        contentColor = if (enabled) {
-                            colors.contentColor
-                        } else {
-                            colors.disabledContentColor
+                        textStyle = when (style) {
+                            UiStyle.LiquidGlass -> MaterialTheme.typography.bodyLarge
+                            UiStyle.Miuix -> MiuixTheme.textStyles.headline1
+                            UiStyle.Material3 -> MaterialTheme.typography.titleMedium
                         },
+                        contentColor = rowContentColor,
                     ) {
                         title()
                     }
                     description?.let {
                         ProvideContentColorTextStyle(
-                            textStyle = MaterialTheme.typography.bodyMedium,
+                            textStyle = if (isMiuix) {
+                                MiuixTheme.textStyles.body2
+                            } else {
+                                MaterialTheme.typography.bodyMedium
+                            },
                             contentColor = if (enabled) {
-                                MaterialTheme.colorScheme.onSurfaceVariant
+                                if (isMiuix) {
+                                    MiuixTheme.colorScheme.onSurfaceVariantSummary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                }
                             } else {
                                 colors.disabledContentColor
                             },
@@ -464,7 +699,38 @@ fun SettingItem(
                         }
                     }
                 }
-                endAction?.let { it() }
+                endAction?.let { it() } ?: run {
+                    if ((isLiquidGlass || isMiuix) && value != null) {
+                        Column(
+                            modifier = Modifier.weight(0.4f),
+                            horizontalAlignment = Alignment.End,
+                            verticalArrangement = Arrangement.Center,
+                        ) {
+                            Text(
+                                text = value,
+                                modifier = Modifier.fillMaxWidth(),
+                                style = if (isMiuix) MiuixTheme.textStyles.body2 else MaterialTheme.typography.bodyMedium,
+                                color = if (isMiuix) {
+                                    MiuixTheme.colorScheme.onSurfaceVariantActions
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                                textAlign = TextAlign.End,
+                            )
+                        }
+                    }
+                    if (showTrailingChevron) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = "打开",
+                            tint = if (isMiuix) {
+                                MiuixTheme.colorScheme.onSurfaceVariantActions
+                            } else {
+                                MaterialTheme.colorScheme.outline
+                            },
+                        )
+                    }
+                }
             }
             bottomAction?.let { it() }
         }

@@ -36,14 +36,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
@@ -54,6 +49,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -67,6 +63,13 @@ import com.github.zly2006.zhihu.reading.ReadingTemplateField
 import com.github.zly2006.zhihu.reading.buildReadingTemplatePreview
 import com.github.zly2006.zhihu.reading.loadReadingPreferences
 import com.github.zly2006.zhihu.reading.saveReadingPreferences
+import com.github.zly2006.zhihu.theme.LocalUiStyle
+import com.github.zly2006.zhihu.theme.UiStyle
+import com.github.zly2006.zhihu.ui.components.AppFilterChip
+import com.github.zly2006.zhihu.ui.components.AppIconButton
+import com.github.zly2006.zhihu.ui.components.AppLargeTopAppBar
+import com.github.zly2006.zhihu.ui.components.AppOutlinedTextField
+import com.github.zly2006.zhihu.ui.components.AppScaffold
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
@@ -133,14 +136,20 @@ fun ReadingSettingsScreen() {
         persist(preferences.copy(fieldOrder = reordered))
     }
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+
+    AppScaffold(
+        settingsAmbientBackground = true,
+        modifier = Modifier
+            .fillMaxSize()
+            .nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
-            LargeTopAppBar(
+            AppLargeTopAppBar(
                 title = { Text("朗读与播放") },
+                scrollBehavior = scrollBehavior,
                 navigationIcon = {
-                    IconButton(
+                    AppIconButton(
                         onClick = navigator.onNavigateBack,
                         colors = IconButtonDefaults.iconButtonColors(
                             containerColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -160,12 +169,12 @@ fun ReadingSettingsScreen() {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
                 .consumeWindowInsets(innerPadding)
                 .imePadding()
                 .pageTurnViewportWithGuide(pageTurnTarget)
                 .verticalScroll(scrollState)
                 .testTag(READING_SETTINGS_SCROLL_TAG)
+                .padding(innerPadding)
                 .padding(vertical = 16.dp),
         ) {
             Text(
@@ -200,14 +209,14 @@ fun ReadingSettingsScreen() {
                         },
                         endAction = {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                IconButton(
+                                AppIconButton(
                                     onClick = { moveField(field, -1) },
                                     enabled = index > 0,
                                     modifier = Modifier.testTag(READING_SETTINGS_FIELD_MOVE_UP_TAG_PREFIX + field.name),
                                 ) {
                                     Icon(Icons.Filled.KeyboardArrowUp, contentDescription = "上移${field.displayName}")
                                 }
-                                IconButton(
+                                AppIconButton(
                                     onClick = { moveField(field, 1) },
                                     enabled = index < preferences.fieldOrder.lastIndex,
                                     modifier = Modifier.testTag(READING_SETTINGS_FIELD_MOVE_DOWN_TAG_PREFIX + field.name),
@@ -216,7 +225,20 @@ fun ReadingSettingsScreen() {
                                 }
                                 SwitchWithIcon(
                                     checked = enabled,
-                                    onCheckedChange = null,
+                                    onCheckedChange = if (LocalUiStyle.current != UiStyle.Material3) {
+                                        { next ->
+                                            val updated = if (next) {
+                                                preferences.enabledFields + field
+                                            } else {
+                                                preferences.enabledFields - field
+                                            }
+                                            if (updated.isNotEmpty()) {
+                                                persist(preferences.copy(enabledFields = updated))
+                                            }
+                                        }
+                                    } else {
+                                        null
+                                    },
                                 )
                             }
                         },
@@ -240,7 +262,7 @@ fun ReadingSettingsScreen() {
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             ReadingPublishedTimeMode.entries.forEach { mode ->
-                                FilterChip(
+                                AppFilterChip(
                                     selected = preferences.publishedTimeMode == mode,
                                     onClick = { persist(preferences.copy(publishedTimeMode = mode)) },
                                     label = { Text(mode.displayName) },
@@ -265,7 +287,7 @@ fun ReadingSettingsScreen() {
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             ReadingRelativeTimePrecision.entries.forEach { precision ->
-                                FilterChip(
+                                AppFilterChip(
                                     selected = preferences.relativeTimePrecision == precision,
                                     onClick = {
                                         persist(preferences.copy(relativeTimePrecision = precision))
@@ -293,7 +315,7 @@ fun ReadingSettingsScreen() {
                     description = { Text("设置每条内容最多朗读多少条评论，范围为 0-50；0 表示不加载评论。") },
                     enabled = commentsEnabled,
                     bottomAction = {
-                        OutlinedTextField(
+                        AppOutlinedTextField(
                             value = commentCountText,
                             onValueChange = { value ->
                                 val filtered = value.filter(Char::isDigit).take(2)
@@ -339,7 +361,7 @@ fun ReadingSettingsScreen() {
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             ReadingCommentOrder.entries.forEach { order ->
-                                FilterChip(
+                                AppFilterChip(
                                     selected = preferences.commentOrder == order,
                                     onClick = { persist(preferences.copy(commentOrder = order)) },
                                     label = { Text(order.displayName) },
@@ -364,7 +386,7 @@ fun ReadingSettingsScreen() {
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
                                 queueLimitPresets.forEach { limit ->
-                                    FilterChip(
+                                    AppFilterChip(
                                         selected = preferences.queueLimit == limit,
                                         onClick = {
                                             customQueueLimitText = ""
@@ -376,7 +398,7 @@ fun ReadingSettingsScreen() {
                                 }
                             }
                             Spacer(Modifier.height(8.dp))
-                            OutlinedTextField(
+                            AppOutlinedTextField(
                                 value = customQueueLimitText,
                                 onValueChange = { value ->
                                     val filtered = value.filter(Char::isDigit).take(3)
@@ -407,7 +429,7 @@ fun ReadingSettingsScreen() {
                     description = { Text("仅在相邻条目之间朗读；留空即可关闭。") },
                     bottomAction = {
                         Column(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
-                            OutlinedTextField(
+                            AppOutlinedTextField(
                                 value = preferences.transitionText,
                                 onValueChange = { persist(preferences.copy(transitionText = it)) },
                                 modifier = Modifier

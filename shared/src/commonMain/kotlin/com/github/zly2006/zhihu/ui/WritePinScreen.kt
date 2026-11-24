@@ -35,17 +35,11 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -93,6 +87,12 @@ import com.github.zly2006.zhihu.navigation.WritePin
 import com.github.zly2006.zhihu.platform.rememberPlainTextClipboard
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.ui.components.AppButton
+import com.github.zly2006.zhihu.ui.components.AppCircularProgressIndicator
+import com.github.zly2006.zhihu.ui.components.AppIconButton
+import com.github.zly2006.zhihu.ui.components.AppScaffold
+import com.github.zly2006.zhihu.ui.components.AppTextButton
+import com.github.zly2006.zhihu.ui.components.AppTopAppBar
 import com.github.zly2006.zhihu.ui.components.MarkdownShortcut
 import com.github.zly2006.zhihu.ui.components.WriteContentFabColumn
 import com.github.zly2006.zhihu.ui.components.WriteContentMarkdownEditor
@@ -415,24 +415,24 @@ fun WritePinScreen(destination: WritePin = WritePin()) {
         null
     }
 
-    Scaffold(
+    AppScaffold(
         topBar = {
-            TopAppBar(
+            AppTopAppBar(
                 title = {
                     Text("发想法")
                 },
                 navigationIcon = {
-                    IconButton(onClick = navigator.onNavigateBack) {
+                    AppIconButton(onClick = navigator.onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
                 actions = {
-                    Button(
+                    AppButton(
                         onClick = { submitPin(publish = true) },
                         enabled = !isSubmitting && !isUploadingImage,
                     ) {
                         if (isSubmitting) {
-                            CircularProgressIndicator(
+                            AppCircularProgressIndicator(
                                 modifier = Modifier.size(18.dp),
                                 strokeWidth = 2.dp,
                             )
@@ -541,7 +541,7 @@ fun WritePinScreen(destination: WritePin = WritePin()) {
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 }
-                                TextButton(
+                                AppTextButton(
                                     onClick = {
                                         images = images.filterIndexed { itemIndex, _ -> itemIndex != index }
                                     },
@@ -579,13 +579,13 @@ fun WritePinScreen(destination: WritePin = WritePin()) {
                                 .verticalScroll(rememberScrollState()),
                         ) {
                             topicSuggestions.forEach { topic ->
-                                TextButton(
+                                AppTextButton(
                                     modifier =
                                         Modifier
                                             .fillMaxWidth()
                                             .testTag("write_pin_topic_suggestion_${topic.topicId}"),
                                     onClick = {
-                                        val query = activePinTopicQuery(content) ?: return@TextButton
+                                        val query = activePinTopicQuery(content) ?: return@AppTextButton
                                         val previousContent = content
                                         val insertedContent = insertPinTopic(previousContent, query, topic)
                                         val shiftedTopics =
@@ -616,7 +616,7 @@ fun WritePinScreen(destination: WritePin = WritePin()) {
                     }
                 }
                 topicSuggestionError?.let { message ->
-                    TextButton(
+                    AppTextButton(
                         onClick = { updateContent(content) },
                         modifier = Modifier.fillMaxWidth(),
                     ) {

@@ -47,6 +47,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -63,6 +64,11 @@ import com.github.zly2006.zhihu.navigation.Topic
 import com.github.zly2006.zhihu.platform.PlainTextClipboard
 import com.github.zly2006.zhihu.platform.SettingsStore
 import com.github.zly2006.zhihu.platform.UserMessageSink
+import com.github.zly2006.zhihu.theme.LocalLiquidGlassOverlay
+import com.github.zly2006.zhihu.theme.LocalUiStyle
+import com.github.zly2006.zhihu.theme.UiStyle
+import com.github.zly2006.zhihu.theme.liquidGlassSemanticTokens
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 /**
  * 通用分享弹窗内容。
@@ -101,58 +107,70 @@ fun ShareDialogContent(
                 ),
                 modifier = Modifier.align(Alignment.BottomCenter),
             ) {
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(enabled = false) { /* 阻止点击穿透 */ },
-                    shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-                    color = MaterialTheme.colorScheme.surface,
-                ) {
-                    Column(
+                val uiStyle = LocalUiStyle.current
+                val glassTokens = liquidGlassSemanticTokens()
+                CompositionLocalProvider(LocalLiquidGlassOverlay provides (uiStyle == UiStyle.LiquidGlass)) {
+                    Surface(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp),
+                            .clickable(enabled = false) { /* 阻止点击穿透 */ },
+                        shape = when (uiStyle) {
+                            UiStyle.LiquidGlass -> RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+                            UiStyle.Miuix -> RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+                            UiStyle.Material3 -> RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
+                        },
+                        color = when (uiStyle) {
+                            UiStyle.LiquidGlass -> glassTokens.modalCanvas
+                            UiStyle.Miuix -> MiuixTheme.colorScheme.surface
+                            UiStyle.Material3 -> MaterialTheme.colorScheme.surface
+                        },
                     ) {
-                        Box(
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(bottom = 20.dp),
-                            contentAlignment = Alignment.Center,
+                                .padding(16.dp),
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .width(40.dp)
-                                    .height(4.dp)
-                                    .background(
-                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-                                        RoundedCornerShape(2.dp),
-                                    ),
+                                    .fillMaxWidth()
+                                    .padding(bottom = 20.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .width(40.dp)
+                                        .height(4.dp)
+                                        .background(
+                                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                                            RoundedCornerShape(2.dp),
+                                        ),
+                                )
+                            }
+
+                            MenuActionButton(
+                                icon = Icons.Filled.Share,
+                                text = "分享",
+                                onClick = onShareClick,
                             )
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            MenuActionButton(
+                                icon = Icons.Filled.ContentCopy,
+                                text = "复制链接",
+                                onClick = onCopyClick,
+                            )
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            MenuActionButton(
+                                icon = Icons.Filled.Settings,
+                                text = "分享设置",
+                                onClick = onSettingsClick,
+                            )
+
+                            Spacer(modifier = Modifier.height(16.dp))
                         }
-
-                        MenuActionButton(
-                            icon = Icons.Filled.Share,
-                            text = "分享",
-                            onClick = onShareClick,
-                        )
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        MenuActionButton(
-                            icon = Icons.Filled.ContentCopy,
-                            text = "复制链接",
-                            onClick = onCopyClick,
-                        )
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        MenuActionButton(
-                            icon = Icons.Filled.Settings,
-                            text = "分享设置",
-                            onClick = onSettingsClick,
-                        )
-
-                        Spacer(modifier = Modifier.height(16.dp))
                     }
                 }
             }
@@ -165,7 +183,11 @@ private fun MenuActionButton(
     icon: ImageVector,
     text: String,
     enabled: Boolean = true,
-    backgroundColor: Color = MaterialTheme.colorScheme.surfaceVariant,
+    backgroundColor: Color = if (LocalUiStyle.current == UiStyle.LiquidGlass) {
+        liquidGlassSemanticTokens().contentSurface
+    } else {
+        MaterialTheme.colorScheme.surfaceVariant
+    },
     contentColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     onClick: () -> Unit,
 ) {

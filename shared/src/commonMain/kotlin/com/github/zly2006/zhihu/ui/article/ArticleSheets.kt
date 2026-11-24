@@ -29,18 +29,18 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.ui.components.AppButton
+import com.github.zly2006.zhihu.ui.components.AppCircularProgressIndicator
+import com.github.zly2006.zhihu.ui.components.AppTextButton
 import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 
@@ -75,7 +75,7 @@ internal fun ArticleSummarySheet(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        AppCircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                         Text("正在生成总结...")
                     }
                     Spacer(modifier = Modifier.height(12.dp))
@@ -93,10 +93,10 @@ internal fun ArticleSummarySheet(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End,
             ) {
-                TextButton(onClick = onDismissRequest) { Text("关闭") }
+                AppTextButton(onClick = onDismissRequest) { Text("关闭") }
                 Spacer(modifier = Modifier.width(8.dp))
                 if (!loading) {
-                    TextButton(onClick = onRetryRequest) { Text("重新总结") }
+                    AppTextButton(onClick = onRetryRequest) { Text("重新总结") }
                 }
             }
         }
@@ -189,9 +189,9 @@ internal fun AigcFlagSheet(
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                TextButton(onClick = onDismissRequest) { Text("关闭") }
+                AppTextButton(onClick = onDismissRequest) { Text("关闭") }
                 Spacer(modifier = Modifier.width(8.dp))
-                Button(
+                AppButton(
                     onClick = onSubmitRequest,
                     enabled = canSubmitAigcFlag,
                 ) {
