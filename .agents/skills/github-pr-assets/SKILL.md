@@ -55,6 +55,7 @@ When the user forbids browser disruption, do not open, focus, navigate, or uploa
 For UI PRs, include:
 
 - A short note that screenshots came from the actual app, device, emulator, or reproducible UI test output.
+- For UI/UX changes, provide before/after or multi-state comparison screenshots whenever possible to make maintainer evaluation easier.
 - Markdown image links, not local paths.
 - Enough context to identify what each screenshot proves.
 

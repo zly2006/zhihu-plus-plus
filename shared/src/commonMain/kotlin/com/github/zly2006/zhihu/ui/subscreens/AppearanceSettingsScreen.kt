@@ -104,6 +104,9 @@ import com.github.zly2006.zhihu.theme.UiStyle
 import com.github.zly2006.zhihu.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.AnswerDoubleTapAction
+import com.github.zly2006.zhihu.ui.COMMENT_STYLE_COMPACT
+import com.github.zly2006.zhihu.ui.COMMENT_STYLE_DEFAULT
+import com.github.zly2006.zhihu.ui.COMMENT_STYLE_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.components.ANSWER_SWITCH_SENSITIVITY_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.components.AppCheckbox
 import com.github.zly2006.zhihu.ui.components.AppDropdownMenuItem
@@ -161,6 +164,7 @@ const val APPEARANCE_SETTINGS_WEBVIEW_OPTIONS_TAG = "appearanceSettings.webViewO
 const val APPEARANCE_SETTINGS_BOTTOM_BAR_SECTION_KEY = "appearanceSettings.bottomBarSection"
 const val APPEARANCE_SETTINGS_COLLECTION_DIRECT_BROWSE_TAG = "appearanceSettings.collectionDirectBrowse"
 const val APPEARANCE_SETTINGS_DISABLE_BOTTOM_SHEET_ROUNDED_CORNERS_TAG = "appearanceSettings.disableBottomSheetRoundedCorners"
+const val APPEARANCE_SETTINGS_COMMENT_STYLE_TAG = "appearanceSettings.commentStyle"
 const val APPEARANCE_SETTINGS_LANDSCAPE_LIST_DETAIL_TAG = "appearanceSettings.landscapeListDetail"
 const val APPEARANCE_SETTINGS_UI_STYLE_TAG = "appearanceSettings.uiStyle"
 
@@ -674,6 +678,57 @@ fun AppearanceSettingsScreen(
                     settingKey = DISABLE_BOTTOM_SHEET_ROUNDED_CORNERS_PREFERENCE_KEY,
                     highlightedKey = settingKey,
                     bringIntoViewRequester = requesterFor(DISABLE_BOTTOM_SHEET_ROUNDED_CORNERS_PREFERENCE_KEY),
+                )
+
+                var commentStyleExpanded by remember { mutableStateOf(false) }
+                val commentStyle = remember {
+                    mutableStateOf(settings.getString(COMMENT_STYLE_PREFERENCE_KEY, COMMENT_STYLE_DEFAULT))
+                }
+                val commentStyleOptions = listOf(
+                    COMMENT_STYLE_DEFAULT to "默认",
+                    COMMENT_STYLE_COMPACT to "简洁",
+                )
+                SettingItem(
+                    title = { Text("评论区样式") },
+                    description = { Text("默认样式显示同步到想法和账号选择栏；简洁样式仅保留单行输入框和发送按钮。") },
+                    settingKey = COMMENT_STYLE_PREFERENCE_KEY,
+                    highlightedKey = settingKey,
+                    bringIntoViewRequester = requesterFor(COMMENT_STYLE_PREFERENCE_KEY),
+                    endAction = {
+                        ExposedDropdownMenuBox(
+                            expanded = commentStyleExpanded,
+                            onExpandedChange = { commentStyleExpanded = it },
+                        ) {
+                            AppOutlinedTextField(
+                                value = commentStyleOptions.find { it.first == commentStyle.value }?.second ?: "默认",
+                                onValueChange = {},
+                                readOnly = true,
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = commentStyleExpanded) },
+                                modifier = Modifier
+                                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                                    .width(140.dp)
+                                    .testTag(APPEARANCE_SETTINGS_COMMENT_STYLE_TAG),
+                                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                            )
+                            AppExposedDropdownMenu(
+                                expanded = commentStyleExpanded,
+                                onDismissRequest = { commentStyleExpanded = false },
+                            ) {
+                                commentStyleOptions.forEach { (mode, label) ->
+                                    AppDropdownMenuItem(
+                                        text = { Text(label) },
+                                        modifier = Modifier.testTag("${APPEARANCE_SETTINGS_COMMENT_STYLE_TAG}_$mode"),
+                                        onClick = {
+                                            commentStyle.value = mode
+                                            settings.putString(COMMENT_STYLE_PREFERENCE_KEY, mode)
+                                            commentStyleExpanded = false
+                                            userMessages.showShortMessage("已设置为：$label")
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                    },
                 )
 
                 var fabOpacity by remember {
