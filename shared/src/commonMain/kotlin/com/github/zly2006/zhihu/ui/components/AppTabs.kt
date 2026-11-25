@@ -369,8 +369,7 @@ fun AppPrimaryTabRow(
                             shape = RoundedCornerShape(tokens.groupedCornerRadius),
                             tint = tokens.segmentedContainer.copy(alpha = 0.52f),
                             floating = false,
-                        )
-                        .padding(3.dp)
+                        ).padding(3.dp)
                         .fillMaxWidth(),
                     containerColor = Color.Transparent,
                     contentColor = contentColor,
