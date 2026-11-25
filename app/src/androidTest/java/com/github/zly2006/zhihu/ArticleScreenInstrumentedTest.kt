@@ -37,6 +37,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -71,6 +74,8 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.rememberNavController
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.github.zly2006.zhihu.account.ZhihuAccountClient
@@ -95,11 +100,17 @@ import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.ui.ArticleScreen
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.ui.ZhihuMain
 import com.github.zly2006.zhihu.ui.article.ArticleActionsMenu
 import com.github.zly2006.zhihu.ui.components.LocalPageTurnDispatcher
 import com.github.zly2006.zhihu.ui.components.PageTurnCommand
 import com.github.zly2006.zhihu.ui.components.PageTurnDispatcher
 import com.github.zly2006.zhihu.ui.components.PageTurnFab
+import com.github.zly2006.zhihu.ui.components.READING_PLAYER_BAR_TAG
+import com.github.zly2006.zhihu.ui.rememberAndroidZhihuMainPreferenceState
+import com.github.zly2006.zhihu.ui.subscreens.PREF_BLOCK_SPACING
+import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
+import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
 import com.github.zly2006.zhihu.ui.subscreens.PREF_SHOW_PAGE_TURN_FAB
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
@@ -1564,6 +1575,280 @@ class ArticleScreenInstrumentedTest {
             preferences.getFloat("buttonSkipAnswer-x", Float.NaN) > rootWidth / 2
         }
         assertTrue(preferences.getFloat("buttonSkipAnswer-x", Float.NaN) > rootWidth / 2)
+    }
+
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/833
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/839
+     * Target state: collapsing the article top bar keeps the scroll viewport flush with the screen
+     * bottom instead of translating the body upward and leaving a blank bottom gap.
+     * Verifies the scroll container's boundsInRoot.bottom stays anchored to rootBounds.bottom
+     * after collapsing the top bar, which fails if graphicsLayer translationY is applied to body.
+     */
+    @Test
+    fun collapsingTopBarPreservesFullBottomViewportWithoutBlankGap() {
+        setArticleScreen()
+
+        val rootBounds = composeRule.onRoot().fetchSemanticsNode().boundsInRoot
+        val scrollContainer = composeRule.onNode(
+            SemanticsMatcher("has vertical scroll axis") { node ->
+                node.config.contains(SemanticsProperties.VerticalScrollAxisRange)
+            },
+        )
+        val title = composeRule.onNodeWithText("离线 Article 标题")
+        val toolbarActionBottom = composeRule
+            .onNodeWithContentDescription("更多选项")
+            .fetchSemanticsNode()
+            .boundsInRoot
+            .bottom
+        assertTrue(
+            "Title should start below the toolbar before scrolling",
+            title.fetchSemanticsNode().boundsInRoot.bottom > toolbarActionBottom,
+        )
+
+        repeat(4) {
+            scrollContainer.performTouchInput {
+                val startY = visibleSize.height * 0.72f
+                val endY = visibleSize.height * 0.28f
+                down(Offset(visibleSize.width * 0.5f, startY))
+                moveTo(Offset(visibleSize.width * 0.5f, endY))
+                up()
+            }
+            composeRule.waitForIdle()
+        }
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            title.fetchSemanticsNode().boundsInRoot.bottom <= toolbarActionBottom + 2f &&
+                scrollContainer
+                    .fetchSemanticsNode()
+                    .config[SemanticsProperties.VerticalScrollAxisRange]
+                    .value() > 0f
+        }
+        val collapsedScrollBounds = scrollContainer.fetchSemanticsNode().boundsInRoot
+        assertTrue(
+            "Collapsed top bar must not translate the scroll viewport upward and leave a blank bottom gap: " +
+                "scrollBottom=${collapsedScrollBounds.bottom}, rootBottom=${rootBounds.bottom}",
+            collapsedScrollBounds.bottom >= rootBounds.bottom - 2f,
+        )
+    }
+
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/833
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/839
+     * Target state: updating Markdown font size / line height / block spacing in preferences takes
+     * effect immediately when an already-open RenderMarkdown recomposes with the same Settings store.
+     * Verifies actual TextLayoutResult fontSize and rendered height increase after preference edits,
+     * which fails if RenderMarkdown caches preference reads with remember(settings).
+     */
+    @Test
+    fun markdownTypographySettingsTakeEffectImmediatelyOnRecomposition() {
+        val preferences = composeRule.activity.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+        preferences
+            .edit()
+            .putInt(PREF_FONT_SIZE, 100)
+            .putInt(PREF_LINE_HEIGHT, 160)
+            .putInt(PREF_BLOCK_SPACING, 100)
+            .commit()
+
+        var recomposeEpoch by mutableIntStateOf(0)
+        val targetText = "字号热更新回归校验正文，用于验证设置变更后重新组合立即生效。"
+        composeRule.setScreenContent {
+            // 读取 recomposeEpoch 模拟从设置页返回已打开文章页触发重组。
+            val currentEpoch = recomposeEpoch
+            Column(Modifier.width(280.dp).testTag("markdown_typography_epoch_$currentEpoch")) {
+                RenderMarkdown(
+                    html = "<p>$targetText</p>",
+                    enableScroll = false,
+                )
+            }
+        }
+
+        fun measureParagraph(): Pair<Float, Float> {
+            val paragraph = composeRule.onNodeWithText(targetText)
+            var fontSizeSp = 0f
+            paragraph.performSemanticsAction(SemanticsActions.GetTextLayoutResult) { getTextLayoutResult ->
+                val results = mutableListOf<TextLayoutResult>()
+                assertTrue(getTextLayoutResult(results))
+                fontSizeSp = results
+                    .single()
+                    .layoutInput.style.fontSize.value
+            }
+            val heightPx = paragraph.fetchSemanticsNode().boundsInRoot.height
+            return fontSizeSp to heightPx
+        }
+
+        val (initialFontSizeSp, initialHeightPx) = measureParagraph()
+        assertEquals(16f, initialFontSizeSp, 0.5f)
+
+        preferences
+            .edit()
+            .putInt(PREF_FONT_SIZE, 160)
+            .putInt(PREF_LINE_HEIGHT, 220)
+            .putInt(PREF_BLOCK_SPACING, 180)
+            .commit()
+        composeRule.runOnIdle { recomposeEpoch += 1 }
+        composeRule.waitForIdle()
+
+        val (updatedFontSizeSp, updatedHeightPx) = measureParagraph()
+        assertEquals(
+            "Updated PREF_FONT_SIZE must take effect immediately without stale remember(settings) cache",
+            25.6f,
+            updatedFontSizeSp,
+            0.5f,
+        )
+        assertTrue(
+            "Paragraph height must grow when font size and line height increase: initial=$initialHeightPx updated=$updatedHeightPx",
+            updatedHeightPx > initialHeightPx + 10f,
+        )
+    }
+
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/833
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/839
+     * Target state: when the reading player overlay appears after an article is already open,
+     * ArticleScreen's scroll progress effect uses the updated effectiveScrollMaxValue (subtracting
+     * the reading player overlay padding) instead of a stale State captured before the player appeared.
+     * Verifies viewModel.aigcMaxScrollRatio reaches 1.0f at the effective bottom, which fails if
+     * effectiveScrollMaxValueState is re-keyed on readingPlayerOverlayPaddingPx.
+     */
+    @Test
+    fun readingPlayerAppearingUpdatesEffectiveScrollMaxForReadProgress() {
+        composeRule.activity
+            .getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean("titleAutoHide", false)
+            .commit()
+        val articleId = 833001L
+        val targetArticle = Article(type = ArticleType.Article, id = articleId)
+        val articleViewModel = ArticleViewModel(article = targetArticle, httpClient = null)
+        composeRule.activity.runOnUiThread {
+            articleViewModel.title = "朗读条覆盖高度回归文章"
+            articleViewModel.authorName = "离线作者"
+            articleViewModel.content = (1..14).joinToString("") { idx ->
+                "<p>第 $idx 段朗读条叠加回归正文，用来保证文章具备稳定的可滚动高度。</p>"
+            }
+            articleViewModel.createdAt = 1_710_000_000L
+            articleViewModel.updatedAt = 1_710_000_600L
+        }
+
+        lateinit var navController: NavHostController
+        composeRule.setScreenContent {
+            val preferenceState = rememberAndroidZhihuMainPreferenceState()
+            navController = rememberNavController()
+            ZhihuMain(
+                navController = navController,
+                mainTabNavigationTarget = null,
+                navigate = { navController.navigate(it) },
+                setCurrentMainTabOpenFrom = {},
+                consumeMainTabNavigationTarget = {},
+                preferenceState = preferenceState,
+                isDarkTheme = false,
+                articleContent = { routeArticle, _ ->
+                    ArticleScreen(article = routeArticle, viewModel = articleViewModel)
+                },
+            )
+        }
+        composeRule.runOnIdle {
+            navController.navigate(targetArticle)
+        }
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule
+                .onAllNodesWithText("第 1 段朗读条叠加回归正文", substring = true)
+                .fetchSemanticsNodes()
+                .isNotEmpty()
+        }
+
+        val scrollContainer = composeRule.onNode(
+            SemanticsMatcher("has vertical scroll axis") { node ->
+                node.config.contains(SemanticsProperties.VerticalScrollAxisRange)
+            },
+        )
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            scrollContainer
+                .fetchSemanticsNode()
+                .config[SemanticsProperties.VerticalScrollAxisRange]
+                .maxValue() > 100f
+        }
+        val rawMaxBeforePlayer = scrollContainer
+            .fetchSemanticsNode()
+            .config[SemanticsProperties.VerticalScrollAxisRange]
+            .maxValue()
+
+        // 在文章已经打开、LaunchedEffect(scrollState) 已启动后，再显示朗读条以增大 readingPlayerOverlayPadding。
+        AndroidReadingPlayerBridge.publish(
+            ReadingPlayerState(
+                sourceId = "article-833",
+                queue = listOf(
+                    ReadingQueueItem(
+                        contentType = ReadingContentType.Article,
+                        id = articleId,
+                        title = "朗读条覆盖高度回归文章",
+                        author = "离线作者",
+                    ),
+                ),
+                currentIndex = 0,
+                status = ReadingPlaybackStatus.Paused,
+            ),
+        )
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule
+                .onAllNodes(
+                    androidx.compose.ui.test
+                        .hasTestTag(READING_PLAYER_BAR_TAG),
+                ).fetchSemanticsNodes()
+                .isNotEmpty()
+        }
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            scrollContainer
+                .fetchSemanticsNode()
+                .config[SemanticsProperties.VerticalScrollAxisRange]
+                .maxValue() > rawMaxBeforePlayer + 40f
+        }
+        val rawMaxWithPlayer = scrollContainer
+            .fetchSemanticsNode()
+            .config[SemanticsProperties.VerticalScrollAxisRange]
+            .maxValue()
+        val overlayDeltaPx = rawMaxWithPlayer - rawMaxBeforePlayer
+        assertTrue("Expected reading player to expand raw maxValue: delta=$overlayDeltaPx", overlayDeltaPx > 40f)
+
+        // 逐步滚动到扣除朗读条高度后的有效底部（同时让离屏块物化并保持低于 rawMax - 40px）。
+        repeat(6) {
+            val axis = scrollContainer
+                .fetchSemanticsNode()
+                .config[SemanticsProperties.VerticalScrollAxisRange]
+            val targetEffectiveBottom = (axis.maxValue() - overlayDeltaPx + 8f).coerceAtLeast(0f)
+            val remaining = targetEffectiveBottom - axis.value()
+            if (remaining > 4f) {
+                scrollContainer.performSemanticsAction(SemanticsActions.ScrollBy) { scrollBy ->
+                    scrollBy(0f, remaining.coerceAtMost(350f))
+                }
+                composeRule.waitForIdle()
+            }
+        }
+        val finalAxis = scrollContainer
+            .fetchSemanticsNode()
+            .config[SemanticsProperties.VerticalScrollAxisRange]
+        val finalScrollY = finalAxis.value()
+        val finalRawMax = finalAxis.maxValue()
+        assertTrue(
+            "Expected scroll to land at effective bottom while remaining strictly below rawMax: " +
+                "finalScrollY=$finalScrollY finalRawMax=$finalRawMax overlayDeltaPx=$overlayDeltaPx",
+            finalScrollY >= finalRawMax - overlayDeltaPx - 10f && finalScrollY < finalRawMax - 40f,
+        )
+
+        val readEvidence = ArticleViewModel::class.java
+            .getDeclaredMethod("currentAigcReadEvidence")
+            .apply { isAccessible = true }
+            .invoke(articleViewModel)
+        val maxScrollRatio = readEvidence!!
+            .javaClass
+            .getMethod("getMaxScrollRatio")
+            .invoke(readEvidence) as Double
+        assertTrue(
+            "Read progress must use updated effectiveScrollMaxValue after reading player appears " +
+                "(ratio=$maxScrollRatio, rawBefore=$rawMaxBeforePlayer, rawWithPlayer=$rawMaxWithPlayer)",
+            maxScrollRatio >= 0.98,
+        )
     }
 
     private fun setArticleScreen(pageTurnDispatcher: PageTurnDispatcher? = null) {
