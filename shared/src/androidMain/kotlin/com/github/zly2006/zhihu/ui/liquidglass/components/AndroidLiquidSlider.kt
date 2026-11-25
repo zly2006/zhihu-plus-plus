@@ -36,6 +36,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -138,6 +139,7 @@ fun AndroidLiquidSlider(
         contentAlignment = Alignment.CenterStart,
     ) {
         val trackWidth = constraints.maxWidth
+        val currentTrackWidth by rememberUpdatedState(trackWidth)
 
         val isLtr = LocalLayoutDirection.current == LayoutDirection.Ltr
         val animationScope = rememberCoroutineScope()
@@ -175,7 +177,8 @@ fun AndroidLiquidSlider(
                     if (!didDrag) {
                         didDrag = dragAmount.x != 0f
                     }
-                    val delta = (valueRange.endInclusive - valueRange.start) * (dragAmount.x / trackWidth)
+                    val width = currentTrackWidth.coerceAtLeast(1)
+                    val delta = (valueRange.endInclusive - valueRange.start) * (dragAmount.x / width)
                     val nextRaw =
                         if (isLtr) {
                             (targetValue + delta).coerceIn(valueRange)
@@ -205,7 +208,8 @@ fun AndroidLiquidSlider(
                         if (enabled) {
                             Modifier.pointerInput(animationScope, valueRange, steps) {
                                 detectTapGestures { position ->
-                                    val delta = (valueRange.endInclusive - valueRange.start) * (position.x / trackWidth)
+                                    val width = currentTrackWidth.coerceAtLeast(1)
+                                    val delta = (valueRange.endInclusive - valueRange.start) * (position.x / width)
                                     val rawTarget =
                                         if (isLtr) {
                                             valueRange.start + delta

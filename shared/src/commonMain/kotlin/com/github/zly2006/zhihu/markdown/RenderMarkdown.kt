@@ -317,9 +317,9 @@ private fun RenderMarkdownDocument(
     val navigator = LocalNavigator.current
     val openExternalUrl = rememberExternalUrlOpener()
     val settings = rememberSettingsStore()
-    val fontSize = remember(settings) { settings.getInt(PREF_FONT_SIZE, 100) }
-    val lineHeight = remember(settings) { settings.getInt(PREF_LINE_HEIGHT, 160) }
-    val blockSpacing = remember(settings) { settings.getInt(PREF_BLOCK_SPACING, 100) }
+    val fontSize = settings.getInt(PREF_FONT_SIZE, 100)
+    val lineHeight = settings.getInt(PREF_LINE_HEIGHT, 160)
+    val blockSpacing = settings.getInt(PREF_BLOCK_SPACING, 100)
     var segmentCommentTarget by remember { mutableStateOf<SegmentCommentHolder?>(null) }
     var segmentActionSheetState by remember { mutableStateOf<SegmentActionSheetState?>(null) }
     CompositionLocalProvider(

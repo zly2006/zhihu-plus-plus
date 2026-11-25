@@ -81,6 +81,9 @@ private suspend inline fun AwaitPointerEventScope.drag(
             return null
         }
         if (change.changedToUpIgnoreConsumed()) {
+            if (horizontalLocked) {
+                change.consume()
+            }
             return change
         }
         val delta = change.positionChange()
@@ -90,7 +93,7 @@ private suspend inline fun AwaitPointerEventScope.drag(
             val absX = abs(totalDx)
             val absY = abs(totalDy)
             when {
-                absX >= touchSlop && absX > absY -> {
+                absX >= touchSlop && absX >= absY -> {
                     horizontalLocked = true
                     change.consume()
                     onDrag(change, Offset(totalDx, totalDy))

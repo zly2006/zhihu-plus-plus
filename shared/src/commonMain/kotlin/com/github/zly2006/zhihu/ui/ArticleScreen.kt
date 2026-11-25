@@ -77,6 +77,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -254,12 +255,13 @@ fun ArticleScreen(
     val userMessages = rememberUserMessageSink()
     val density = LocalDensity.current
     val readingPlayerOverlayPaddingPx = with(density) { readingPlayerOverlayPadding.roundToPx() }
-    val effectiveScrollMaxValueState = remember(readingPlayerOverlayPaddingPx) {
+    val currentReadingPlayerOverlayPaddingPx by rememberUpdatedState(readingPlayerOverlayPaddingPx)
+    val effectiveScrollMaxValueState = remember(scrollState) {
         derivedStateOf {
             if (scrollState.maxValue == Int.MAX_VALUE) {
                 Int.MAX_VALUE
             } else {
-                (scrollState.maxValue - readingPlayerOverlayPaddingPx).coerceAtLeast(0)
+                (scrollState.maxValue - currentReadingPlayerOverlayPaddingPx).coerceAtLeast(0)
             }
         }
     }
