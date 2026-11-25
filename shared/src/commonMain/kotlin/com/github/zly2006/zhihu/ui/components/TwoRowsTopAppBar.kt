@@ -382,8 +382,10 @@ private fun TwoRowsTopAppBar(
 private fun Modifier.adjustHeightOffsetLimit(scrollBehavior: TopAppBarScrollBehavior?) =
     scrollBehavior?.state?.let {
         onSizeChanged { size ->
-            val offset = size.height.toFloat() - it.heightOffset
-            it.heightOffsetLimit = -offset
+            val nextLimit = -(size.height.toFloat() - it.heightOffset)
+            if (abs(it.heightOffsetLimit - nextLimit) > 0.5f) {
+                it.heightOffsetLimit = nextLimit
+            }
         }
     } ?: this
 

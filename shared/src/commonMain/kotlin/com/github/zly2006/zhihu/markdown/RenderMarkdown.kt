@@ -40,6 +40,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -76,6 +77,9 @@ import com.github.zly2006.zhihu.ui.subscreens.DUO3_TIQIAN_MATH_FONT_PREFERENCE_K
 import com.github.zly2006.zhihu.ui.subscreens.PREF_BLOCK_SPACING
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.yield
 import me.zly2006.markdown.parser.ast.Document
 import me.zly2006.markdown.renderer.Markdown
 import me.zly2006.markdown.renderer.MarkdownImageData
@@ -251,6 +255,8 @@ private fun NoDoubleClickSelectionScope(content: @Composable () -> Unit) {
     }
 }
 
+private const val ASYNC_MARKDOWN_PARSE_THRESHOLD = 2048
+
 @Composable
 fun RenderMarkdown(
     html: String,
@@ -262,9 +268,31 @@ fun RenderMarkdown(
     footer: (@Composable () -> Unit)? = null,
     useTiqianRenderer: Boolean = false,
 ) {
-    val document = remember(html) { htmlToMdAst(html) }
+    val syncResult = remember(html) {
+        if (html.length <= ASYNC_MARKDOWN_PARSE_THRESHOLD) {
+            val doc = htmlToMdAst(html)
+            doc to doc.previewImageUrls()
+        } else {
+            null
+        }
+    }
+    val asyncResult by produceState(initialValue = syncResult, key1 = html) {
+        if (syncResult != null) {
+            value = syncResult
+        } else {
+            value = withContext(Dispatchers.Default) {
+                yield()
+                val doc = htmlToMdAst(html)
+                yield()
+                val urls = doc.previewImageUrls()
+                doc to urls
+            }
+        }
+    }
+    val resolved = asyncResult ?: return
     RenderMarkdownDocument(
-        document = document,
+        document = resolved.first,
+        previewImageUrls = resolved.second,
         sourceMarkdown = null,
         modifier = modifier,
         scrollState = scrollState,
@@ -287,9 +315,31 @@ fun RenderMarkdownText(
     footer: (@Composable () -> Unit)? = null,
     useTiqianRenderer: Boolean = false,
 ) {
-    val document = remember(markdown) { markdownToMdAst(markdown) }
+    val syncResult = remember(markdown) {
+        if (markdown.length <= ASYNC_MARKDOWN_PARSE_THRESHOLD) {
+            val doc = markdownToMdAst(markdown)
+            doc to doc.previewImageUrls()
+        } else {
+            null
+        }
+    }
+    val asyncResult by produceState(initialValue = syncResult, key1 = markdown) {
+        if (syncResult != null) {
+            value = syncResult
+        } else {
+            value = withContext(Dispatchers.Default) {
+                yield()
+                val doc = markdownToMdAst(markdown)
+                yield()
+                val urls = doc.previewImageUrls()
+                doc to urls
+            }
+        }
+    }
+    val resolved = asyncResult ?: return
     RenderMarkdownDocument(
-        document = document,
+        document = resolved.first,
+        previewImageUrls = resolved.second,
         sourceMarkdown = markdown,
         modifier = modifier,
         scrollState = scrollState,
@@ -304,6 +354,7 @@ fun RenderMarkdownText(
 @Composable
 private fun RenderMarkdownDocument(
     document: Document,
+    previewImageUrls: List<String>,
     sourceMarkdown: String?,
     modifier: Modifier,
     scrollState: ScrollState,
@@ -313,13 +364,12 @@ private fun RenderMarkdownDocument(
     footer: (@Composable () -> Unit)?,
     useTiqianRenderer: Boolean,
 ) {
-    val previewImageUrls = remember(document) { document.previewImageUrls() }
     val navigator = LocalNavigator.current
     val openExternalUrl = rememberExternalUrlOpener()
     val settings = rememberSettingsStore()
-    val fontSize = settings.getInt(PREF_FONT_SIZE, 100)
-    val lineHeight = settings.getInt(PREF_LINE_HEIGHT, 160)
-    val blockSpacing = settings.getInt(PREF_BLOCK_SPACING, 100)
+    val fontSize = remember(settings) { settings.getInt(PREF_FONT_SIZE, 100) }
+    val lineHeight = remember(settings) { settings.getInt(PREF_LINE_HEIGHT, 160) }
+    val blockSpacing = remember(settings) { settings.getInt(PREF_BLOCK_SPACING, 100) }
     var segmentCommentTarget by remember { mutableStateOf<SegmentCommentHolder?>(null) }
     var segmentActionSheetState by remember { mutableStateOf<SegmentActionSheetState?>(null) }
     CompositionLocalProvider(
@@ -331,9 +381,11 @@ private fun RenderMarkdownDocument(
         SegmentHighlightInteractionHost(document) {
             Box(modifier = modifier) {
                 NoDoubleClickSelectionScope {
-                    val onLinkClick: (String) -> Unit = { url ->
-                        resolveContent(url)?.let { navigator.onNavigate(it) }
-                            ?: openExternalUrl(url)
+                    val onLinkClick: (String) -> Unit = remember(navigator, openExternalUrl) {
+                        { url ->
+                            resolveContent(url)?.let { navigator.onNavigate(it) }
+                                ?: openExternalUrl(url)
+                        }
                     }
                     if (useTiqianRenderer && isTiqianMarkdownRendererAvailable) {
                         PlatformTiqianMarkdown(
@@ -358,25 +410,30 @@ private fun RenderMarkdownDocument(
                         val importedMathFont = rememberImportedMathFont()
                         val mathFont = if (selectedMathFont == null) rememberMarkdownMathFont() else importedMathFont
                         val defaultTheme = MarkdownTheme.material3()
-                        val scaledFontSize = 16.sp * fontSize / 100
-                        val theme = defaultTheme.copy(
-                            bodyStyle = defaultTheme.bodyStyle.copy(
-                                fontSize = scaledFontSize,
-                                lineHeight = scaledFontSize * lineHeight / 100,
-                            ),
-                            blockSpacing = defaultTheme.blockSpacing * (blockSpacing / 100f),
-                            mathFontSize = 18f * fontSize / 100,
-                            mathFont = mathFont ?: defaultTheme.mathFont,
-                        )
-                        Markdown(
-                            document = document,
-                            imageContent = { data, imageModifier ->
+                        val theme = remember(defaultTheme, fontSize, lineHeight, blockSpacing, mathFont) {
+                            val scaledFontSize = 16.sp * fontSize / 100
+                            defaultTheme.copy(
+                                bodyStyle = defaultTheme.bodyStyle.copy(
+                                    fontSize = scaledFontSize,
+                                    lineHeight = scaledFontSize * lineHeight / 100,
+                                ),
+                                blockSpacing = defaultTheme.blockSpacing * (blockSpacing / 100f),
+                                mathFontSize = 18f * fontSize / 100,
+                                mathFont = mathFont ?: defaultTheme.mathFont,
+                            )
+                        }
+                        val imageContent: @Composable (MarkdownImageData, Modifier) -> Unit = remember(previewImageUrls) {
+                            { data, imageModifier ->
                                 RenderImage(
                                     data = data,
                                     modifier = imageModifier,
                                     imageUrls = previewImageUrls,
                                 )
-                            },
+                            }
+                        }
+                        Markdown(
+                            document = document,
+                            imageContent = imageContent,
                             scrollState = scrollState,
                             enableScroll = enableScroll,
                             enableSelection = selectable,

@@ -1046,14 +1046,34 @@ fun ArticleScreen(
                 }
             },
         ) { innerPadding ->
+            val stableTopPadding = if (isImmersiveMode) {
+                innerPadding.calculateTopPadding()
+            } else {
+                (innerPadding.calculateTopPadding() - with(density) { scrollBehavior.state.heightOffset.toDp() })
+                    .coerceAtLeast(0.dp)
+            }
+            val stableBottomPadding = if (isImmersiveMode) {
+                innerPadding.calculateBottomPadding()
+            } else {
+                (innerPadding.calculateBottomPadding() + with(density) { scrollBehavior.state.heightOffsetLimit.toDp() })
+                    .coerceAtLeast(0.dp)
+            }
             CompositionLocalProvider(LocalBringIntoViewSpec provides articleBringIntoViewSpec) {
-                Box {
+                Box(
+                    modifier = Modifier.graphicsLayer {
+                        if (!isImmersiveMode) {
+                            translationY = scrollBehavior.state.heightOffset
+                        }
+                    },
+                ) {
                     Column(
                         modifier = Modifier
                             .padding(horizontal = 16.dp)
                             .verticalScroll(scrollState)
-                            .padding(innerPadding)
-                            .padding(top = 8.dp),
+                            .padding(
+                                top = stableTopPadding + 8.dp,
+                                bottom = stableBottomPadding,
+                            ),
                     ) {
                         if (isImmersiveMode && viewModel.authorName.isNotBlank()) {
                             Row(
