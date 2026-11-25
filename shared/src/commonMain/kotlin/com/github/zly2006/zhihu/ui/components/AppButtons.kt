@@ -58,9 +58,13 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.theme.LocalUiStyle
 import com.github.zly2006.zhihu.theme.UiStyle
+import com.github.zly2006.zhihu.theme.isLiquidGlassSupported
+import com.github.zly2006.zhihu.theme.liquidGlassSemanticTokens
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.basic.Button as MiuixButton
 import top.yukonga.miuix.kmp.basic.ButtonDefaults as MiuixButtonDefaults
@@ -204,17 +208,29 @@ fun AppFilledTonalButton(
             )
         }
         UiStyle.LiquidGlass -> {
-            AppleSurfaceButton(
-                onClick = onClick,
-                modifier = modifier,
-                enabled = enabled,
-                shape = shape,
-                colors = colors,
-                border = border,
-                contentPadding = contentPadding,
-                interactionSource = interactionSource,
-                content = content,
-            )
+            if (isLiquidGlassSupported) {
+                LiquidButton(
+                    onClick = onClick,
+                    modifier = modifier.defaultMinSize(minHeight = 44.dp),
+                    enabled = enabled,
+                    containerColor = if (enabled) colors.containerColor else colors.disabledContainerColor,
+                    contentColor = if (enabled) colors.contentColor else colors.disabledContentColor,
+                    contentPadding = contentPadding,
+                    content = content,
+                )
+            } else {
+                AppleSurfaceButton(
+                    onClick = onClick,
+                    modifier = modifier,
+                    enabled = enabled,
+                    shape = shape,
+                    colors = colors,
+                    border = border,
+                    contentPadding = contentPadding,
+                    interactionSource = interactionSource,
+                    content = content,
+                )
+            }
         }
     }
 }
@@ -292,17 +308,29 @@ fun AppOutlinedButton(
             }
         }
         UiStyle.LiquidGlass -> {
-            AppleSurfaceButton(
-                onClick = onClick,
-                modifier = modifier,
-                enabled = enabled,
-                shape = shape,
-                colors = colors,
-                border = border ?: BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant),
-                contentPadding = contentPadding,
-                interactionSource = interactionSource,
-                content = content,
-            )
+            if (isLiquidGlassSupported) {
+                LiquidButton(
+                    onClick = onClick,
+                    modifier = modifier.defaultMinSize(minHeight = 44.dp),
+                    enabled = enabled,
+                    containerColor = if (enabled) colors.containerColor else colors.disabledContainerColor,
+                    contentColor = if (enabled) colors.contentColor else colors.disabledContentColor,
+                    contentPadding = contentPadding,
+                    content = content,
+                )
+            } else {
+                AppleSurfaceButton(
+                    onClick = onClick,
+                    modifier = modifier,
+                    enabled = enabled,
+                    shape = shape,
+                    colors = colors,
+                    border = border ?: BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant),
+                    contentPadding = contentPadding,
+                    interactionSource = interactionSource,
+                    content = content,
+                )
+            }
         }
     }
 }
@@ -369,17 +397,29 @@ fun AppTextButton(
             }
         }
         UiStyle.LiquidGlass -> {
-            AppleSurfaceButton(
-                onClick = onClick,
-                modifier = modifier,
-                enabled = enabled,
-                shape = shape,
-                colors = colors,
-                border = border,
-                contentPadding = contentPadding,
-                interactionSource = interactionSource,
-                content = content,
-            )
+            if (isLiquidGlassSupported) {
+                LiquidButton(
+                    onClick = onClick,
+                    modifier = modifier.defaultMinSize(minHeight = 44.dp),
+                    enabled = enabled,
+                    containerColor = if (enabled) colors.containerColor else colors.disabledContainerColor,
+                    contentColor = if (enabled) colors.contentColor else colors.disabledContentColor,
+                    contentPadding = contentPadding,
+                    content = content,
+                )
+            } else {
+                AppleSurfaceButton(
+                    onClick = onClick,
+                    modifier = modifier,
+                    enabled = enabled,
+                    shape = shape,
+                    colors = colors,
+                    border = border,
+                    contentPadding = contentPadding,
+                    interactionSource = interactionSource,
+                    content = content,
+                )
+            }
         }
     }
 }
@@ -436,12 +476,12 @@ fun AppIconButton(
             val source = interactionSource ?: remember { MutableInteractionSource() }
             val containerColor = if (enabled) colors.containerColor else colors.disabledContainerColor
             val contentColor = if (enabled) colors.contentColor else colors.disabledContentColor
-            if (resolvedStyle == AppIconButtonStyle.Floating) {
+            if (resolvedStyle == AppIconButtonStyle.Floating && isLiquidGlassSupported) {
                 LiquidButton(
                     onClick = onClick,
                     modifier = modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp),
                     enabled = enabled,
-                    containerColor = MaterialTheme.colorScheme.surfaceBright,
+                    containerColor = liquidGlassSemanticTokens().chromeTint,
                     contentColor = contentColor,
                     contentPadding = PaddingValues(12.dp),
                 ) {
@@ -728,24 +768,47 @@ fun AppIconToggleButton(
                 }
             }
             val hasVisibleContainer = containerColor != Color.Unspecified && containerColor.alpha > 0f
-            Box(
-                modifier = modifier
-                    .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
-                    .then(
-                        if (hasVisibleContainer) {
-                            Modifier.padding(4.dp).background(containerColor, CircleShape)
-                        } else {
-                            Modifier
+            if (LocalUiStyle.current == UiStyle.LiquidGlass && isLiquidGlassSupported) {
+                val resolvedContainer = when {
+                    hasVisibleContainer -> containerColor
+                    checked -> MaterialTheme.colorScheme.primary.copy(alpha = 0.24f)
+                    else -> Color.Transparent
+                }
+                LiquidButton(
+                    onClick = { onCheckedChange(!checked) },
+                    modifier = modifier
+                        .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                        .semantics {
+                            role = Role.Checkbox
+                            toggleableState = ToggleableState(checked)
                         },
-                    ).toggleable(
-                        value = checked,
-                        enabled = enabled,
-                        role = Role.Checkbox,
-                        onValueChange = onCheckedChange,
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                CompositionLocalProvider(LocalContentColor provides contentColor, content = content)
+                    enabled = enabled,
+                    containerColor = resolvedContainer,
+                    contentColor = contentColor,
+                    contentPadding = PaddingValues(8.dp),
+                ) {
+                    content()
+                }
+            } else {
+                Box(
+                    modifier = modifier
+                        .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                        .then(
+                            if (hasVisibleContainer) {
+                                Modifier.padding(4.dp).background(containerColor, CircleShape)
+                            } else {
+                                Modifier
+                            },
+                        ).toggleable(
+                            value = checked,
+                            enabled = enabled,
+                            role = Role.Checkbox,
+                            onValueChange = onCheckedChange,
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CompositionLocalProvider(LocalContentColor provides contentColor, content = content)
+                }
             }
         }
     }

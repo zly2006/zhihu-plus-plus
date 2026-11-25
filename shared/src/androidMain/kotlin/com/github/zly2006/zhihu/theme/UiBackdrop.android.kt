@@ -77,11 +77,11 @@ internal actual fun rememberLiquidGlassBackdrop(): UiBackdrop {
                     shape = { shape },
                     effects = {
                         vibrancy()
-                        blur(10.dp.toPx())
-                        if (floating) lens(6.dp.toPx(), 8.dp.toPx())
+                        blur(if (floating) 4.dp.toPx() else 8.dp.toPx())
+                        if (floating) lens(14.dp.toPx(), 24.dp.toPx())
                     },
-                    highlight = { if (floating) Highlight(width = 0.5.dp, blurRadius = 0.5.dp, alpha = 0.4f) else null },
-                    shadow = { if (floating) Shadow(radius = 12.dp, color = Color.Black.copy(alpha = 0.07f)) else null },
+                    highlight = { if (floating) Highlight.Default else null },
+                    shadow = { if (floating) Shadow(radius = 12.dp, color = Color.Black.copy(alpha = 0.08f)) else null },
                     onDrawSurface = { drawRect(resolvedTint) },
                 )
             }

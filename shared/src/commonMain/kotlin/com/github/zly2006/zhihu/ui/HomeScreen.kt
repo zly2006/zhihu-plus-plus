@@ -662,7 +662,7 @@ fun HomeScreen(
                             Surface(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(if (uiStyle == UiStyle.LiquidGlass) 44.dp else 38.dp)
+                                    .height(if (uiStyle == UiStyle.LiquidGlass) glassTokens.floatingControlMinHeight else 38.dp)
                                     .then(searchGlassMod)
                                     .testTag(HOME_SEARCH_BUTTON_TAG),
                                 shape = searchBarShape,

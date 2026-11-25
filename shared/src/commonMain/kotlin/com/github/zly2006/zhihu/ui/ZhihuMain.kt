@@ -58,12 +58,12 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.Newspaper
 import androidx.compose.material.icons.filled.Whatshot
-import androidx.compose.material.icons.outlined.AccountCircle
-import androidx.compose.material.icons.outlined.CollectionsBookmark
+import androidx.compose.material.icons.outlined.Bookmarks
+import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.ManageAccounts
 import androidx.compose.material.icons.outlined.Newspaper
-import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.Whatshot
 import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.runtime.Composable
@@ -623,12 +623,12 @@ fun ZhihuMain(
                                                 val selected = currentBottomDestination?.let { it::class == destination::class } == true
                                                 val unselectedIcon = when (destination) {
                                                     Home -> Icons.Outlined.Home
-                                                    Follow -> Icons.Outlined.People
+                                                    Follow -> Icons.Outlined.Group
                                                     HotList -> Icons.Outlined.Whatshot
                                                     Daily -> Icons.Outlined.Newspaper
                                                     OnlineHistory -> Icons.Outlined.History
-                                                    MyCollections -> Icons.Outlined.CollectionsBookmark
-                                                    Account -> Icons.Outlined.AccountCircle
+                                                    MyCollections -> Icons.Outlined.Bookmarks
+                                                    Account -> Icons.Outlined.ManageAccounts
                                                     else -> icon
                                                 }
                                                 AppNavigationItem(

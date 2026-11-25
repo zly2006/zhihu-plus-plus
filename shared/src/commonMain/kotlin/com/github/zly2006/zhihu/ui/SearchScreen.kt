@@ -370,7 +370,7 @@ fun SearchScreen(
                             Surface(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(if (uiStyle == UiStyle.LiquidGlass) 44.dp else 40.dp)
+                                    .height(if (uiStyle == UiStyle.LiquidGlass) glassTokens.floatingControlMinHeight else 40.dp)
                                     .then(searchSurfaceModifier),
                                 shape = searchShape,
                                 color = when {

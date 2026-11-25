@@ -126,14 +126,22 @@ fun AppTab(
         }
         UiStyle.LiquidGlass -> {
             val tokens = liquidGlassSemanticTokens()
-            val selectedBg = if (selected && !inSegmentedRow) tokens.segmentedSelectedSurface else Color.Transparent
+            val selectedSurfaceMod = if (selected && !inSegmentedRow) {
+                Modifier.liquidGlassSurface(
+                    shape = RoundedCornerShape(tokens.groupedCornerRadius),
+                    tint = tokens.chromeTint,
+                    floating = true,
+                )
+            } else {
+                Modifier
+            }
             Box(
                 modifier = modifier
                     .fillMaxHeight()
                     .heightIn(min = tokens.floatingControlMinHeight)
                     .padding(horizontal = if (inSegmentedRow) 0.dp else 4.dp, vertical = if (inSegmentedRow) 0.dp else 4.dp)
+                    .then(selectedSurfaceMod)
                     .clip(RoundedCornerShape(tokens.groupedCornerRadius))
-                    .background(selectedBg)
                     .selectable(
                         selected = selected,
                         onClick = onClick,
@@ -215,13 +223,21 @@ fun AppTab(
         }
         UiStyle.LiquidGlass -> {
             val tokens = liquidGlassSemanticTokens()
-            val selectedBg = if (selected && !inSegmentedRow) tokens.segmentedSelectedSurface else Color.Transparent
+            val selectedSurfaceMod = if (selected && !inSegmentedRow) {
+                Modifier.liquidGlassSurface(
+                    shape = RoundedCornerShape(tokens.groupedCornerRadius),
+                    tint = tokens.chromeTint,
+                    floating = true,
+                )
+            } else {
+                Modifier
+            }
             Column(
                 modifier = modifier
                     .heightIn(min = tokens.floatingControlMinHeight)
                     .padding(horizontal = if (inSegmentedRow) 0.dp else 4.dp, vertical = if (inSegmentedRow) 0.dp else 4.dp)
+                    .then(selectedSurfaceMod)
                     .clip(RoundedCornerShape(tokens.groupedCornerRadius))
-                    .background(selectedBg)
                     .selectable(
                         selected = selected,
                         onClick = onClick,
@@ -349,9 +365,11 @@ fun AppPrimaryTabRow(
                     modifier = modifier
                         .padding(horizontal = 16.dp, vertical = 8.dp)
                         .heightIn(min = tokens.floatingControlMinHeight)
-                        .clip(RoundedCornerShape(tokens.groupedCornerRadius))
-                        .background(tokens.segmentedContainer)
-                        .padding(3.dp)
+                        .liquidGlassSurface(
+                            shape = RoundedCornerShape(tokens.groupedCornerRadius),
+                            tint = tokens.segmentedContainer.copy(alpha = 0.52f),
+                            floating = false,
+                        ).padding(3.dp)
                         .fillMaxWidth(),
                     containerColor = Color.Transparent,
                     contentColor = contentColor,
@@ -384,8 +402,11 @@ fun AppPrimaryTabRow(
                                         }
                                     }
                                 }.zIndex(-1f)
-                                .clip(RoundedCornerShape(tokens.groupedCornerRadius))
-                                .background(tokens.segmentedSelectedSurface),
+                                .liquidGlassSurface(
+                                    shape = RoundedCornerShape(tokens.groupedCornerRadius),
+                                    tint = tokens.chromeTint,
+                                    floating = true,
+                                ),
                         )
                     },
                     divider = {},
