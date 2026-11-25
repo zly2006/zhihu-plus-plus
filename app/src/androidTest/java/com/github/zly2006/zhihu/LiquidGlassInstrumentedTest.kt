@@ -53,12 +53,17 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
@@ -68,6 +73,8 @@ import com.github.zly2006.zhihu.theme.ThemeMode
 import com.github.zly2006.zhihu.theme.UI_STYLE_PREFERENCE_KEY
 import com.github.zly2006.zhihu.theme.UiStyle
 import com.github.zly2006.zhihu.theme.rememberUiBackdrop
+import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.ArticleScreen
 import com.github.zly2006.zhihu.ui.HOME_NOTIFICATION_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.HOME_SEARCH_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.HomeScreen
@@ -78,6 +85,7 @@ import com.github.zly2006.zhihu.ui.components.AppScaffold
 import com.github.zly2006.zhihu.ui.components.ZhihuTwoRowsTopAppBar
 import com.github.zly2006.zhihu.ui.components.rememberPreferCollapsedExitUntilCollapsedScrollBehavior
 import com.github.zly2006.zhihu.ui.liquidglass.components.AndroidLiquidSlider
+import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -473,6 +481,78 @@ class LiquidGlassInstrumentedTest {
                 luminance <= 0.18f,
             )
         }
+    }
+
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/833
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/839
+     * Target state: under Liquid Glass, ArticleScreen's bottom bar splits controls into grouped
+     * floating glass pills (vote pill on leading side, actions pill on trailing side, and a
+     * standalone circular more button when duo3_article_actions is disabled) with an open center
+     * gap, unified 52dp height/baseline, and zero glass-on-glass nesting.
+     */
+    @Test
+    fun liquidGlassArticleBottomBarUsesGroupedFloatingPillsWithAlignedHeight() {
+        composeRule.activity
+            .getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+            .edit(commit = true) {
+                putBoolean("duo3_article_actions", false)
+                putBoolean("autoHideArticleBottomBar", false)
+                putBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false)
+            }
+        composeRule.runOnIdle {
+            ThemeManager.setThemeMode(ThemeMode.DARK)
+        }
+        val article = Article(type = ArticleType.Answer, id = 839900L)
+        val viewModel = ArticleViewModel(article = article, httpClient = null)
+        composeRule.activity.runOnUiThread {
+            viewModel.title = "孩子用AI写小说遭父亲质疑非原创，版权到底归谁？"
+            viewModel.authorName = "Cecilia"
+            viewModel.content =
+                """
+                <h2>红果上那么多AI漫剧，难道版权都归AI吗？</h2>
+                <p>当然不是。AI是创作工具，不是法律意义上的作者。至少在我国现行著作权法框架下，AI不能因为参与了创作，就自动成为作品的著作权人。</p>
+                <p>但这并不意味着，所有使用AI生成的内容，都天然属于使用者。这里其实涉及一个很重要的区别：谁提供了创意，谁完成了表达。</p>
+                <p>我国《著作权法》第三条规定，作品是文学、艺术和科学领域内具有独创性并能以一定形式表现的智力成果。</p>
+                <p>继续阅读下面的法律条款分析，观察底部浮空玻璃分组胶囊在正文上方滚动时的折射与留白效果。</p>
+                <p>第一，提示词与多轮迭代修改是否体现作者个性化表达选择；第二，最终生成成果是否经过人类实质性编排与取舍。</p>
+                """.trimIndent()
+            viewModel.voteUpCount = 35
+            viewModel.commentCount = 12
+            viewModel.createdAt = 1_710_000_000L
+            viewModel.updatedAt = 1_710_000_600L
+        }
+
+        composeRule.setScreenContent {
+            ArticleScreen(article = article, viewModel = viewModel)
+        }
+
+        val votePill = composeRule.onNodeWithTag("article_liquid_vote_pill")
+        val actionsPill = composeRule.onNodeWithTag("article_liquid_actions_pill")
+        val moreButton = composeRule.onNodeWithTag("article_liquid_more_button")
+        votePill.assertIsDisplayed()
+        actionsPill.assertIsDisplayed()
+        moreButton.assertIsDisplayed()
+
+        val voteBounds = votePill.fetchSemanticsNode().boundsInRoot
+        val actionsBounds = actionsPill.fetchSemanticsNode().boundsInRoot
+        val moreBounds = moreButton.fetchSemanticsNode().boundsInRoot
+
+        assertTrue(
+            "Grouped floating pills must leave an open breathing gap in the center: vote=$voteBounds actions=$actionsBounds",
+            actionsBounds.left > voteBounds.right + 16f,
+        )
+        assertTrue(
+            "Standalone more circle must sit to the right of actions pill with a clear gap: actions=$actionsBounds more=$moreBounds",
+            moreBounds.left > actionsBounds.right + 8f,
+        )
+        assertEquals("Vote and actions pills must share identical height", voteBounds.height, actionsBounds.height, 2f)
+        assertEquals("Standalone more circle must match toolbar pill height", actionsBounds.height, moreBounds.height, 2f)
+        assertEquals("Standalone more button must be circular", moreBounds.width, moreBounds.height, 2f)
+        assertEquals("All bottom floating controls must share the same vertical center", voteBounds.center.y, moreBounds.center.y, 2f)
+
+        composeRule.onNodeWithContentDescription("更多选项").performClick()
+        composeRule.onNodeWithText("复制链接").assertIsDisplayed()
     }
 
     companion object {
