@@ -96,9 +96,9 @@ fun AndroidLiquidBottomTabs(
         }
     val containerColor =
         if (isLightTheme) {
-            Color(0xFFFAFAFA).copy(0.4f)
+            Color.White.copy(0.76f)
         } else {
-            Color(0xFF121212).copy(0.4f)
+            Color(0xFF0A0A0C).copy(0.72f)
         }
 
     val tabsBackdrop = rememberLayerBackdrop()

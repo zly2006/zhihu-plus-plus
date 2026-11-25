@@ -87,7 +87,7 @@ fun AndroidLiquidButton(
                 shape = { Capsule() },
                 effects = {
                     vibrancy()
-                    blur(2f.dp.toPx())
+                    blur(8f.dp.toPx())
                     lens(12f.dp.toPx(), 24f.dp.toPx())
                 },
                 layerBlock = if (interactive) {

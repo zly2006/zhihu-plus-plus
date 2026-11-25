@@ -20,7 +20,9 @@ package com.github.zly2006.zhihu.theme
 import android.os.Build
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
@@ -56,7 +58,11 @@ internal fun rememberDefaultLiquidBackdrop(): Backdrop {
 
 @Composable
 internal actual fun rememberLiquidGlassBackdrop(): UiBackdrop {
-    val backdrop = rememberLayerBackdrop()
+    val backgroundColor by rememberUpdatedState(MaterialTheme.colorScheme.background)
+    val backdrop = rememberLayerBackdrop {
+        drawRect(backgroundColor)
+        drawContent()
+    }
     return remember(backdrop) {
         object : AndroidLiquidBackdrop {
             override val isActive: Boolean = true
@@ -79,7 +85,7 @@ internal actual fun rememberLiquidGlassBackdrop(): UiBackdrop {
                     shape = { shape },
                     effects = {
                         vibrancy()
-                        blur(if (floating) 4.dp.toPx() else 8.dp.toPx())
+                        blur(8.dp.toPx())
                         if (floating) lens(14.dp.toPx(), 24.dp.toPx())
                     },
                     highlight = { if (floating) Highlight.Default else null },

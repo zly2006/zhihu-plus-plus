@@ -488,7 +488,11 @@ fun ArticleScreen(
                                     },
                                     colors = IconButtonDefaults.iconButtonColors(
                                         containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        contentColor = if (LocalUiStyle.current == UiStyle.LiquidGlass) {
+                                            MaterialTheme.colorScheme.onSurface
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        },
                                     ),
                                 ) {
                                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")

@@ -160,8 +160,8 @@ fun liquidGlassSemanticTokens(): LiquidGlassSemanticTokens {
         groupedSurface = scheme.surfaceContainerLow,
         segmentedContainer = if (dark) Color(0xFF24252A) else Color(0xFFE8EBF1),
         segmentedSelectedSurface = if (dark) Color(0xFF3A3B43) else Color.White,
-        chromeTint = if (dark) Color(0xFF1C1C1E).copy(alpha = 0.42f) else Color.White.copy(alpha = 0.42f),
-        chromePressedTint = if (dark) Color.White.copy(alpha = 0.13f) else Color.Black.copy(alpha = 0.08f),
+        chromeTint = if (dark) Color(0xFF0A0A0C).copy(alpha = 0.72f) else Color.White.copy(alpha = 0.78f),
+        chromePressedTint = if (dark) Color.White.copy(alpha = 0.16f) else Color.Black.copy(alpha = 0.10f),
         separator = scheme.outlineVariant,
     )
 }

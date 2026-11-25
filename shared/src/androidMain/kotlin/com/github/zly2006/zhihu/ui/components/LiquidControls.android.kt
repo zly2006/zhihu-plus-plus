@@ -79,7 +79,7 @@ internal actual fun LiquidButton(
                 surfaceColor = if (containerColor == Color.Unspecified || containerColor.alpha == 0f) {
                     Color.Unspecified
                 } else {
-                    containerColor.copy(alpha = containerColor.alpha * 0.55f)
+                    containerColor.copy(alpha = containerColor.alpha * 0.78f)
                 },
                 contentPadding = contentPadding,
                 content = content,
@@ -208,7 +208,7 @@ internal actual fun Modifier.liquidGlassSurface(
         shape = { shape },
         effects = {
             vibrancy()
-            blur(if (floating) 4.dp.toPx() else 8.dp.toPx())
+            blur(8.dp.toPx())
             if (floating) lens(14.dp.toPx(), 24.dp.toPx())
         },
         highlight = { if (floating) Highlight.Default else null },
