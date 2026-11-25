@@ -31,6 +31,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalDensity
@@ -127,17 +128,18 @@ internal fun rememberArticleBottomBarState(
 
 @Composable
 internal fun rememberBottomBarAvoidingBringIntoViewSpec(
-    obscuredBottomPx: Float,
+    obscuredBottomPx: () -> Float,
 ): BringIntoViewSpec {
     val density = LocalDensity.current
-    return remember(obscuredBottomPx) {
+    val currentObscuredBottomPx by rememberUpdatedState(obscuredBottomPx)
+    return remember(density) {
         object : BringIntoViewSpec {
             override fun calculateScrollDistance(
                 offset: Float,
                 size: Float,
                 containerSize: Float,
             ): Float {
-                val effectiveContainerSize = (containerSize - obscuredBottomPx).coerceAtLeast(0f)
+                val effectiveContainerSize = (containerSize - currentObscuredBottomPx()).coerceAtLeast(0f)
                 val effectiveContainerTop = density.run { 110.dp.toPx() }
                 val trailingEdge = offset + size
                 return when {

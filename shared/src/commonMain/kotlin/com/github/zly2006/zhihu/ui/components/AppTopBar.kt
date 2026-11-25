@@ -238,26 +238,22 @@ private fun miuixTopBarColors(
 )
 
 internal fun liquidTopBarScrollScrim(
-    overlappedFraction: Float,
+    overlappedFraction: () -> Float,
     canvasColor: Color,
-): Modifier {
-    val fraction = overlappedFraction.coerceIn(0f, 1f)
-    if (fraction <= 0.01f) return Modifier
-    return Modifier.drawBehind {
-        if (size.height > 0f) {
-            drawRect(
-                brush = Brush.verticalGradient(
-                    colorStops = arrayOf(
-                        0f to canvasColor.copy(alpha = 0.72f * fraction),
-                        0.65f to canvasColor.copy(alpha = 0.42f * fraction),
-                        1f to canvasColor.copy(alpha = 0f),
-                    ),
-                    startY = 0f,
-                    endY = size.height,
-                ),
-            )
-        }
-    }
+): Modifier = Modifier.drawBehind {
+    val fraction = overlappedFraction().coerceIn(0f, 1f)
+    if (fraction <= 0.01f || size.height <= 0f) return@drawBehind
+    drawRect(
+        brush = Brush.verticalGradient(
+            colorStops = arrayOf(
+                0f to canvasColor.copy(alpha = 0.72f * fraction),
+                0.65f to canvasColor.copy(alpha = 0.42f * fraction),
+                1f to canvasColor.copy(alpha = 0f),
+            ),
+            startY = 0f,
+            endY = size.height,
+        ),
+    )
 }
 
 private enum class AppleNavigationSlot { Navigation, Actions, ExpandedTitle, CompactTitle }
@@ -322,7 +318,7 @@ private fun AppleNavigationLayout(
     val scrollOffset = scrollBehavior?.state?.heightOffset ?: 0f
     // 仅在内容滚到顶栏下方时，在顶栏自身高度内做柔和同色渐隐（避免静止态出现黑边或下垂投影）。
     val scrollScrimModifier = liquidTopBarScrollScrim(
-        overlappedFraction = scrollBehavior?.state?.overlappedFraction ?: 0f,
+        overlappedFraction = { scrollBehavior?.state?.overlappedFraction ?: 0f },
         canvasColor = tokens.canvas,
     )
     SubcomposeLayout(

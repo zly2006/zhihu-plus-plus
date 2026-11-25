@@ -40,7 +40,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -77,9 +76,6 @@ import com.github.zly2006.zhihu.ui.subscreens.DUO3_TIQIAN_MATH_FONT_PREFERENCE_K
 import com.github.zly2006.zhihu.ui.subscreens.PREF_BLOCK_SPACING
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.yield
 import me.zly2006.markdown.parser.ast.Document
 import me.zly2006.markdown.renderer.Markdown
 import me.zly2006.markdown.renderer.MarkdownImageData
@@ -255,8 +251,6 @@ private fun NoDoubleClickSelectionScope(content: @Composable () -> Unit) {
     }
 }
 
-private const val ASYNC_MARKDOWN_PARSE_THRESHOLD = 2048
-
 @Composable
 fun RenderMarkdown(
     html: String,
@@ -268,31 +262,9 @@ fun RenderMarkdown(
     footer: (@Composable () -> Unit)? = null,
     useTiqianRenderer: Boolean = false,
 ) {
-    val syncResult = remember(html) {
-        if (html.length <= ASYNC_MARKDOWN_PARSE_THRESHOLD) {
-            val doc = htmlToMdAst(html)
-            doc to doc.previewImageUrls()
-        } else {
-            null
-        }
-    }
-    val asyncResult by produceState(initialValue = syncResult, key1 = html) {
-        if (syncResult != null) {
-            value = syncResult
-        } else {
-            value = withContext(Dispatchers.Default) {
-                yield()
-                val doc = htmlToMdAst(html)
-                yield()
-                val urls = doc.previewImageUrls()
-                doc to urls
-            }
-        }
-    }
-    val resolved = asyncResult ?: return
+    val document = remember(html) { htmlToMdAst(html) }
     RenderMarkdownDocument(
-        document = resolved.first,
-        previewImageUrls = resolved.second,
+        document = document,
         sourceMarkdown = null,
         modifier = modifier,
         scrollState = scrollState,
@@ -315,31 +287,9 @@ fun RenderMarkdownText(
     footer: (@Composable () -> Unit)? = null,
     useTiqianRenderer: Boolean = false,
 ) {
-    val syncResult = remember(markdown) {
-        if (markdown.length <= ASYNC_MARKDOWN_PARSE_THRESHOLD) {
-            val doc = markdownToMdAst(markdown)
-            doc to doc.previewImageUrls()
-        } else {
-            null
-        }
-    }
-    val asyncResult by produceState(initialValue = syncResult, key1 = markdown) {
-        if (syncResult != null) {
-            value = syncResult
-        } else {
-            value = withContext(Dispatchers.Default) {
-                yield()
-                val doc = markdownToMdAst(markdown)
-                yield()
-                val urls = doc.previewImageUrls()
-                doc to urls
-            }
-        }
-    }
-    val resolved = asyncResult ?: return
+    val document = remember(markdown) { markdownToMdAst(markdown) }
     RenderMarkdownDocument(
-        document = resolved.first,
-        previewImageUrls = resolved.second,
+        document = document,
         sourceMarkdown = markdown,
         modifier = modifier,
         scrollState = scrollState,
@@ -354,7 +304,6 @@ fun RenderMarkdownText(
 @Composable
 private fun RenderMarkdownDocument(
     document: Document,
-    previewImageUrls: List<String>,
     sourceMarkdown: String?,
     modifier: Modifier,
     scrollState: ScrollState,
@@ -364,6 +313,7 @@ private fun RenderMarkdownDocument(
     footer: (@Composable () -> Unit)?,
     useTiqianRenderer: Boolean,
 ) {
+    val previewImageUrls = remember(document) { document.previewImageUrls() }
     val navigator = LocalNavigator.current
     val openExternalUrl = rememberExternalUrlOpener()
     val settings = rememberSettingsStore()

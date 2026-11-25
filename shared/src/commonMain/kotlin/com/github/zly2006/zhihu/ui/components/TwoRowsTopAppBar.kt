@@ -127,7 +127,7 @@ fun ZhihuTwoRowsTopAppBar(
         // Liquid Glass 顶栏静止态保持透明，仅在内容滚到顶栏下方时做顶栏自身高度内的柔和同色渐隐。
         UiStyle.LiquidGlass -> modifier.then(
             liquidTopBarScrollScrim(
-                overlappedFraction = scrollBehavior?.state?.overlappedFraction ?: 0f,
+                overlappedFraction = { scrollBehavior?.state?.overlappedFraction ?: 0f },
                 canvasColor = liquidTokens.canvas,
             ),
         )
@@ -290,8 +290,8 @@ private fun TwoRowsTopAppBar(
     val topTitleAlpha = { TopTitleAlphaEasing.transform(colorTransitionFraction()) }
     val bottomTitleAlpha = { 1f - colorTransitionFraction() }
     val hideTopRowSemantics by
-        remember(colorTransitionFraction) {
-            derivedStateOf { colorTransitionFraction() < 0.5f }
+        remember(scrollBehavior) {
+            derivedStateOf { (scrollBehavior?.state?.collapsedFraction ?: 0f) < 0.5f }
         }
     val hideBottomRowSemantics = !hideTopRowSemantics
     val appBarDragModifier =

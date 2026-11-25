@@ -77,7 +77,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -255,7 +254,7 @@ fun ArticleScreen(
     val userMessages = rememberUserMessageSink()
     val density = LocalDensity.current
     val readingPlayerOverlayPaddingPx = with(density) { readingPlayerOverlayPadding.roundToPx() }
-    val effectiveScrollMaxValue by remember(readingPlayerOverlayPaddingPx) {
+    val effectiveScrollMaxValueState = remember(readingPlayerOverlayPaddingPx) {
         derivedStateOf {
             if (scrollState.maxValue == Int.MAX_VALUE) {
                 Int.MAX_VALUE
@@ -264,7 +263,6 @@ fun ArticleScreen(
             }
         }
     }
-    val latestEffectiveScrollMaxValue by rememberUpdatedState(effectiveScrollMaxValue)
     var showComments by rememberSaveable(article.type, article.id) { mutableStateOf(false) }
     var showCollectionDialog by remember { mutableStateOf(false) }
     var showActionsMenu by remember { mutableStateOf(false) }
@@ -315,7 +313,7 @@ fun ArticleScreen(
     val pageTurnTarget = rememberPageTurnTarget(
         scrollState = scrollState,
         enabled = pageTurnActive,
-        maxScrollValue = effectiveScrollMaxValue,
+        maxScrollValue = { effectiveScrollMaxValueState.value },
         onPageUpAtStart = (answerNavigationState::navigateToPrevious)
             .takeIf { article.type == ArticleType.Answer && pageTurnSwitchAnswer },
         onPageDownAtEnd = (answerNavigationState::navigateToNext)
@@ -377,8 +375,9 @@ fun ArticleScreen(
                 scrollState.scrollTo(0)
             }
             AnswerDoubleTapAction.JumpToBottom -> coroutineScope.launch {
-                if (latestEffectiveScrollMaxValue != Int.MAX_VALUE) {
-                    scrollState.scrollTo(latestEffectiveScrollMaxValue)
+                val maxScroll = effectiveScrollMaxValueState.value
+                if (maxScroll != Int.MAX_VALUE) {
+                    scrollState.scrollTo(maxScroll)
                 }
             }
         }
@@ -404,7 +403,7 @@ fun ArticleScreen(
 
     LaunchedEffect(scrollState) {
         snapshotFlow { scrollState.value }.collectLatest { currentScroll ->
-            viewModel.updateAigcReadProgress(currentScroll, effectiveScrollMaxValue)
+            viewModel.updateAigcReadProgress(currentScroll, effectiveScrollMaxValueState.value)
             viewModel.syncAigcReadEventIfEligible(environment)
 
             if (viewModel.rememberedScrollYSync) {
@@ -416,9 +415,9 @@ fun ArticleScreen(
         }
     }
 
-    val articleBringIntoViewSpec = rememberBottomBarAvoidingBringIntoViewSpec(
-        bottomBarState.obscuredHeightPx + readingPlayerOverlayPaddingPx,
-    )
+    val articleBringIntoViewSpec = rememberBottomBarAvoidingBringIntoViewSpec {
+        bottomBarState.obscuredHeightPx + readingPlayerOverlayPaddingPx
+    }
     LaunchedEffect(article.id) {
         answerNavigationState.prepareArticle()
         viewModel.loadArticle(environment)
@@ -428,14 +427,14 @@ fun ArticleScreen(
 
     LaunchedEffect(article.type, article.id, viewModel.content) {
         if (viewModel.content.isNotBlank()) {
-            viewModel.updateAigcReadProgress(scrollState.value, latestEffectiveScrollMaxValue)
+            viewModel.updateAigcReadProgress(scrollState.value, effectiveScrollMaxValueState.value)
             delay(15_000)
-            viewModel.updateAigcReadProgress(scrollState.value, latestEffectiveScrollMaxValue)
+            viewModel.updateAigcReadProgress(scrollState.value, effectiveScrollMaxValueState.value)
             viewModel.syncAigcReadEventIfEligible(environment)
         }
     }
     LaunchedEffect(scrollState, viewModel.content) {
-        snapshotFlow { effectiveScrollMaxValue }.collectLatest { maxValue ->
+        snapshotFlow { effectiveScrollMaxValueState.value }.collectLatest { maxValue ->
             if (viewModel.content.isNotBlank()) {
                 viewModel.updateAigcReadProgress(scrollState.value, maxValue)
             }
@@ -1046,34 +1045,14 @@ fun ArticleScreen(
                 }
             },
         ) { innerPadding ->
-            val stableTopPadding = if (isImmersiveMode) {
-                innerPadding.calculateTopPadding()
-            } else {
-                (innerPadding.calculateTopPadding() - with(density) { scrollBehavior.state.heightOffset.toDp() })
-                    .coerceAtLeast(0.dp)
-            }
-            val stableBottomPadding = if (isImmersiveMode) {
-                innerPadding.calculateBottomPadding()
-            } else {
-                (innerPadding.calculateBottomPadding() + with(density) { scrollBehavior.state.heightOffsetLimit.toDp() })
-                    .coerceAtLeast(0.dp)
-            }
             CompositionLocalProvider(LocalBringIntoViewSpec provides articleBringIntoViewSpec) {
-                Box(
-                    modifier = Modifier.graphicsLayer {
-                        if (!isImmersiveMode) {
-                            translationY = scrollBehavior.state.heightOffset
-                        }
-                    },
-                ) {
+                Box {
                     Column(
                         modifier = Modifier
                             .padding(horizontal = 16.dp)
                             .verticalScroll(scrollState)
-                            .padding(
-                                top = stableTopPadding + 8.dp,
-                                bottom = stableBottomPadding,
-                            ),
+                            .padding(innerPadding)
+                            .padding(top = 8.dp),
                     ) {
                         if (isImmersiveMode && viewModel.authorName.isNotBlank()) {
                             Row(
@@ -1367,7 +1346,7 @@ fun ArticleScreen(
                 onNavigatePrevious = answerNavigationState::navigateToPrevious,
                 onNavigateNext = answerNavigationState::navigateToNext,
                 isAtTop = { scrollState.value == 0 },
-                isAtBottom = { scrollState.value >= effectiveScrollMaxValue },
+                isAtBottom = { scrollState.value >= effectiveScrollMaxValueState.value },
                 scrollState = scrollState,
                 answerSwitchSensitivity = answerSwitchSensitivity,
                 onOverscrollOffsetChange = updateReadingPlayerOverlayOffset,
