@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.ui.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
@@ -36,6 +37,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -43,11 +45,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.github.zly2006.zhihu.theme.isLiquidGlassSupported
+import com.github.zly2006.zhihu.theme.rememberDefaultLiquidBackdrop
 import com.github.zly2006.zhihu.ui.liquidglass.components.AndroidLiquidBottomTab
 import com.github.zly2006.zhihu.ui.liquidglass.components.AndroidLiquidBottomTabs
 import com.github.zly2006.zhihu.ui.liquidglass.components.AndroidLiquidButton
 import com.github.zly2006.zhihu.ui.liquidglass.components.AndroidLiquidSlider
 import com.github.zly2006.zhihu.ui.liquidglass.components.AndroidLiquidToggle
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.effects.vibrancy
+import com.kyant.backdrop.highlight.Highlight
+import com.kyant.backdrop.shadow.Shadow
 
 @Composable
 internal actual fun LiquidButton(
@@ -66,7 +76,11 @@ internal actual fun LiquidButton(
                 onClick = { action() },
                 modifier = modifier,
                 enabled = enabled,
-                surfaceColor = containerColor.copy(alpha = containerColor.alpha * 0.72f),
+                surfaceColor = if (containerColor == Color.Unspecified || containerColor.alpha == 0f) {
+                    Color.Unspecified
+                } else {
+                    containerColor.copy(alpha = containerColor.alpha * 0.55f)
+                },
                 contentPadding = contentPadding,
                 content = content,
             )
@@ -179,4 +193,26 @@ internal actual fun LiquidNavigationBar(
             }
         }
     }
+}
+
+@Composable
+internal actual fun Modifier.liquidGlassSurface(
+    shape: Shape,
+    tint: Color,
+    floating: Boolean,
+): Modifier {
+    if (!isLiquidGlassSupported) return background(tint, shape)
+    val backdrop = rememberDefaultLiquidBackdrop()
+    return drawBackdrop(
+        backdrop = backdrop,
+        shape = { shape },
+        effects = {
+            vibrancy()
+            blur(if (floating) 4.dp.toPx() else 8.dp.toPx())
+            if (floating) lens(14.dp.toPx(), 24.dp.toPx())
+        },
+        highlight = { if (floating) Highlight.Default else null },
+        shadow = { if (floating) Shadow(radius = 12.dp, color = Color.Black.copy(alpha = 0.08f)) else null },
+        onDrawSurface = { drawRect(tint) },
+    )
 }

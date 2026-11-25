@@ -1,10 +1,12 @@
 package com.github.zly2006.zhihu.ui.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 
 @Composable
 internal actual fun LiquidButton(
@@ -40,3 +42,10 @@ internal actual fun LiquidSlider(
 internal actual fun LiquidNavigationBar(
     items: List<AppNavigationItem>,
 ): Unit = error("JVM 平台暂不支持 Liquid Glass 底部导航栏渲染")
+
+@Composable
+internal actual fun Modifier.liquidGlassSurface(
+    shape: Shape,
+    tint: Color,
+    floating: Boolean,
+): Modifier = background(tint, shape)

@@ -32,6 +32,7 @@ import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.util.fastFirstOrNull
+import kotlin.math.abs
 
 suspend fun PointerInputScope.inspectDragGestures(
     onDragStart: (down: PointerInputChange) -> Unit = {},
@@ -50,7 +51,8 @@ suspend fun PointerInputScope.inspectDragGestures(
         val upEvent =
             drag(
                 pointerId = drag.id,
-                onDrag = { onDrag(it, it.positionChange()) },
+                touchSlop = viewConfiguration.touchSlop,
+                onDrag = { change, amount -> onDrag(change, amount) },
             )
         if (upEvent == null) {
             onDragCancel()
@@ -62,13 +64,17 @@ suspend fun PointerInputScope.inspectDragGestures(
 
 private suspend inline fun AwaitPointerEventScope.drag(
     pointerId: PointerId,
-    onDrag: (PointerInputChange) -> Unit,
+    touchSlop: Float,
+    onDrag: (PointerInputChange, Offset) -> Unit,
 ): PointerInputChange? {
     val isPointerUp = currentEvent.changes.fastFirstOrNull { it.id == pointerId }?.pressed != true
     if (isPointerUp) {
         return null
     }
     var pointer = pointerId
+    var horizontalLocked = false
+    var totalDx = 0f
+    var totalDy = 0f
     while (true) {
         val change = awaitDragOrUp(pointer) ?: return null
         if (change.isConsumed) {
@@ -77,12 +83,35 @@ private suspend inline fun AwaitPointerEventScope.drag(
         if (change.changedToUpIgnoreConsumed()) {
             return change
         }
-        onDrag(change)
-        // A scrollable ancestor consumes movement after this child in the Main pass.
-        val finalChange = awaitPointerEvent(PointerEventPass.Final)
-            .changes
-            .fastFirstOrNull { it.id == change.id }
-        if (finalChange?.isConsumed == true) return null
+        val delta = change.positionChange()
+        if (!horizontalLocked) {
+            totalDx += delta.x
+            totalDy += delta.y
+            val absX = abs(totalDx)
+            val absY = abs(totalDy)
+            when {
+                absX >= touchSlop && absX > absY -> {
+                    horizontalLocked = true
+                    change.consume()
+                    onDrag(change, Offset(totalDx, totalDy))
+                }
+                absY >= touchSlop && absY > absX -> {
+                    // 让父级纵向滚动接管，取消当前横向控件拖动。
+                    return null
+                }
+                else -> {
+                    // 尚未超过 touchSlop，等待父级在 Final pass 是否消费。
+                    val finalChange = awaitPointerEvent(PointerEventPass.Final)
+                        .changes
+                        .fastFirstOrNull { it.id == change.id }
+                    if (finalChange?.isConsumed == true) return null
+                }
+            }
+        } else {
+            // 横向拖动已锁定，持续消费事件以防纵向漂移被父级滚动打断。
+            change.consume()
+            onDrag(change, delta)
+        }
         pointer = change.id
     }
 }
