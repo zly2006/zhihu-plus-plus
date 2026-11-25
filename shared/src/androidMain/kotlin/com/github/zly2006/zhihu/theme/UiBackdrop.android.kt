@@ -23,8 +23,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.ui.components.liquidTopBarScrollScrim
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberCanvasBackdrop
@@ -85,6 +87,29 @@ internal actual fun rememberLiquidGlassBackdrop(): UiBackdrop {
                     onDrawSurface = { drawRect(resolvedTint) },
                 )
             }
+
+            @Composable
+            override fun scrollScrimSurface(
+                overlapFraction: () -> Float,
+                canvasColor: Color,
+            ): Modifier = Modifier
+                .drawBackdrop(
+                    backdrop = backdrop,
+                    shape = { RectangleShape },
+                    effects = {
+                        val fraction = overlapFraction().coerceIn(0f, 1f)
+                        if (fraction > 0.01f) {
+                            blur(16.dp.toPx() * fraction)
+                        }
+                    },
+                    highlight = { null },
+                    shadow = { null },
+                ).then(
+                    liquidTopBarScrollScrim(
+                        overlappedFraction = overlapFraction,
+                        canvasColor = canvasColor,
+                    ),
+                )
         }
     }
 }

@@ -33,6 +33,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -45,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
@@ -52,6 +54,7 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
@@ -71,6 +74,9 @@ import com.github.zly2006.zhihu.ui.HomeScreen
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.components.AppIconButton
 import com.github.zly2006.zhihu.ui.components.AppIconButtonStyle
+import com.github.zly2006.zhihu.ui.components.AppScaffold
+import com.github.zly2006.zhihu.ui.components.ZhihuTwoRowsTopAppBar
+import com.github.zly2006.zhihu.ui.components.rememberPreferCollapsedExitUntilCollapsedScrollBehavior
 import com.github.zly2006.zhihu.ui.liquidglass.components.AndroidLiquidSlider
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -373,8 +379,106 @@ class LiquidGlassInstrumentedTest {
         )
     }
 
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/833
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/839
+     * Target state: when bright content scrolls behind a collapsed Liquid Glass ZhihuTwoRowsTopAppBar
+     * in dark mode, the TopAppBar's blurred scroll scrim strongly attenuates the underlying pixels
+     * across the status-bar, title, and subtitle bands so body text cannot bleed through and collide
+     * with the collapsed header text.
+     */
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Test
+    fun liquidGlassScrolledTopBarIsolatesTitleFromUnderlyingContent() {
+        composeRule.runOnIdle {
+            ThemeManager.setThemeMode(ThemeMode.DARK)
+        }
+        lateinit var scrollState: ScrollState
+        composeRule.setScreenContent {
+            val scrollBehavior = rememberPreferCollapsedExitUntilCollapsedScrollBehavior()
+            scrollState = rememberScrollState()
+            AppScaffold(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .nestedScroll(scrollBehavior.nestedScrollConnection),
+                containerColor = Color.Black,
+                topBar = {
+                    ZhihuTwoRowsTopAppBar(
+                        modifier = Modifier.testTag(SCROLLED_TOP_BAR_TAG),
+                        title = { Text("短标题") },
+                        subtitle = { Text("作者") },
+                        scrollBehavior = scrollBehavior,
+                    )
+                },
+            ) { innerPadding ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(scrollState)
+                        .padding(innerPadding)
+                        .testTag(SCROLLED_BODY_TAG),
+                ) {
+                    // 高亮纯白区块滚到顶栏背后并延伸至顶栏下方，确保状态栏/标题/副标题三段后方均有纯白正文。
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1800.dp)
+                            .background(Color.White),
+                    )
+                    Spacer(Modifier.height(1200.dp))
+                }
+            }
+        }
+
+        val bodyNode = composeRule.onNodeWithTag(SCROLLED_BODY_TAG)
+        // 先收起顶栏并继续上滑一段距离，使白色正文区块位于收起态顶栏正后方。
+        repeat(3) {
+            bodyNode.performTouchInput {
+                val x = visibleSize.width * 0.5f
+                down(Offset(x, visibleSize.height * 0.72f))
+                moveTo(Offset(x, visibleSize.height * 0.42f))
+                up()
+            }
+            composeRule.waitForIdle()
+        }
+        assertTrue("Expected scrolled body under top bar (scroll=${scrollState.value})", scrollState.value > 80)
+
+        val topBarBounds = composeRule.onNodeWithTag(SCROLLED_TOP_BAR_TAG).fetchSemanticsNode().boundsInRoot
+        val pixels = composeRule.onRoot().captureToImage().toPixelMap()
+        // 采样顶栏右侧无文字区域（状态栏带、标题带、副标题带），下方正好覆盖纯白正文区块。
+        val sampleX = (topBarBounds.right - 24f).roundToInt().coerceIn(0, pixels.width - 1)
+        // 先确认顶栏下方紧邻的正文区仍是纯白，证明高亮正文确实横跨在收起态顶栏正后方。
+        val belowTopBarY = (topBarBounds.bottom + 120f).roundToInt().coerceIn(0, pixels.height - 1)
+        val belowColor = pixels[sampleX, belowTopBarY]
+        val belowLuminance = (belowColor.red + belowColor.green + belowColor.blue) / 3f
+        assertTrue(
+            "Expected bright white body block to still span behind and below the collapsed TopAppBar " +
+                "(belowLuminance=$belowLuminance, belowColor=$belowColor)",
+            belowLuminance >= 0.90f,
+        )
+        val bands = listOf(
+            "statusBar(20%)" to 0.20f,
+            "title(65%)" to 0.65f,
+            "subtitle(88%)" to 0.88f,
+        )
+        bands.forEach { (label, fractionY) ->
+            val y = (topBarBounds.top + topBarBounds.height * fractionY)
+                .roundToInt()
+                .coerceIn(0, pixels.height - 1)
+            val color = pixels[sampleX, y]
+            val luminance = (color.red + color.green + color.blue) / 3f
+            assertTrue(
+                "Scrolled Liquid Glass TopAppBar must isolate $label band from bright underlying content " +
+                    "(expected luminance <= 0.18f, actual=$luminance, color=$color, bounds=$topBarBounds)",
+                luminance <= 0.18f,
+            )
+        }
+    }
+
     companion object {
         private const val SLIDER_TAG = "liquid_glass_regression_slider"
         private const val FLOATING_ICON_BUTTON_TAG = "liquid_glass_floating_icon_button"
+        private const val SCROLLED_TOP_BAR_TAG = "liquid_glass_scrolled_top_bar"
+        private const val SCROLLED_BODY_TAG = "liquid_glass_scrolled_body"
     }
 }
