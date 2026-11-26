@@ -381,9 +381,9 @@ class LiquidGlassInstrumentedTest {
         val centerColor = pixelMap[centerX, centerY]
         val luminance = (centerColor.red + centerColor.green + centerColor.blue) / 3f
         assertTrue(
-            "Floating AppIconButton over black backdrop must keep high-contrast glass tint without double alpha attenuation " +
-                "(expected luminance >= 0.68f, actual=$luminance, color=$centerColor)",
-            luminance >= 0.68f,
+            "Floating AppIconButton over black backdrop must preserve translucent glass while avoiding double alpha attenuation " +
+                "(expected luminance in 0.44f..0.66f, actual=$luminance, color=$centerColor)",
+            luminance in 0.44f..0.66f,
         )
     }
 

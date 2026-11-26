@@ -96,9 +96,9 @@ fun AndroidLiquidBottomTabs(
         }
     val containerColor =
         if (isLightTheme) {
-            Color.White.copy(0.76f)
+            Color.White.copy(0.54f)
         } else {
-            Color(0xFF0A0A0C).copy(0.72f)
+            Color.Black.copy(0.50f)
         }
 
     val tabsBackdrop = rememberLayerBackdrop()
@@ -198,8 +198,13 @@ fun AndroidLiquidBottomTabs(
                     shape = { Capsule() },
                     effects = {
                         vibrancy()
-                        blur(8f.dp.toPx())
-                        lens(24f.dp.toPx(), 24f.dp.toPx())
+                        blur(3f.dp.toPx())
+                        lens(
+                            refractionHeight = 24f.dp.toPx(),
+                            refractionAmount = 42f.dp.toPx(),
+                            depthEffect = true,
+                            chromaticAberration = true,
+                        )
                     },
                     layerBlock = {
                         val progress = dampedDragAnimation.pressProgress

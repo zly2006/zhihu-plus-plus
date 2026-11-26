@@ -85,8 +85,15 @@ internal actual fun rememberLiquidGlassBackdrop(): UiBackdrop {
                     shape = { shape },
                     effects = {
                         vibrancy()
-                        blur(8.dp.toPx())
-                        if (floating) lens(14.dp.toPx(), 24.dp.toPx())
+                        blur(if (floating) 2.dp.toPx() else 8.dp.toPx())
+                        if (floating) {
+                            lens(
+                                refractionHeight = 22.dp.toPx(),
+                                refractionAmount = 42.dp.toPx(),
+                                depthEffect = true,
+                                chromaticAberration = true,
+                            )
+                        }
                     },
                     highlight = { if (floating) Highlight.Default else null },
                     shadow = { if (floating) Shadow(radius = 12.dp, color = Color.Black.copy(alpha = 0.08f)) else null },
