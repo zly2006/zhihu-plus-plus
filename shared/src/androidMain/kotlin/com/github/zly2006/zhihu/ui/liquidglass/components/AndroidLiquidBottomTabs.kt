@@ -201,9 +201,9 @@ fun AndroidLiquidBottomTabs(
                         blur(3f.dp.toPx())
                         lens(
                             refractionHeight = 24f.dp.toPx(),
-                            refractionAmount = 42f.dp.toPx(),
+                            refractionAmount = 48f.dp.toPx(),
                             depthEffect = true,
-                            chromaticAberration = true,
+                            chromaticAberration = false,
                         )
                     },
                     layerBlock = {

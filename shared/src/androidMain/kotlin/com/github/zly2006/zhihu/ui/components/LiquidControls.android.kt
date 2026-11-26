@@ -211,10 +211,10 @@ internal actual fun Modifier.liquidGlassSurface(
             blur(if (floating) 2.dp.toPx() else 8.dp.toPx())
             if (floating) {
                 lens(
-                    refractionHeight = 22.dp.toPx(),
-                    refractionAmount = 42.dp.toPx(),
+                    refractionHeight = 24.dp.toPx(),
+                    refractionAmount = 48.dp.toPx(),
                     depthEffect = true,
-                    chromaticAberration = true,
+                    chromaticAberration = false,
                 )
             }
         },
