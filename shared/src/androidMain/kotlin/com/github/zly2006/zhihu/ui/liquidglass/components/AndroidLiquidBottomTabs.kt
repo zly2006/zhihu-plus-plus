@@ -57,6 +57,7 @@ import androidx.compose.ui.util.fastCoerceIn
 import androidx.compose.ui.util.fastRoundToInt
 import androidx.compose.ui.util.lerp
 import com.github.zly2006.zhihu.theme.ThemeManager
+import com.github.zly2006.zhihu.theme.floatingGlassLens
 import com.github.zly2006.zhihu.theme.rememberDefaultLiquidBackdrop
 import com.github.zly2006.zhihu.ui.liquidglass.utils.DampedDragAnimation
 import com.github.zly2006.zhihu.ui.liquidglass.utils.InteractiveHighlight
@@ -199,12 +200,7 @@ fun AndroidLiquidBottomTabs(
                     effects = {
                         vibrancy()
                         blur(3f.dp.toPx())
-                        lens(
-                            refractionHeight = 24f.dp.toPx(),
-                            refractionAmount = 48f.dp.toPx(),
-                            depthEffect = true,
-                            chromaticAberration = false,
-                        )
+                        floatingGlassLens()
                     },
                     layerBlock = {
                         val progress = dampedDragAnimation.pressProgress

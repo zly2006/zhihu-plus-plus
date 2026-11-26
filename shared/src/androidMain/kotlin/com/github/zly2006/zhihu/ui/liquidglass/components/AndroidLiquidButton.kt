@@ -43,12 +43,12 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastCoerceAtMost
 import androidx.compose.ui.util.lerp
+import com.github.zly2006.zhihu.theme.floatingGlassLens
 import com.github.zly2006.zhihu.theme.rememberDefaultLiquidBackdrop
 import com.github.zly2006.zhihu.ui.liquidglass.utils.InteractiveHighlight
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
-import com.kyant.backdrop.effects.lens
 import com.kyant.backdrop.effects.vibrancy
 import com.kyant.shapes.Capsule
 import kotlin.math.abs
@@ -88,12 +88,7 @@ fun AndroidLiquidButton(
                 effects = {
                     vibrancy()
                     blur(2f.dp.toPx())
-                    lens(
-                        refractionHeight = 24f.dp.toPx(),
-                        refractionAmount = 48f.dp.toPx(),
-                        depthEffect = true,
-                        chromaticAberration = false,
-                    )
+                    floatingGlassLens()
                 },
                 layerBlock = if (interactive) {
                     {
