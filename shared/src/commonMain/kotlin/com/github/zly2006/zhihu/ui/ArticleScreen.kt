@@ -142,8 +142,8 @@ import com.github.zly2006.zhihu.ui.components.AnswerVerticalOverscroll
 import com.github.zly2006.zhihu.ui.components.AppButton
 import com.github.zly2006.zhihu.ui.components.AppCircularProgressIndicator
 import com.github.zly2006.zhihu.ui.components.AppIconButton
+import com.github.zly2006.zhihu.ui.components.AppIconButtonStyle
 import com.github.zly2006.zhihu.ui.components.AppScaffold
-import com.github.zly2006.zhihu.ui.components.AppTextButton
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.CollectionDialogComponent
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
@@ -152,6 +152,9 @@ import com.github.zly2006.zhihu.ui.components.DEFAULT_ANSWER_SWITCH_SENSITIVITY
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.ExportDialogComponent
 import com.github.zly2006.zhihu.ui.components.LiquidToolbar
+import com.github.zly2006.zhihu.ui.components.LiquidToolbarDivider
+import com.github.zly2006.zhihu.ui.components.LiquidToolbarHeight
+import com.github.zly2006.zhihu.ui.components.LiquidToolbarItem
 import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.github.zly2006.zhihu.ui.components.VerticalReadingProgressBar
 import com.github.zly2006.zhihu.ui.components.VotersSheet
@@ -255,16 +258,16 @@ fun ArticleScreen(
     val userMessages = rememberUserMessageSink()
     val density = LocalDensity.current
     val readingPlayerOverlayPaddingPx = with(density) { readingPlayerOverlayPadding.roundToPx() }
-    val effectiveScrollMaxValue by remember(readingPlayerOverlayPaddingPx) {
+    val currentReadingPlayerOverlayPaddingPx by rememberUpdatedState(readingPlayerOverlayPaddingPx)
+    val effectiveScrollMaxValueState = remember(scrollState) {
         derivedStateOf {
             if (scrollState.maxValue == Int.MAX_VALUE) {
                 Int.MAX_VALUE
             } else {
-                (scrollState.maxValue - readingPlayerOverlayPaddingPx).coerceAtLeast(0)
+                (scrollState.maxValue - currentReadingPlayerOverlayPaddingPx).coerceAtLeast(0)
             }
         }
     }
-    val latestEffectiveScrollMaxValue by rememberUpdatedState(effectiveScrollMaxValue)
     var showComments by rememberSaveable(article.type, article.id) { mutableStateOf(false) }
     var showCollectionDialog by remember { mutableStateOf(false) }
     var showActionsMenu by remember { mutableStateOf(false) }
@@ -315,7 +318,7 @@ fun ArticleScreen(
     val pageTurnTarget = rememberPageTurnTarget(
         scrollState = scrollState,
         enabled = pageTurnActive,
-        maxScrollValue = effectiveScrollMaxValue,
+        maxScrollValue = { effectiveScrollMaxValueState.value },
         onPageUpAtStart = (answerNavigationState::navigateToPrevious)
             .takeIf { article.type == ArticleType.Answer && pageTurnSwitchAnswer },
         onPageDownAtEnd = (answerNavigationState::navigateToNext)
@@ -377,8 +380,9 @@ fun ArticleScreen(
                 scrollState.scrollTo(0)
             }
             AnswerDoubleTapAction.JumpToBottom -> coroutineScope.launch {
-                if (latestEffectiveScrollMaxValue != Int.MAX_VALUE) {
-                    scrollState.scrollTo(latestEffectiveScrollMaxValue)
+                val maxScroll = effectiveScrollMaxValueState.value
+                if (maxScroll != Int.MAX_VALUE) {
+                    scrollState.scrollTo(maxScroll)
                 }
             }
         }
@@ -404,7 +408,7 @@ fun ArticleScreen(
 
     LaunchedEffect(scrollState) {
         snapshotFlow { scrollState.value }.collectLatest { currentScroll ->
-            viewModel.updateAigcReadProgress(currentScroll, effectiveScrollMaxValue)
+            viewModel.updateAigcReadProgress(currentScroll, effectiveScrollMaxValueState.value)
             viewModel.syncAigcReadEventIfEligible(environment)
 
             if (viewModel.rememberedScrollYSync) {
@@ -416,9 +420,9 @@ fun ArticleScreen(
         }
     }
 
-    val articleBringIntoViewSpec = rememberBottomBarAvoidingBringIntoViewSpec(
-        bottomBarState.obscuredHeightPx + readingPlayerOverlayPaddingPx,
-    )
+    val articleBringIntoViewSpec = rememberBottomBarAvoidingBringIntoViewSpec {
+        bottomBarState.obscuredHeightPx + readingPlayerOverlayPaddingPx
+    }
     LaunchedEffect(article.id) {
         answerNavigationState.prepareArticle()
         viewModel.loadArticle(environment)
@@ -428,14 +432,14 @@ fun ArticleScreen(
 
     LaunchedEffect(article.type, article.id, viewModel.content) {
         if (viewModel.content.isNotBlank()) {
-            viewModel.updateAigcReadProgress(scrollState.value, latestEffectiveScrollMaxValue)
+            viewModel.updateAigcReadProgress(scrollState.value, effectiveScrollMaxValueState.value)
             delay(15_000)
-            viewModel.updateAigcReadProgress(scrollState.value, latestEffectiveScrollMaxValue)
+            viewModel.updateAigcReadProgress(scrollState.value, effectiveScrollMaxValueState.value)
             viewModel.syncAigcReadEventIfEligible(environment)
         }
     }
     LaunchedEffect(scrollState, viewModel.content) {
-        snapshotFlow { effectiveScrollMaxValue }.collectLatest { maxValue ->
+        snapshotFlow { effectiveScrollMaxValueState.value }.collectLatest { maxValue ->
             if (viewModel.content.isNotBlank()) {
                 viewModel.updateAigcReadProgress(scrollState.value, maxValue)
             }
@@ -484,7 +488,11 @@ fun ArticleScreen(
                                     },
                                     colors = IconButtonDefaults.iconButtonColors(
                                         containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        contentColor = if (LocalUiStyle.current == UiStyle.LiquidGlass) {
+                                            MaterialTheme.colorScheme.onSurface
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        },
                                     ),
                                 ) {
                                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
@@ -649,104 +657,170 @@ fun ArticleScreen(
                     @Composable
                     fun ActionBarContent() {
                         if (LocalUiStyle.current == UiStyle.LiquidGlass) {
-                            Box(
+                            val isUpVoted = viewModel.voteUpState == VoteUpState.Up
+                            val isDownVoted = viewModel.voteUpState == VoteUpState.Down
+                            val favoriteAccent = Color(0xFFFF9F0A)
+                            val ttsStopAccent = Color(0xFF34C759)
+                            val ttsState = rememberArticleTtsState()
+                            val toggleSpeech = rememberArticleSpeechToggler()
+
+                            Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 12.dp)
-                                    .padding(bottom = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding() + 8.dp),
+                                    .padding(horizontal = 16.dp)
+                                    .padding(
+                                        bottom = WindowInsets.navigationBars
+                                            .asPaddingValues()
+                                            .calculateBottomPadding() + 12.dp,
+                                    ).testTag("article_liquid_bottom_bar"),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
-                                LiquidToolbar(modifier = Modifier.fillMaxWidth()) {
-                                    AppTextButton(
+                                // 左侧分组胶囊：赞同 / 反对（单层玻璃 + 同心激活胶囊，禁止 Glass-on-Glass）
+                                LiquidToolbar(
+                                    modifier = Modifier.testTag("article_liquid_vote_pill"),
+                                ) {
+                                    LiquidToolbarItem(
                                         onClick = {
                                             viewModel.toggleVoteUp(
                                                 environment,
-                                                if (viewModel.voteUpState == VoteUpState.Up) VoteUpState.Neutral else VoteUpState.Up,
+                                                if (isUpVoted) VoteUpState.Neutral else VoteUpState.Up,
                                             )
                                         },
-                                        modifier = Modifier.weight(1f),
-                                        contentPadding = PaddingValues(horizontal = 4.dp),
-                                        colors = ButtonDefaults.textButtonColors(
-                                            contentColor = if (viewModel.voteUpState == VoteUpState.Up) {
-                                                MaterialTheme.colorScheme.primary
-                                            } else {
-                                                MaterialTheme.colorScheme.onSurface
-                                            },
-                                        ),
+                                        active = isUpVoted,
+                                        contentColor = if (isUpVoted) {
+                                            MaterialTheme.colorScheme.primary
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurface
+                                        },
+                                        contentPadding = PaddingValues(start = 10.dp, end = 12.dp),
                                     ) {
-                                        Icon(painterResource(Res.drawable.ic_vote_up_24dp), "赞同")
+                                        Icon(
+                                            painter = painterResource(Res.drawable.ic_vote_up_24dp),
+                                            contentDescription = "赞同",
+                                            modifier = Modifier.size(20.dp),
+                                        )
                                         Spacer(Modifier.width(4.dp))
                                         Text(
-                                            text = viewModel.voteUpCount.toString(),
+                                            text = formatCompactCount(viewModel.voteUpCount),
                                             maxLines = 1,
+                                            softWrap = false,
                                             overflow = TextOverflow.Ellipsis,
                                         )
                                     }
-                                    AppIconButton(
+                                    LiquidToolbarDivider(visible = !isUpVoted && !isDownVoted)
+                                    LiquidToolbarItem(
                                         onClick = {
                                             viewModel.toggleVoteUp(
                                                 environment,
-                                                if (viewModel.voteUpState == VoteUpState.Down) VoteUpState.Neutral else VoteUpState.Down,
+                                                if (isDownVoted) VoteUpState.Neutral else VoteUpState.Down,
                                             )
                                         },
+                                        active = isDownVoted,
+                                        contentColor = if (isDownVoted) {
+                                            MaterialTheme.colorScheme.primary
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurface
+                                        },
+                                        contentPadding = PaddingValues(horizontal = 10.dp),
                                     ) {
                                         Icon(
-                                            painterResource(Res.drawable.ic_vote_down_24dp),
-                                            "反对",
-                                            tint = if (viewModel.voteUpState == VoteUpState.Down) {
-                                                MaterialTheme.colorScheme.primary
-                                            } else {
-                                                MaterialTheme.colorScheme.onSurface
-                                            },
+                                            painter = painterResource(Res.drawable.ic_vote_down_24dp),
+                                            contentDescription = "反对",
+                                            modifier = Modifier.size(20.dp),
                                         )
                                     }
-                                    AppIconButton(onClick = { showCollectionDialog = true }) {
+                                }
+
+                                // 中间留白让正文自然透出（Apple iOS 26 分组工具条布局）
+                                Spacer(Modifier.weight(1f))
+
+                                // 右侧分组胶囊：收藏 / 停止朗读 / 评论
+                                LiquidToolbar(
+                                    modifier = Modifier.testTag("article_liquid_actions_pill"),
+                                ) {
+                                    LiquidToolbarItem(
+                                        onClick = { showCollectionDialog = true },
+                                        active = viewModel.isFavorited,
+                                        contentColor = if (viewModel.isFavorited) {
+                                            favoriteAccent
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurface
+                                        },
+                                        activeContainerColor = favoriteAccent.copy(alpha = 0.18f),
+                                        contentPadding = PaddingValues(horizontal = 10.dp),
+                                    ) {
                                         Icon(
-                                            if (viewModel.isFavorited) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
-                                            "收藏",
-                                            tint = if (viewModel.isFavorited) {
-                                                MaterialTheme.colorScheme.primary
+                                            imageVector = if (viewModel.isFavorited) {
+                                                Icons.Filled.Bookmark
                                             } else {
-                                                MaterialTheme.colorScheme.onSurface
+                                                Icons.Filled.BookmarkBorder
                                             },
+                                            contentDescription = "收藏",
+                                            modifier = Modifier.size(20.dp),
                                         )
                                     }
-                                    val ttsState = rememberArticleTtsState()
-                                    val toggleSpeech = rememberArticleSpeechToggler()
                                     if (ttsState.isSpeaking) {
-                                        AppIconButton(
+                                        LiquidToolbarItem(
                                             onClick = {
                                                 toggleSpeech("", "")
                                                 userMessages.showMessage("已停止朗读")
                                             },
-                                            enabled = ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing),
+                                            enabled = ttsState !in listOf(
+                                                TtsState.Error,
+                                                TtsState.Uninitialized,
+                                                TtsState.Initializing,
+                                            ),
+                                            active = true,
+                                            contentColor = ttsStopAccent,
+                                            activeContainerColor = ttsStopAccent.copy(alpha = 0.18f),
+                                            contentPadding = PaddingValues(horizontal = 10.dp),
                                         ) {
-                                            Icon(Icons.AutoMirrored.Filled.VolumeOff, "停止朗读")
+                                            Icon(
+                                                imageVector = Icons.AutoMirrored.Filled.VolumeOff,
+                                                contentDescription = "停止朗读",
+                                                modifier = Modifier.size(20.dp),
+                                            )
                                         }
                                     }
-                                    AppTextButton(
+                                    LiquidToolbarDivider(visible = !viewModel.isFavorited && !ttsState.isSpeaking)
+                                    LiquidToolbarItem(
                                         onClick = { showComments = true },
-                                        modifier = Modifier.weight(1f),
-                                        contentPadding = PaddingValues(horizontal = 4.dp),
-                                        colors = ButtonDefaults.textButtonColors(
-                                            contentColor = MaterialTheme.colorScheme.onSurface,
-                                        ),
+                                        contentColor = MaterialTheme.colorScheme.onSurface,
+                                        contentPadding = PaddingValues(start = 10.dp, end = 12.dp),
                                     ) {
-                                        Icon(Icons.AutoMirrored.Filled.Comment, "评论")
-                                        Spacer(Modifier.width(4.dp))
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Filled.Comment,
+                                            contentDescription = "评论",
+                                            modifier = Modifier.size(19.dp),
+                                        )
+                                        Spacer(Modifier.width(5.dp))
                                         Text(
-                                            text = viewModel.commentCount.toString(),
+                                            text = formatCompactCount(viewModel.commentCount),
                                             maxLines = 1,
+                                            softWrap = false,
                                             overflow = TextOverflow.Ellipsis,
                                         )
                                     }
-                                    if (!useDuo3ArticleActions) {
-                                        AppIconButton(onClick = { showActionsMenu = true }) {
-                                            Icon(
-                                                Icons.Filled.MoreVert,
-                                                contentDescription = "更多选项",
-                                                tint = MaterialTheme.colorScheme.onSurface,
-                                            )
-                                        }
+                                }
+
+                                // 尾端独立圆形玻璃按钮：更多选项（与分组胶囊同高 52dp，对齐 Apple iOS 26 独立尾端圆钮）
+                                if (!useDuo3ArticleActions) {
+                                    AppIconButton(
+                                        onClick = { showActionsMenu = true },
+                                        style = AppIconButtonStyle.Floating,
+                                        colors = IconButtonDefaults.iconButtonColors(
+                                            contentColor = MaterialTheme.colorScheme.onSurface,
+                                        ),
+                                        modifier = Modifier
+                                            .size(LiquidToolbarHeight)
+                                            .testTag("article_liquid_more_button"),
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Filled.MoreVert,
+                                            contentDescription = "更多选项",
+                                            modifier = Modifier.size(20.dp),
+                                        )
                                     }
                                 }
                             }
@@ -1347,7 +1421,7 @@ fun ArticleScreen(
                 onNavigatePrevious = answerNavigationState::navigateToPrevious,
                 onNavigateNext = answerNavigationState::navigateToNext,
                 isAtTop = { scrollState.value == 0 },
-                isAtBottom = { scrollState.value >= effectiveScrollMaxValue },
+                isAtBottom = { scrollState.value >= effectiveScrollMaxValueState.value },
                 scrollState = scrollState,
                 answerSwitchSensitivity = answerSwitchSensitivity,
                 onOverscrollOffsetChange = updateReadingPlayerOverlayOffset,

@@ -477,11 +477,13 @@ fun AppIconButton(
             val containerColor = if (enabled) colors.containerColor else colors.disabledContainerColor
             val contentColor = if (enabled) colors.contentColor else colors.disabledContentColor
             if (resolvedStyle == AppIconButtonStyle.Floating && isLiquidGlassSupported) {
+                val chromeBase = liquidGlassSemanticTokens().chromeTint
                 LiquidButton(
                     onClick = onClick,
                     modifier = modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp),
                     enabled = enabled,
-                    containerColor = liquidGlassSemanticTokens().chromeTint,
+                    // LiquidButton 内部会按 0.55 缩放容器 alpha，这里反推回 chromeTint 的目标透明度避免双重衰减。
+                    containerColor = chromeBase.copy(alpha = (chromeBase.alpha / 0.55f).coerceIn(0f, 1f)),
                     contentColor = contentColor,
                     contentPadding = PaddingValues(12.dp),
                 ) {

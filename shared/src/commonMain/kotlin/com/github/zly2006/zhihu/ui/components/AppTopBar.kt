@@ -33,6 +33,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarColors
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
+import androidx.compose.material3.TopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
@@ -237,27 +238,37 @@ private fun miuixTopBarColors(
     actionIconContentColor = MiuixTheme.colorScheme.onSurface,
 )
 
+@OptIn(ExperimentalMaterial3Api::class)
+internal fun liquidTopBarOverlapFraction(
+    state: TopAppBarState?,
+    rampDistancePx: Float,
+): Float {
+    if (state == null) return 0f
+    val contentOverlap = (-state.contentOffset / rampDistancePx.coerceAtLeast(1f)).coerceIn(0f, 1f)
+    return max(contentOverlap, state.overlappedFraction.coerceIn(0f, 1f))
+}
+
 internal fun liquidTopBarScrollScrim(
-    overlappedFraction: Float,
+    overlappedFraction: () -> Float,
     canvasColor: Color,
-): Modifier {
-    val fraction = overlappedFraction.coerceIn(0f, 1f)
-    if (fraction <= 0.01f) return Modifier
-    return Modifier.drawBehind {
-        if (size.height > 0f) {
-            drawRect(
-                brush = Brush.verticalGradient(
-                    colorStops = arrayOf(
-                        0f to canvasColor.copy(alpha = 0.72f * fraction),
-                        0.65f to canvasColor.copy(alpha = 0.42f * fraction),
-                        1f to canvasColor.copy(alpha = 0f),
-                    ),
-                    startY = 0f,
-                    endY = size.height,
-                ),
-            )
-        }
-    }
+): Modifier = Modifier.drawBehind {
+    val fraction = overlappedFraction().coerceIn(0f, 1f)
+    if (fraction <= 0.01f || size.height <= 0f) return@drawBehind
+    val featherPx = 16.dp.toPx()
+    val totalHeight = size.height + featherPx
+    val solidEndStop = (size.height / totalHeight).coerceIn(0.75f, 0.96f)
+    drawRect(
+        brush = Brush.verticalGradient(
+            colorStops = arrayOf(
+                0f to canvasColor.copy(alpha = 0.96f * fraction),
+                solidEndStop to canvasColor.copy(alpha = 0.90f * fraction),
+                1f to canvasColor.copy(alpha = 0f),
+            ),
+            startY = 0f,
+            endY = totalHeight,
+        ),
+        size = size.copy(height = totalHeight),
+    )
 }
 
 private enum class AppleNavigationSlot { Navigation, Actions, ExpandedTitle, CompactTitle }
@@ -320,9 +331,10 @@ private fun AppleNavigationLayout(
     }
 
     val scrollOffset = scrollBehavior?.state?.heightOffset ?: 0f
-    // 仅在内容滚到顶栏下方时，在顶栏自身高度内做柔和同色渐隐（避免静止态出现黑边或下垂投影）。
-    val scrollScrimModifier = liquidTopBarScrollScrim(
-        overlappedFraction = scrollBehavior?.state?.overlappedFraction ?: 0f,
+    val scrimRampPx = with(density) { 24.dp.toPx() }
+    // 静止态保持透明；一旦内容滚入顶栏下方（24dp 内拉满），在顶栏区域叠 Backdrop 模糊与高不透明底色遮罩并在底缘柔和羽化，防止正文文字与标题/状态栏重叠。
+    val scrollScrimModifier = backdrop.scrollScrimSurface(
+        overlapFraction = { liquidTopBarOverlapFraction(scrollBehavior?.state, scrimRampPx) },
         canvasColor = tokens.canvas,
     )
     SubcomposeLayout(

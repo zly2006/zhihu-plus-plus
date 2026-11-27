@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
+import com.github.zly2006.zhihu.ui.components.liquidTopBarScrollScrim
 import top.yukonga.miuix.kmp.blur.BlendColorEntry
 import top.yukonga.miuix.kmp.blur.BlurColors
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
@@ -51,6 +52,15 @@ interface UiBackdrop {
         tint: Color = Color.Unspecified,
         floating: Boolean = true,
     ): Modifier
+
+    @Composable
+    fun scrollScrimSurface(
+        overlapFraction: () -> Float,
+        canvasColor: Color,
+    ): Modifier = liquidTopBarScrollScrim(
+        overlappedFraction = overlapFraction,
+        canvasColor = canvasColor,
+    )
 }
 
 object NoOpUiBackdrop : UiBackdrop {

@@ -121,13 +121,14 @@ fun ZhihuTwoRowsTopAppBar(
     val style = LocalUiStyle.current
     val backdrop = LocalUiBackdrop.current
     val liquidTokens = liquidGlassSemanticTokens()
+    val scrimRampPx = with(LocalDensity.current) { 24.dp.toPx() }
     val styledModifier = when (style) {
         UiStyle.Material3 -> modifier
         UiStyle.Miuix -> modifier.then(backdrop.chromeSurface(floating = false))
-        // Liquid Glass 顶栏静止态保持透明，仅在内容滚到顶栏下方时做顶栏自身高度内的柔和同色渐隐。
+        // Liquid Glass 顶栏静止态保持透明；内容滚到顶栏下方时立即启用模糊与高不透明底色遮罩并在底缘柔和羽化，避免正文与标题/作者/状态栏重叠成一团。
         UiStyle.LiquidGlass -> modifier.then(
-            liquidTopBarScrollScrim(
-                overlappedFraction = scrollBehavior?.state?.overlappedFraction ?: 0f,
+            backdrop.scrollScrimSurface(
+                overlapFraction = { liquidTopBarOverlapFraction(scrollBehavior?.state, scrimRampPx) },
                 canvasColor = liquidTokens.canvas,
             ),
         )

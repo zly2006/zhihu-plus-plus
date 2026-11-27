@@ -454,7 +454,7 @@ private suspend fun NestedScrollDispatcher.dispatchPageTurnScroll(
 fun rememberPageTurnTarget(
     scrollState: ScrollState,
     enabled: Boolean,
-    maxScrollValue: Int = scrollState.maxValue,
+    maxScrollValue: () -> Int = { scrollState.maxValue },
     onPageUpAtStart: (() -> Unit)? = null,
     onPageDownAtEnd: (() -> Unit)? = null,
 ): PageTurnTarget {
@@ -472,16 +472,17 @@ fun rememberPageTurnTarget(
         state.lastPageTurnDirection = command.scrollDirection.takeIf { state.showGuide } ?: 0
         state.pageTurnScrollInProgress = true
         try {
+            val resolvedMaxScrollValue = currentMaxScrollValue()
             when (command) {
                 PageTurnCommand.JumpToTop -> scrollState.scrollTo(0)
-                PageTurnCommand.JumpToBottom -> scrollState.scrollTo(currentMaxScrollValue)
+                PageTurnCommand.JumpToBottom -> scrollState.scrollTo(resolvedMaxScrollValue)
                 PageTurnCommand.PageUp,
                 PageTurnCommand.PageDown,
                 -> {
                     val reachedStart = command == PageTurnCommand.PageUp && scrollState.value <= 0
                     val reachedEnd = command == PageTurnCommand.PageDown &&
-                        currentMaxScrollValue != Int.MAX_VALUE &&
-                        scrollState.value >= currentMaxScrollValue
+                        resolvedMaxScrollValue != Int.MAX_VALUE &&
+                        scrollState.value >= resolvedMaxScrollValue
                     when {
                         reachedStart && currentOnPageUpAtStart != null -> currentOnPageUpAtStart?.invoke()
                         reachedEnd && currentOnPageDownAtEnd != null -> currentOnPageDownAtEnd?.invoke()

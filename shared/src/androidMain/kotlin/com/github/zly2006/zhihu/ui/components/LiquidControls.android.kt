@@ -45,6 +45,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.github.zly2006.zhihu.theme.floatingGlassLens
 import com.github.zly2006.zhihu.theme.isLiquidGlassSupported
 import com.github.zly2006.zhihu.theme.rememberDefaultLiquidBackdrop
 import com.github.zly2006.zhihu.ui.liquidglass.components.AndroidLiquidBottomTab
@@ -54,7 +55,6 @@ import com.github.zly2006.zhihu.ui.liquidglass.components.AndroidLiquidSlider
 import com.github.zly2006.zhihu.ui.liquidglass.components.AndroidLiquidToggle
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
-import com.kyant.backdrop.effects.lens
 import com.kyant.backdrop.effects.vibrancy
 import com.kyant.backdrop.highlight.Highlight
 import com.kyant.backdrop.shadow.Shadow
@@ -208,8 +208,8 @@ internal actual fun Modifier.liquidGlassSurface(
         shape = { shape },
         effects = {
             vibrancy()
-            blur(if (floating) 4.dp.toPx() else 8.dp.toPx())
-            if (floating) lens(14.dp.toPx(), 24.dp.toPx())
+            blur(if (floating) 2.dp.toPx() else 8.dp.toPx())
+            if (floating) floatingGlassLens()
         },
         highlight = { if (floating) Highlight.Default else null },
         shadow = { if (floating) Shadow(radius = 12.dp, color = Color.Black.copy(alpha = 0.08f)) else null },
