@@ -332,11 +332,9 @@ private fun RenderMarkdownDocument(
         SegmentHighlightInteractionHost(document) {
             Box(modifier = modifier) {
                 NoDoubleClickSelectionScope {
-                    val onLinkClick: (String) -> Unit = remember(navigator, openExternalUrl) {
-                        { url ->
-                            resolveContent(url)?.let { navigator.onNavigate(it) }
-                                ?: openExternalUrl(url)
-                        }
+                    val onLinkClick: (String) -> Unit = { url ->
+                        resolveContent(url)?.let { navigator.onNavigate(it) }
+                            ?: openExternalUrl(url)
                     }
                     if (useTiqianRenderer && isTiqianMarkdownRendererAvailable) {
                         PlatformTiqianMarkdown(
@@ -361,30 +359,25 @@ private fun RenderMarkdownDocument(
                         val importedMathFont = rememberImportedMathFont()
                         val mathFont = if (selectedMathFont == null) rememberMarkdownMathFont() else importedMathFont
                         val defaultTheme = MarkdownTheme.material3()
-                        val theme = remember(defaultTheme, fontSize, lineHeight, blockSpacing, mathFont) {
-                            val scaledFontSize = 16.sp * fontSize / 100
-                            defaultTheme.copy(
-                                bodyStyle = defaultTheme.bodyStyle.copy(
-                                    fontSize = scaledFontSize,
-                                    lineHeight = scaledFontSize * lineHeight / 100,
-                                ),
-                                blockSpacing = defaultTheme.blockSpacing * (blockSpacing / 100f),
-                                mathFontSize = 18f * fontSize / 100,
-                                mathFont = mathFont ?: defaultTheme.mathFont,
-                            )
-                        }
-                        val imageContent: @Composable (MarkdownImageData, Modifier) -> Unit = remember(previewImageUrls) {
-                            { data, imageModifier ->
+                        val scaledFontSize = 16.sp * fontSize / 100
+                        val theme = defaultTheme.copy(
+                            bodyStyle = defaultTheme.bodyStyle.copy(
+                                fontSize = scaledFontSize,
+                                lineHeight = scaledFontSize * lineHeight / 100,
+                            ),
+                            blockSpacing = defaultTheme.blockSpacing * (blockSpacing / 100f),
+                            mathFontSize = 18f * fontSize / 100,
+                            mathFont = mathFont ?: defaultTheme.mathFont,
+                        )
+                        Markdown(
+                            document = document,
+                            imageContent = { data, imageModifier ->
                                 RenderImage(
                                     data = data,
                                     modifier = imageModifier,
                                     imageUrls = previewImageUrls,
                                 )
-                            }
-                        }
-                        Markdown(
-                            document = document,
-                            imageContent = imageContent,
+                            },
                             scrollState = scrollState,
                             enableScroll = enableScroll,
                             enableSelection = selectable,

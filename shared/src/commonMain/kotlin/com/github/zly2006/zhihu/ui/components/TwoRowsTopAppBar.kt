@@ -291,8 +291,8 @@ private fun TwoRowsTopAppBar(
     val topTitleAlpha = { TopTitleAlphaEasing.transform(colorTransitionFraction()) }
     val bottomTitleAlpha = { 1f - colorTransitionFraction() }
     val hideTopRowSemantics by
-        remember(scrollBehavior) {
-            derivedStateOf { (scrollBehavior?.state?.collapsedFraction ?: 0f) < 0.5f }
+        remember(colorTransitionFraction) {
+            derivedStateOf { colorTransitionFraction() < 0.5f }
         }
     val hideBottomRowSemantics = !hideTopRowSemantics
     val appBarDragModifier =
@@ -383,10 +383,8 @@ private fun TwoRowsTopAppBar(
 private fun Modifier.adjustHeightOffsetLimit(scrollBehavior: TopAppBarScrollBehavior?) =
     scrollBehavior?.state?.let {
         onSizeChanged { size ->
-            val nextLimit = -(size.height.toFloat() - it.heightOffset)
-            if (abs(it.heightOffsetLimit - nextLimit) > 0.5f) {
-                it.heightOffsetLimit = nextLimit
-            }
+            val offset = size.height.toFloat() - it.heightOffset
+            it.heightOffsetLimit = -offset
         }
     } ?: this
 
